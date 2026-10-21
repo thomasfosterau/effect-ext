@@ -31,8 +31,9 @@
     "./Allocator": "./dist/Allocator.mjs",
     "./BufferStruct": "./dist/BufferStruct.mjs",
     "./Layout": "./dist/Layout.mjs",
+    "./Str": "./dist/Str.mjs",
+    "./String": "./dist/String.mjs",
     "./StructOfArrays": "./dist/StructOfArrays.mjs",
-    "./Utf8String": "./dist/Utf8String.mjs",
     "./Vec": "./dist/Vec.mjs",
     "./package.json": "./package.json"
   },

@@ -31,11 +31,18 @@ export * as Layout from "./Layout.ts"
 export * as StructOfArrays from "./StructOfArrays.ts"
 
 /**
- * An immutable UTF-8 string backed by a `Uint8Array`.
+ * An immutable UTF-8 string slice, like Rust's `str`.
  *
  * @since 0.1.0
  */
-export * as Utf8String from "./Utf8String.ts"
+export * as Str from "./Str.ts"
+
+/**
+ * A growable, mutable UTF-8 string, like Rust's `String`.
+ *
+ * @since 0.1.0
+ */
+export * as String from "./String.ts"
 
 /**
  * A growable array backed by `ArrayBuffer` memory, like Rust's `Vec<T>`.

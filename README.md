@@ -22,7 +22,8 @@ Each module is available as a subpath export (`effect-ext/Vec`) and from the roo
 | `BufferStruct`   | Structs whose fields live in an `ArrayBuffer`, exposed as ordinary properties.      |
 | `Vec`            | A growable, `ArrayBuffer`-backed array, like Rust's `Vec<T>`.                       |
 | `StructOfArrays` | A growable struct-of-arrays container with typed-array columns.                     |
-| `Utf8String`     | An immutable UTF-8 string backed by a `Uint8Array`, like Rust's `str`.              |
+| `String`         | A growable, Allocator-backed UTF-8 string, like Rust's `String`.                    |
+| `Str`            | An immutable UTF-8 string slice, like Rust's `str`; usable as a `HashMap` key.      |
 
 ### Allocator
 
@@ -96,21 +97,37 @@ Effect.gen(function* () {
 })
 ```
 
-### Utf8String
+### String and Str
+
+These mirror Rust's `String` and `str`. Both hold valid UTF-8, and as in Rust, indices are byte
+offsets and lengths are in bytes. A `String` is growable and mutable, and its memory comes from the
+current `Allocator`. A `Str` is an immutable, zero-copy string slice with Rust's `str` API, and
+works as a key in Effect's `HashMap` and `HashSet`.
 
 ```ts
-import { Equal, HashSet } from "effect"
-import { Utf8String } from "effect-ext"
+import * as Effect from "effect/Effect"
+import { Str, String } from "effect-ext"
 
-const s = Utf8String.fromString("héllo wörld")
-Utf8String.byteLength(s) // 13
-Utf8String.length(s) // 11 code points
-Utf8String.split(s, " ") // zero-copy slices
-Equal.equals(s, Utf8String.fromString("héllo wörld")) // true — usable in HashMap / HashSet
+Effect.gen(function* () {
+  const s = yield* String.from("héllo")
+  yield* String.pushStr(s, " wörld")
+  yield* String.push(s, "!")
+  String.pop(s) // Option.some("!")
+  String.len(s) // 13 (bytes)
+
+  // For the full `str` API, take an immutable snapshot (a copy that later
+  // mutation cannot affect):
+  const words = Str.split(String.toStr(s), " ") // [Str("héllo"), Str("wörld")]
+})
+
+const line = Str.fromString("  key = value  ")
+Str.splitOnce(Str.trim(line), " = ") // Option.some([Str("key"), Str("value")])
+Str.find(line, (c) => c === "=") // Option.some(6) — patterns can be strings or char predicates
+Str.split(Str.fromString("abc"), "") // ["", "a", "b", "c", ""], as in Rust
 ```
 
-Byte-wise ordering (`Utf8String.Order`) matches Unicode code point order, unlike JavaScript's
-UTF-16 string comparison.
+`Str.Order` compares strings byte-wise, which matches Unicode code point order (unlike
+JavaScript's UTF-16 comparison).
 
 ## Development
 

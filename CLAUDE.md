@@ -12,6 +12,12 @@ namespace from `src/index.ts`.
   variants throw. Index lookups return `Option`.
 - Every export gets a JSDoc block with `@since` and `@category`.
 - Tests live in `test/` and use `@effect/vitest` (`it.effect` for effectful tests).
+- `String` and `Str` mirror Rust's `String` and `str`: use Rust's method names in camelCase
+  (`splitOnce`, `trimStartMatches`, `charIndices`, …) and Rust's semantics, including byte
+  offsets/lengths and Rust's pattern behaviour (an empty pattern matches at every character
+  boundary). Functions on a `String` that would return `&str` in Rust return a `Str` copy. The
+  byte-level algorithms shared by both live in `src/internal/utf8.ts`; test against the examples
+  in Rust's documentation where possible.
 - Linting uses `@mpsuesser/oxlint-plugin-effect` with its full recommended preset and no rules
   disabled. In particular:
   - Import Effect modules as namespaces from their submodule (`import * as Effect from
