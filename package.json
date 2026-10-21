@@ -1,0 +1,75 @@
+{
+  "name": "effect-ext",
+  "version": "0.0.0",
+  "description": "A collection of experimental Effect standard library extensions and additions.",
+  "keywords": [
+    "allocator",
+    "arraybuffer",
+    "effect",
+    "struct-of-arrays",
+    "typescript",
+    "utf8"
+  ],
+  "homepage": "https://github.com/thomasfosterau/effect-ext#readme",
+  "bugs": {
+    "url": "https://github.com/thomasfosterau/effect-ext/issues"
+  },
+  "license": "MIT",
+  "author": "Thomas Foster <me@thomasfoster.au>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomasfosterau/effect-ext.git"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./Allocator": "./dist/Allocator.mjs",
+    "./BufferStruct": "./dist/BufferStruct.mjs",
+    "./Layout": "./dist/Layout.mjs",
+    "./StructOfArrays": "./dist/StructOfArrays.mjs",
+    "./Utf8String": "./dist/Utf8String.mjs",
+    "./Vec": "./dist/Vec.mjs",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "check": "vp check",
+    "changeset": "changeset",
+    "version-packages": "changeset version && vp install --no-frozen-lockfile",
+    "release": "vp run build && changeset publish",
+    "prepare": "vp config"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
+    "@effect/vitest": "^4.0.5",
+    "@types/node": "^26.6.5",
+    "effect": "^4.0.5",
+    "typescript": "^7.0.2",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "^4.0.5"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.14.0",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
