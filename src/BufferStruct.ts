@@ -27,6 +27,7 @@ import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import { format } from "effect/Formatter"
 import { NodeInspectSymbol } from "effect/Inspectable"
+import * as Option from "effect/Option"
 import { pipeArguments, type Pipeable } from "effect/Pipeable"
 import * as P from "effect/Predicate"
 import * as R from "effect/Record"
@@ -75,7 +76,7 @@ export interface Proto<F extends Layout.Fields> extends Pipeable {
   readonly [ViewKey]: DataView
   readonly [OffsetKey]: number
   /** @internal Cleared by {@link free}. */
-  [OwnerKey]: Owner | undefined
+  [OwnerKey]: Option.Option<Owner>
   toJSON(): { readonly _id: "BufferStruct" } & Layout.StructType<F>
   toString(): string
 }
@@ -117,7 +118,7 @@ const prototypeFor = (layout: Layout.AnyStruct): object => {
   const cached = prototypes.get(layout)
   if (cached !== undefined) return cached
   const proto: object = Object.create(BaseProto)
-  for (const key of R.keys(layout.fields)) {
+  R.keys(layout.fields).forEach((key) => {
     if (reserved.includes(key)) {
       throw new TypeError(`BufferStruct: field name "${key}" is reserved`)
     }
@@ -127,7 +128,7 @@ const prototypeFor = (layout: Layout.AnyStruct): object => {
       Object.defineProperty(proto, key, {
         enumerable: true,
         get(this: Proto<any>) {
-          return viewAt(field, this[ViewKey], this[OffsetKey] + offset, undefined)
+          return viewAt(field, this[ViewKey], this[OffsetKey] + offset, Option.none())
         },
         set(this: Proto<any>, value: Layout.StructType<any>) {
           field.write(this[ViewKey], this[OffsetKey] + offset, value)
@@ -144,7 +145,7 @@ const prototypeFor = (layout: Layout.AnyStruct): object => {
         },
       })
     }
-  }
+  })
   prototypes.set(layout, proto)
   return proto
 }
@@ -153,7 +154,7 @@ const viewAt = <F extends Layout.Fields>(
   layout: Layout.Struct<F>,
   view: DataView,
   byteOffset: number,
-  owner: Owner | undefined,
+  owner: Option.Option<Owner>,
 ): BufferStruct<F> => {
   const self = Object.create(prototypeFor(layout))
   self[LayoutKey] = layout
@@ -196,7 +197,7 @@ export const view = <F extends Layout.Fields>(
       `BufferStruct.view: struct of ${layout.size} bytes at offset ${byteOffset} exceeds ${dataView.byteLength} bytes`,
     )
   }
-  return viewAt(layout, dataView, byteOffset, undefined)
+  return viewAt(layout, dataView, byteOffset, Option.none())
 }
 
 /**
@@ -212,7 +213,7 @@ export const make = <F extends Layout.Fields>(
 ): Effect.Effect<BufferStruct<F>, Allocator.AllocationError> =>
   Effect.flatMap(Effect.service(Allocator.Allocator), (allocator) =>
     Effect.map(Effect.fromResult(allocator.allocate(layout.size, layout.align)), (block) => {
-      const self = viewAt(layout, Allocator.dataView(block), 0, { allocator, block })
+      const self = viewAt(layout, Allocator.dataView(block), 0, Option.some({ allocator, block }))
       if (init !== undefined) layout.write(self[ViewKey], 0, init)
       return self
     }),
@@ -241,9 +242,9 @@ export const makeScoped = <F extends Layout.Fields>(
 export const free = <F extends Layout.Fields>(self: BufferStruct<F>): Effect.Effect<void> =>
   Effect.sync(() => {
     const owner = self[OwnerKey]
-    if (owner !== undefined) {
-      self[OwnerKey] = undefined
-      owner.allocator.deallocate(owner.block)
+    if (Option.isSome(owner)) {
+      self[OwnerKey] = Option.none()
+      owner.value.allocator.deallocate(owner.value.block)
     }
   })
 

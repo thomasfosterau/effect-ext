@@ -48,6 +48,12 @@ describe("Layout", () => {
     expect(S.read(view, 0)).toEqual(value)
   })
 
+  it("zero-length fixed arrays read as empty", () => {
+    const A = Layout.array(Layout.u32, 0)
+    expect(A.size).toBe(0)
+    expect(A.read(new DataView(new ArrayBuffer(0)), 0)).toEqual([])
+  })
+
   it("fixed array rejects wrong lengths", () => {
     const A = Layout.array(Layout.u8, 2)
     expect(() => A.write(new DataView(new ArrayBuffer(2)), 0, [1])).toThrow(RangeError)

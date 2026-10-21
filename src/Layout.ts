@@ -262,7 +262,7 @@ export type Fields = { readonly [key: string]: Any }
  * @since 0.1.0
  * @category type-level
  */
-export type StructType<F extends Fields> = { -readonly [K in keyof F]: Type<F[K]> }
+export type StructType<F extends Fields> = { -readonly [K in keyof F & string]: Type<F[K]> }
 
 /**
  * A C-like struct layout. Fields are stored in declaration order, each at an
@@ -319,42 +319,39 @@ export const alignUp = (n: number, align: number): number => (n + align - 1) & ~
  */
 export const struct = <const F extends Fields>(
   fields: F,
-  options?: { readonly packed?: boolean | undefined },
+  options?: { readonly packed?: boolean },
 ): Struct<F> => {
   const packed = options?.packed ?? false
   const keys = R.keys(fields)
-  const offsets: Record<string, number> = {}
-  let offset = 0
-  let align = 1
-  for (const key of keys) {
-    const field = fields[key]
-    const fieldAlign = packed ? 1 : field.align
-    offset = alignUp(offset, fieldAlign)
-    offsets[key] = offset
-    offset += field.size
-    align = Math.max(align, fieldAlign)
-  }
+  const fieldAlign = (field: Any) => (packed ? 1 : field.align)
+  const placed = keys.reduce(
+    (acc, key) => {
+      const field = fields[key]
+      const offset = alignUp(acc.end, fieldAlign(field))
+      acc.offsets[key] = offset
+      return {
+        offsets: acc.offsets,
+        end: offset + field.size,
+        align: Math.max(acc.align, fieldAlign(field)),
+      }
+    },
+    { offsets: R.empty<string, number>(), end: 0, align: 1 },
+  )
+  const offsets = placed.offsets
   const self = Object.create(Proto)
   self[TypeId] = TypeId
   self._tag = "Struct"
   self.fields = fields
   self.offsets = offsets
   self.packed = packed
-  self.align = align
-  self.size = alignUp(offset, align)
-  self.read = (view: DataView, byteOffset: number): StructType<F> => {
-    const out: Record<string, Type<F[keyof F]>> = {}
-    for (const key of keys) {
-      out[key] = fields[key].read(view, byteOffset + offsets[key])
-    }
-    // SAFETY: the loop above assigned every key of `fields` from its layout.
-    return out as StructType<F>
-  }
-  self.write = (view: DataView, byteOffset: number, value: StructType<F>) => {
-    for (const key of keys) {
-      fields[key].write(view, byteOffset + offsets[key], value[key])
-    }
-  }
+  self.align = placed.align
+  self.size = alignUp(placed.end, placed.align)
+  self.read = (view: DataView, byteOffset: number): StructType<F> =>
+    R.map<keyof F & string, F[keyof F & string], Type<F[keyof F & string]>>(fields, (field, key) =>
+      field.read(view, byteOffset + offsets[key]),
+    )
+  self.write = (view: DataView, byteOffset: number, value: StructType<F>) =>
+    keys.forEach((key) => fields[key].write(view, byteOffset + offsets[key], value[key]))
   return self
 }
 
@@ -394,20 +391,13 @@ export const array = <L extends Any, const N extends number>(
   self.length = length
   self.align = element.align
   self.size = stride * length
-  self.read = (view: DataView, byteOffset: number) => {
-    const out: Array<unknown> = []
-    for (let i = 0; i < length; i++) {
-      out.push(element.read(view, byteOffset + i * stride))
-    }
-    return out
-  }
-  self.write = (view: DataView, byteOffset: number, value: ReadonlyArray<unknown>) => {
+  self.read = (view: DataView, byteOffset: number): Array<Type<L>> =>
+    Array.from({ length }, (_, i) => element.read(view, byteOffset + i * stride))
+  self.write = (view: DataView, byteOffset: number, value: ReadonlyArray<Type<L>>) => {
     if (value.length !== length) {
       throw new RangeError(`Layout.array: expected ${length} elements, received ${value.length}`)
     }
-    for (let i = 0; i < length; i++) {
-      element.write(view, byteOffset + i * stride, value[i])
-    }
+    value.forEach((item, i) => element.write(view, byteOffset + i * stride, item))
   }
   return self
 }

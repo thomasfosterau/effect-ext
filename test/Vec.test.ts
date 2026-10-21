@@ -80,7 +80,7 @@ describe("Vec", () => {
         { x: 1, y: 2 },
         { x: 3, y: 4 },
       ])
-      const p = Option.getOrThrow(Vec.at(v, 1))
+      const p = yield* Effect.fromOption(Vec.at(v, 1))
       p.y = 40
       expect(Vec.getUnsafe(v, 1)).toEqual({ x: 3, y: 40 })
       expect(Vec.bytes(v).byteLength).toBe(16)

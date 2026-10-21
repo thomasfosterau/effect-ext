@@ -82,18 +82,18 @@ const decoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 class Utf8StringImpl implements Utf8String {
   readonly [TypeId] = TypeId
-  private decoded: string | undefined
-  private hashCode: number | undefined
+  private hashCode: Option.Option<number> = Option.none()
 
   constructor(
     readonly bytes: Uint8Array,
-    decoded?: string,
-  ) {
-    this.decoded = decoded
-  }
+    private decoded: Option.Option<string> = Option.none(),
+  ) {}
 
   toString(): string {
-    return (this.decoded ??= decoder.decode(this.bytes))
+    if (Option.isSome(this.decoded)) return this.decoded.value
+    const decoded = decoder.decode(this.bytes)
+    this.decoded = Option.some(decoded)
+    return decoded
   }
 
   [Eq.symbol](that: Eq.Equal): boolean {
@@ -101,11 +101,14 @@ class Utf8StringImpl implements Utf8String {
   }
 
   [Hash.symbol](): number {
-    return (this.hashCode ??= hashBytes(this.bytes))
+    if (Option.isSome(this.hashCode)) return this.hashCode.value
+    const hash = hashBytes(this.bytes)
+    this.hashCode = Option.some(hash)
+    return hash
   }
 
-  *[Symbol.iterator](): Iterator<string> {
-    yield* this.toString()
+  [Symbol.iterator](): Iterator<string> {
+    return this.toString()[Symbol.iterator]()
   }
 
   pipe() {
@@ -121,24 +124,14 @@ class Utf8StringImpl implements Utf8String {
   }
 }
 
-const bytesEqual = (a: Uint8Array, b: Uint8Array): boolean => {
-  if (a === b) return true
-  if (a.byteLength !== b.byteLength) return false
-  for (let i = 0; i < a.byteLength; i++) {
-    if (a[i] !== b[i]) return false
-  }
-  return true
-}
+const bytesEqual = (a: Uint8Array, b: Uint8Array): boolean =>
+  a === b || (a.byteLength === b.byteLength && a.every((byte, i) => byte === b[i]))
 
 // FNV-1a, 32-bit.
-const hashBytes = (bytes: Uint8Array): number => {
-  let h = 0x811c9dc5
-  for (let i = 0; i < bytes.byteLength; i++) {
-    h ^= bytes[i]
-    h = Math.imul(h, 0x01000193)
-  }
-  return Hash.optimize(h)
-}
+const hashBytes = (bytes: Uint8Array): number =>
+  Hash.optimize(bytes.reduce((h, byte) => Math.imul(h ^ byte, 0x01000193), 0x811c9dc5))
+
+const isContinuation = (byte: number) => (byte & 0xc0) === 0x80
 
 /**
  * Returns the length of the longest valid UTF-8 prefix of `bytes`; equal to
@@ -151,40 +144,41 @@ const hashBytes = (bytes: Uint8Array): number => {
  * @category validation
  */
 export const validUpTo = (bytes: Uint8Array): number => {
-  const n = bytes.byteLength
-  let i = 0
-  while (i < n) {
-    const b0 = bytes[i]
-    if (b0 < 0x80) {
-      i++
-      continue
+  // A single pass over the bytes. `start` is where the current sequence began,
+  // `pending` how many continuation bytes it still needs, and `lo`/`hi` the
+  // range allowed for the next one (narrower than 0x80..0xbf right after some
+  // lead bytes, to reject overlong forms, surrogates and code points above
+  // U+10FFFF).
+  let start = 0
+  let pending = 0
+  let lo = 0x80
+  let hi = 0xbf
+  const invalid = bytes.findIndex((byte, i) => {
+    if (pending > 0) {
+      if (byte < lo || byte > hi) return true
+      pending--
+      lo = 0x80
+      hi = 0xbf
+      return false
     }
-    let width: number
-    let lo = 0x80
-    let hi = 0xbf
-    if (b0 >= 0xc2 && b0 <= 0xdf) {
-      width = 2
-    } else if (b0 >= 0xe0 && b0 <= 0xef) {
-      width = 3
-      if (b0 === 0xe0) lo = 0xa0 // overlong
-      else if (b0 === 0xed) hi = 0x9f // surrogates
-    } else if (b0 >= 0xf0 && b0 <= 0xf4) {
-      width = 4
-      if (b0 === 0xf0) lo = 0x90 // overlong
-      else if (b0 === 0xf4) hi = 0x8f // > U+10FFFF
+    start = i
+    if (byte < 0x80) return false
+    if (byte >= 0xc2 && byte <= 0xdf) {
+      pending = 1
+    } else if (byte >= 0xe0 && byte <= 0xef) {
+      pending = 2
+      if (byte === 0xe0) lo = 0xa0 // overlong
+      else if (byte === 0xed) hi = 0x9f // surrogates
+    } else if (byte >= 0xf0 && byte <= 0xf4) {
+      pending = 3
+      if (byte === 0xf0) lo = 0x90 // overlong
+      else if (byte === 0xf4) hi = 0x8f // > U+10FFFF
     } else {
-      return i
+      return true
     }
-    if (i + width > n) return i
-    const b1 = bytes[i + 1]
-    if (b1 < lo || b1 > hi) return i
-    for (let k = 2; k < width; k++) {
-      const b = bytes[i + k]
-      if (b < 0x80 || b > 0xbf) return i
-    }
-    i += width
-  }
-  return n
+    return false
+  })
+  return invalid !== -1 || pending > 0 ? start : bytes.byteLength
 }
 
 /**
@@ -207,7 +201,7 @@ export const isUtf8String = (u: unknown): u is Utf8String => P.hasProperty(u, Ty
  * @since 0.1.0
  * @category constructors
  */
-export const empty: Utf8String = new Utf8StringImpl(new Uint8Array(0), "")
+export const empty: Utf8String = new Utf8StringImpl(new Uint8Array(0), Option.some(""))
 
 /**
  * Encodes a JavaScript string. Lone surrogates are replaced with U+FFFD.
@@ -217,7 +211,7 @@ export const empty: Utf8String = new Utf8StringImpl(new Uint8Array(0), "")
  */
 export const fromString = (s: string): Utf8String => {
   const bytes = encoder.encode(s)
-  return new Utf8StringImpl(bytes, s.isWellFormed() ? s : undefined)
+  return new Utf8StringImpl(bytes, s.isWellFormed() ? Option.some(s) : Option.none())
 }
 
 /**
@@ -273,14 +267,8 @@ export const byteLength = (self: Utf8String): number => self.bytes.byteLength
  * @since 0.1.0
  * @category getters
  */
-export const length = (self: Utf8String): number => {
-  const bytes = self.bytes
-  let count = 0
-  for (let i = 0; i < bytes.byteLength; i++) {
-    if ((bytes[i] & 0xc0) !== 0x80) count++
-  }
-  return count
-}
+export const length = (self: Utf8String): number =>
+  self.bytes.reduce((count, byte) => (isContinuation(byte) ? count : count + 1), 0)
 
 /**
  * @since 0.1.0
@@ -307,7 +295,7 @@ export const isCharBoundary: {
 } = dual(2, (self: Utf8String, index: number): boolean => {
   const bytes = self.bytes
   if (!Number.isSafeInteger(index) || index < 0 || index > bytes.byteLength) return false
-  return index === bytes.byteLength || (bytes[index] & 0xc0) !== 0x80
+  return index === bytes.byteLength || !isContinuation(bytes[index])
 })
 
 /**
@@ -316,30 +304,36 @@ export const isCharBoundary: {
  * @since 0.1.0
  * @category getters
  */
-export const codePoints = function* (self: Utf8String): IterableIterator<number> {
+export const codePoints = (self: Utf8String): IterableIterator<number> => {
   const bytes = self.bytes
   let i = 0
-  while (i < bytes.byteLength) {
-    const b0 = bytes[i]
-    if (b0 < 0x80) {
-      yield b0
-      i += 1
-    } else if (b0 < 0xe0) {
-      yield ((b0 & 0x1f) << 6) | (bytes[i + 1] & 0x3f)
-      i += 2
-    } else if (b0 < 0xf0) {
-      yield ((b0 & 0x0f) << 12) | ((bytes[i + 1] & 0x3f) << 6) | (bytes[i + 2] & 0x3f)
-      i += 3
-    } else {
-      yield (
-        ((b0 & 0x07) << 18) |
-          ((bytes[i + 1] & 0x3f) << 12) |
-          ((bytes[i + 2] & 0x3f) << 6) |
-          (bytes[i + 3] & 0x3f)
-      )
-      i += 4
-    }
+  const iterator: IterableIterator<number> = {
+    next: (): IteratorResult<number, undefined> => {
+      if (i >= bytes.byteLength) return { done: true, value: undefined }
+      const [codePoint, width] = decodeAt(bytes, i)
+      i += width
+      return { done: false, value: codePoint }
+    },
+    [Symbol.iterator]: () => iterator,
   }
+  return iterator
+}
+
+/** Decodes the code point starting at `i` of valid UTF-8, with its width in bytes. */
+const decodeAt = (bytes: Uint8Array, i: number): readonly [codePoint: number, width: number] => {
+  const b0 = bytes[i]
+  if (b0 < 0x80) return [b0, 1]
+  if (b0 < 0xe0) return [((b0 & 0x1f) << 6) | (bytes[i + 1] & 0x3f), 2]
+  if (b0 < 0xf0) {
+    return [((b0 & 0x0f) << 12) | ((bytes[i + 1] & 0x3f) << 6) | (bytes[i + 2] & 0x3f), 3]
+  }
+  return [
+    ((b0 & 0x07) << 18) |
+      ((bytes[i + 1] & 0x3f) << 12) |
+      ((bytes[i + 2] & 0x3f) << 6) |
+      (bytes[i + 3] & 0x3f),
+    4,
+  ]
 }
 
 /**
@@ -418,39 +412,39 @@ export const join = (
   const sep = P.isString(separator) ? fromString(separator) : separator
   const parts = Array.from(strings)
   if (!Arr.isReadonlyArrayNonEmpty(parts)) return empty
-  let size = sep.bytes.byteLength * (parts.length - 1)
-  for (const part of parts) size += part.bytes.byteLength
+  const size = parts.reduce(
+    (n, part) => n + part.bytes.byteLength,
+    sep.bytes.byteLength * (parts.length - 1),
+  )
   const bytes = new Uint8Array(size)
   let offset = 0
-  for (let i = 0; i < parts.length; i++) {
+  parts.forEach((part, i) => {
     if (i > 0) {
       bytes.set(sep.bytes, offset)
       offset += sep.bytes.byteLength
     }
-    bytes.set(parts[i].bytes, offset)
-    offset += parts[i].bytes.byteLength
-  }
+    bytes.set(part.bytes, offset)
+    offset += part.bytes.byteLength
+  })
   return new Utf8StringImpl(bytes)
 }
 
 const toNeedle = (needle: Utf8String | string): Uint8Array =>
   P.isString(needle) ? encoder.encode(needle) : needle.bytes
 
-const matchesAt = (haystack: Uint8Array, needle: Uint8Array, at: number): boolean => {
-  for (let j = 0; j < needle.byteLength; j++) {
-    if (haystack[at + j] !== needle[j]) return false
-  }
-  return true
-}
+const matchesAt = (haystack: Uint8Array, needle: Uint8Array, at: number): boolean =>
+  needle.every((byte, j) => haystack[at + j] === byte)
 
+/** The offset of the first occurrence of `needle` at or after `from`, or -1. */
 const findFrom = (haystack: Uint8Array, needle: Uint8Array, from: number): number => {
-  const last = haystack.byteLength - needle.byteLength
   if (needle.byteLength === 0) return from <= haystack.byteLength ? from : -1
+  const last = haystack.byteLength - needle.byteLength
+  if (from > last) return -1
   const first = needle[0]
-  for (let i = from; i <= last; i++) {
-    if (haystack[i] === first && matchesAt(haystack, needle, i)) return i
-  }
-  return -1
+  const found = haystack
+    .subarray(from, last + 1)
+    .findIndex((byte, k) => byte === first && matchesAt(haystack, needle, from + k))
+  return found === -1 ? -1 : from + found
 }
 
 /**
@@ -521,25 +515,27 @@ export const split: {
 } = dual(2, (self: Utf8String, separator: Utf8String | string): Array<Utf8String> => {
   const bytes = self.bytes
   const sep = toNeedle(separator)
-  const out: Array<Utf8String> = []
+  const sub = (start: number, end: number): Utf8String =>
+    new Utf8StringImpl(bytes.subarray(start, end))
   if (sep.byteLength === 0) {
-    let start = 0
-    for (let i = 1; i <= bytes.byteLength; i++) {
-      if (i === bytes.byteLength || (bytes[i] & 0xc0) !== 0x80) {
-        out.push(new Utf8StringImpl(bytes.subarray(start, i)))
-        start = i
-      }
-    }
-    return out
+    const starts: Array<number> = []
+    bytes.forEach((byte, i) => {
+      if (!isContinuation(byte)) starts.push(i)
+    })
+    return starts.map((start, k) =>
+      sub(start, k + 1 < starts.length ? starts[k + 1] : bytes.byteLength),
+    )
   }
-  let start = 0
-  let i: number
-  while ((i = findFrom(bytes, sep, start)) !== -1) {
-    out.push(new Utf8StringImpl(bytes.subarray(start, i)))
-    start = i + sep.byteLength
-  }
-  out.push(new Utf8StringImpl(bytes.subarray(start)))
-  return out
+  // The state is the offset of the next piece, or -1 once the last piece is out.
+  return Arr.unfold(0, (start) => {
+    if (start < 0) return Option.none()
+    const found = findFrom(bytes, sep, start)
+    return Option.some(
+      found === -1
+        ? ([sub(start, bytes.byteLength), -1] as const)
+        : ([sub(start, found), found + sep.byteLength] as const),
+    )
+  })
 })
 
 const isAsciiWhitespace = (b: number) =>
@@ -554,10 +550,9 @@ const isAsciiWhitespace = (b: number) =>
  */
 export const trimAscii = (self: Utf8String): Utf8String => {
   const bytes = self.bytes
-  let start = 0
-  let end = bytes.byteLength
-  while (start < end && isAsciiWhitespace(bytes[start])) start++
-  while (end > start && isAsciiWhitespace(bytes[end - 1])) end--
+  const start = bytes.findIndex((byte) => !isAsciiWhitespace(byte))
+  if (start === -1) return empty
+  const end = bytes.findLastIndex((byte) => !isAsciiWhitespace(byte)) + 1
   return start === 0 && end === bytes.byteLength
     ? self
     : new Utf8StringImpl(bytes.subarray(start, end))
@@ -575,10 +570,8 @@ export const Order: Order_.Order<Utf8String> = (self, that) => {
   const a = self.bytes
   const b = that.bytes
   const n = Math.min(a.byteLength, b.byteLength)
-  for (let i = 0; i < n; i++) {
-    const d = a[i] - b[i]
-    if (d !== 0) return d < 0 ? -1 : 1
-  }
+  const i = a.subarray(0, n).findIndex((byte, k) => byte !== b[k])
+  if (i !== -1) return a[i] < b[i] ? -1 : 1
   return a.byteLength < b.byteLength ? -1 : a.byteLength > b.byteLength ? 1 : 0
 }
 

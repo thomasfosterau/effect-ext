@@ -40,6 +40,7 @@ import * as R from "effect/Record"
 import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
 import * as Allocator from "./Allocator.ts"
+import { indexed } from "./internal/iterator.ts"
 import * as Layout from "./Layout.ts"
 
 /**
@@ -91,7 +92,7 @@ export type PrimitiveKeys<F extends Layout.Fields> = {
  * @since 0.1.0
  * @category type-level
  */
-export type FieldValue<F extends Layout.Fields> = Layout.Type<F[keyof F]>
+export type FieldValue<F extends Layout.Fields> = Layout.Type<F[keyof F & string]>
 
 const MIN_CAPACITY = 4
 
@@ -110,14 +111,14 @@ const ColumnOrder: Order.Order<Column> = Order.flip(
   Order.mapInput(Order.Number, (column: Column) => column.layout.align),
 )
 
+/** The start of each column when the block holds `capacity` records. */
 const columnOffsets = (columns: ReadonlyArray<Column>, capacity: number): Array<number> => {
-  const offsets: Array<number> = []
   let offset = 0
-  for (const column of columns) {
-    offsets.push(offset)
+  return columns.map((column) => {
+    const start = offset
     offset += column.size * capacity
-  }
-  return offsets
+    return start
+  })
 }
 
 class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
@@ -127,7 +128,7 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
   readonly keys: ReadonlyArray<string>
   readonly recordSize: number
   readonly align: number
-  block: Allocator.Block | undefined = undefined
+  block: Option.Option<Allocator.Block> = Option.none()
   view: DataView = emptyView
   cap = 0
   len = 0
@@ -160,44 +161,45 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
   }
 
   bytes(): Uint8Array {
-    return this.block === undefined ? new Uint8Array(0) : Allocator.bytes(this.block)
+    return Option.isSome(this.block) ? Allocator.bytes(this.block.value) : new Uint8Array(0)
   }
 
   resize(capacity: number): Result.Result<void, Allocator.AllocationError> {
     const columns = this.columns
     const next = columnOffsets(columns, capacity)
     const size = capacity * this.recordSize
-    if (this.block === undefined) {
-      const result = this.allocator.allocate(size, this.align)
-      if (Result.isFailure(result)) return Result.fail(result.failure)
-      this.block = result.success
-    } else if (capacity > this.cap) {
-      // Grow, then move columns towards the end of the block (last first, so
-      // nothing is overwritten before it has been moved).
-      const result = this.allocator.reallocate(this.block, size, this.align)
-      if (Result.isFailure(result)) return Result.fail(result.failure)
-      this.block = result.success
-      const bytes = Allocator.bytes(this.block)
-      for (let i = columns.length - 1; i >= 0; i--) {
-        const column = columns[i]
-        bytes.copyWithin(next[i], column.offset, column.offset + this.len * column.size)
-      }
-    } else {
-      // Shrink: move columns towards the start (first first), then reallocate.
-      const bytes = Allocator.bytes(this.block)
-      for (let i = 0; i < columns.length; i++) {
-        const column = columns[i]
-        bytes.copyWithin(next[i], column.offset, column.offset + this.len * column.size)
-      }
-      const result = this.allocator.reallocate(this.block, size, this.align)
-      if (Result.isFailure(result)) return Result.fail(result.failure)
-      this.block = result.success
-    }
-    for (let i = 0; i < columns.length; i++) {
-      columns[i].offset = next[i]
-    }
+    const moveColumns = (bytes: Uint8Array, order: ReadonlyArray<number>) =>
+      order.forEach((i) =>
+        bytes.copyWithin(
+          next[i],
+          columns[i].offset,
+          columns[i].offset + this.len * columns[i].size,
+        ),
+      )
+    const ascending = columns.map((_, i) => i)
+    const result = Option.match(this.block, {
+      onNone: () => this.allocator.allocate(size, this.align),
+      onSome: (block) => {
+        if (capacity > this.cap) {
+          // Grow, then move columns towards the end of the block, last first, so
+          // nothing is overwritten before it has been moved.
+          return Result.map(this.allocator.reallocate(block, size, this.align), (grown) => {
+            moveColumns(Allocator.bytes(grown), ascending.toReversed())
+            return grown
+          })
+        }
+        // Shrink: move columns towards the start, first first, then reallocate.
+        moveColumns(Allocator.bytes(block), ascending)
+        return this.allocator.reallocate(block, size, this.align)
+      },
+    })
+    if (Result.isFailure(result)) return Result.fail(result.failure)
+    columns.forEach((column, i) => {
+      column.offset = next[i]
+    })
+    this.block = Option.some(result.success)
     this.cap = capacity
-    this.view = Allocator.dataView(this.block)
+    this.view = Allocator.dataView(result.success)
     return Result.void
   }
 
@@ -216,32 +218,28 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
   }
 
   read(index: number): Layout.StructType<F> {
-    const out: Record<string, FieldValue<F>> = {}
-    for (const key of this.keys) {
-      out[key] = this.readField(this.byKey[key], index)
-    }
-    // SAFETY: the loop above assigned every key of `fields` from its column.
-    return out as Layout.StructType<F>
+    return R.map<keyof F & string, F[keyof F & string], FieldValue<F>>(this.fields, (_, key) =>
+      this.readField(this.byKey[key], index),
+    )
   }
 
   write(index: number, value: Layout.StructType<F>): void {
-    for (const column of this.columns) {
-      this.writeField(column, index, value[column.key])
-    }
+    this.columns.forEach((column) => this.writeField(column, index, value[column.key]))
   }
 
   move(to: number, from: number): void {
     const bytes = this.bytes()
-    for (const column of this.columns) {
+    this.columns.forEach((column) => {
       const src = column.offset + from * column.size
       bytes.copyWithin(column.offset + to * column.size, src, src + column.size)
-    }
+    })
   }
 
-  *[Symbol.iterator](): Iterator<Layout.StructType<F>> {
-    for (let i = 0; i < this.len; i++) {
-      yield this.read(i)
-    }
+  [Symbol.iterator](): Iterator<Layout.StructType<F>> {
+    return indexed(
+      () => this.len,
+      (i) => this.read(i),
+    )
   }
 
   pipe() {
@@ -261,9 +259,17 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
   }
 }
 
-const impl = <F extends Layout.Fields>(self: StructOfArrays<F>): StructOfArraysImpl<F> =>
-  // SAFETY: `StructOfArraysImpl` is the only implementation; every constructor returns one.
-  self as StructOfArraysImpl<F>
+const impl = <F extends Layout.Fields>(self: StructOfArrays<F>): StructOfArraysImpl<F> => {
+  if (self instanceof StructOfArraysImpl) return self
+  throw new TypeError("StructOfArrays: expected a StructOfArrays created by this module")
+}
+
+const isStructLayout = <F extends Layout.Fields>(
+  input: F | Layout.Struct<F>,
+): input is Layout.Struct<F> => Layout.isStruct(input)
+
+const fieldsOf = <F extends Layout.Fields>(input: F | Layout.Struct<F>): F =>
+  isStructLayout(input) ? input.fields : input
 
 const isIndex = (self: StructOfArraysImpl<any>, index: number) =>
   Number.isSafeInteger(index) && index >= 0 && index < self.len
@@ -291,16 +297,11 @@ export const isStructOfArrays = (u: unknown): u is StructOfArrays<Layout.Fields>
  */
 export const make = <F extends Layout.Fields>(
   fields: F | Layout.Struct<F>,
-  options?: { readonly capacity?: number | undefined },
+  options?: { readonly capacity?: number },
 ): Effect.Effect<StructOfArrays<F>, Allocator.AllocationError> =>
   Effect.flatMap(Effect.service(Allocator.Allocator), (allocator) =>
     Effect.suspend(() => {
-      const self = new StructOfArraysImpl<F>(
-        // SAFETY: the signature only admits `F` or `Layout.Struct<F>`, and `isStruct`
-        // distinguishes them, so each branch holds an `F`.
-        Layout.isStruct(fields) ? (fields.fields as F) : (fields as F),
-        allocator,
-      )
+      const self = new StructOfArraysImpl<F>(fieldsOf(fields), allocator)
       const capacity = options?.capacity ?? 0
       if (capacity > 0) {
         const result = self.resize(capacity)
@@ -319,7 +320,7 @@ export const make = <F extends Layout.Fields>(
  */
 export const makeScoped = <F extends Layout.Fields>(
   fields: F | Layout.Struct<F>,
-  options?: { readonly capacity?: number | undefined },
+  options?: { readonly capacity?: number },
 ): Effect.Effect<StructOfArrays<F>, Allocator.AllocationError, Scope.Scope> =>
   Effect.acquireRelease(make(fields, options), free)
 
@@ -347,12 +348,14 @@ export const fromIterable = <F extends Layout.Fields>(
 export const free = <F extends Layout.Fields>(self: StructOfArrays<F>): Effect.Effect<void> =>
   Effect.sync(() => {
     const s = impl(self)
-    if (s.block !== undefined) {
-      s.allocator.deallocate(s.block)
-      s.block = undefined
+    if (Option.isSome(s.block)) {
+      s.allocator.deallocate(s.block.value)
+      s.block = Option.none()
       s.view = emptyView
     }
-    for (const column of s.columns) column.offset = 0
+    s.columns.forEach((column) => {
+      column.offset = 0
+    })
     s.cap = 0
     s.len = 0
   })
@@ -524,10 +527,14 @@ export const column: {
   <F extends Layout.Fields, K extends PrimitiveKeys<F>>(self: StructOfArrays<F>, key: K) => {
     const s = impl(self)
     const col = s.byKey[key]
-    // SAFETY: `K` is constrained to `PrimitiveKeys<F>`, so this column's layout is primitive.
-    const layout = col.layout as Layout.AnyPrimitive
-    if (s.block === undefined) return new layout.TypedArray(new ArrayBuffer(0), 0, 0)
-    return new layout.TypedArray(s.block.buffer, s.block.byteOffset + col.offset, s.len)
+    const layout = col.layout
+    if (!Layout.isPrimitive(layout)) {
+      throw new TypeError(`StructOfArrays: field "${key}" is not a primitive layout`)
+    }
+    return Option.match(s.block, {
+      onNone: () => new layout.TypedArray(new ArrayBuffer(0), 0, 0),
+      onSome: (block) => new layout.TypedArray(block.buffer, block.byteOffset + col.offset, s.len),
+    })
   },
 )
 
@@ -545,16 +552,17 @@ export const values: {
     self: StructOfArrays<F>,
     key: K,
   ): IterableIterator<Layout.Type<F[K]>>
-} = dual(2, function* <
-  F extends Layout.Fields,
-  K extends keyof F & string,
->(self: StructOfArrays<F>, key: K) {
-  const s = impl(self)
-  const col = s.byKey[key]
-  for (let i = 0; i < s.len; i++) {
-    yield s.readField(col, i)
-  }
-})
+} = dual(
+  2,
+  <F extends Layout.Fields, K extends keyof F & string>(self: StructOfArrays<F>, key: K) => {
+    const s = impl(self)
+    const col = s.byKey[key]
+    return indexed(
+      () => s.len,
+      (i) => s.readField(col, i),
+    )
+  },
+)
 
 /**
  * Reserves capacity for at least `additional` more records.
@@ -587,7 +595,7 @@ export const shrinkToFit = <F extends Layout.Fields>(
 ): Effect.Effect<void, Allocator.AllocationError> =>
   Effect.suspend(() => {
     const s = impl(self)
-    if (s.block === undefined || s.len === s.cap) return Effect.void
+    if (Option.isNone(s.block) || s.len === s.cap) return Effect.void
     if (s.len === 0) return free(self)
     return Effect.fromResult(s.resize(s.len))
   })
@@ -617,7 +625,9 @@ export const push: {
 )
 
 /**
- * Appends every record of an iterable.
+ * Appends every record of an iterable. Capacity for all of them is reserved
+ * up front, so either every record is appended or, on allocation failure,
+ * none are.
  *
  * @since 0.1.0
  * @category mutations
@@ -635,15 +645,10 @@ export const extend: {
   <F extends Layout.Fields>(self: StructOfArrays<F>, records: Iterable<Layout.StructType<F>>) =>
     Effect.suspend(() => {
       const s = impl(self)
-      if (Array.isArray(records)) {
-        const result = s.reserve(records.length)
-        if (Result.isFailure(result)) return Effect.fail(result.failure)
-      }
-      for (const value of records) {
-        const result = s.reserve(1)
-        if (Result.isFailure(result)) return Effect.fail(result.failure)
-        s.write(s.len++, value)
-      }
+      const values = Arr.fromIterable(records)
+      const result = s.reserve(values.length)
+      if (Result.isFailure(result)) return Effect.fail(result.failure)
+      values.forEach((value) => s.write(s.len++, value))
       return Effect.void
     }),
 )

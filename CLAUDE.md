@@ -12,13 +12,21 @@ namespace from `src/index.ts`.
   variants throw. Index lookups return `Option`.
 - Every export gets a JSDoc block with `@since` and `@category`.
 - Tests live in `test/` and use `@effect/vitest` (`it.effect` for effectful tests).
-- Linting uses `@mpsuesser/oxlint-plugin-effect` (recommended preset, configured in
-  `vite.config.ts`). In particular: import Effect modules as namespaces from their submodule
-  (`import * as Effect from "effect/Effect"`, with canonical aliases such as `P` for
-  `effect/Predicate`, `R` for `effect/Record`, `Eq` for `effect/Equal`), define errors with
-  `Schema.TaggedError`, and justify every type assertion with a `// SAFETY:` comment.
-  `imperative-loops` and `prefer-option-over-null` are disabled because hot paths need plain loops
-  and allocation-free internal state; see the comments in `vite.config.ts`.
+- Linting uses `@mpsuesser/oxlint-plugin-effect` with its full recommended preset and no rules
+  disabled. In particular:
+  - Import Effect modules as namespaces from their submodule (`import * as Effect from
+    "effect/Effect"`), with canonical aliases such as `P` (Predicate), `R` (Record), `Eq` (Equal).
+  - No `for`/`while`/`do` loops: use typed-array and `Arr` methods (`findIndex` for early exit,
+    `reduce` for folds, `forEach`), `Arr.unfold`, or the `indexed` iterator in
+    `src/internal/iterator.ts` instead of generators. Beware that `Arr.makeBy` and `Arr.range`
+    never return an empty array; use `Array.from({ length }, f)` when the length may be 0.
+  - No `T | undefined` / `T | null` in types: use `Option` (also for internal state), and plain
+    optional properties (`capacity?: number`) for options.
+  - No type assertions (`as T`, other than `as const`): use type guards, `instanceof` checks or
+    better-typed helpers.
+  - Errors are `Schema.TaggedError` classes; no `try`/`catch` (use `Result.try` / `Effect.try`).
+  - In tests, run effectful code with `it.effect` and unwrap with `Effect.fromResult` /
+    `Effect.fromOption` instead of `getOrThrow`.
 - Add a changeset (`vp run changeset`) for any user-facing change.
 
 <!--VITE PLUS START-->

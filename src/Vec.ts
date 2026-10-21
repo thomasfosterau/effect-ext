@@ -25,6 +25,7 @@
  *
  * @since 0.1.0
  */
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import { format } from "effect/Formatter"
 import { dual } from "effect/Function"
@@ -36,6 +37,7 @@ import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
 import * as Allocator from "./Allocator.ts"
 import * as BufferStruct from "./BufferStruct.ts"
+import { indexed } from "./internal/iterator.ts"
 import type * as Layout from "./Layout.ts"
 
 /**
@@ -83,7 +85,7 @@ const emptyView = new DataView(new ArrayBuffer(0))
 
 class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
   readonly [TypeId] = TypeId
-  block: Allocator.Block | undefined = undefined
+  block: Option.Option<Allocator.Block> = Option.none()
   view: DataView = emptyView
   len = 0
   readonly stride: number
@@ -100,17 +102,16 @@ class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
   }
 
   get capacity(): number {
-    return this.block === undefined ? 0 : this.block.byteLength / this.stride
+    return Option.isSome(this.block) ? this.block.value.byteLength / this.stride : 0
   }
 
   resize(capacity: number): Result.Result<void, Allocator.AllocationError> {
     const size = capacity * this.stride
-    const result =
-      this.block === undefined
-        ? this.allocator.allocate(size, this.layout.align)
-        : this.allocator.reallocate(this.block, size, this.layout.align)
+    const result = Option.isSome(this.block)
+      ? this.allocator.reallocate(this.block.value, size, this.layout.align)
+      : this.allocator.allocate(size, this.layout.align)
     if (Result.isFailure(result)) return Result.fail(result.failure)
-    this.block = result.success
+    this.block = Option.some(result.success)
     this.view = Allocator.dataView(result.success)
     return Result.void
   }
@@ -131,13 +132,14 @@ class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
   }
 
   bytes(): Uint8Array {
-    return this.block === undefined ? new Uint8Array(0) : Allocator.bytes(this.block)
+    return Option.isSome(this.block) ? Allocator.bytes(this.block.value) : new Uint8Array(0)
   }
 
-  *[Symbol.iterator](): Iterator<A> {
-    for (let i = 0; i < this.len; i++) {
-      yield this.read(i)
-    }
+  [Symbol.iterator](): Iterator<A> {
+    return indexed(
+      () => this.len,
+      (i) => this.read(i),
+    )
   }
 
   pipe() {
@@ -157,9 +159,10 @@ class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
   }
 }
 
-const impl = <A, L extends Layout.Layout<A>>(self: Vec<A, L>): VecImpl<A, L> =>
-  // SAFETY: `VecImpl` is the only implementation of `Vec`; every constructor returns one.
-  self as VecImpl<A, L>
+const impl = <A, L extends Layout.Layout<A>>(self: Vec<A, L>): VecImpl<A, L> => {
+  if (self instanceof VecImpl) return self
+  throw new TypeError("Vec: expected a Vec created by this module")
+}
 
 const checkLayout = (layout: Layout.Any) => {
   if (layout.size === 0) {
@@ -191,7 +194,7 @@ export const isVec = (u: unknown): u is Vec<unknown> => P.hasProperty(u, TypeId)
  */
 export const make = <L extends Layout.Any>(
   layout: L,
-  options?: { readonly capacity?: number | undefined },
+  options?: { readonly capacity?: number },
 ): Effect.Effect<Vec<Layout.Type<L>, L>, Allocator.AllocationError> =>
   Effect.flatMap(Effect.service(Allocator.Allocator), (allocator) =>
     Effect.suspend(() => {
@@ -214,7 +217,7 @@ export const make = <L extends Layout.Any>(
  */
 export const makeScoped = <L extends Layout.Any>(
   layout: L,
-  options?: { readonly capacity?: number | undefined },
+  options?: { readonly capacity?: number },
 ): Effect.Effect<Vec<Layout.Type<L>, L>, Allocator.AllocationError, Scope.Scope> =>
   Effect.acquireRelease(make(layout, options), free)
 
@@ -243,9 +246,9 @@ export const fromIterable = <L extends Layout.Any>(
 export const free = <A, L extends Layout.Layout<A>>(self: Vec<A, L>): Effect.Effect<void> =>
   Effect.sync(() => {
     const s = impl(self)
-    if (s.block !== undefined) {
-      s.allocator.deallocate(s.block)
-      s.block = undefined
+    if (Option.isSome(s.block)) {
+      s.allocator.deallocate(s.block.value)
+      s.block = Option.none()
       s.view = emptyView
     }
     s.len = 0
@@ -396,7 +399,7 @@ export const shrinkToFit = <A, L extends Layout.Layout<A>>(
 ): Effect.Effect<void, Allocator.AllocationError> =>
   Effect.suspend(() => {
     const s = impl(self)
-    if (s.block === undefined || s.len === s.capacity) return Effect.void
+    if (Option.isNone(s.block) || s.len === s.capacity) return Effect.void
     if (s.len === 0) return free(self)
     return Effect.fromResult(s.resize(s.len))
   })
@@ -426,7 +429,9 @@ export const push: {
 )
 
 /**
- * Appends every element of an iterable.
+ * Appends every element of an iterable. Capacity for all of them is reserved
+ * up front, so either every element is appended or, on allocation failure,
+ * none are.
  *
  * @since 0.1.0
  * @category mutations
@@ -442,15 +447,10 @@ export const extend: {
 } = dual(2, <A, L extends Layout.Layout<A>>(self: Vec<A, L>, elements: Iterable<A>) =>
   Effect.suspend(() => {
     const s = impl(self)
-    if (Array.isArray(elements)) {
-      const result = s.reserve(elements.length)
-      if (Result.isFailure(result)) return Effect.fail(result.failure)
-    }
-    for (const value of elements) {
-      const result = s.reserve(1)
-      if (Result.isFailure(result)) return Effect.fail(result.failure)
-      s.write(s.len++, value)
-    }
+    const values = Arr.fromIterable(elements)
+    const result = s.reserve(values.length)
+    if (Result.isFailure(result)) return Effect.fail(result.failure)
+    values.forEach((value) => s.write(s.len++, value))
     return Effect.void
   }),
 )
@@ -609,7 +609,8 @@ export const typedArray = <L extends Layout.AnyPrimitive>(
   self: Vec<Layout.Type<L>, L>,
 ): Layout.TypedArrayOf<L> => {
   const s = impl(self)
-  const block = s.block
-  if (block === undefined) return new s.layout.TypedArray(new ArrayBuffer(0), 0, 0)
-  return new s.layout.TypedArray(block.buffer, block.byteOffset, s.len)
+  return Option.match(s.block, {
+    onNone: () => new s.layout.TypedArray(new ArrayBuffer(0), 0, 0),
+    onSome: (block) => new s.layout.TypedArray(block.buffer, block.byteOffset, s.len),
+  })
 }
