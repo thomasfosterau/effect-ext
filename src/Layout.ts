@@ -9,7 +9,8 @@
  * @since 0.1.0
  */
 import { pipeArguments, type Pipeable } from "effect/Pipeable"
-import { hasProperty } from "effect/Predicate"
+import * as P from "effect/Predicate"
+import * as R from "effect/Record"
 
 /**
  * @since 0.1.0
@@ -321,12 +322,12 @@ export const struct = <const F extends Fields>(
   options?: { readonly packed?: boolean | undefined },
 ): Struct<F> => {
   const packed = options?.packed ?? false
-  const keys = Object.keys(fields)
+  const keys = R.keys(fields)
   const offsets: Record<string, number> = {}
   let offset = 0
   let align = 1
   for (const key of keys) {
-    const field = fields[key]!
+    const field = fields[key]
     const fieldAlign = packed ? 1 : field.align
     offset = alignUp(offset, fieldAlign)
     offsets[key] = offset
@@ -341,16 +342,17 @@ export const struct = <const F extends Fields>(
   self.packed = packed
   self.align = align
   self.size = alignUp(offset, align)
-  self.read = (view: DataView, byteOffset: number) => {
-    const out: Record<string, unknown> = {}
+  self.read = (view: DataView, byteOffset: number): StructType<F> => {
+    const out: Record<string, Type<F[keyof F]>> = {}
     for (const key of keys) {
-      out[key] = fields[key]!.read(view, byteOffset + offsets[key]!)
+      out[key] = fields[key].read(view, byteOffset + offsets[key])
     }
-    return out
+    // SAFETY: the loop above assigned every key of `fields` from its layout.
+    return out as StructType<F>
   }
-  self.write = (view: DataView, byteOffset: number, value: Record<string, unknown>) => {
+  self.write = (view: DataView, byteOffset: number, value: StructType<F>) => {
     for (const key of keys) {
-      fields[key]!.write(view, byteOffset + offsets[key]!, value[key])
+      fields[key].write(view, byteOffset + offsets[key], value[key])
     }
   }
   return self
@@ -414,17 +416,17 @@ export const array = <L extends Any, const N extends number>(
  * @since 0.1.0
  * @category guards
  */
-export const isLayout = (u: unknown): u is Any => hasProperty(u, TypeId)
+export const isLayout = (u: unknown): u is Any => P.hasProperty(u, TypeId)
 
 /**
  * @since 0.1.0
  * @category guards
  */
 export const isPrimitive = (u: unknown): u is AnyPrimitive =>
-  isLayout(u) && "TypedArray" in u && typeof u.TypedArray === "function"
+  isLayout(u) && P.hasProperty(u, "TypedArray") && P.isFunction(u.TypedArray)
 
 /**
  * @since 0.1.0
  * @category guards
  */
-export const isStruct = (u: unknown): u is AnyStruct => isLayout(u) && u._tag === "Struct"
+export const isStruct = (u: unknown): u is AnyStruct => isLayout(u) && P.isTagged(u, "Struct")

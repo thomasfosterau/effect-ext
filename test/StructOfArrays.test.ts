@@ -1,5 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Effect, Option } from "effect"
+import * as Arr from "effect/Array"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import * as Allocator from "../src/Allocator.ts"
 import * as Layout from "../src/Layout.ts"
 import * as StructOfArrays from "../src/StructOfArrays.ts"
@@ -15,9 +17,11 @@ describe("StructOfArrays", () => {
   it.effect("push, get and columns", () =>
     Effect.gen(function* () {
       const soa = yield* StructOfArrays.make(Particle)
-      for (let i = 0; i < 9; i++) {
-        yield* StructOfArrays.push(soa, { id: i, x: i * 1.5, alive: i % 2 === 0, y: -i })
-      }
+      yield* Effect.forEach(
+        Arr.range(0, 8),
+        (i) => StructOfArrays.push(soa, { id: i, x: i * 1.5, alive: i % 2 === 0, y: -i }),
+        { concurrency: 1, discard: true },
+      )
       expect(soa.length).toBe(9)
       expect(StructOfArrays.get(soa, 2)).toEqual(Option.some({ id: 2, x: 3, alive: true, y: -2 }))
       const xs: Float64Array = StructOfArrays.column(soa, "x")

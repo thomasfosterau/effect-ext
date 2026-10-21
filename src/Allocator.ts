@@ -10,11 +10,11 @@
  * @since 0.1.0
  */
 import * as Context from "effect/Context"
-import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Result from "effect/Result"
+import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 
 /**
@@ -35,11 +35,11 @@ export interface Block {
  * @since 0.1.0
  * @category errors
  */
-export class AllocationError extends Data.TaggedError("AllocationError")<{
-  readonly size: number
-  readonly align: number
-  readonly reason: string
-}> {
+export class AllocationError extends Schema.TaggedError<AllocationError>()("AllocationError", {
+  size: Schema.Number,
+  align: Schema.Number,
+  reason: Schema.String,
+}) {
   override get message(): string {
     return `Failed to allocate ${this.size} bytes (align ${this.align}): ${this.reason}`
   }
@@ -83,15 +83,29 @@ export const DEFAULT_ALIGN = 8
 
 const isPowerOfTwo = (n: number) => Number.isSafeInteger(n) && n > 0 && (n & (n - 1)) === 0
 
-const invalidRequest = (size: number, align: number): AllocationError | undefined => {
+const validateRequest = (size: number, align: number): Result.Result<void, AllocationError> => {
   if (!Number.isSafeInteger(size) || size < 0) {
-    return new AllocationError({ size, align, reason: "size must be a non-negative integer" })
+    return Result.fail(
+      new AllocationError({ size, align, reason: "size must be a non-negative integer" }),
+    )
   }
   if (!isPowerOfTwo(align)) {
-    return new AllocationError({ size, align, reason: "align must be a power of two" })
+    return Result.fail(new AllocationError({ size, align, reason: "align must be a power of two" }))
   }
-  return undefined
+  return Result.void
 }
+
+const tryAllocate = <A>(
+  size: number,
+  align: number,
+  allocate: () => A,
+): Result.Result<A, AllocationError> =>
+  Result.flatMap(validateRequest(size, align), () =>
+    Result.try({
+      try: allocate,
+      catch: (cause) => new AllocationError({ size, align, reason: String(cause) }),
+    }),
+  )
 
 const ownsWholeBuffer = (block: Block) =>
   block.byteOffset === 0 && block.byteLength === block.buffer.byteLength
@@ -114,30 +128,21 @@ const copyBlock = (from: Block, to: Block) => {
  */
 export const heap: Allocator = {
   name: "heap",
-  allocate(size, align) {
-    const invalid = invalidRequest(size, align)
-    if (invalid) return Result.fail(invalid)
-    try {
-      return Result.succeed({ buffer: new ArrayBuffer(size), byteOffset: 0, byteLength: size })
-    } catch (cause) {
-      return Result.fail(new AllocationError({ size, align, reason: String(cause) }))
-    }
-  },
-  reallocate(block, size, align) {
-    const invalid = invalidRequest(size, align)
-    if (invalid) return Result.fail(invalid)
-    try {
+  allocate: (size, align) =>
+    tryAllocate(size, align, () => ({
+      buffer: new ArrayBuffer(size),
+      byteOffset: 0,
+      byteLength: size,
+    })),
+  reallocate: (block, size, align) =>
+    tryAllocate(size, align, () => {
       if (ownsWholeBuffer(block)) {
-        const buffer = block.buffer.transfer(size)
-        return Result.succeed({ buffer, byteOffset: 0, byteLength: size })
+        return { buffer: block.buffer.transfer(size), byteOffset: 0, byteLength: size }
       }
       const next = { buffer: new ArrayBuffer(size), byteOffset: 0, byteLength: size }
       copyBlock(block, next)
-      return Result.succeed(next)
-    } catch (cause) {
-      return Result.fail(new AllocationError({ size, align, reason: String(cause) }))
-    }
-  },
+      return next
+    }),
   deallocate(block) {
     if (ownsWholeBuffer(block) && !block.buffer.detached) {
       block.buffer.transfer(0)
@@ -177,8 +182,8 @@ export const makeArenaUnsafe = (capacity: number): Arena => {
   let top = 0
 
   const bump = (size: number, align: number): Result.Result<Block, AllocationError> => {
-    const invalid = invalidRequest(size, align)
-    if (invalid) return Result.fail(invalid)
+    const valid = validateRequest(size, align)
+    if (Result.isFailure(valid)) return Result.fail(valid.failure)
     const byteOffset = (top + align - 1) & ~(align - 1)
     if (byteOffset + size > capacity) {
       return Result.fail(
@@ -206,8 +211,8 @@ export const makeArenaUnsafe = (capacity: number): Arena => {
     },
     allocate: bump,
     reallocate(block, size, align) {
-      const invalid = invalidRequest(size, align)
-      if (invalid) return Result.fail(invalid)
+      const valid = validateRequest(size, align)
+      if (Result.isFailure(valid)) return Result.fail(valid.failure)
       if (isLast(block) && (block.byteOffset & (align - 1)) === 0) {
         if (block.byteOffset + size > capacity) {
           return Result.fail(
@@ -239,12 +244,9 @@ export const makeArenaUnsafe = (capacity: number): Arena => {
  * @category allocators
  */
 export const makeArena = (capacity: number): Effect.Effect<Arena, AllocationError> =>
-  Effect.suspend(() => {
-    try {
-      return Effect.succeed(makeArenaUnsafe(capacity))
-    } catch (cause) {
-      return Effect.fail(new AllocationError({ size: capacity, align: 1, reason: String(cause) }))
-    }
+  Effect.try({
+    try: () => makeArenaUnsafe(capacity),
+    catch: (cause) => new AllocationError({ size: capacity, align: 1, reason: String(cause) }),
   })
 
 /**

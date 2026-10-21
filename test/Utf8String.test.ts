@@ -1,5 +1,10 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Array as Arr, Equal, Hash, HashSet, Option, Result } from "effect"
+import * as Arr from "effect/Array"
+import * as Eq from "effect/Equal"
+import * as Hash from "effect/Hash"
+import * as HashSet from "effect/HashSet"
+import * as Option from "effect/Option"
+import * as Result from "effect/Result"
 import * as Utf8String from "../src/Utf8String.ts"
 
 const s = Utf8String.fromString
@@ -39,6 +44,13 @@ describe("Utf8String", () => {
     expect(Utf8String.fromBytesLossy(new Uint8Array([0x61, 0xff])).toString()).toBe("a�")
   })
 
+  it("Utf8Error reports where the invalid sequence starts", () => {
+    const result = Utf8String.fromBytes(new Uint8Array([0x61, 0xff]))
+    expect(Result.isFailure(result) && result.failure.message).toBe(
+      "Invalid UTF-8 sequence at byte 1",
+    )
+  })
+
   it("fromBytes copies its input", () => {
     const bytes = new Uint8Array([0x61, 0x62])
     const str = Result.getOrThrow(Utf8String.fromBytes(bytes))
@@ -47,8 +59,8 @@ describe("Utf8String", () => {
   })
 
   it("equality and hashing", () => {
-    expect(Equal.equals(s("abc"), s("abc"))).toBe(true)
-    expect(Equal.equals(s("abc"), s("abd"))).toBe(false)
+    expect(Eq.equals(s("abc"), s("abc"))).toBe(true)
+    expect(Eq.equals(s("abc"), s("abd"))).toBe(false)
     expect(Hash.hash(s("abc"))).toBe(Hash.hash(s("abc")))
     const set = HashSet.make(s("a"), s("b"), s("a"))
     expect(HashSet.size(set)).toBe(2)

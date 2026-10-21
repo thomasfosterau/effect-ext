@@ -1,5 +1,8 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Effect, Exit, Option } from "effect"
+import * as Arr from "effect/Array"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Option from "effect/Option"
 import * as Allocator from "../src/Allocator.ts"
 import * as Layout from "../src/Layout.ts"
 import * as Vec from "../src/Vec.ts"
@@ -11,7 +14,10 @@ describe("Vec", () => {
     Effect.gen(function* () {
       const v = yield* Vec.make(Layout.u16)
       expect(v.capacity).toBe(0)
-      for (let i = 0; i < 10; i++) yield* Vec.push(v, i * 3)
+      yield* Effect.forEach(Arr.range(0, 9), (i) => Vec.push(v, i * 3), {
+        concurrency: 1,
+        discard: true,
+      })
       expect(v.length).toBe(10)
       expect(v.capacity).toBeGreaterThanOrEqual(10)
       expect(Vec.get(v, 3)).toEqual(Option.some(9))

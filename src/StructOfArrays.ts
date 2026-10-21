@@ -27,13 +27,16 @@
  *
  * @since 0.1.0
  */
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import { format } from "effect/Formatter"
 import { dual } from "effect/Function"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as Option from "effect/Option"
+import * as Order from "effect/Order"
 import { pipeArguments, type Pipeable } from "effect/Pipeable"
-import { hasProperty } from "effect/Predicate"
+import * as P from "effect/Predicate"
+import * as R from "effect/Record"
 import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
 import * as Allocator from "./Allocator.ts"
@@ -66,7 +69,7 @@ export interface StructOfArrays<F extends Layout.Fields>
   readonly length: number
   /** The number of records that fit without reallocating. */
   readonly capacity: number
-  toJSON(): unknown
+  toJSON(): { readonly _id: "StructOfArrays"; readonly values: Array<Layout.StructType<F>> }
   toString(): string
 }
 
@@ -82,6 +85,14 @@ export type PrimitiveKeys<F extends Layout.Fields> = {
 }[keyof F] &
   string
 
+/**
+ * The value type of any field in `F`.
+ *
+ * @since 0.1.0
+ * @category type-level
+ */
+export type FieldValue<F extends Layout.Fields> = Layout.Type<F[keyof F]>
+
 const MIN_CAPACITY = 4
 
 const emptyView = new DataView(new ArrayBuffer(0))
@@ -93,6 +104,11 @@ interface Column {
   /** Byte offset of the column inside the block, for the current capacity. */
   offset: number
 }
+
+/** Columns with the largest alignment first, so no padding is needed between them. */
+const ColumnOrder: Order.Order<Column> = Order.flip(
+  Order.mapInput(Order.Number, (column: Column) => column.layout.align),
+)
 
 const columnOffsets = (columns: ReadonlyArray<Column>, capacity: number): Array<number> => {
   const offsets: Array<number> = []
@@ -120,11 +136,17 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
     readonly fields: F,
     readonly allocator: Allocator.Allocator,
   ) {
-    this.keys = Object.keys(fields)
-    this.columns = this.keys
-      .map((key): Column => ({ key, layout: fields[key]!, size: fields[key]!.size, offset: 0 }))
-      .sort((a, b) => b.layout.align - a.layout.align)
-    this.byKey = Object.fromEntries(this.columns.map((column) => [column.key, column]))
+    this.keys = R.keys(fields)
+    this.columns = Arr.sort(
+      this.keys.map((key): Column => ({
+        key,
+        layout: fields[key],
+        size: fields[key].size,
+        offset: 0,
+      })),
+      ColumnOrder,
+    )
+    this.byKey = R.fromEntries(this.columns.map((column) => [column.key, column]))
     this.recordSize = this.columns.reduce((n, column) => n + column.size, 0)
     this.align = this.columns.reduce((n, column) => Math.max(n, column.layout.align), 1)
   }
@@ -157,22 +179,22 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
       this.block = result.success
       const bytes = Allocator.bytes(this.block)
       for (let i = columns.length - 1; i >= 0; i--) {
-        const column = columns[i]!
-        bytes.copyWithin(next[i]!, column.offset, column.offset + this.len * column.size)
+        const column = columns[i]
+        bytes.copyWithin(next[i], column.offset, column.offset + this.len * column.size)
       }
     } else {
       // Shrink: move columns towards the start (first first), then reallocate.
       const bytes = Allocator.bytes(this.block)
       for (let i = 0; i < columns.length; i++) {
-        const column = columns[i]!
-        bytes.copyWithin(next[i]!, column.offset, column.offset + this.len * column.size)
+        const column = columns[i]
+        bytes.copyWithin(next[i], column.offset, column.offset + this.len * column.size)
       }
       const result = this.allocator.reallocate(this.block, size, this.align)
       if (Result.isFailure(result)) return Result.fail(result.failure)
       this.block = result.success
     }
     for (let i = 0; i < columns.length; i++) {
-      columns[i]!.offset = next[i]!
+      columns[i].offset = next[i]
     }
     this.cap = capacity
     this.view = Allocator.dataView(this.block)
@@ -185,19 +207,20 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
     return this.resize(Math.max(required, this.cap * 2, MIN_CAPACITY))
   }
 
-  readField(column: Column, index: number): unknown {
+  readField(column: Column, index: number): FieldValue<F> {
     return column.layout.read(this.view, column.offset + index * column.size)
   }
 
-  writeField(column: Column, index: number, value: unknown): void {
+  writeField(column: Column, index: number, value: FieldValue<F>): void {
     column.layout.write(this.view, column.offset + index * column.size, value)
   }
 
   read(index: number): Layout.StructType<F> {
-    const out: Record<string, unknown> = {}
+    const out: Record<string, FieldValue<F>> = {}
     for (const key of this.keys) {
-      out[key] = this.readField(this.byKey[key]!, index)
+      out[key] = this.readField(this.byKey[key], index)
     }
+    // SAFETY: the loop above assigned every key of `fields` from its column.
     return out as Layout.StructType<F>
   }
 
@@ -226,7 +249,7 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
   }
 
   toJSON() {
-    return { _id: "StructOfArrays", values: Array.from(this) }
+    return { _id: "StructOfArrays" as const, values: Array.from(this) }
   }
 
   toString() {
@@ -239,6 +262,7 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
 }
 
 const impl = <F extends Layout.Fields>(self: StructOfArrays<F>): StructOfArraysImpl<F> =>
+  // SAFETY: `StructOfArraysImpl` is the only implementation; every constructor returns one.
   self as StructOfArraysImpl<F>
 
 const isIndex = (self: StructOfArraysImpl<any>, index: number) =>
@@ -255,7 +279,7 @@ const checkIndex = (self: StructOfArraysImpl<any>, index: number) => {
  * @category guards
  */
 export const isStructOfArrays = (u: unknown): u is StructOfArrays<Layout.Fields> =>
-  hasProperty(u, TypeId)
+  P.hasProperty(u, TypeId)
 
 /**
  * Creates an empty container using the current allocator. Accepts either a
@@ -272,6 +296,8 @@ export const make = <F extends Layout.Fields>(
   Effect.flatMap(Effect.service(Allocator.Allocator), (allocator) =>
     Effect.suspend(() => {
       const self = new StructOfArraysImpl<F>(
+        // SAFETY: the signature only admits `F` or `Layout.Struct<F>`, and `isStruct`
+        // distinguishes them, so each branch holds an `F`.
         Layout.isStruct(fields) ? (fields.fields as F) : (fields as F),
         allocator,
       )
@@ -441,7 +467,7 @@ export const getField: {
   ) => {
     const s = impl(self)
     checkIndex(s, index)
-    return s.readField(s.byKey[key]!, index)
+    return s.readField(s.byKey[key], index)
   },
 )
 
@@ -474,7 +500,7 @@ export const setField: {
   ) => {
     const s = impl(self)
     checkIndex(s, index)
-    s.writeField(s.byKey[key]!, index, value)
+    s.writeField(s.byKey[key], index, value)
   },
 )
 
@@ -497,7 +523,8 @@ export const column: {
   2,
   <F extends Layout.Fields, K extends PrimitiveKeys<F>>(self: StructOfArrays<F>, key: K) => {
     const s = impl(self)
-    const col = s.byKey[key]!
+    const col = s.byKey[key]
+    // SAFETY: `K` is constrained to `PrimitiveKeys<F>`, so this column's layout is primitive.
     const layout = col.layout as Layout.AnyPrimitive
     if (s.block === undefined) return new layout.TypedArray(new ArrayBuffer(0), 0, 0)
     return new layout.TypedArray(s.block.buffer, s.block.byteOffset + col.offset, s.len)
@@ -523,7 +550,7 @@ export const values: {
   K extends keyof F & string,
 >(self: StructOfArrays<F>, key: K) {
   const s = impl(self)
-  const col = s.byKey[key]!
+  const col = s.byKey[key]
   for (let i = 0; i < s.len; i++) {
     yield s.readField(col, i)
   }

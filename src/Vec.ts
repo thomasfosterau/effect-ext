@@ -31,7 +31,7 @@ import { dual } from "effect/Function"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as Option from "effect/Option"
 import { pipeArguments, type Pipeable } from "effect/Pipeable"
-import { hasProperty } from "effect/Predicate"
+import * as P from "effect/Predicate"
 import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
 import * as Allocator from "./Allocator.ts"
@@ -65,7 +65,7 @@ export interface Vec<A, L extends Layout.Layout<A> = Layout.Layout<A>>
   readonly length: number
   /** The number of elements that fit without reallocating. */
   readonly capacity: number
-  toJSON(): unknown
+  toJSON(): { readonly _id: "Vec"; readonly layout: string; readonly values: Array<A> }
   toString(): string
 }
 
@@ -145,7 +145,7 @@ class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
   }
 
   toJSON() {
-    return { _id: "Vec", layout: this.layout._tag, values: Array.from(this) }
+    return { _id: "Vec" as const, layout: this.layout._tag, values: Array.from(this) }
   }
 
   toString() {
@@ -158,6 +158,7 @@ class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
 }
 
 const impl = <A, L extends Layout.Layout<A>>(self: Vec<A, L>): VecImpl<A, L> =>
+  // SAFETY: `VecImpl` is the only implementation of `Vec`; every constructor returns one.
   self as VecImpl<A, L>
 
 const checkLayout = (layout: Layout.Any) => {
@@ -179,7 +180,7 @@ const isIndex = (self: VecImpl<any, any>, index: number) =>
  * @since 0.1.0
  * @category guards
  */
-export const isVec = (u: unknown): u is Vec<unknown> => hasProperty(u, TypeId)
+export const isVec = (u: unknown): u is Vec<unknown> => P.hasProperty(u, TypeId)
 
 /**
  * Creates an empty vector using the current allocator. Memory is only

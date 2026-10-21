@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import * as Allocator from "../src/Allocator.ts"
 import * as BufferStruct from "../src/BufferStruct.ts"
 import * as Layout from "../src/Layout.ts"
@@ -14,7 +14,8 @@ describe("BufferStruct", () => {
       expect(p.x).toBe(1)
       p.x += 10
       expect(BufferStruct.toObject(p)).toEqual({ x: 11, y: 2 })
-      expect(Object.keys(p)).toEqual([])
+      // Fields are accessors on the prototype, not own properties.
+      expect(Object.hasOwn(p, "x")).toBe(false)
       expect(BufferStruct.isBufferStruct(p)).toBe(true)
     }),
   )

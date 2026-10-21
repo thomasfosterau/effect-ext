@@ -28,7 +28,8 @@ import { dual } from "effect/Function"
 import { format } from "effect/Formatter"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import { pipeArguments, type Pipeable } from "effect/Pipeable"
-import { hasProperty } from "effect/Predicate"
+import * as P from "effect/Predicate"
+import * as R from "effect/Record"
 import type * as Scope from "effect/Scope"
 import * as Allocator from "./Allocator.ts"
 import * as Layout from "./Layout.ts"
@@ -73,8 +74,9 @@ export interface Proto<F extends Layout.Fields> extends Pipeable {
   readonly [LayoutKey]: Layout.Struct<F>
   readonly [ViewKey]: DataView
   readonly [OffsetKey]: number
-  readonly [OwnerKey]: Owner | undefined
-  toJSON(): unknown
+  /** @internal Cleared by {@link free}. */
+  [OwnerKey]: Owner | undefined
+  toJSON(): { readonly _id: "BufferStruct" } & Layout.StructType<F>
   toString(): string
 }
 
@@ -91,20 +93,20 @@ export type BufferStruct<F extends Layout.Fields> = Proto<F> & {
   -readonly [K in keyof F]: FieldType<F[K]>
 }
 
-const reserved = new Set(["pipe", "toJSON", "toString", "constructor"])
+const reserved: ReadonlyArray<string> = ["pipe", "toJSON", "toString", "constructor"]
 
 const BaseProto = {
   [TypeId]: TypeId,
   pipe() {
     return pipeArguments(this, arguments)
   },
-  toJSON(this: Proto<any>) {
-    return { _id: "BufferStruct", ...toObject(this as any) }
+  toJSON(this: BufferStruct<Layout.Fields>) {
+    return { _id: "BufferStruct", ...toObject(this) }
   },
-  toString(this: Proto<any>) {
+  toString(this: BufferStruct<Layout.Fields>) {
     return format(this.toJSON())
   },
-  [NodeInspectSymbol](this: Proto<any>) {
+  [NodeInspectSymbol](this: BufferStruct<Layout.Fields>) {
     return this.toJSON()
   },
 }
@@ -115,8 +117,8 @@ const prototypeFor = (layout: Layout.AnyStruct): object => {
   const cached = prototypes.get(layout)
   if (cached !== undefined) return cached
   const proto: object = Object.create(BaseProto)
-  for (const key of Object.keys(layout.fields)) {
-    if (reserved.has(key)) {
+  for (const key of R.keys(layout.fields)) {
+    if (reserved.includes(key)) {
       throw new TypeError(`BufferStruct: field name "${key}" is reserved`)
     }
     const field: Layout.Any = layout.fields[key]
@@ -137,7 +139,7 @@ const prototypeFor = (layout: Layout.AnyStruct): object => {
         get(this: Proto<any>) {
           return field.read(this[ViewKey], this[OffsetKey] + offset)
         },
-        set(this: Proto<any>, value: unknown) {
+        set(this: Proto<any>, value: Layout.Type<Layout.Any>) {
           field.write(this[ViewKey], this[OffsetKey] + offset, value)
         },
       })
@@ -166,7 +168,7 @@ const viewAt = <F extends Layout.Fields>(
  * @category guards
  */
 export const isBufferStruct = (u: unknown): u is BufferStruct<Layout.Fields> =>
-  hasProperty(u, TypeId)
+  P.hasProperty(u, TypeId)
 
 /**
  * Creates a view over existing memory. No memory is allocated or copied, and
@@ -240,7 +242,7 @@ export const free = <F extends Layout.Fields>(self: BufferStruct<F>): Effect.Eff
   Effect.sync(() => {
     const owner = self[OwnerKey]
     if (owner !== undefined) {
-      ;(self as any)[OwnerKey] = undefined
+      self[OwnerKey] = undefined
       owner.allocator.deallocate(owner.block)
     }
   })
@@ -283,7 +285,7 @@ export const get: {
   2,
   <F extends Layout.Fields, K extends keyof F & string>(self: BufferStruct<F>, key: K) => {
     const l = self[LayoutKey]
-    return l.fields[key]!.read(self[ViewKey], self[OffsetKey] + l.offsets[key])
+    return l.fields[key].read(self[ViewKey], self[OffsetKey] + l.offsets[key])
   },
 )
 
@@ -311,7 +313,7 @@ export const set: {
     value: Layout.Type<F[K]>,
   ) => {
     const l = self[LayoutKey]
-    l.fields[key]!.write(self[ViewKey], self[OffsetKey] + l.offsets[key], value)
+    l.fields[key].write(self[ViewKey], self[OffsetKey] + l.offsets[key], value)
     return self
   },
 )

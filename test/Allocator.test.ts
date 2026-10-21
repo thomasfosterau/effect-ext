@@ -1,5 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Effect, Exit, Result } from "effect"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Result from "effect/Result"
 import * as Allocator from "../src/Allocator.ts"
 
 describe("Allocator", () => {
@@ -21,6 +23,12 @@ describe("Allocator", () => {
     expect(block.buffer.detached).toBe(true)
     Allocator.heap.deallocate(grown)
     expect(grown.buffer.detached).toBe(true)
+  })
+
+  it("AllocationError is a tagged error with a descriptive message", () => {
+    const error = new Allocator.AllocationError({ size: 16, align: 8, reason: "out of memory" })
+    expect(error._tag).toBe("AllocationError")
+    expect(error.message).toBe("Failed to allocate 16 bytes (align 8): out of memory")
   })
 
   it("rejects invalid requests", () => {

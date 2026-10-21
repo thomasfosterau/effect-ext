@@ -12,6 +12,13 @@ namespace from `src/index.ts`.
   variants throw. Index lookups return `Option`.
 - Every export gets a JSDoc block with `@since` and `@category`.
 - Tests live in `test/` and use `@effect/vitest` (`it.effect` for effectful tests).
+- Linting uses `@mpsuesser/oxlint-plugin-effect` (recommended preset, configured in
+  `vite.config.ts`). In particular: import Effect modules as namespaces from their submodule
+  (`import * as Effect from "effect/Effect"`, with canonical aliases such as `P` for
+  `effect/Predicate`, `R` for `effect/Record`, `Eq` for `effect/Equal`), define errors with
+  `Schema.TaggedError`, and justify every type assertion with a `// SAFETY:` comment.
+  `imperative-loops` and `prefer-option-over-null` are disabled because hot paths need plain loops
+  and allocation-free internal state; see the comments in `vite.config.ts`.
 - Add a changeset (`vp run changeset`) for any user-facing change.
 
 <!--VITE PLUS START-->
