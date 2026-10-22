@@ -131,22 +131,28 @@ JavaScript's UTF-16 comparison).
 
 ## Development
 
-This repository uses [Vite+](https://viteplus.dev) (`vp`) for formatting, linting, type checking,
-testing and packaging, and [Changesets](https://github.com/changesets/changesets) for releases.
+This repository uses [Vite+](https://viteplus.dev) (`vp`) on Node.js and pnpm for formatting,
+linting, type checking, testing and packaging, and
+[Changesets](https://github.com/changesets/changesets) for releases.
 
 ```sh
-vp install      # install dependencies (also installs the pre-commit hook)
-vp check        # format check, lint and type check (vp check --fix to fix)
-vp test         # run the test suite (vp test watch for watch mode)
-vp pack         # build dist/ with tsdown
-vp run changeset  # describe your change for the changelog
+pnpm install          # dependencies and the pre-commit hook
+vp check              # format + lint (vp check --fix to fix)
+vp run check          # type check
+vp run -r test:unit   # unit tests
+vp run -r build       # build dist/
+pnpm changeset        # describe your change for the changelog
 ```
 
-### Releasing
+Setup, CI and single-check commands are in [CONTRIBUTING.md](./CONTRIBUTING.md); the conventions
+the code follows (shared by human and agent contributors) are in [AGENTS.md](./AGENTS.md).
 
-1. Add a changeset to every pull request that affects the published package.
-2. When changesets land on `main`, the release workflow opens a "Version Packages" pull request.
-3. Merging that pull request publishes to npm with provenance via trusted publishing.
+## Releasing
+
+Every pull request that changes the published package carries a changeset. When changesets land on
+`trunk`, the release workflow opens a "Version Packages" pull request; merging it publishes to npm
+with provenance via OIDC trusted publishing (no `NPM_TOKEN`). See [PUBLISHING.md](./PUBLISHING.md)
+for the pipeline and [SECURITY.md](./SECURITY.md) for reporting vulnerabilities.
 
 ## License
 
