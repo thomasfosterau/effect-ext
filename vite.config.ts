@@ -21,17 +21,28 @@ export default defineConfig({
   },
   test: {
     include: ["test/**/*.test.ts"],
+    // `vp run test:coverage` writes the Istanbul map `coverage/coverage-final.json`,
+    // which `fallow audit` reads for exact per-function CRAP scores
+    // (`health.coverage` in .fallowrc.json). Without it fallow scores every
+    // function as uncovered.
+    coverage: {
+      provider: "istanbul",
+      reporter: ["text-summary", "json-summary", "json"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.ts"],
+      exclude: ["**/*.d.ts"],
+    },
   },
   lint: {
     extends: [effect.configs.recommended],
-    ignorePatterns: ["dist/**"],
+    ignorePatterns: ["dist/**", "coverage/**"],
     options: {
       typeAware: true,
       typeCheck: true,
     },
   },
   fmt: {
-    ignorePatterns: ["dist/**", "CHANGELOG.md", ".changeset/*.md"],
+    ignorePatterns: ["dist/**", "coverage/**", "CHANGELOG.md", ".changeset/*.md"],
     semi: false,
     printWidth: 100,
     sortPackageJson: true,

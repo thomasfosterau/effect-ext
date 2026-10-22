@@ -1,15 +1,104 @@
+# Dependabot version updates.
+#
+# The `npm` ecosystem at `/` reads the pnpm workspace, its catalogs and
+# pnpm-lock.yaml, so a bump lands in pnpm-workspace.yaml's catalog (the only
+# place a version lives) together with the regenerated lockfile.
+#
+# Groups exist so that dependencies which MUST move together arrive in ONE PR
+# (a PR moving one of them alone goes red). Dependabot puts a dependency in
+# the FIRST group whose patterns match, so the groups run specific → general
+# and `exclude-patterns` keeps each package out of the wrong one. Every
+# lockstep group matches every update type, majors included; the catch-all
+# takes only minor and patch updates, so a major outside a lockstep set
+# stays an individual PR.
+#
+# - `toolchain`: `vite` (the vite-plus core alias), `vitest` and `@vitest/*`
+#   must equal what that vite-plus release pins, and the effect lint plugin
+#   rides with the oxlint it loads into. `@effect/tsgo` and
+#   `@typescript/native` are listed so the family's groups stay identical
+#   (this repo does not use them yet).
+# - `effect`: the Effect 4 line is lockstep-versioned (`@effect/vitest` is
+#   released with `effect`). `@effect/tsgo` is a toolchain package and
+#   `@effect/docgen` rides with `tsx`, so both are excluded here.
+# - `docgen`: `@effect/docgen` and the `tsx` that runs its examples.
+#
+# `cooldown` mirrors pnpm-workspace.yaml's `minimumReleaseAge` (1440 minutes)
+# and its `minimumReleaseAgeExclude` (`@thomasfosterau/*`, first-party).
 version: 2
 updates:
-  - package-ecosystem: github-actions
-    directory: /
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
-      interval: weekly
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: weekly
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore"
+    cooldown:
+      default-days: 1
+      exclude:
+        - "@thomasfosterau/*"
     groups:
+      toolchain:
+        applies-to: version-updates
+        patterns:
+          - "vite-plus"
+          - "vite"
+          - "vitest"
+          - "@vitest/*"
+          - "oxlint"
+          - "oxfmt"
+          - "oxlint-tsgolint"
+          - "@effect/tsgo"
+          - "@typescript/native"
+          - "typescript"
+          - "@mpsuesser/oxlint-plugin-effect"
+        update-types: ["major", "minor", "patch"]
       effect:
-        patterns: ["effect", "@effect/*"]
-      tooling:
-        patterns: ["vite-plus", "typescript", "@types/node", "@changesets/*"]
+        applies-to: version-updates
+        patterns:
+          - "effect"
+          - "@effect/*"
+        exclude-patterns:
+          - "@effect/tsgo"
+          - "@effect/docgen"
+        update-types: ["major", "minor", "patch"]
+      docgen:
+        applies-to: version-updates
+        patterns:
+          - "@effect/docgen"
+          - "tsx"
+        update-types: ["major", "minor", "patch"]
+      changesets:
+        applies-to: version-updates
+        patterns:
+          - "@changesets/*"
+        update-types: ["major", "minor", "patch"]
+      fallow:
+        applies-to: version-updates
+        patterns:
+          - "fallow"
+        update-types: ["major", "minor", "patch"]
+      minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "github-actions"
+    # The workflows, plus the local composite action they call.
+    directories:
+      - "/"
+      - "/.github/actions/setup"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+    cooldown:
+      default-days: 1
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"

@@ -9,6 +9,6 @@ changeset describing the change:
 vp run changeset
 ```
 
-When changesets land on `main`, the release workflow opens a "Version Packages"
+When changesets land on `trunk`, the release workflow opens a "Version Packages"
 pull request that bumps the version and updates `CHANGELOG.md`. Merging that
 pull request publishes the new version to npm.
