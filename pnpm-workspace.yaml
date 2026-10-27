@@ -26,7 +26,7 @@ catalog:
   # refuses to run coverage on a mismatch.
   "@vitest/coverage-istanbul": 5.0.5
   effect: ^4.0.6
-  fallow: 3.34.1
+  fallow: 3.36.0
   # TypeScript 7 (the native Go compiler): `tsc` for the `check` task and the
   # declaration generator `vp pack` uses (`dts.generator: "tsgo"`).
   typescript: ^7.0.2
