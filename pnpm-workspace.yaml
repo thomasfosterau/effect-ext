@@ -19,13 +19,13 @@ catalog:
   "@changesets/changelog-github": ^1.0.1
   "@changesets/cli": ^3.0.3
   # Lockstep with `effect`: @effect/vitest is released on the same version line.
-  "@effect/vitest": ^4.0.5
+  "@effect/vitest": ^4.0.6
   "@mpsuesser/oxlint-plugin-effect": ^0.6.0
   "@types/node": ^26.6.5
   # Must equal the vitest that vite-plus bundles (see `vitest` below); vite-plus
   # refuses to run coverage on a mismatch.
   "@vitest/coverage-istanbul": 5.0.5
-  effect: ^4.0.5
+  effect: ^4.0.6
   fallow: 3.34.1
   # TypeScript 7 (the native Go compiler): `tsc` for the `check` task and the
   # declaration generator `vp pack` uses (`dts.generator: "tsgo"`).
@@ -45,7 +45,7 @@ catalog:
 # manifest.
 catalogs:
   peers:
-    effect: ^4.0.5
+    effect: ^4.0.6
 
 overrides:
   vite: "catalog:"
