@@ -20,10 +20,10 @@ A new module adds a row here and in `README.md`, an `export * as` line in `src/i
 
 ## Common pitfalls
 
-- **Never edit a version in `package.json`.** Versions live in the `pnpm-workspace.yaml` catalog (`catalogMode: strict` rejects anything else); the published peer range is under `catalogs.peers`. After editing the catalog, run `pnpm install` and commit `pnpm-lock.yaml`, or CI fails with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. `vite-plus`, `vite` and `vitest` move together; Dependabot's `toolchain` group bumps them as one PR.
+- **Never edit a version in `package.json`.** Versions live in the `pnpm-workspace.yaml` catalog (`catalogMode: strict` rejects anything else); the published peer range is under `catalogs.peers`. After editing the catalog, run `pnpm install` and commit `pnpm-lock.yaml`, or CI fails with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. `vite-plus`, `vite`, `vitest`, `@vitest/*` and `@enfect/oxlint` move together; Dependabot's `toolchain` group bumps them as one PR, except the `vite` npm alias (`npm:@voidzero-dev/vite-plus-core@<v>`, equal to `vite-plus`), which Dependabot cannot bump: set it by hand in that PR, or run `pnpm exec vp migrate`. `minimumReleaseAge` holds new versions for 8 hours (480 minutes); Dependabot's cooldown is 1 day.
 - **`dist/` is the product.** The package is a `vp pack` (tsdown) library with one bundle per `src/*.ts`; `exports` points at `dist/`.
 - **`"sideEffects": false` is a claim about `dist/`, and it is load-bearing.** Every emitted `.mjs` must be pure declarations: no top-level statements, no top-level `await`, no bare imports.
-- **`effect` is a peer, never a dependency.** Two copies break `Context` / `Layer` / `Schema` identity; the consumer owns the singleton. The `effect` override in `pnpm-workspace.yaml` keeps the lint plugin's own `effect` from adding a second copy here.
+- **`effect` is a peer, never a dependency.** Two copies break `Context` / `Layer` / `Schema` identity; the consumer owns the singleton. The `effect` override in `pnpm-workspace.yaml` keeps the lint plugin's own `effect` (`@enfect/oxlint` pins 4.1.0) from adding a second copy here.
 - **Lengths and offsets in `String` / `Str` are bytes**, as in Rust, not UTF-16 code units. A test that passes on ASCII alone proves nothing: include multi-byte characters.
 
 ## Conventions
@@ -34,7 +34,7 @@ A new module adds a row here and in `README.md`, an `export * as` line in `src/i
 - Relative imports carry their `.ts` extension (`allowImportingTsExtensions` + `rewriteRelativeImportExtensions`).
 - Tests live in `test/` and use `@effect/vitest` (`it.effect` for effectful tests).
 - `String` and `Str` mirror Rust's `String` and `str`: use Rust's method names in camelCase (`splitOnce`, `trimStartMatches`, `charIndices`, …) and Rust's semantics, including byte offsets/lengths and Rust's pattern behaviour (an empty pattern matches at every character boundary). Functions on a `String` that would return `&str` in Rust return a `Str` copy. The byte-level algorithms shared by both live in `src/internal/utf8.ts`; test against the examples in Rust's documentation where possible.
-- Linting uses `@mpsuesser/oxlint-plugin-effect` with its full recommended preset and no rules disabled. In particular:
+- Linting uses `@enfect/oxlint` (`configs.recommended`, every `effect/*` rule at `error`, anti-slop included) plus Oxlint's `correctness`, `suspicious` and `perf` categories, the `typescript`, `unicorn`, `oxc`, `import`, `promise`, `vitest` and `jsdoc` plugins, and Vite+'s `vite-plus/prefer-vite-plus-imports`, type-aware, with no rules disabled (`vite.config.ts` only configures options: `_tag` for `no-underscore-dangle`, `@since` / `@category` for `jsdoc/check-tag-names`, `it.effect` for `vitest/no-standalone-expect`). In particular:
   - Import Effect modules as namespaces from their submodule (`import * as Effect from "effect/Effect"`), with canonical aliases such as `P` (Predicate), `R` (Record), `Eq` (Equal).
   - No `for`/`while`/`do` loops: use typed-array and `Arr` methods (`findIndex` for early exit, `reduce` for folds, `forEach`), `Arr.unfold`, or the `indexed` iterator in `src/internal/iterator.ts` instead of generators. Beware that `Arr.makeBy` and `Arr.range` never return an empty array; use `Array.from({ length }, f)` when the length may be 0.
   - No `T | undefined` / `T | null` in types: use `Option` (also for internal state), and plain optional properties (`capacity?: number`) for options.
@@ -45,7 +45,7 @@ A new module adds a row here and in `README.md`, an `export * as` line in `src/i
 ## Commands
 
 - `pnpm install` — dependencies plus the Vite+ git hooks (pre-commit runs `vp staged`: format + lint on staged files). No pre-push hook: run the gates yourself.
-- `vp check` — format + lint (Oxfmt + Oxlint, type-aware). `vp run check` — the type gate (`tsc --noEmit`). They are different commands.
+- `vp check` — format + lint (Oxfmt + Oxlint, type-aware). `vp run check` — the type gate (`tsc --noEmit`). They are different commands. The gates (`check`, `build`, `test:unit`, `test:coverage`) are Vite Task tasks in `vite.config.ts`, cached except `test:coverage`; `package.json` keeps only the release and helper scripts.
 - `vp run -r test:unit` — unit tests.
 - `vp run -r build` — `vp pack` → `dist/`.
 - `vp run test:coverage` — the unit suite under an Istanbul map at `coverage/coverage-final.json`, which `fallow audit` reads for exact per-function CRAP scores. Without the map fallow scores every function as uncovered, and any function with cyclomatic complexity ≥ 5 fails the gate on its own.
@@ -95,6 +95,7 @@ Read the installed package before writing Effect code: `node_modules/effect/AGEN
 
 - The SessionStart hook (`.claude/hooks/session-start.sh`) installs dependencies against the lockfile and puts `vp` (a re-exec shim that prefers the nearest worktree's `node_modules`) and `fallow` on PATH for non-interactive shells. It hydrates no secrets; none are needed, and nothing here can publish.
 - A PreToolUse hook (`.claude/hooks/fallow-gate.sh`) blocks `git commit` / `git push` when `fallow audit --base origin/trunk` fails; it reads the coverage map on disk, so run `vp run test:coverage` first. A PostToolUse hook runs `vp fmt` on every source, JSON, CSS or Markdown file you write or edit.
+- `.claude/settings.json` should enable the `@enfect/claude` plugin (Effect guidance, skills and post-write pattern checks; marketplace `mpsuesser/enfect`).
 - Every gate in [Verification](#verification) runs in an agent session; `pnpm audit` needs the network.
 
 ## Documentation surfaces
@@ -128,6 +129,10 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 ## Built-in Commands vs Scripts
 
 `vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name.
+
+## Running Scripts
+
+Run TypeScript and JavaScript files with `vpx <file>`, for example `vpx ./scripts/seed.ts --dry-run`. It handles enums, decorators, JSX, and tsconfig `paths`, so do not add `tsx` or `ts-node` to run scripts. `vpx --watch <file>` reruns the file when a file it uses changes, in place of `tsx watch`. `vp node <file>` runs plain Node.js.
 
 ## Tool Versions
 

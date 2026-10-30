@@ -185,9 +185,9 @@ const matchesAt = (haystack: Uint8Array, needle: Uint8Array, at: number): boolea
 
 /** Matches a literal byte sequence. An empty needle matches at every character boundary. */
 export const needle =
-  (needle: Uint8Array): Matcher =>
+  (bytes: Uint8Array): Matcher =>
   (haystack) => {
-    const n = needle.byteLength
+    const n = bytes.byteLength
     const len = haystack.byteLength
     if (n === 0) {
       const at = (i: number): Range => (isCharBoundary(haystack, i) ? [i, i] : noMatch)
@@ -198,7 +198,7 @@ export const needle =
         matchEndingAt: at,
       }
     }
-    const first = needle[0]
+    const first = bytes[0]
     return {
       next: (from) => {
         const start = Math.max(0, from)
@@ -206,7 +206,7 @@ export const needle =
         if (start > last) return noMatch
         const found = haystack
           .subarray(start, last + 1)
-          .findIndex((byte, k) => byte === first && matchesAt(haystack, needle, start + k))
+          .findIndex((byte, k) => byte === first && matchesAt(haystack, bytes, start + k))
         return found === -1 ? noMatch : [start + found, start + found + n]
       },
       prev: (before) => {
@@ -214,20 +214,20 @@ export const needle =
         if (end - n < 0) return noMatch
         const found = haystack
           .subarray(0, end - n + 1)
-          .findLastIndex((byte, i) => byte === first && matchesAt(haystack, needle, i))
+          .findLastIndex((byte, i) => byte === first && matchesAt(haystack, bytes, i))
         return found === -1 ? noMatch : [found, found + n]
       },
-      matchAt: (at) => (matchesAt(haystack, needle, at) ? [at, at + n] : noMatch),
-      matchEndingAt: (at) => (matchesAt(haystack, needle, at - n) ? [at - n, at] : noMatch),
+      matchAt: (at) => (matchesAt(haystack, bytes, at) ? [at, at + n] : noMatch),
+      matchEndingAt: (at) => (matchesAt(haystack, bytes, at - n) ? [at - n, at] : noMatch),
     }
   }
 
 /** Matches any single character satisfying `predicate`. */
 export const predicate =
-  (predicate: (char: string) => boolean): Matcher =>
+  (test: (char: string) => boolean): Matcher =>
   (haystack) => {
     const len = haystack.byteLength
-    const matches = (i: number) => !isContinuation(haystack[i]) && predicate(charAt(haystack, i))
+    const matches = (i: number) => !isContinuation(haystack[i]) && test(charAt(haystack, i))
     const charRange = (i: number): Range => [i, i + widthOf(haystack[i])]
     return {
       next: (from) => {

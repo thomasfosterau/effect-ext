@@ -42,12 +42,8 @@
     "provenance": true
   },
   "scripts": {
-    "build": "vp pack",
     "dev": "vp pack --watch",
     "test": "vp test",
-    "test:unit": "vp test run",
-    "test:coverage": "vp test run --coverage",
-    "check": "tsc --noEmit -p tsconfig.json",
     "changeset": "changeset",
     "version": "changeset version && vp fmt && pnpm install --lockfile-only",
     "release": "vp run build && pnpm publish --access public --no-git-checks --ignore-scripts && changeset tag",
@@ -59,7 +55,7 @@
     "@changesets/changelog-github": "catalog:",
     "@changesets/cli": "catalog:",
     "@effect/vitest": "catalog:",
-    "@mpsuesser/oxlint-plugin-effect": "catalog:",
+    "@enfect/oxlint": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
     "effect": "catalog:",

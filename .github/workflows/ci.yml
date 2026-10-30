@@ -51,12 +51,12 @@ jobs:
           restore-keys: |
             vp-task-v1-${{ runner.os }}-node${{ matrix.node-version }}-
       - name: Format and lint
-        run: vp check
+        run: pnpm exec vp check
       - name: Type gate
-        run: vp run check
+        run: pnpm exec vp run check
       - name: Unit tests
-        run: vp run -r test:unit
+        run: pnpm exec vp run -r test:unit
       - name: Build
-        run: vp run -r build
+        run: pnpm exec vp run -r build
       - name: Audit
         run: pnpm audit --audit-level high

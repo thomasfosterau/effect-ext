@@ -550,9 +550,9 @@ export const swapRemove: {
 export const truncate: {
   (length: number): <A, L extends Layout.Layout<A>>(self: Vec<A, L>) => void
   <A, L extends Layout.Layout<A>>(self: Vec<A, L>, length: number): void
-} = dual(2, <A, L extends Layout.Layout<A>>(self: Vec<A, L>, length: number) => {
+} = dual(2, <A, L extends Layout.Layout<A>>(self: Vec<A, L>, newLength: number) => {
   const s = impl(self)
-  if (length < s.len) s.len = Math.max(0, Math.floor(length))
+  if (newLength < s.len) s.len = Math.max(0, Math.floor(newLength))
 })
 
 /**

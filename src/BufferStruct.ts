@@ -26,6 +26,7 @@
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import { format } from "effect/Formatter"
+import * as HashSet from "effect/HashSet"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as Option from "effect/Option"
 import { pipeArguments, type Pipeable } from "effect/Pipeable"
@@ -94,7 +95,7 @@ export type BufferStruct<F extends Layout.Fields> = Proto<F> & {
   -readonly [K in keyof F]: FieldType<F[K]>
 }
 
-const reserved: ReadonlyArray<string> = ["pipe", "toJSON", "toString", "constructor"]
+const reserved = /* @__PURE__ */ HashSet.make("pipe", "toJSON", "toString", "constructor")
 
 const BaseProto = {
   [TypeId]: TypeId,
@@ -119,7 +120,7 @@ const prototypeFor = (layout: Layout.AnyStruct): object => {
   if (cached !== undefined) return cached
   const proto: object = Object.create(BaseProto)
   R.keys(layout.fields).forEach((key) => {
-    if (reserved.includes(key)) {
+    if (HashSet.has(reserved, key)) {
       throw new TypeError(`BufferStruct: field name "${key}" is reserved`)
     }
     const field: Layout.Any = layout.fields[key]
@@ -282,13 +283,10 @@ export const get: {
     self: BufferStruct<F>,
     key: K,
   ): Layout.Type<F[K]>
-} = dual(
-  2,
-  <F extends Layout.Fields, K extends keyof F & string>(self: BufferStruct<F>, key: K) => {
-    const l = self[LayoutKey]
-    return l.fields[key].read(self[ViewKey], self[OffsetKey] + l.offsets[key])
-  },
-)
+} = dual(2, <F extends Layout.Fields>(self: BufferStruct<F>, key: keyof F & string) => {
+  const l = self[LayoutKey]
+  return l.fields[key].read(self[ViewKey], self[OffsetKey] + l.offsets[key])
+})
 
 /**
  * Writes a single field. Nested structs can be written from plain objects.
