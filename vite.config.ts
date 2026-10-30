@@ -92,6 +92,11 @@ export default defineConfig({
       ],
     },
     ignorePatterns: ["dist/**", "coverage/**"],
+    // Type-aware rules through oxlint-tsgolint (a vite-plus dependency, no
+    // separate install). `typeCheck` also reports TypeScript errors in `vp
+    // check`; it overlaps the `vp run check` gate (plain native `tsc`, no
+    // Effect patch here) without conflicting, and tsgolint reads the same
+    // single `tsconfig.json`, which covers src, test and this config.
     options: {
       typeAware: true,
       typeCheck: true,

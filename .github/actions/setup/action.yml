@@ -13,9 +13,14 @@ name: Setup toolchain
 description: Set up Node.js and pnpm, restore the package cache, and install dependencies.
 inputs:
   node-version:
-    description: Node.js version to set up.
+    # Never `latest`: setup-node resolves it to the first entry of the
+    # nodejs.org index, pre-releases included (v27.0.0-alpha since
+    # 2026-10-29, which hangs some tests; effect-svelte#214). `*` with
+    # `check-latest: true` below resolves against setup-node's stable
+    # manifest instead. Every caller passes a pinned major today.
+    description: Node.js version to set up (a major such as "24", or "*" for the newest stable).
     required: false
-    default: latest
+    default: "*"
 runs:
   using: composite
   steps:
@@ -28,6 +33,9 @@ runs:
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: ${{ inputs.node-version }}
+        # Resolve against the stable manifest (newest patch of the major, or
+        # newest stable release for `*`), never a cached or pre-release build.
+        check-latest: true
         cache: pnpm
 
     # Retried: pnpm's linker can race itself when a package with a build
