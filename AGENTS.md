@@ -45,7 +45,7 @@ A new module adds a row here and in `README.md`, an `export * as` line in `src/i
 ## Commands
 
 - `pnpm install` — dependencies plus the Vite+ git hooks (pre-commit runs `vp staged`: format + lint on staged files). No pre-push hook: run the gates yourself.
-- `vp check` — format + lint (Oxfmt + Oxlint, type-aware). `vp run check` — the type gate (`tsc --noEmit`). They are different commands. The gates (`check`, `build`, `test:unit`, `test:coverage`) are Vite Task tasks in `vite.config.ts`, cached except `test:coverage`; `package.json` keeps only the release and helper scripts.
+- `vp check` — format + lint (Oxfmt + Oxlint, type-aware through `oxlint-tsgolint`, which vite-plus bundles; `typeCheck` is on, so it also reports TypeScript errors). `vp run check` — the type gate (`tsc --noEmit`). They are different commands. The gates (`check`, `build`, `test:unit`, `test:coverage`) are Vite Task tasks in `vite.config.ts`, cached except `test:coverage`; `package.json` keeps only the release and helper scripts.
 - `vp run -r test:unit` — unit tests.
 - `vp run -r build` — `vp pack` → `dist/`.
 - `vp run test:coverage` — the unit suite under an Istanbul map at `coverage/coverage-final.json`, which `fallow audit` reads for exact per-function CRAP scores. Without the map fallow scores every function as uncovered, and any function with cyclomatic complexity ≥ 5 fails the gate on its own.
