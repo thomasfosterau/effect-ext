@@ -19,7 +19,7 @@ catalog:
   "@changesets/changelog-github": ^1.0.1
   "@changesets/cli": ^3.0.3
   # Lockstep with `effect`: @effect/vitest is released on the same version line.
-  "@effect/vitest": ^4.0.6
+  "@effect/vitest": ^4.1.0
   # The Effect lint preset (`effect/*` rules, anti-slop included), loaded by
   # the oxlint vite-plus carries: it moves with `vite-plus` (toolchain group).
   "@enfect/oxlint": ^0.9.0
@@ -27,7 +27,7 @@ catalog:
   # Must equal the vitest that vite-plus bundles (see `vitest` below); vite-plus
   # refuses to run coverage on a mismatch.
   "@vitest/coverage-istanbul": 5.0.5
-  effect: ^4.0.6
+  effect: ^4.1.0
   fallow: 3.37.0
   # TypeScript 7 (the native Go compiler): `tsc` for the `check` task and the
   # declaration generator `vp pack` uses (`dts.generator: "tsgo"`).
@@ -47,7 +47,7 @@ catalog:
 # manifest.
 catalogs:
   peers:
-    effect: ^4.0.6
+    effect: ^4.1.0
 
 overrides:
   # `effect` MUST be a singleton (see the header): force every resolution to
