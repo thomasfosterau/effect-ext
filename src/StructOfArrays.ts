@@ -463,11 +463,7 @@ export const getField: {
   ): Layout.Type<F[K]>
 } = dual(
   3,
-  <F extends Layout.Fields, K extends keyof F & string>(
-    self: StructOfArrays<F>,
-    index: number,
-    key: K,
-  ) => {
+  <F extends Layout.Fields>(self: StructOfArrays<F>, index: number, key: keyof F & string) => {
     const s = impl(self)
     checkIndex(s, index)
     return s.readField(s.byKey[key], index)
@@ -522,21 +518,18 @@ export const column: {
     self: StructOfArrays<F>,
     key: K,
   ): Layout.TypedArrayOf<F[K]>
-} = dual(
-  2,
-  <F extends Layout.Fields, K extends PrimitiveKeys<F>>(self: StructOfArrays<F>, key: K) => {
-    const s = impl(self)
-    const col = s.byKey[key]
-    const layout = col.layout
-    if (!Layout.isPrimitive(layout)) {
-      throw new TypeError(`StructOfArrays: field "${key}" is not a primitive layout`)
-    }
-    return Option.match(s.block, {
-      onNone: () => new layout.TypedArray(new ArrayBuffer(0), 0, 0),
-      onSome: (block) => new layout.TypedArray(block.buffer, block.byteOffset + col.offset, s.len),
-    })
-  },
-)
+} = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, key: PrimitiveKeys<F>) => {
+  const s = impl(self)
+  const col = s.byKey[key]
+  const layout = col.layout
+  if (!Layout.isPrimitive(layout)) {
+    throw new TypeError(`StructOfArrays: field "${key}" is not a primitive layout`)
+  }
+  return Option.match(s.block, {
+    onNone: () => new layout.TypedArray(new ArrayBuffer(0), 0, 0),
+    onSome: (block) => new layout.TypedArray(block.buffer, block.byteOffset + col.offset, s.len),
+  })
+})
 
 /**
  * Iterates over the values of a single field (of any layout).
@@ -552,17 +545,14 @@ export const values: {
     self: StructOfArrays<F>,
     key: K,
   ): IterableIterator<Layout.Type<F[K]>>
-} = dual(
-  2,
-  <F extends Layout.Fields, K extends keyof F & string>(self: StructOfArrays<F>, key: K) => {
-    const s = impl(self)
-    const col = s.byKey[key]
-    return indexed(
-      () => s.len,
-      (i) => s.readField(col, i),
-    )
-  },
-)
+} = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, key: keyof F & string) => {
+  const s = impl(self)
+  const col = s.byKey[key]
+  return indexed(
+    () => s.len,
+    (i) => s.readField(col, i),
+  )
+})
 
 /**
  * Reserves capacity for at least `additional` more records.
@@ -645,10 +635,10 @@ export const extend: {
   <F extends Layout.Fields>(self: StructOfArrays<F>, records: Iterable<Layout.StructType<F>>) =>
     Effect.suspend(() => {
       const s = impl(self)
-      const values = Arr.fromIterable(records)
-      const result = s.reserve(values.length)
+      const items = Arr.fromIterable(records)
+      const result = s.reserve(items.length)
       if (Result.isFailure(result)) return Effect.fail(result.failure)
-      values.forEach((value) => s.write(s.len++, value))
+      items.forEach((value) => s.write(s.len++, value))
       return Effect.void
     }),
 )
@@ -701,9 +691,9 @@ export const swapRemove: {
 export const truncate: {
   (length: number): <F extends Layout.Fields>(self: StructOfArrays<F>) => void
   <F extends Layout.Fields>(self: StructOfArrays<F>, length: number): void
-} = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, length: number) => {
+} = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, newLength: number) => {
   const s = impl(self)
-  if (length < s.len) s.len = Math.max(0, Math.floor(length))
+  if (newLength < s.len) s.len = Math.max(0, Math.floor(newLength))
 })
 
 /**

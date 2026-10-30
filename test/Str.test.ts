@@ -11,6 +11,9 @@ import * as Str from "../src/Str.ts"
 const s = Str.fromString
 const text = (strs: ReadonlyArray<Str.Str>) => strs.map((part) => part.toString())
 const isNumeric = (c: string) => /^\p{N}$/u.test(c)
+const indices = (input: Str.Str, p: Str.Pattern) =>
+  Str.matchIndices(input, p).map(([i, m]) => [i, m.toString()])
+const strip = (o: Option.Option<Str.Str>) => Option.map(o, (x) => x.toString())
 
 describe("Str", () => {
   describe("construction and conversion", () => {
@@ -173,8 +176,6 @@ describe("Str", () => {
     it("matches and matchIndices", () => {
       expect(text(Str.matches(s("abcXXXabcYYYabc"), "abc"))).toEqual(["abc", "abc", "abc"])
       expect(text(Str.matches(s("1abc2abc3"), isNumeric))).toEqual(["1", "2", "3"])
-      const indices = (str: Str.Str, p: Str.Pattern) =>
-        Str.matchIndices(str, p).map(([i, m]) => [i, m.toString()])
       expect(indices(s("abcXXXabcYYYabc"), "abc")).toEqual([
         [0, "abc"],
         [6, "abc"],
@@ -325,7 +326,6 @@ describe("Str", () => {
     })
 
     it("stripPrefix and stripSuffix", () => {
-      const strip = (o: Option.Option<Str.Str>) => Option.map(o, (x) => x.toString())
       expect(strip(Str.stripPrefix(s("foo:bar"), "foo:"))).toEqual(Option.some("bar"))
       expect(strip(Str.stripPrefix(s("foo:bar"), "bar"))).toEqual(Option.none())
       expect(strip(Str.stripPrefix(s("foofoo"), "foo"))).toEqual(Option.some("foo"))

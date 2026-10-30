@@ -2,8 +2,9 @@
 # Sets up Node.js + pnpm, restores the pnpm store cache (keyed on
 # pnpm-lock.yaml by setup-node), and installs dependencies with a frozen
 # lockfile (retried — see the Install step's own comment for why).
-# `vp` and the dev bins (tsc, fallow) land in node_modules/.bin, which this
-# adds to PATH so later steps invoke `vp …` / `fallow …` directly.
+# `vp` and the dev bins (tsc, fallow) land in node_modules/.bin; later steps
+# call them through `pnpm exec vp …` rather than this action appending to
+# GITHUB_PATH (a PATH write from a setup step is a zizmor finding).
 # Copied from the effect-web library's action (the family standard).
 #
 # Callers must run `actions/checkout` BEFORE this (a local composite action
@@ -51,4 +52,3 @@ runs:
           echo "::warning::pnpm install failed (attempt ${attempt}/3); retrying in ${delay}s"
           sleep "$delay"
         done
-        echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"

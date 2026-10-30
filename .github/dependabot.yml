@@ -13,8 +13,8 @@
 # stays an individual PR.
 #
 # - `toolchain`: `vite` (the vite-plus core alias), `vitest` and `@vitest/*`
-#   must equal what that vite-plus release pins, and the effect lint plugin
-#   rides with the oxlint it loads into. `@effect/tsgo` and
+#   must equal what that vite-plus release pins, and the Effect lint preset
+#   (`@enfect/oxlint`) rides with the oxlint it loads into. `@effect/tsgo` and
 #   `@typescript/native` are listed so the family's groups stay identical
 #   (this repo does not use them yet).
 # - `effect`: the Effect 4 line is lockstep-versioned (`@effect/vitest` is
@@ -22,8 +22,19 @@
 #   `@effect/docgen` rides with `tsx`, so both are excluded here.
 # - `docgen`: `@effect/docgen` and the `tsx` that runs its examples.
 #
-# `cooldown` mirrors pnpm-workspace.yaml's `minimumReleaseAge` (1440 minutes)
-# and its `minimumReleaseAgeExclude` (`@thomasfosterau/*`, first-party).
+# By hand, because Dependabot cannot bump them: the `vite` catalog entry is an
+# npm alias (`npm:@voidzero-dev/vite-plus-core@<v>`) that must equal
+# `vite-plus`, so set it in the toolchain PR that moves `vite-plus` (or run
+# `pnpm exec vp migrate`, which re-pins it and `vitest`); and the `vite@*` /
+# `vitest@*` / `effect` keys under pnpm-workspace.yaml's `overrides` point at
+# `catalog:`, so they follow their catalog entries.
+#
+# `cooldown`: pnpm-workspace.yaml's `minimumReleaseAge` is 480 minutes (8
+# hours), and Dependabot's cooldown takes whole days only, so it is 1 day:
+# longer than pnpm's hold, so a Dependabot PR never proposes a version pnpm
+# would still refuse. It mirrors `minimumReleaseAgeExclude` (`@thomasfosterau/*`,
+# first-party). zizmor's dependabot-cooldown audit wants 7 days; the owner's
+# policy is 1, so that finding is ignored inline.
 version: 2
 updates:
   - package-ecosystem: "npm"
@@ -35,7 +46,7 @@ updates:
     commit-message:
       prefix: "chore"
     cooldown:
-      default-days: 1
+      default-days: 1 # zizmor: ignore[dependabot-cooldown] -- owner policy (see header)
       exclude:
         - "@thomasfosterau/*"
     groups:
@@ -52,7 +63,7 @@ updates:
           - "@effect/tsgo"
           - "@typescript/native"
           - "typescript"
-          - "@mpsuesser/oxlint-plugin-effect"
+          - "@enfect/oxlint"
         update-types: ["major", "minor", "patch"]
       effect:
         applies-to: version-updates
@@ -96,7 +107,7 @@ updates:
     commit-message:
       prefix: "chore"
     cooldown:
-      default-days: 1
+      default-days: 1 # zizmor: ignore[dependabot-cooldown] -- owner policy (see header)
     groups:
       github-actions:
         applies-to: version-updates

@@ -204,10 +204,10 @@ describe("String", () => {
   it.effect("iterating sees in-place changes", () =>
     Effect.gen(function* () {
       const s = yield* String.from("abc")
-      const it = String.chars(s)
-      expect(it.next().value).toBe("a")
+      const iter = String.chars(s)
+      expect(iter.next().value).toBe("a")
       String.truncate(s, 2)
-      expect([...it]).toEqual(["b"])
+      expect([...iter]).toEqual(["b"])
     }),
   )
 
