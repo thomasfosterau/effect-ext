@@ -47,8 +47,8 @@ catalog:
   "@enfect/oxlint": ^0.9.0
   # The parser combinators behind `Rfc3339` and `IsoDuration`; a peer as well
   # (see `catalogs.peers`), so this is the copy the tests and docgen run on.
-  "@thomasfosterau/effect-parse": ^0.3.0
-  "@types/node": ^26.6.5
+  "@thomasfosterau/effect-parse": ^0.4.0
+  "@types/node": ^26.6.6
   # Must equal the vitest that vite-plus bundles (see `vitest` below); vite-plus
   # refuses to run coverage on a mismatch.
   "@vitest/coverage-istanbul": 5.0.5
@@ -89,7 +89,7 @@ catalogs:
     # A peer, not a dependency, for the same reason as `effect`: it carries
     # `ParseError` and `Parser` values a consumer composes with, and it peers
     # on `effect` itself.
-    "@thomasfosterau/effect-parse": ^0.3.0
+    "@thomasfosterau/effect-parse": ^0.4.0
 
 overrides:
   # `effect` MUST be a singleton (see the header): force every resolution to
