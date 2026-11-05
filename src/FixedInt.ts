@@ -345,7 +345,7 @@ export const make = <A extends number>(spec: Spec): FixedInt<A, number> => {
     prim,
     "number",
     schema,
-    Schema.NumberFromString.pipe(Schema.decodeTo(schema)),
+    Schema.FiniteFromString.pipe(Schema.decodeTo(schema)),
     Order.Number,
     Equivalence.Number
   )

@@ -93,16 +93,10 @@ export default defineConfig({
       // unsatisfiable under the full-name convention (`import * as Option from
       // "effect/Option"`) this family shares with its consumers.
       "effect/prefer-namespace-imports": "off",
-      // `@effect/tsgo` preset rules that type-aware linting surfaced, left at
-      // the preset's `warn` level until #11 resolves them.
-      // `schema-class-missing-brand` (5 sites, `src/ArithmeticError.ts`):
-      // the brand changes the emitted `.d.ts` of every error class.
-      "effecttsgo/schema-class-missing-brand": "warn",
-      // `schema-number` (8 sites): the `Float` / `F32` / `Complex` schemas
-      // cover IEEE 754 values, NaN and ±Infinity included, so `Schema.Finite`
-      // would change what they accept; the `Clamped` / `FixedInt` sites need
-      // their error messages checked first.
-      "effecttsgo/schema-number": "warn",
+      // `@effect/tsgo` preset rules that type-aware linting surfaced (#11),
+      // raised from the preset's `warn` so a new site fails CI.
+      "effecttsgo/schema-class-missing-brand": "error",
+      "effecttsgo/schema-number": "error",
       "typescript/no-explicit-any": "off",
       "typescript/no-empty-object-type": "off",
       "typescript/ban-ts-comment": "off",
@@ -176,6 +170,20 @@ export default defineConfig({
         files: ["src/F32.ts"],
         rules: {
           "effect/no-service-constructor-imports": "off"
+        }
+      },
+      // `schema-number` (#11): these schemas decode IEEE 754 values, NaN and
+      // ±Infinity included, by design, so `Schema.Finite` would change what
+      // they accept. `Float` / `F32` model the whole IEEE 754 domain
+      // (`NotNaN` / `Finite` are the refinements that narrow it), `Complex`'s
+      // `{ re, im }` struct carries such parts, and `Clamped`'s clamping
+      // decoder maps ±Infinity onto its bounds (its exact `schema` uses
+      // `Schema.Finite`). Every finite-domain schema elsewhere uses
+      // `Schema.Finite` / `Schema.FiniteFromString`.
+      {
+        files: ["src/Float.ts", "src/F32.ts", "src/Complex.ts", "src/Clamped.ts"],
+        rules: {
+          "effecttsgo/schema-number": "off"
         }
       },
       // `brandAs` is the one place a validated schema is retyped as a

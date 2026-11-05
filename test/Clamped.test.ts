@@ -67,6 +67,15 @@ describe("Clamped", () => {
     expect(Schema.decodeResult(Volume.schema)(5)).toEqual(Result.succeed(5))
     expect(Schema.decodeResult(Volume.schemaClamping)(50)).toEqual(Result.succeed(11))
     expect(Result.isFailure(Schema.decodeResult(Volume.schemaClamping)(Number.NaN))).toBe(true)
+    // The clamping decoder maps ±Infinity onto the bounds; the exact schema is finite-only.
+    expect(Schema.decodeResult(Volume.schemaClamping)(Number.POSITIVE_INFINITY)).toEqual(Result.succeed(11))
+    expect(Schema.decodeResult(Volume.schemaClamping)(Number.NEGATIVE_INFINITY)).toEqual(Result.succeed(0))
+    const Unit = Clamped.make({ min: 0, max: 1, name: "Unit" })
+    expect(Result.isFailure(Schema.decodeResult(Unit.schema)(Number.NaN))).toBe(true)
+    expect(Result.isFailure(Schema.decodeResult(Unit.schema)(Number.POSITIVE_INFINITY))).toBe(true)
+    expect(Schema.toJsonSchemaDocument(Unit.schema).definitions).toEqual({
+      Unit: { type: "number", minimum: 0, maximum: 1 }
+    })
   })
 
   it("rejects invalid ranges", () => {

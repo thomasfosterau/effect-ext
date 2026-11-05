@@ -234,7 +234,7 @@ const build = <A extends number>(options: Options<number, number>, integer: bool
     unsafeBrand<UnitInterval, number>(width === 0 ? 0 : (a - min) / width)
 
   const schema = brandAs<A, number>(
-    Schema.Number.pipe(
+    Schema.Finite.pipe(
       Schema.check(Schema.isBetween({ minimum: min, maximum: max }), ...(integer ? [Schema.isInt()] : []))
     ),
     name
