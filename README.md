@@ -15,15 +15,16 @@ Requires `effect@^4` and Node.js 22 or later (uses `ArrayBuffer.prototype.transf
 Each module is available as a subpath export (`effect-ext/Vec`) and from the root barrel
 (`import { Vec } from "effect-ext"`).
 
-| Module           | Description                                                                         |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| `Allocator`      | An `Allocator` service handing out `ArrayBuffer` blocks: heap, arena and tracked.   |
-| `Layout`         | Binary layouts (`u8` … `f64`, `bool`, structs, fixed arrays) with C-like alignment. |
-| `BufferStruct`   | Structs whose fields live in an `ArrayBuffer`, exposed as ordinary properties.      |
-| `Vec`            | A growable, `ArrayBuffer`-backed array, like Rust's `Vec<T>`.                       |
-| `StructOfArrays` | A growable struct-of-arrays container with typed-array columns.                     |
-| `String`         | A growable, Allocator-backed UTF-8 string, like Rust's `String`.                    |
-| `Str`            | An immutable UTF-8 string slice, like Rust's `str`; usable as a `HashMap` key.      |
+| Module           | Description                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| `Allocator`      | An `Allocator` service handing out `ArrayBuffer` blocks: heap, arena and tracked.    |
+| `Layout`         | Binary layouts (`u8` … `f64`, `bool`, structs, fixed arrays) with C-like alignment.  |
+| `BufferStruct`   | Structs whose fields live in an `ArrayBuffer`, exposed as ordinary properties.       |
+| `Vec`            | A growable, `ArrayBuffer`-backed array, like Rust's `Vec<T>`.                        |
+| `StructOfArrays` | A growable struct-of-arrays container with typed-array columns.                      |
+| `String`         | A growable, Allocator-backed UTF-8 string, like Rust's `String`.                     |
+| `Str`            | An immutable UTF-8 string slice, like Rust's `str`; usable as a `HashMap` key.       |
+| `Url`            | An absolute URL whose scheme, host, port, credentials and path are part of its type. |
 
 ### Allocator
 
@@ -128,6 +129,32 @@ Str.split(Str.fromString("abc"), "") // ["", "a", "b", "c", ""], as in Rust
 
 `Str.Order` compares strings byte-wise, which matches Unicode code point order (unlike
 JavaScript's UTF-16 comparison).
+
+### Url
+
+A `Url` is a string in WHATWG serialisation, branded with what it was checked against. A spec
+restricts the scheme, hostname (exactly, or within a `domain` at a label boundary), port, path
+(exactly, or by `{ prefix }`) and credentials, and the same literals become the type. The brand is a
+covariant record of the constrained components, so a narrower URL is assignable wherever a wider
+one is expected, and a plain `string` never is:
+
+```ts
+import { Schema } from "effect"
+import { Url } from "effect-ext"
+
+const ApiUrl = Url.schema({ scheme: "https", domain: "example.com", credentials: false })
+// Url<{ scheme: "https"; hostname: "example.com" | `${string}.example.com`; username: ""; password: "" }>
+
+const url = Schema.decodeSync(ApiUrl)("HTTPS://API.Example.com/v1") // "https://api.example.com/v1"
+Schema.is(ApiUrl)("https://example.com.evil.test/") // false
+
+const fetchSecure = (target: Url.Url<{ scheme: "https" }>) => fetch(target)
+fetchSecure(url) // ok
+fetchSecure("https://example.com/") // type error
+
+Url.resolve(url, "/v2") // Option.some("https://api.example.com/v2"), keeping the authority's types
+Url.resolve(url, "//evil.test/") // Option.none()
+```
 
 ## Development
 

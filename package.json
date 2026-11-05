@@ -8,6 +8,7 @@
     "effect",
     "struct-of-arrays",
     "typescript",
+    "url",
     "utf8"
   ],
   "homepage": "https://github.com/thomasfosterau/effect-ext#readme",
@@ -34,6 +35,7 @@
     "./Str": "./dist/Str.mjs",
     "./String": "./dist/String.mjs",
     "./StructOfArrays": "./dist/StructOfArrays.mjs",
+    "./Url": "./dist/Url.mjs",
     "./Vec": "./dist/Vec.mjs",
     "./package.json": "./package.json"
   },

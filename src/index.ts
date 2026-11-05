@@ -45,6 +45,14 @@ export * as Str from "./Str.ts"
 export * as String from "./String.ts"
 
 /**
+ * Absolute URLs whose scheme, host, port, credentials and path are part of
+ * their type.
+ *
+ * @since 0.1.0
+ */
+export * as Url from "./Url.ts"
+
+/**
  * A growable array backed by `ArrayBuffer` memory, like Rust's `Vec<T>`.
  *
  * @since 0.1.0
