@@ -2,7 +2,10 @@
 #
 # Provision a checkout for NON-INTERACTIVE use.
 #
-# Run by the Claude Code SessionStart hook (.claude/settings.json).
+# One file, two callers — the Claude Code SessionStart hook and a container's
+# `postCreateCommand` (which can invoke this file directly) — so a container
+# shell and an agent session are provisioned identically. Copied from the
+# effect-drizzle-ext library (itself from the gardeneria application).
 #
 # ## The problem it solves
 #
@@ -16,14 +19,13 @@
 # and the line that puts the toolchain on PATH — `. "$HOME/.vite-plus/env"` —
 # sits *below* it. So the environment is correct for a human at a prompt and
 # broken for every non-interactive shell, which is what an agent's tool calls
-# and a git hook both are. `fallow` (the PreToolUse fallow gate runs it before
-# every agent `git commit` / `git push`) is in `node_modules/.bin`, which is on
-# nobody's PATH.
+# and a git hook both are. `fallow` (which AGENTS.md requires before every
+# commit) is in `node_modules/.bin`, which is on nobody's PATH.
 #
 # Rather than fight PATH — which this script cannot export into its caller —
-# it links the tools into `~/.local/bin`, a directory already on PATH in this
-# image and writable by the session user. A symlink survives where an `export`
-# cannot.
+# it links the tools into `~/.local/bin`, a directory already on PATH in the
+# session container and writable by the session user. A symlink survives
+# where an `export` cannot.
 #
 # ## Node, and why this repairs rather than clobbers
 #
@@ -35,8 +37,9 @@
 #     vp: Failed to install Node 24.19.0: Permission denied (os error 13)
 #
 # Anything routed through `vp` still works; bare `node` does not — which breaks
-# the pre-commit hook repo-wide, because `vp staged` shells out to it (gardeneria #1462).
-# There is no root in a session, so the directory cannot be chowned here.
+# the pre-commit hook repo-wide, because `vp staged` shells out to it
+# (gardeneria #1462). There is no root in a session, so the directory cannot
+# be chowned here.
 #
 # This script therefore *tests* `node --version` and only replaces the shim
 # when it is already broken, pointing it at a real cached binary. A working
@@ -46,19 +49,20 @@
 #
 # ## Secrets
 #
-# This hook hydrates no secrets; nothing in this repo needs one.
+# This hook hydrates NO secrets; nothing in this repository needs one.
 #
 # ## Contract
 #
 # Idempotent, and never fatal. Every failure path logs and continues, because
 # the SessionStart hook must not block a session and a half-provisioned
-# session is more useful than one that refused to start. Callers
+# container is more useful than a container that refused to start. Callers
 # that want hard failure should check the tools themselves afterwards.
 #
 # Untrusted-content note: this script reads only fixed, hardcoded paths. It
 # takes no input from repo content, issue or PR bodies, or anything an agent
 # could have been persuaded to write earlier in a session. Do not add such
-# input without revisiting this note — it runs on every session start.
+# input without revisiting this note — it runs on every session start and
+# container create.
 
 set -uo pipefail
 
@@ -89,20 +93,17 @@ link_tool() {
 # worktree's own copy. Two physical instances of the same vitest version
 # corrupt its module-level suite-collector state, and every describe() in the
 # worktree throws `Cannot read properties of undefined (reading 'config')`
-# (gardeneria #1663). The shim instead walks up from $PWD for the nearest project-local
-# vite-plus and re-execs that, falling back to the primary checkout's when
-# none is found above cwd.
+# (gardeneria #1663). The shim instead walks up from $PWD for the nearest
+# project-local vite-plus and re-execs that, falling back to the primary
+# checkout's when none is found above cwd.
 VP_SHIM_MARKER="# generated-by: .claude/hooks/session-start.sh (vp re-exec shim, gardeneria issue #1663)"
-VP_SHIM_MARKER_LEGACY="# generated-by: scripts/setup-dev-env.sh (vp re-exec shim, gardeneria issue #1663)"
 write_vp_shim() {
   dest="$LOCAL_BIN/vp"
   # Leave a real, non-generated file alone: something deliberately installed
-  # it. A stale symlink or a shim we generated earlier (under either home) is
-  # fair game to regenerate — the embedded fallback path can change across
-  # containers.
+  # it. A stale symlink or a shim we generated earlier is fair game to
+  # regenerate — the embedded fallback path can change across containers.
   if [ -e "$dest" ] && [ ! -L "$dest" ] \
-    && ! grep -qF "$VP_SHIM_MARKER" "$dest" 2>/dev/null \
-    && ! grep -qF "$VP_SHIM_MARKER_LEGACY" "$dest" 2>/dev/null; then
+    && ! grep -qF "$VP_SHIM_MARKER" "$dest" 2>/dev/null; then
     return 0
   fi
   cat >"$dest.tmp" <<SHIM
@@ -123,14 +124,15 @@ SHIM
 }
 
 # ── 1. Repo binaries the documented workflows invoke directly ─────────────────
-# `fallow` (the PreToolUse fallow gate) resolves only from node_modules/.bin. `vp` is included for the remote/web runner, where the
-# global launcher does not exist.
-for tool in fallow; do
-  link_tool "$PROJECT_DIR/node_modules/.bin/$tool"
-done
+# AGENTS.md's fallow gate runs `fallow audit …` before every commit; it resolves
+# only from node_modules/.bin; `tsx` runs docgen's examples and ad-hoc
+# scripts. `vp` is included for the remote/web runner,
+# where the global launcher does not exist.
+link_tool "$PROJECT_DIR/node_modules/.bin/fallow"
+link_tool "$PROJECT_DIR/node_modules/.bin/tsx"
 write_vp_shim
 
-# ── 2. Bare `node` (gardeneria #1462) ───────────────────────────────────────────────────
+# ── 2. Bare `node` (gardeneria #1462) ─────────────────────────────────────────
 # Only repair a shim that is already failing — see the header for why this is
 # conditional. `command -v node` is not enough: the shim exists and resolves,
 # then dies on use, so the version call is the real test.
@@ -158,15 +160,18 @@ fi
 # as breakage on `trunk`. `--frozen-lockfile` is a sub-second no-op when in sync.
 if [ -f "$PROJECT_DIR/pnpm-lock.yaml" ]; then
   log "syncing dependencies against the lockfile…"
-  # pnpm through corepack when it is available (it honours `packageManager`),
-  # else the pnpm on PATH.
-  if command -v corepack >/dev/null 2>&1; then PNPM=(corepack pnpm); else PNPM=(pnpm); fi
+  # pnpm only, at the `packageManager` pin: through corepack when it exists,
+  # else whatever pnpm is on PATH.
+  if command -v corepack >/dev/null 2>&1; then
+    PNPM=(corepack pnpm)
+  else
+    PNPM=(pnpm)
+  fi
   (cd "$PROJECT_DIR" && "${PNPM[@]}" install --frozen-lockfile >/dev/null 2>&1) \
     || log "dependency install failed; continuing"
   # node_modules/.bin only exists after the install, so re-link what it provides.
-  for tool in fallow; do
-    link_tool "$PROJECT_DIR/node_modules/.bin/$tool"
-  done
+  link_tool "$PROJECT_DIR/node_modules/.bin/fallow"
+  link_tool "$PROJECT_DIR/node_modules/.bin/tsx"
   write_vp_shim
 fi
 

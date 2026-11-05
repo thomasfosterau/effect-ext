@@ -27,4 +27,12 @@ dist/
 .vite/
 # The generated git-hook runner; the editable hook itself is committed.
 .vite-hooks/_/
+
+# Generated API reference (`vp run -r docgen`), per package. Never committed;
+# the README is the reference consumers read.
+packages/*/docs/
+# `pnpm pack` output staged by scripts/release.sh.
+.release/
+*.tgz
 .vitest/
+.examples/

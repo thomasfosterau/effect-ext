@@ -1,6 +1,11 @@
 {
   "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
-  "changelog": ["@changesets/changelog-github", { "repo": "thomasfosterau/effect-ext" }],
+  "changelog": [
+    "@changesets/changelog-github",
+    {
+      "repo": "thomasfosterau/effect-ext"
+    }
+  ],
   "format": false,
   "commit": false,
   "fixed": [],
@@ -8,5 +13,9 @@
   "access": "public",
   "baseBranch": "trunk",
   "updateInternalDependencies": "patch",
-  "ignore": []
+  "ignore": ["@effect-utilities/dist-consumer"],
+  "privatePackages": {
+    "version": false,
+    "tag": false
+  }
 }

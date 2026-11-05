@@ -4,21 +4,21 @@ Maintained by Thomas Foster, with a workflow meant to be approachable for both h
 
 ## Setup
 
-You need Node.js 22 or later and pnpm 11 (the exact version is pinned by `packageManager` in `package.json`; `corepack enable` picks it up). Then:
+Node `^22.18.0 || ^24.11.0 || >=26.0.0`, pnpm 11 (the `packageManager` pin; `corepack enable` provides it) and [Vite+](https://viteplus.dev/) (`vp`).
 
 ```sh
-pnpm install
+pnpm install   # dependencies, the Vite+ git hooks, and the @effect/tsgo patch of tsc / oxlint
+vp check       # format + lint
+vp run check   # type gates
 ```
-
-This installs dependencies and the Vite+ git hooks. Everything after that runs through `vp`.
 
 ## Adding a module
 
-A new module follows the checklist at the top of [AGENTS.md](AGENTS.md#agentsmd).
+A new module follows the checklist under Conventions in [AGENTS.md](AGENTS.md#conventions).
 
-## Branches
+## Branch model
 
-Branch off `trunk`, rebase rather than merge, squash-merge with a conventional prefix: see [AGENTS.md](AGENTS.md#branches-and-pull-requests).
+See [AGENTS.md § Branches and pull requests](AGENTS.md#branches-and-pull-requests).
 
 ## Git hooks
 
@@ -26,25 +26,21 @@ Hooks are managed by Vite+; the editable [.vite-hooks/pre-commit](.vite-hooks/pr
 
 ## CI expectations
 
-[ci.yml](.github/workflows/ci.yml) runs the `ci` job on Node 22 and 24, whose steps are the gate list in [AGENTS.md](AGENTS.md#verification). The workflows are hardened: `permissions: {}` at the top with read-only jobs, SHA-pinned actions (Dependabot keeps them current), `persist-credentials: false` wherever nothing pushes, no secrets in anything a Dependabot PR triggers, the release job skipped for `dependabot[bot]`, and Node set up from a pinned major with `check-latest: true` (never `node-version: latest`, which resolves to pre-releases); `uvx zizmor --offline .github` audits them. [release.yml](.github/workflows/release.yml) runs changesets/action on `trunk`: it opens the version PR while unreleased changesets exist and publishes once it merges, via npm OIDC trusted publishing (see [PUBLISHING.md](PUBLISHING.md)).
+CI ([ci.yml](.github/workflows/ci.yml)) runs on Node 22 and 24 (each from a pinned major with `check-latest: true`, never `node-version: latest`, which resolves to pre-releases) and runs the same gates as [AGENTS.md § Verification](AGENTS.md#verification), plus `pnpm audit --audit-level high`. [release.yml](.github/workflows/release.yml) runs changesets/action on `trunk` (see [PUBLISHING.md](PUBLISHING.md)). Both workflows are hardened: `permissions: {}` at the top with per-job scopes, every action pinned to a full commit SHA, `persist-credentials: false` wherever nothing pushes, no secrets or OIDC in anything a Dependabot PR can trigger (Release skips `dependabot[bot]`), and no `GITHUB_PATH` writes (steps call `pnpm exec vp …`).
 
 ## Pre-PR checklist
 
-1. The gates in [AGENTS.md](AGENTS.md#verification), each with its final pass/fail.
-2. A changeset (`pnpm changeset`) where [AGENTS.md](AGENTS.md#branches-and-pull-requests) requires one.
-3. `git fetch origin trunk && git rebase origin/trunk`
-4. Docs: `README.md` for any exported change; `AGENTS.md` for a new convention.
+1. The gates in [AGENTS.md § Verification](AGENTS.md#verification), in order.
+2. `git fetch origin trunk && git rebase origin/trunk`
+3. Docs: the package `README.md` for any exported change; the package `CLAUDE.md` for a new term or invariant.
 
 ## Running individual checks
 
+The gates themselves, in order, are in [AGENTS.md § Verification](AGENTS.md#verification). Narrower commands for iterating:
+
 ```sh
-vp lint                         # oxlint
-vp fmt                          # oxfmt
-vp run check                    # the type gate
-vp run -r test:unit             # unit tests
-vp test run test/Str.test.ts    # a single file
-vp test                         # watch mode
-vp run -r build                 # emit dist/
-vp run test:coverage            # Istanbul map for fallow
-vp run fallow:audit             # change-set review (not a CI gate)
+vp lint                                              # oxlint only
+vp fmt                                               # oxfmt, writing fixes
+vp run --filter ./packages/effect-utilities check    # the package's own type gate
+vp test run tests/Str.test.ts                        # single file (from inside the package)
 ```

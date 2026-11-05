@@ -1,0 +1,168 @@
+/**
+ * The one Vite+ configuration every package in this workspace shares (copied
+ * from the effect-web library, with its subpath layout changed from
+ * `src/<entry>/index.ts` to Effect's own one-module-per-subpath
+ * `src/<Module>.ts`): the
+ * task graph (`check`, `build`, `test:unit`, `test:coverage`, `docgen`), the
+ * `vp pack` (tsdown) settings, the alias that lets tests import the package
+ * by name and resolve to `src/`, and the vitest / coverage settings. Each
+ * `packages/<name>/vite.config.ts` is a one-call instantiation of it.
+ */
+import * as Arr from "effect/Array";
+import * as Config from "effect/Config";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import * as R from "effect/Record";
+import { defineConfig } from "vite-plus";
+
+/** What differs per package. */
+export interface PackageConfigOptions {
+  /** The package's `import.meta.url`, so paths resolve relative to it. */
+  readonly url: string;
+  /** The published name (`@thomasfosterau/effect-utilities`), for the test alias. */
+  readonly name: string;
+  /** `pack.entry`: `index` → `src/index.ts`, every other key → `src/<key>.ts`. */
+  readonly entries: ReadonlyArray<string>;
+}
+
+/**
+ * Input fingerprint for a package's cached tasks: auto tracking minus
+ * node_modules bookkeeping churn (pnpm rewrites `.modules.yaml` on every
+ * install), with the lockfile back explicitly so a dependency upgrade still
+ * invalidates a type-check or a test run.
+ */
+const cacheInputs = [
+  { auto: true },
+  "!node_modules/**",
+  "!docs/**",
+  { pattern: "!node_modules/**", base: "workspace" as const },
+  { pattern: "pnpm-lock.yaml", base: "workspace" as const },
+];
+
+/**
+ * A sibling package is consumed the way a consumer does — through its
+ * `exports`, so its `dist/` — hence the build edge on every task that
+ * resolves one. A package with no workspace dependency gets an empty edge.
+ */
+const siblingBuild = { task: "build", from: "dependencies" as const };
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+
+export const packageConfig = ({ url, name, entries }: PackageConfigOptions) => {
+  const srcDir = new URL("./src/", url).pathname;
+  const subpaths = entries.filter((entry) => entry !== "index");
+  const entry = R.fromEntries(
+    Arr.map(entries, (one) => [one, one === "index" ? "src/index.ts" : `src/${one}.ts`] as const),
+  );
+  // Read once, synchronously, from the environment (`Config`'s default
+  // provider); unset leaves vitest's own default in place.
+  const maxWorkers = Effect.runSync(Config.option(Config.Int("VITEST_MAX_WORKERS")));
+  const testOptions = {
+    include: ["tests/**/*.test.ts"],
+    testTimeout: 30_000,
+    coverage: {
+      provider: "istanbul" as const,
+      // `json` writes coverage-final.json, the Istanbul map `fallow audit`
+      // reads for exact per-function CRAP scores (`health.coverage` in
+      // .fallowrc.json); without it every function scores as uncovered.
+      reporter: ["text-summary", "json-summary", "json"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.ts"],
+      exclude: ["**/*.d.ts"],
+      thresholds: { statements: 90, branches: 85, functions: 90, lines: 90 },
+    },
+  };
+  return defineConfig({
+    run: {
+      tasks: {
+        // `src` under the native, Effect-patched `tsc`, then the type-level
+        // tests (`tests/*.types.ts`, whose expect-error directives are the
+        // assertions) under tsconfig.test.json, which resolves the package
+        // name to `src/` so this package's own build is never needed first.
+        check: {
+          command: "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+          dependsOn: [siblingBuild],
+          cache: {
+            input: cacheInputs,
+            output: [],
+          },
+        },
+        // The published artifact: one ESM bundle + declaration file per entry
+        // point (`vp pack` → tsdown, `platform: neutral`). `sideEffects:
+        // false` is a claim about this output: no top-level statements.
+        build: {
+          command: "vp pack",
+          dependsOn: [siblingBuild],
+          cache: {
+            input: cacheInputs,
+            output: ["dist/**"],
+          },
+        },
+        "test:unit": {
+          command: "vp test run tests",
+          dependsOn: [siblingBuild],
+          cache: {
+            env: ["VITEST_MAX_WORKERS", "NODE_OPTIONS"],
+            input: cacheInputs,
+            output: [],
+          },
+        },
+        "test:coverage": {
+          command: "vp test run tests --coverage",
+          dependsOn: [siblingBuild],
+          cache: {
+            env: ["VITEST_MAX_WORKERS", "NODE_OPTIONS"],
+            input: cacheInputs,
+            output: ["coverage/**"],
+          },
+        },
+        // Compiles AND RUNS every JSDoc `@example`: docgen.json's
+        // `"runExamples": true` turns that on, and `--run-examples` is the
+        // backstop docgen falls back to if the key is ever dropped (the key
+        // wins when present, so an explicit `false` still turns it off).
+        // Examples import the package by name exactly as a consumer would,
+        // which resolves through `exports` to `dist/` — hence the build edge.
+        docgen: {
+          command: "docgen --run-examples",
+          dependsOn: ["build"],
+          cache: {
+            input: cacheInputs,
+            output: ["docs/**"],
+          },
+        },
+      },
+    },
+    pack: {
+      entry,
+      format: "esm",
+      platform: "neutral",
+      dts: true,
+      outDir: "dist",
+      clean: true,
+    },
+    resolve: {
+      // Tests import the package by name, exactly as a consumer would (and as
+      // tsconfig.test.json's `paths` type-checks them), so the runner resolves
+      // that name to `src/` rather than to the built `dist/` that `exports`
+      // points at — a unit run never needs a build first.
+      alias: [
+        { find: new RegExp(`^${escapeRegExp(name)}$`), replacement: `${srcDir}index.ts` },
+        ...Arr.match(subpaths, {
+          onEmpty: () => [],
+          onNonEmpty: (values) => [
+            {
+              find: new RegExp(`^${escapeRegExp(name)}/(${values.map(escapeRegExp).join("|")})$`),
+              replacement: `${srcDir}$1.ts`,
+            },
+          ],
+        }),
+      ],
+    },
+    // `maxWorkers` is added only when the environment names one, so an unset
+    // variable leaves vitest's own default in place.
+    test: Option.match(maxWorkers, {
+      onNone: () => testOptions,
+      onSome: (workers) => ({ ...testOptions, maxWorkers: workers }),
+    }),
+  });
+};

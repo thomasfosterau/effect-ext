@@ -1,0 +1,14 @@
+{
+  "name": "@effect-utilities/dist-consumer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Type-checks a consumer fixture against the EMITTED declarations of @thomasfosterau/effect-utilities, asserting the brands, the codec types, the tri-state reader and the layout / container element types survive declaration emit.",
+  "type": "module",
+  "dependencies": {
+    "@thomasfosterau/effect-utilities": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}
