@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test"
-import * as Equal from "effect/Equal"
+import * as Eq from "effect/Equal"
 import * as Schema from "effect/Schema"
 import { Complex, Num } from "../src/index.ts"
 
@@ -14,7 +14,7 @@ describe("Complex", () => {
     expect(close(Complex.mul(Complex.div(z, Complex.make(1, -2)), Complex.make(1, -2)), z)).toBe(true)
     expect(close(Complex.mul(z, Complex.recip(z)), Complex.one)).toBe(true)
     expect(Complex.normSqr(z)).toBe(25)
-    expect(Equal.equals(Complex.make(1, 2), Complex.make(1, 2))).toBe(true)
+    expect(Eq.equals(Complex.make(1, 2), Complex.make(1, 2))).toBe(true)
     expect(Num.sum(Complex.Field)([z, z])).toEqual(Complex.make(6, 8))
   })
   it("transcendental functions", () => {

@@ -1,6 +1,6 @@
 import * as Arr from "effect/Array"
 import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
+import * as P from "effect/Predicate"
 import * as Str from "effect/String"
 import { powBySquaring } from "./iterate.ts"
 
@@ -86,7 +86,7 @@ export const powMod2 = (base: bigint, exp: number, bits: number): bigint =>
  * number is not an integer. @internal
  */
 export const toBigIntExact = (value: number | bigint): Option.Option<bigint> =>
-  Predicate.isBigInt(value) ? Option.some(value) : Number.isInteger(value) ? Option.some(BigInt(value)) : Option.none()
+  P.isBigInt(value) ? Option.some(value) : Number.isInteger(value) ? Option.some(BigInt(value)) : Option.none()
 
 /** Digit value of a character code in bases up to 36 (`Infinity` if none). */
 const digitValue = (c: number): number =>

@@ -14,11 +14,11 @@
  *
  * @since 0.1.0
  */
-import * as Equal from "effect/Equal"
+import * as Eq from "effect/Equal"
 import type * as Eqv from "effect/Equivalence"
 import * as Hash from "effect/Hash"
 import type { Pipeable } from "effect/Pipeable"
-import * as Predicate from "effect/Predicate"
+import * as P from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
 import { powBySquaring } from "./internal/iterate.ts"
@@ -36,7 +36,7 @@ const TypeId = "~effect-numeric/Complex"
  * @category models
  * @since 0.1.0
  */
-export interface Complex extends Equal.Equal, Pipeable {
+export interface Complex extends Eq.Equal, Pipeable {
   readonly [TypeId]: typeof TypeId
   readonly re: number
   readonly im: number
@@ -45,7 +45,7 @@ export interface Complex extends Equal.Equal, Pipeable {
 }
 
 /** Only `ComplexImpl` instances carry `TypeId`, so its presence identifies a {@link Complex}. */
-const hasTypeId = <T>(u: T): u is T & Complex => Predicate.hasProperty(u, TypeId)
+const hasTypeId = <T>(u: T): u is T & Complex => P.hasProperty(u, TypeId)
 
 class ComplexImpl extends Value implements Complex {
   readonly [TypeId] = TypeId
@@ -56,7 +56,7 @@ class ComplexImpl extends Value implements Complex {
     this.re = re
     this.im = im
   }
-  [Equal.symbol](that: Equal.Equal): boolean {
+  [Eq.symbol](that: Eq.Equal): boolean {
     return hasTypeId(that) && Object.is(that.re, this.re) && Object.is(that.im, this.im)
   }
   [Hash.symbol](): number {

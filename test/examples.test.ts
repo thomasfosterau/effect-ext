@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vite-plus/test"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
+import * as Eq from "effect/Equal"
 import * as Option from "effect/Option"
 import { pipe } from "effect/Function"
 import * as Result from "effect/Result"
@@ -98,7 +98,7 @@ describe("README", () => {
   it("ratio and complex", () => {
     const third = Ratio.make(1, 3)
     expect(pipe(third, Ratio.add(Ratio.make(1, 6)), Ratio.toString)).toBe("1/2")
-    expect(Equal.equals(Ratio.make(2, 4), Ratio.make(1, 2))).toBe(true)
+    expect(Eq.equals(Ratio.make(2, 4), Ratio.make(1, 2))).toBe(true)
     expect(Option.map(Ratio.approximate(Math.PI, 1000n), Ratio.toString)).toEqual(Option.some("355/113"))
     expect(Ratio.toFixed(Ratio.make(2, 3), 4)).toBe("0.6667")
     const z = Complex.make(3, 4)

@@ -83,26 +83,10 @@ export default defineConfig({
       // on an array or `Uint8Array` the same expression just built, so
       // nothing shared is mutated.
       "unicorn/no-array-reverse": "off",
-      // `casting-awareness` is an awareness prompt, not a defect rule — it
-      // fires on every `as`, including the brand casts every fixed-width
-      // constructor is built on (a `number` becomes an `I8` only by `as`
-      // after its range check). Those casts all live in
-      // `src/internal/brand.ts` (3 sites). Stays visible as a warning.
-      "effect/casting-awareness": "warn",
-      // Hard-codes abbreviations (`Arr`, `P`, `R`, …) with no options, so it is
-      // unsatisfiable under the full-name convention (`import * as Option from
-      // "effect/Option"`) this family shares with its consumers.
-      "effect/prefer-namespace-imports": "off",
-      // `@effect/tsgo` preset rules that type-aware linting surfaced, left at
-      // the preset's `warn` level until #11 resolves them.
-      // `schema-class-missing-brand` (5 sites, `src/ArithmeticError.ts`):
-      // the brand changes the emitted `.d.ts` of every error class.
-      "effecttsgo/schema-class-missing-brand": "warn",
-      // `schema-number` (8 sites): the `Float` / `F32` / `Complex` schemas
-      // cover IEEE 754 values, NaN and ±Infinity included, so `Schema.Finite`
-      // would change what they accept; the `Clamped` / `FixedInt` sites need
-      // their error messages checked first.
-      "effecttsgo/schema-number": "warn",
+      // `@effect/tsgo` preset rules that type-aware linting surfaced (#11),
+      // raised from the preset's `warn` so a new site fails CI.
+      "effecttsgo/schema-class-missing-brand": "error",
+      "effecttsgo/schema-number": "error",
       "typescript/no-explicit-any": "off",
       "typescript/no-empty-object-type": "off",
       "typescript/ban-ts-comment": "off",
@@ -168,14 +152,18 @@ export default defineConfig({
           "effect/prefer-option-over-null": "off"
         }
       },
-      // `no-service-constructor-imports` matches the `make*` name of
-      // `Float.makeFloat`, the internal builder of a `Float` type-class
-      // instance (a plain record of functions). There is no Effect service,
-      // Layer or requirement involved for the rule to redirect to.
+      // `schema-number` (#11): these schemas decode IEEE 754 values, NaN and
+      // ±Infinity included, by design, so `Schema.Finite` would change what
+      // they accept. `Float` / `F32` model the whole IEEE 754 domain
+      // (`NotNaN` / `Finite` are the refinements that narrow it), `Complex`'s
+      // `{ re, im }` struct carries such parts, and `Clamped`'s clamping
+      // decoder maps ±Infinity onto its bounds (its exact `schema` uses
+      // `Schema.Finite`). Every finite-domain schema elsewhere uses
+      // `Schema.Finite` / `Schema.FiniteFromString`.
       {
-        files: ["src/F32.ts"],
+        files: ["src/Float.ts", "src/F32.ts", "src/Complex.ts", "src/Clamped.ts"],
         rules: {
-          "effect/no-service-constructor-imports": "off"
+          "effecttsgo/schema-number": "off"
         }
       },
       // `brandAs` is the one place a validated schema is retyped as a
@@ -193,9 +181,12 @@ export default defineConfig({
       // stays an error everywhere else. `unsafeBrand`'s brand parameter
       // appears only in its return type by design (the caller names the
       // brand), which `no-unnecessary-type-parameters` reads as unused.
+      // `casting-awareness` fires on every `as`, so it fires on exactly these
+      // three assertions and nowhere else.
       {
         files: ["src/internal/brand.ts"],
         rules: {
+          "effect/casting-awareness": "off",
           "effect/avoid-any": "off",
           "effect/no-chained-type-assertions": "off",
           "typescript/no-unsafe-type-assertion": "off",

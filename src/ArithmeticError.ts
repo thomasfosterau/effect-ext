@@ -18,12 +18,15 @@ const quote = Schema.encodeSync(Schema.fromJsonString(Schema.String))
  * @category errors
  * @since 0.1.0
  */
-export class OverflowError extends Schema.TaggedError<OverflowError>()("OverflowError", {
-  /** Name of the operation that overflowed, e.g. `"add"`. */
-  operation: Schema.String,
-  /** Name of the numeric type, e.g. `"U8"`. */
-  type: Schema.String
-}) {
+export class OverflowError extends Schema.TaggedError<OverflowError, { readonly brand: unique symbol }>()(
+  "OverflowError",
+  {
+    /** Name of the operation that overflowed, e.g. `"add"`. */
+    operation: Schema.String,
+    /** Name of the numeric type, e.g. `"U8"`. */
+    type: Schema.String
+  }
+) {
   /** `"<type>: attempt to <operation> with overflow"`. */
   override get message(): string {
     return `${this.type}: attempt to ${this.operation} with overflow`
@@ -36,12 +39,15 @@ export class OverflowError extends Schema.TaggedError<OverflowError>()("Overflow
  * @category errors
  * @since 0.1.0
  */
-export class DivisionByZeroError extends Schema.TaggedError<DivisionByZeroError>()("DivisionByZeroError", {
-  /** Name of the operation, e.g. `"div"`. */
-  operation: Schema.String,
-  /** Name of the numeric type, e.g. `"U8"`. */
-  type: Schema.String
-}) {
+export class DivisionByZeroError extends Schema.TaggedError<DivisionByZeroError, { readonly brand: unique symbol }>()(
+  "DivisionByZeroError",
+  {
+    /** Name of the operation, e.g. `"div"`. */
+    operation: Schema.String,
+    /** Name of the numeric type, e.g. `"U8"`. */
+    type: Schema.String
+  }
+) {
   /** `"<type>: attempt to <operation> by zero"`. */
   override get message(): string {
     return `${this.type}: attempt to ${this.operation} by zero`
@@ -56,16 +62,19 @@ export class DivisionByZeroError extends Schema.TaggedError<DivisionByZeroError>
  * @category errors
  * @since 0.1.0
  */
-export class OutOfRangeError extends Schema.TaggedError<OutOfRangeError>()("OutOfRangeError", {
-  /** Name of the target type, e.g. `"U8"`. */
-  type: Schema.String,
-  /** The rejected input. */
-  value: Schema.Unknown,
-  /** The smallest value of the target type. */
-  min: Schema.Unknown,
-  /** The largest value of the target type. */
-  max: Schema.Unknown
-}) {
+export class OutOfRangeError extends Schema.TaggedError<OutOfRangeError, { readonly brand: unique symbol }>()(
+  "OutOfRangeError",
+  {
+    /** Name of the target type, e.g. `"U8"`. */
+    type: Schema.String,
+    /** The rejected input. */
+    value: Schema.Unknown,
+    /** The smallest value of the target type. */
+    min: Schema.Unknown,
+    /** The largest value of the target type. */
+    max: Schema.Unknown
+  }
+) {
   /** `"<type>: <value> is not a valid value in range [<min>, <max>]"`. */
   override get message(): string {
     return `${this.type}: ${String(this.value)} is not a valid value in range [${String(this.min)}, ${String(this.max)}]`
@@ -79,7 +88,7 @@ export class OutOfRangeError extends Schema.TaggedError<OutOfRangeError>()("OutO
  * @category errors
  * @since 0.1.0
  */
-export class DomainError extends Schema.TaggedError<DomainError>()("DomainError", {
+export class DomainError extends Schema.TaggedError<DomainError, { readonly brand: unique symbol }>()("DomainError", {
   /** Name of the operation, e.g. `"isqrt"`. */
   operation: Schema.String,
   /** Name of the numeric type, e.g. `"I8"`. */
@@ -99,7 +108,7 @@ export class DomainError extends Schema.TaggedError<DomainError>()("DomainError"
  * @category errors
  * @since 0.1.0
  */
-export class ParseError extends Schema.TaggedError<ParseError>()("ParseError", {
+export class ParseError extends Schema.TaggedError<ParseError, { readonly brand: unique symbol }>()("ParseError", {
   /** Name of the target type, e.g. `"U8"`. */
   type: Schema.String,
   /** The string that failed to parse. */

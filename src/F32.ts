@@ -16,10 +16,10 @@
  * @since 0.1.0
  */
 import type * as Brand from "effect/Brand"
-import * as Predicate from "effect/Predicate"
+import * as P from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
-import { type Float, makeFloat } from "./Float.ts"
+import { type Float, buildFloat } from "./Float.ts"
 import { brandAs } from "./internal/brand.ts"
 
 /**
@@ -56,7 +56,7 @@ const nextUp32 = (n: number): number => {
   return f32View.getFloat32(0)
 }
 
-const isF32 = <T>(u: T): u is T & F32 => Predicate.isNumber(u) && (Number.isNaN(u) || Math.fround(u) === u)
+const isF32 = <T>(u: T): u is T & F32 => P.isNumber(u) && (Number.isNaN(u) || Math.fround(u) === u)
 
 const schema = brandAs<F32, number>(
   Schema.Number.pipe(
@@ -79,7 +79,7 @@ const schema = brandAs<F32, number>(
  * @since 0.1.0
  */
 export const F32: F32Module = /* @__PURE__ */ Object.assign(
-  makeFloat<F32>({
+  buildFloat<F32>({
     round: Math.fround,
     mantissaDigits: 24,
     epsilon: 2 ** -23,

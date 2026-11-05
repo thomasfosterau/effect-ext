@@ -33,7 +33,7 @@ import * as Effect from "effect/Effect"
 import * as Equivalence from "effect/Equivalence"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
-import * as Predicate from "effect/Predicate"
+import * as P from "effect/Predicate"
 import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
@@ -234,7 +234,7 @@ const build = <A extends number>(options: Options<number, number>, integer: bool
     unsafeBrand<UnitInterval, number>(width === 0 ? 0 : (a - min) / width)
 
   const schema = brandAs<A, number>(
-    Schema.Number.pipe(
+    Schema.Finite.pipe(
       Schema.check(Schema.isBetween({ minimum: min, maximum: max }), ...(integer ? [Schema.isInt()] : []))
     ),
     name
@@ -261,7 +261,7 @@ const build = <A extends number>(options: Options<number, number>, integer: bool
     Equivalence: Equivalence.Number,
     schema,
     schemaClamping,
-    is: (u): u is A => Predicate.isNumber(u) && isMember(u),
+    is: (u): u is A => P.isNumber(u) && isMember(u),
     make: (n) => clamp(n, "make"),
     from,
     fromResult: (n) =>

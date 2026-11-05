@@ -322,6 +322,8 @@ describe.each(all.map((T) => [T.name, T] as const))("%s", (_name, T) => {
     const fromString = Schema.decodeUnknownResult(T.schemaFromString)
     expect(fromString(R.max.toString())).toEqual(Result.succeed(T.MAX))
     expect(Result.isFailure(fromString((R.max + 1n).toString()))).toBe(true)
+    expect(Result.isFailure(fromString("Infinity"))).toBe(true)
+    expect(Result.isFailure(fromString("NaN"))).toBe(true)
     expect(Schema.encodeSync(T.schemaFromString)(T.MAX)).toBe(R.max.toString())
   })
 
