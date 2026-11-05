@@ -39,22 +39,25 @@ import {
   TestWakeLock,
 } from "@thomasfosterau/effect-web/testing";
 
-const everyService = Effect.all([
-  Broadcast.Broadcast,
-  Locks.Locks,
-  MediaQuery.MediaQuery,
-  Navigator.Navigator,
-  Notifications.Notifications,
-  PageVisibility.PageVisibility,
-  WakeLock.WakeLock,
-  Clipboard.Clipboard,
-  Geolocation.Geolocation,
-  Permissions.Permissions,
-  Battery.Battery,
-  IdleDetection.IdleDetection,
-  Fullscreen.Fullscreen,
-  ScreenOrientation.ScreenOrientation,
-]);
+const everyService = Effect.all(
+  [
+    Broadcast.Broadcast,
+    Locks.Locks,
+    MediaQuery.MediaQuery,
+    Navigator.Navigator,
+    Notifications.Notifications,
+    PageVisibility.PageVisibility,
+    WakeLock.WakeLock,
+    Clipboard.Clipboard,
+    Geolocation.Geolocation,
+    Permissions.Permissions,
+    Battery.Battery,
+    IdleDetection.IdleDetection,
+    Fullscreen.Fullscreen,
+    ScreenOrientation.ScreenOrientation,
+  ],
+  { concurrency: 1 },
+);
 
 describe("browser layer", () => {
   it("builds every live service, degrading where the runtime lacks the API", async () => {
@@ -121,21 +124,24 @@ describe("testing layer", () => {
             fullscreen,
             orientation,
           ] = yield* everyService;
-          yield* Effect.all([
-            TestBattery.Control,
-            TestBroadcast.Control,
-            TestClipboard.Control,
-            TestFullscreen.Control,
-            TestGeolocation.Control,
-            TestIdleDetection.Control,
-            TestMediaQuery.Control,
-            TestNavigator.Control,
-            TestNotifications.Control,
-            TestPageVisibility.Control,
-            TestPermissions.Control,
-            TestScreenOrientation.Control,
-            TestWakeLock.Control,
-          ]);
+          yield* Effect.all(
+            [
+              TestBattery.Control,
+              TestBroadcast.Control,
+              TestClipboard.Control,
+              TestFullscreen.Control,
+              TestGeolocation.Control,
+              TestIdleDetection.Control,
+              TestMediaQuery.Control,
+              TestNavigator.Control,
+              TestNotifications.Control,
+              TestPageVisibility.Control,
+              TestPermissions.Control,
+              TestScreenOrientation.Control,
+              TestWakeLock.Control,
+            ],
+            { concurrency: 1 },
+          );
           return {
             locks: locks.supported,
             notifications: notifications.supported,

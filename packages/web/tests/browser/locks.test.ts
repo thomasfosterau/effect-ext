@@ -243,11 +243,14 @@ describe("Locks without a lock manager", () => {
     const locks = Locks.make(undefined);
     expect(locks.supported).toBe(false);
     const errors = await Effect.runPromise(
-      Effect.all([
-        Effect.flip(Effect.scoped(locks.acquire("a"))),
-        Effect.flip(Effect.scoped(locks.tryAcquire("a"))),
-        Effect.flip(locks.query),
-      ]),
+      Effect.all(
+        [
+          Effect.flip(Effect.scoped(locks.acquire("a"))),
+          Effect.flip(Effect.scoped(locks.tryAcquire("a"))),
+          Effect.flip(locks.query),
+        ],
+        { concurrency: 1 },
+      ),
     );
     expect(errors.map((error) => [error.reason, error.lock])).toStrictEqual([
       ["Unsupported", Option.some("a")],
@@ -293,6 +296,7 @@ describe("Locks rejection mapping", () => {
         ].map((cause) =>
           Effect.map(Effect.flip(Locks.make(rejecting(cause)).query), (error) => error.reason),
         ),
+        { concurrency: 1 },
       ),
     );
     expect(reasons).toStrictEqual(["NotAllowed", "InvalidState", "Failed"]);

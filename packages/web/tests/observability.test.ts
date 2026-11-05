@@ -62,10 +62,10 @@ describe("spanTracer", () => {
     expect(log).toHaveBeenCalledTimes(1);
     const line = decodeLine(log.mock.calls[0]?.[0]);
     expect(line).toMatchObject({ event: "span", name: "operations.search", ok: true });
-    expect(typeof line.durationMs).toBe("number");
+    expect(line.durationMs).toBeTypeOf("number");
     expect(line.durationMs).toBeGreaterThanOrEqual(0);
-    expect(typeof line.traceId).toBe("string");
-    expect(typeof line.spanId).toBe("string");
+    expect(line.traceId).toBeTypeOf("string");
+    expect(line.spanId).toBeTypeOf("string");
 
     log.mockRestore();
   });

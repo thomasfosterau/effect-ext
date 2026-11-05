@@ -35,12 +35,15 @@ describe("MediaQuery", () => {
   it("maps the preference queries", async () => {
     const result = await Effect.runPromise(
       Effect.provide(
-        Effect.all({
-          colorScheme: Stream.runCollect(Stream.take(MediaQuery.colorScheme, 1)),
-          reducedMotion: Stream.runCollect(Stream.take(MediaQuery.reducedMotion, 1)),
-          moreContrast: Stream.runCollect(Stream.take(MediaQuery.moreContrast, 1)),
-          reducedData: Stream.runCollect(Stream.take(MediaQuery.reducedData, 1)),
-        }),
+        Effect.all(
+          {
+            colorScheme: Stream.runCollect(Stream.take(MediaQuery.colorScheme, 1)),
+            reducedMotion: Stream.runCollect(Stream.take(MediaQuery.reducedMotion, 1)),
+            moreContrast: Stream.runCollect(Stream.take(MediaQuery.moreContrast, 1)),
+            reducedData: Stream.runCollect(Stream.take(MediaQuery.reducedData, 1)),
+          },
+          { concurrency: 1 },
+        ),
         TestMediaQuery.layer({
           "(prefers-color-scheme: dark)": true,
           "(prefers-reduced-motion: reduce)": true,
