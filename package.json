@@ -1,77 +1,43 @@
 {
-  "name": "effect-ext",
+  "$schema": "https://www.schemastore.org/package",
+  "name": "effect-utilities-workspace",
   "version": "0.0.0",
-  "description": "A collection of experimental Effect standard library extensions and additions.",
-  "keywords": [
-    "allocator",
-    "arraybuffer",
-    "effect",
-    "struct-of-arrays",
-    "typescript",
-    "url",
-    "utf8"
-  ],
-  "homepage": "https://github.com/thomasfosterau/effect-ext#readme",
-  "bugs": {
-    "url": "https://github.com/thomasfosterau/effect-ext/issues"
-  },
+  "private": true,
+  "description": "Workspace for @thomasfosterau/effect-utilities: extensions to the Effect standard library.",
   "license": "MIT",
   "author": "Thomas Foster <me@thomasfoster.au>",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/thomasfosterau/effect-ext.git"
-  },
-  "files": [
-    "dist",
-    "src"
-  ],
   "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./dist/index.mjs",
-    "./Allocator": "./dist/Allocator.mjs",
-    "./BufferStruct": "./dist/BufferStruct.mjs",
-    "./Layout": "./dist/Layout.mjs",
-    "./Str": "./dist/Str.mjs",
-    "./String": "./dist/String.mjs",
-    "./StructOfArrays": "./dist/StructOfArrays.mjs",
-    "./Url": "./dist/Url.mjs",
-    "./Vec": "./dist/Vec.mjs",
-    "./package.json": "./package.json"
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "scripts": {
-    "dev": "vp pack --watch",
-    "test": "vp test",
+    "build": "vp run -r build",
     "changeset": "changeset",
     "version": "changeset version && vp fmt && pnpm install --lockfile-only",
-    "release": "vp run build && pnpm publish --access public --no-git-checks --ignore-scripts && changeset tag",
+    "release": "bash scripts/release.sh",
     "fallow": "fallow --summary",
     "fallow:audit": "fallow audit",
-    "prepare": "vp config"
+    "prepare": "vp config && effect-tsgo patch --typescript --oxlint"
   },
   "devDependencies": {
     "@changesets/changelog-github": "catalog:",
     "@changesets/cli": "catalog:",
-    "@effect/vitest": "catalog:",
+    "@effect/docgen": "catalog:",
+    "@effect/language-service": "catalog:",
+    "@effect/tsgo": "catalog:",
     "@enfect/oxlint": "catalog:",
+    "@thomasfosterau/effect-utilities": "workspace:*",
     "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
     "effect": "catalog:",
     "fallow": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
   },
-  "peerDependencies": {
-    "effect": "catalog:peers"
-  },
   "engines": {
-    "node": ">=22.0.0"
+    "node": "^22.18.0 || ^24.11.0 || >=26.0.0",
+    "pnpm": ">=11"
   },
   "packageManager": "pnpm@11.18.0"
 }

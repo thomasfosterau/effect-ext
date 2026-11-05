@@ -1,26 +1,30 @@
 # Publishing & releases
 
-Releases are automated with [Changesets](https://github.com/changesets/changesets) and published to npm via [OIDC trusted publishing](https://docs.npmjs.com/trusted-publishers) — there is no `NPM_TOKEN`. See [SECURITY.md](./SECURITY.md) for the security rationale behind the pipeline. (Copied from the effect-web library and adapted to a single package at the repository root.)
+Releases are automated with [Changesets](https://github.com/changesets/changesets) and published to npm via [OIDC trusted publishing](https://docs.npmjs.com/trusted-publishers) — there is no `NPM_TOKEN`. See [SECURITY.md](./SECURITY.md) for the security rationale behind the pipeline.
 
 ## The release flow
 
-1. **Add a changeset with your change.** Run `pnpm changeset`, pick the bump (`patch` / `minor` / `major`) and write a user-facing summary, then commit the generated file alongside your change. Which changes need one is set out in [AGENTS.md](AGENTS.md#branches-and-pull-requests); a doc-comment change that reaches the emitted `.d.ts` takes a `patch`.
-2. **Merge to `trunk`.** The [`Release`](./.github/workflows/release.yml) workflow runs and, while changesets are pending, opens or updates a **"Version Packages"** PR that applies the version bump and rolls the changesets into `CHANGELOG.md`. The version step is `changeset version && vp fmt && pnpm install --lockfile-only`, with `"format": false` in `.changeset/config.json`: Changesets 3 otherwise auto-detects the `oxfmt` binary Vite+ installs and runs `oxfmt --write` on the new changelog, but that binary is Vite+'s IDE-only shim and exits 1 outside LSP mode, which fails the release before the PR is opened. `vp fmt` formats the changelog instead, so the Version Packages PR passes `vp check`.
-3. **Merge the "Version Packages" PR.** With no changesets left, the workflow builds the package and publishes it to npm via trusted publishing with provenance, then tags the commit and creates the GitHub release.
+1. **Add a changeset with your change.** Run `pnpm changeset`, pick the bump (`patch` / `minor` / `major`) and write a user-facing summary, then commit the generated file alongside your change. (Changes that don't affect the published package — docs, CI, examples — need no changeset.)
+2. **Merge to `trunk`.** The [`release`](./.github/workflows/release.yml) workflow runs and, while changesets are pending, opens or updates a **"Version Packages"** PR that applies the version bump and rolls the changesets into `CHANGELOG.md`.
+3. **Merge the "Version Packages" PR.** With no changesets left, the workflow publishes the new version to npm via the npm CLI and trusted publishing, then tags the commit and creates the GitHub release.
 
-The publish step runs `pnpm publish --ignore-scripts`, which rewrites the `catalog:` specifiers to concrete ranges and publishes natively: since pnpm 11 `pnpm publish` no longer delegates to the npm CLI, and pnpm itself fetches the GitHub Actions OIDC token (audience `npm:registry.npmjs.org`) and exchanges it for a short-lived npm token. The job therefore never upgrades npm. `--ignore-scripts` keeps any publish lifecycle script (`prepublishOnly`, `prepack`, `publish`, …) out of the job holding `id-token: write`; the package must not define one, and `vp run build` runs before the publish. `publishConfig.provenance` asks for provenance explicitly, which npm accepts because the repository is public (were it made private, drop that field first). `changeset tag` then emits the `New tag:` line the Changesets action uses to push the tag and create the GitHub release.
+The version step (`pnpm run version`) runs `changeset version`, then `vp fmt`, then `pnpm install --lockfile-only`. Changesets v3 formats the changelogs it writes with whatever formatter it detects, and it detects the `oxfmt` shim that Vite+ installs; that shim only serves editors and exits non-zero when run directly. So `.changeset/config.json` sets `"format": false` and the script formats with `vp fmt` itself.
+
+`scripts/release.sh` packs each package with `pnpm pack` (which rewrites `catalog:`/`workspace:` specifiers) and publishes the tarball with an exact-pinned npm CLI via trusted publishing (OIDC); nothing requests provenance explicitly: the repository and the package are public, so trusted publishing attaches it. A package already published at its current version is skipped, so a partial run can be re-run. `changeset tag` then emits the `New tag:` lines the Changesets action uses to push the tags and create the GitHub releases. Why each setting is what it is: [SECURITY.md](./SECURITY.md#supply-chain-hardening).
 
 ## Maintainer setup (one-time)
 
+`@thomasfosterau/effect-utilities` has not been published yet. npm's trusted-publisher binding is configured per package on npmjs.com, which needs the package to exist — so the first release is a one-off owner action (a manual `npm publish` of the `pnpm pack` tarball from a machine with an npm session, or a classic token used once and then revoked), after which the following steps make the automated flow work end-to-end:
+
+0. **Rename the default branch to `trunk`** (#8). On GitHub it is still `main`, while CI, Release, Changesets and the fallow gate all target `trunk`; until the rename, no workflow runs. **Settings → General → Default branch** (GitHub retargets open PRs).
 1. **Allow Actions to open the Version Packages PR.** In the repo: **Settings → Actions → General → Workflow permissions** → enable **"Allow GitHub Actions to create and approve pull requests"**. Without this the built-in `GITHUB_TOKEN` is forbidden from opening pull requests and the workflow fails at the PR-creation step — even though the job already grants `pull-requests: write`.
-2. **Bootstrap the package on npm.** A trusted publisher can only be configured on a package that already exists, so the very first version is published by hand from a clean checkout (`vp run build && pnpm publish --access public`, with an npm login that has publish rights; no `--provenance`, which can only be generated on CI), or the first `Release` run is given a short-lived granular token via a `NODE_AUTH_TOKEN` step that is removed afterwards.
-3. **Configure the trusted publisher** on npmjs.com for `effect-ext` → **Settings → Trusted Publisher**:
+2. **Create and protect the `release` environment.** **Settings → Environments → New environment → `release`** → enable **Required reviewers** (yourself) and restrict deployment to the `trunk` branch, so publishing pauses for manual approval. The Release workflow names this environment; until it exists the job cannot run.
+3. **Configure the trusted publisher.** On npmjs.com, open `@thomasfosterau/effect-utilities` → **Settings → Trusted Publisher** and add:
    - Provider: **GitHub Actions**
    - Repository: `thomasfosterau/effect-ext`
    - Workflow: `release.yml`
    - Environment: `release`
 
-   Then remove any classic automation tokens for the package.
+   Then remove any classic automation token for the package.
 
-4. **Protect the `release` environment.** **Settings → Environments → `release`** → enable **Required reviewers** (yourself) and restrict deployment to the `trunk` branch, so publishing pauses for manual approval.
-5. **Protect `trunk`.** Require pull requests and passing CI (`ci (node 22)` and `ci (node 24)`) before merge, and disallow direct pushes, so a release can only be triggered by merging the reviewed "Version Packages" PR.
+4. **Protect `trunk`.** Require pull requests and passing CI before merge, and disallow direct pushes, so a release can only be triggered by merging the reviewed "Version Packages" PR.

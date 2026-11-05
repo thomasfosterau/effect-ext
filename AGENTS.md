@@ -1,123 +1,134 @@
 # AGENTS.md
 
-`CLAUDE.md` is a symlink to this file. Project conventions live here; personal style preferences live in user memory.
+`CLAUDE.md` is a symlink to this file. Project conventions live here; personal style preferences live in user memory. This repository publishes `@thomasfosterau/effect-utilities`: experimental extensions to the Effect (v4) standard library, in two families — Allocator-backed binary data (`Allocator`, `Layout`, `BufferStruct`, `Vec`, `StructOfArrays`, `String`, `Str`) and pure Schema helpers (`TriState`, `Issues`, `Bounded`, `Ids`, `LiteralExact`, `Ast`, `Url`). The default branch is meant to be `trunk` (see #8: on GitHub it is still `main` until the owner renames it).
 
-This repo publishes `effect-ext`: experimental extensions to the Effect (v4) standard library, as a single package at the repository root. Each `src/<Module>.ts` is a public entry point (`effect-ext/<Module>`), re-exported as a namespace from `src/index.ts`.
+The Schema modules came from `thomasfosterau/effect-schema-ext`, merged here before either package was published. They serve the website, gardeneria and preferenceflow apps (whose copies are their behavioural spec and test corpus) and back effect-jsonapi and effect-drizzle-ext, so they carry no JSON:API, Drizzle or application vocabulary. In ported comments, `effect-schema-ext#NN` is that repository's tracker and a bare `#NNN` next to an app name is an app issue (website unless stated).
 
-| Module           | Entry                       | What it is                                                                                                                                     |
-| ---------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Allocator`      | `effect-ext/Allocator`      | An `Allocator` service (a `Context.Reference`) handing out `ArrayBuffer` blocks: heap, arena and tracked                                       |
-| `Layout`         | `effect-ext/Layout`         | Binary layouts (`u8` … `f64`, `bool`, structs, fixed arrays) with C-like alignment                                                             |
-| `BufferStruct`   | `effect-ext/BufferStruct`   | Structs whose fields live in an `ArrayBuffer`, exposed as ordinary properties                                                                  |
-| `Vec`            | `effect-ext/Vec`            | A growable, `ArrayBuffer`-backed array, like Rust's `Vec<T>`                                                                                   |
-| `StructOfArrays` | `effect-ext/StructOfArrays` | A growable struct-of-arrays container with typed-array columns                                                                                 |
-| `String`         | `effect-ext/String`         | A growable, Allocator-backed UTF-8 string, like Rust's `String`                                                                                |
-| `Str`            | `effect-ext/Str`            | An immutable UTF-8 string slice, like Rust's `str`; usable as a `HashMap` key                                                                  |
-| `Url`            | `effect-ext/Url`            | Absolute URLs (WHATWG serialisation) branded with the components they were checked against: scheme, hostname / domain, port, credentials, path |
+| Path | Package | Published |
+| --- | --- | --- |
+| `packages/effect-utilities` | `@thomasfosterau/effect-utilities` | npm |
+| `tests/dist-consumer` | `@effect-utilities/dist-consumer` | no — type-checks a fixture against the emitted `dist/` declarations |
 
-Shared internals live in `src/internal/`: `bytes.ts` (a growable byte buffer), `iterator.ts` (the `indexed` iterator) and `utf8.ts` (the byte-level UTF-8 algorithms behind `String` and `Str`). They are not entry points.
-
-A new module adds a row here and in `README.md`, an `export * as` line in `src/index.ts`, an `exports` entry in `package.json` (`vp pack` builds every `src/*.ts`), a `test/<Module>.test.ts` and a changeset.
+The package's modules, terms, invariants and import boundary are in [`packages/effect-utilities/CLAUDE.md`](packages/effect-utilities/CLAUDE.md); read it before touching `src/`.
 
 ## Common pitfalls
 
-- **Never edit a version in `package.json`.** Versions live in the `pnpm-workspace.yaml` catalog (`catalogMode: strict` rejects anything else); the published peer range is under `catalogs.peers`. After editing the catalog, run `pnpm install` and commit `pnpm-lock.yaml`, or CI fails with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. `vite-plus`, `vite`, `vitest`, `@vitest/*` and `@enfect/oxlint` move together; Dependabot's `toolchain` group bumps them as one PR, except the `vite` npm alias (`npm:@voidzero-dev/vite-plus-core@<v>`, equal to `vite-plus`), which Dependabot cannot bump: set it by hand in that PR, or run `pnpm exec vp migrate`. `minimumReleaseAge` holds new versions for 8 hours (480 minutes); Dependabot's cooldown is 1 day.
-- **`dist/` is the product.** The package is a `vp pack` (tsdown) library with one bundle per `src/*.ts`; `exports` points at `dist/`.
-- **`"sideEffects": false` is a claim about `dist/`, and it is load-bearing.** Every emitted `.mjs` must be pure declarations: no top-level statements, no top-level `await`, no bare imports.
+- **Versions live only in the `pnpm-workspace.yaml` catalog** (`catalogMode: strict` rejects anything else); never edit one in a `package.json`. After editing the catalog, run `pnpm install` and commit `pnpm-lock.yaml` — a stale lockfile fails CI with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. `@effect/tsgo`, `@typescript/native` and `vite-plus` move together; read their catalog comments first. Dependabot's `toolchain` group proposes them (with vitest, the oxc tools and the Effect lint plugin `@enfect/oxlint`) as one PR; when the new oxlint outruns `@effect/tsgo`'s `components` table that PR is red until fixed by hand. Dependabot cannot move the npm-alias entries (`vite`, `typescript`, `@typescript/native`), the `overrides` literals or the Release job's pinned npm: set those by hand on the matching PR (the list heads `.github/dependabot.yml`). `minimumReleaseAge` holds a new version for 8 hours; Dependabot's `cooldown` (1 day, its smallest unit) is longer, so it never proposes one pnpm would refuse.
+- **The `effect` peer floor is a tested claim.** `catalogs.peers.effect` is the oldest `effect` the package has been type-checked, tested and had its examples run against: rc.118, the line the whole programme moved to in website#2015 (re-verified for the merged package, binary-data modules included). Two known gaps at the floor: `tests/Ids.types.ts`'s union / plain-string brand assertions rely on effect 4.0.0's `Schema.brand` typing, so on rc.118 those calls compile and the type gate reports unused `@ts-expect-error`s; and `@effect/docgen` 4.0.6 itself needs a newer `effect`, so at the floor the examples are run without docgen (type-checked under its `examplesCompilerOptions`, executed with `tsx`). Raising the dev pin does not raise the floor, and Dependabot's `effect` group moves only the dev pin, never `catalogs.peers`; lowering the floor, or using an API the floor lacks, means re-running the gates with the catalog pin set to the floor first. Raising the floor is a breaking change.
 - **`effect` is a peer, never a dependency.** Two copies break `Context` / `Layer` / `Schema` identity; the consumer owns the singleton. The `effect` override in `pnpm-workspace.yaml` keeps the lint plugin's own `effect` (`@enfect/oxlint` pins 4.1.0) from adding a second copy here.
-- **Lengths and offsets in `String` / `Str` are bytes**, as in Rust, not UTF-16 code units. A test that passes on ASCII alone proves nothing: include multi-byte characters.
+- **`dist/` is the product.** The package is a `vp pack` (tsdown) library with one bundle per entry point (`.` plus one subpath per module); `exports` points at `dist/`, so `tests/dist-consumer` and docgen consume it the way a consumer does. `tests/dist-consumer` type-checks a fixture against the emitted declarations with `Equals<…>` assertions — a brand that emits as `string` or a signature that emits as `any` fails there, not in an application.
+- **`"sideEffects": false` is a claim about `dist/`, and it is load-bearing.** Every emitted `.js` must be pure declarations: no top-level statements with effects, no top-level `await`, no bare imports. That is what lets a consumer's bundler drop what it does not use.
+- **`vp run docgen` executes your examples.** `@effect/docgen` compiles every JSDoc `@example` as a program and runs it, importing the package by name through `dist/`. An example must be complete, must not use `declare const`, and must not throw. docgen does not compare output: when a change alters what an example prints, update its `// →` comments by hand.
+- **Lengths and offsets in `String` / `Str` are bytes**, as in Rust, not UTF-16 code units. A test or example that passes on ASCII alone proves nothing: include multi-byte characters.
 
 ## Conventions
 
-- Follow Effect's style: data types are interfaces with a `TypeId`, operations are module-level functions, and multi-argument operations use `dual` so they work both data-first and in `pipe`.
-- Fallible operations return `Effect` (or `Result` for synchronous allocator primitives); `*Unsafe` variants throw. Index lookups return `Option`.
-- Every export gets a JSDoc block with `@since` and `@category`.
-- Relative imports carry their `.ts` extension (`allowImportingTsExtensions` + `rewriteRelativeImportExtensions`).
-- Tests live in `test/` and use `@effect/vitest` (`it.effect` for effectful tests).
-- `String` and `Str` mirror Rust's `String` and `str`: use Rust's method names in camelCase (`splitOnce`, `trimStartMatches`, `charIndices`, …) and Rust's semantics, including byte offsets/lengths and Rust's pattern behaviour (an empty pattern matches at every character boundary). Functions on a `String` that would return `&str` in Rust return a `Str` copy. The byte-level algorithms shared by both live in `src/internal/utf8.ts`; test against the examples in Rust's documentation where possible.
-- Linting uses `@enfect/oxlint` (`configs.recommended`, every `effect/*` rule at `error`, anti-slop included) plus Oxlint's `correctness`, `suspicious` and `perf` categories, the `typescript`, `unicorn`, `oxc`, `import`, `promise`, `vitest` and `jsdoc` plugins, and Vite+'s `vite-plus/prefer-vite-plus-imports`, type-aware, with no rules disabled (`vite.config.ts` only configures options: `_tag` for `no-underscore-dangle`, `@since` / `@category` for `jsdoc/check-tag-names`, `it.effect` for `vitest/no-standalone-expect`). In particular:
+- **Effect's style.** Data types are interfaces with a `TypeId`, operations are module-level functions, and multi-argument operations use `dual` so they work both data-first and in `pipe`. Schemas are Effect `Schema`. Pure total functions stay plain functions.
+- **Fallible operations return `Effect`** (or `Result` for synchronous allocator primitives); `*Unsafe` variants throw. Index lookups return `Option`. Errors are `Schema.TaggedError<Self, { readonly brand: unique symbol }>()(tag, fields)` classes; no `try`/`catch` (use `Result.try` / `Effect.try`).
+- **`Option`, never `T | undefined` / `T | null`** in types — also for internal state — except where the plain nullable is the contract (the tri-state's nullable encoding). That contract is asserted without writing a `| null` union (`NonNullable` / `Extract` in `tests/dist-consumer`), so it needs no `oxlint-disable`.
+- **Option objects.** The Schema modules' optional option members are `x?: Option.Option<T>` (owner decision on effect-schema-ext#79): omit the key for the default, pass `Option.some(v)` for a value, and a caller forwarding an optional of its own passes `Option.fromUndefinedOr(x)`; a three-state option is two constructors, not a sentinel (`pagination` / `requiredPagination`). The binary-data modules still take plain optional members (`capacity?: number`); unifying the two is #17.
+- **One module per subpath**, Effect's own layout: `src/<Module>.ts` is `@thomasfosterau/effect-utilities/<Module>`. A new module is `src/<Module>.ts`, re-exported as a namespace from `src/index.ts`, and listed in `entries` (package `vite.config.ts`), `exports` (package `package.json`), `.fallowrc.json` `entry`, the module tables in the package `CLAUDE.md` and `README.md` (with a README section), a `tests/<Module>.test.ts`, and a changeset. Before adding one, check that Effect itself does not already provide it; an extension here fills a gap, it does not duplicate `effect`.
+- **Every export has a JSDoc block with a one-line summary, `@since` and `@category`; every exported function, schema and error class also has a runnable `@example`** (docgen executes it). Types and plain constants need no example.
+- **Exported generics carry explicit return annotations**, so the emitted declarations are the ones written, not the ones inferred.
+- **Relative imports carry their `.ts` extension** (`allowImportingTsExtensions` + `rewriteRelativeImportExtensions`). `erasableSyntaxOnly` is on, because the apps load TypeScript under Node's strip-only loader: no enums, namespaces or constructor parameter properties.
+- **Tests import the package by name** (`tsconfig.test.json` and the vitest alias resolve it to `src/`). `tests/<Module>.test.ts` mirrors its module (a ported one names the app test files it ports); `tests/<Module>.types.ts` holds compile-time assertions (`@ts-expect-error` above a statement that must fail), checked by `tsconfig.test.json`, never executed. Pure tests import from `vite-plus/test` (lint-enforced); effectful ones use `@effect/vitest` (`it.effect`, and `layer(...)` to provide a layer — `Effect.provide` inside a test is `strict-effect-provide`), unwrapping with `Effect.fromResult` / `Effect.fromOption` instead of `getOrThrow`.
+- **Lint**: `@enfect/oxlint`'s `recommended` Effect rules and `@effect/tsgo`'s preset, plus Oxlint's `correctness`, `suspicious` and `perf` categories across the `typescript`, `unicorn`, `oxc`, `import`, `promise`, `vitest` and `jsdoc` plugins, and Vite+'s `vite-plus/prefer-vite-plus-imports`, type-aware. Fix a finding in code; a rule is relaxed only in `vite.config.ts`, scoped to the files that need it, with its reason. In particular:
   - Import Effect modules as namespaces from their submodule (`import * as Effect from "effect/Effect"`), with canonical aliases such as `P` (Predicate), `R` (Record), `Eq` (Equal).
   - No `for`/`while`/`do` loops: use typed-array and `Arr` methods (`findIndex` for early exit, `reduce` for folds, `forEach`), `Arr.unfold`, or the `indexed` iterator in `src/internal/iterator.ts` instead of generators. Beware that `Arr.makeBy` and `Arr.range` never return an empty array; use `Array.from({ length }, f)` when the length may be 0.
-  - No `T | undefined` / `T | null` in types: use `Option` (also for internal state), and plain optional properties (`capacity?: number`) for options.
   - No type assertions (`as T`, other than `as const`): use type guards, `instanceof` checks or better-typed helpers.
-  - Errors are `Schema.TaggedError` classes; no `try`/`catch` (use `Result.try` / `Effect.try`).
-  - In tests, run effectful code with `it.effect` and unwrap with `Effect.fromResult` / `Effect.fromOption` instead of `getOrThrow`.
 
 ## Commands
 
-- `pnpm install` — dependencies plus the Vite+ git hooks (pre-commit runs `vp staged`: format + lint on staged files). No pre-push hook: run the gates yourself.
-- `vp check` — format + lint (Oxfmt + Oxlint, type-aware through `oxlint-tsgolint`, which vite-plus bundles; `typeCheck` is on, so it also reports TypeScript errors). `vp run check` — the type gate (`tsc --noEmit`). They are different commands. The gates (`check`, `build`, `test:unit`, `test:coverage`) are Vite Task tasks in `vite.config.ts`, cached except `test:coverage`; `package.json` keeps only the release and helper scripts.
-- `vp run -r test:unit` — unit tests.
+- `pnpm install` — dependencies plus the Vite+ git hooks (pre-commit runs `vp staged`: format + lint on staged files) and the `prepare` step that patches the native `tsc` / `oxlint` with `@effect/tsgo`. No pre-push hook: run the gates yourself.
+- `vp check` — format + lint (Oxfmt + Oxlint, type-aware through oxlint-tsgolint; `typeCheck` off, see `vite.config.ts`). `vp run check` — the type gate: the package's `src` under `tsconfig.json`, its tests under `tsconfig.test.json`, and the dist-consumer declaration check (which builds `dist/` first). They are different commands. The gates are Vite Task tasks (root `vite.config.ts` and `vite.package.ts`), cached except `test:coverage`; `package.json` keeps only the release and helper scripts.
+- `vp run -r test:unit` — unit tests (pure code; nothing here needs a database, a network or a credential).
 - `vp run -r build` — `vp pack` → `dist/`.
-- `vp run test:coverage` — the unit suite under an Istanbul map at `coverage/coverage-final.json`, which `fallow audit` reads for exact per-function CRAP scores. Without the map fallow scores every function as uncovered, and any function with cyclomatic complexity ≥ 5 fails the gate on its own.
-- `pnpm changeset` — add a changeset.
+- `vp run docgen` — compiles and runs each `@example` against `dist/`, writes the (git-ignored) API reference under `packages/*/docs/`.
+- `vp run test:coverage` — the unit suite under one Istanbul map at `coverage/coverage-final.json`, which `fallow audit` reads for exact per-function CRAP scores.
+- `pnpm changeset` — add a changeset (see Branches and pull requests).
 
-Invoke everything through `vp` (`vp exec` instead of `npx`; `vp run <task>` instead of bare `pnpm`). The sanctioned non-`vp` invocations: `pnpm install` (and `pnpm install --frozen-lockfile` in CI), `pnpm audit`, and `pnpm changeset` / `pnpm publish` on the release path. This repo runs on Node and pnpm only: never bun, npm, yarn or npx. Single-check variants are in [CONTRIBUTING.md](CONTRIBUTING.md#running-individual-checks).
+Node and pnpm only: no bun, deno, npm, yarn or npx. Invoke everything through `vp` (`vp exec <bin>` for a package binary; `vp run <task>` instead of bare `pnpm`). The sanctioned non-`vp` invocations: `pnpm install` (and `pnpm install --frozen-lockfile` in CI), `pnpm audit`, `pnpm changeset`, and `scripts/release.sh`'s `pnpm pack` + `npm publish` on the release path. Single-check variants are in [CONTRIBUTING.md](CONTRIBUTING.md#running-individual-checks).
 
 ## Verification
 
 Before you report work as done, run the gates below in order and quote each command with its final pass/fail. If a gate can't run here, say which and why in the PR body; never imply it ran.
 
-1. From a clean install, which is what CI sees: `rm -rf node_modules dist coverage && pnpm install --frozen-lockfile`.
+1. Parity install: `rm -rf node_modules packages/*/node_modules packages/*/dist tests/*/node_modules coverage && pnpm install --frozen-lockfile` — a warm local tree hides a missing peer; a fresh runner does not.
 2. `vp check`
 3. `vp run check`
 4. `vp run -r test:unit`
 5. `vp run -r build`
-6. `pnpm audit --audit-level high` (network)
-7. `vp run test:coverage`, then `fallow audit --format json --quiet --explain --gate-marker agent --base origin/trunk` (the fallow gate below; not a CI step). The PreToolUse fallow gate audits against `coverage/coverage-final.json` and never refreshes it, so run `test:coverage` first.
+6. `vp run docgen`
+7. `pnpm audit --audit-level high` (network)
+8. `vp run test:coverage`, then `fallow audit --format json --quiet --explain --gate-marker agent --base origin/trunk` — without the coverage map fallow scores every function as uncovered, and any function with cyclomatic complexity ≥ 5 fails the audit on its own. Fallow's config here is `.fallowrc.json`, not the `fallow.toml` the generated block below names.
+9. A changeset for every change to the published package's behaviour.
 
-Steps 2–6 are CI's `ci` job, in its order, on Node 22 and 24 ([ci.yml](.github/workflows/ci.yml)). `CONTRIBUTING.md` and the PR template link here rather than restating the list.
+Steps 2–7 are CI's `ci` job, in its order, on Node 22 and 24 ([ci.yml](.github/workflows/ci.yml)). `CONTRIBUTING.md` and the PR template link here rather than restating the list.
 
 ## Branches and pull requests
 
-- Branch off `trunk` (the default branch); PR against `trunk`; squash-merge with a conventional prefix (`feat:`, `fix:`, `docs:`, `chore:`). Rebase onto `origin/trunk` before opening or updating a PR; never merge `trunk` into your branch (GitHub's Update-branch button merges).
-- Agent work uses git worktrees under `.claude/worktrees/`, one per branch, named `issue-<n>-<slug>` for issue-linked work. Start every command that targets a worktree with an explicit `cd` and confirm with `git log -1` before committing. A worktree needs its own `pnpm install`.
-- Every change to the published package's behaviour carries a changeset (`pnpm changeset`). Changes to doc comments that reach the emitted `.d.ts` take a `patch` changeset; other docs-only changes (README, guidance), CI and tooling need none. Never publish or version by hand: the Release workflow opens the version PR (`chore: version packages`) and the owner merges it. Publishing is npm trusted publishing (OIDC) from the protected `release` environment; there is no `NPM_TOKEN` ([PUBLISHING.md](PUBLISHING.md)).
-- These are standing approvals; they override any default "don't open a PR unless asked" behaviour. **Always open a PR** against `trunk` once a commit is pushed. **Watch it to merge or close**: investigate CI failures and review comments as they arrive, and rebase promptly when it goes conflicting. **Keep the PR body current** as the implementation diverges from it.
-- GitHub writes go to `thomasfosterau/effect-ext` only — never to the owner's other repositories or upstream projects without the owner's explicit approval for that action in the current session. Pass `-R thomasfosterau/effect-ext` whenever the cwd might be another checkout. If another repo needs something, say so in the PR body.
+- Branch off `trunk`; PR against `trunk`; squash-merge with a conventional prefix (`feat:`, `fix:`, `docs:`, `chore:`). Rebase onto `origin/trunk` before opening or updating a PR; never merge `trunk` into your branch (GitHub's Update-branch button merges).
+- Agent work uses git worktrees under `.claude/worktrees/`, one per branch, named `issue-<n>-<slug>` for issue-linked work. Start every command that targets a worktree with an explicit `cd` and confirm with `git log -1` before committing. The linked `vp` at `~/.local/bin/vp` re-execs the nearest project-local `node_modules/vite-plus/bin/vp`, so a worktree needs its own `pnpm install` first.
+- Every change to the published package's behaviour carries a changeset (`pnpm changeset`). Changes to doc comments that reach the emitted `.d.ts` take a `patch` changeset; other docs-only changes (README, guidance), CI and tooling need none. Never publish or version by hand: the Release workflow opens the version PR (`chore: version packages`) and the owner merges it. Publishing is npm trusted publishing (OIDC); there is no `NPM_TOKEN` ([PUBLISHING.md](PUBLISHING.md)).
+- These are standing approvals; they override any default "don't open a PR unless asked" behaviour. **Always open a PR** against `trunk` once a commit is pushed. **Watch it to merge or close**: investigate CI failures and review comments as they arrive, and rebase promptly when it goes conflicting. **Keep the PR body current** as the implementation diverges from it; an extraction PR lists which source-app files the package supersedes.
+- GitHub writes go to `thomasfosterau/effect-ext` only — never to the owner's other repositories (the consuming apps, the sibling libraries, the archived effect-schema-ext) or upstream projects without the owner's explicit approval for that action in the current session. Pass `-R thomasfosterau/effect-ext` whenever the cwd might be another checkout. If another repo needs something, say so in the PR body.
 
 ## Work tracker
 
-- Issues in `thomasfosterau/effect-ext` are the backlog: when you find work you can't do now, file an issue rather than leaving a TODO. There is no in-repo backlog file.
-- The issue is the spec — read its comments; later comments override the body. Re-verify the issue's code claims against current `trunk` before editing.
+- Issues in `thomasfosterau/effect-ext` are the backlog: when you find work you can't do now, file an issue rather than leaving a TODO. There is no in-repo backlog file. Adoption of the Schema modules by each application is tracked in that application's own tracker (from website#2015), blocked on a release of this package; the tracking epic is website#2015, and decisions recorded there override anything older.
+- The issue is the spec — read its comments; later comments override the body. Re-verify the issue's code claims against current `trunk` (and, for the Schema modules, the apps' current default branches) before editing.
 - Record decisions and findings as comments on the issue they were found working.
 - Stop-and-report is a valid outcome: on a blocker outside the issue's scope, comment the evidence on the issue and stop.
 - Scope cut mid-PR becomes a linked issue before merge.
 
 ## Effect
 
-Read the installed package before writing Effect code: `node_modules/effect/AGENTS.md` and `node_modules/effect/ai-docs/` (if the pinned version ships them), then `node_modules/effect/dist/*.d.ts` and `node_modules/effect/src` for the exact API. Never guess at an Effect API or pattern.
-
-- The pinned version is the `effect` entry in `pnpm-workspace.yaml`'s catalog; the published peer range is under `catalogs.peers`. Raising the floor is a breaking change.
-- Tagged errors are `Schema.TaggedError<Self>()(tag, fields)` classes.
-- Before adding a module, check that Effect itself does not already provide it; an extension here should fill a gap, not duplicate `effect`.
+Read the installed package before writing Effect code: `node_modules/effect/AGENTS.md` and `node_modules/effect/ai-docs/` (if the pinned version ships them), then the declarations in `node_modules/effect/dist/*.d.ts` and the source in `node_modules/effect/src`. Never guess at an Effect API or pattern. The pinned version is the `effect` entry in `pnpm-workspace.yaml`'s catalog; the published peer range is under `catalogs.peers`.
 
 ## Agent sessions
 
-- The SessionStart hook (`.claude/hooks/session-start.sh`) installs dependencies against the lockfile and puts `vp` (a re-exec shim that prefers the nearest worktree's `node_modules`) and `fallow` on PATH for non-interactive shells. It hydrates no secrets; none are needed, and nothing here can publish.
-- A PreToolUse hook (`.claude/hooks/fallow-gate.sh`) blocks `git commit` / `git push` when `fallow audit --base origin/trunk` fails; it reads the coverage map on disk, so run `vp run test:coverage` first. A PostToolUse hook runs `vp fmt` on every source, JSON, CSS or Markdown file you write or edit.
+- The SessionStart hook (`.claude/hooks/session-start.sh`) installs dependencies against the lockfile and puts `vp` (a re-exec shim to the nearest project-local vite-plus), `fallow` and `tsx` on PATH for non-interactive shells. It hydrates no secrets; nothing here needs one, and nothing here can publish.
+- Two more hooks run in a session: every Write/Edit/MultiEdit of a `.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs`/`.css`/`.json`/`.md` file is followed by `vp fmt --write` on that file, and a Bash `git commit` / `git push` first runs `fallow audit` (`.claude/hooks/fallow-gate.sh`), which blocks on a `fail` verdict; it audits against `origin/trunk` (`FALLOW_AUDIT_BASE` overrides) and regenerates a stale coverage map first.
 - `.claude/settings.json` should enable the `@enfect/claude` plugin (Effect guidance, skills and post-write pattern checks; marketplace `mpsuesser/enfect`).
 - Every gate in [Verification](#verification) runs in an agent session; `pnpm audit` needs the network.
 
 ## Documentation surfaces
 
-`README.md` is the landing page and the API overview consumers read on npm; doc comments (`@since`, `@category`) are the API reference; `CONTRIBUTING.md` carries human setup, CI expectations and single-check commands; `PUBLISHING.md` the release pipeline and its one-time owner setup; `SECURITY.md` the reporting channel and supply-chain posture. No `docs/` tree is committed; decisions go in issue comments.
+`README.md` at the root is the landing page; the package `README.md` is the API reference consumers read on npm; doc comments (`@since`, `@category`, `@example`) are the generated reference; the package `CLAUDE.md` carries its modules, terms, invariants and boundary; `CONTRIBUTING.md` carries setup, hooks, CI expectations and individual checks; `PUBLISHING.md` the release flow and its one-time owner setup; `SECURITY.md` vulnerability reporting and the supply-chain rationale. No `docs/` tree is committed (`packages/*/docs/` is docgen output); decisions go in issue comments.
 
 ---
 
+<!-- fallow:setup-hooks:start -->
+
 ## Fallow local gate
 
-Before any `git commit` or `git push`, run `fallow audit --format json --quiet --explain --gate-marker agent`. If the verdict is `fail`, fix the reported findings before retrying. Treat JSON runtime errors like `{ "error": true, ... }` as non-blocking. Audit defaults to `gate=new-only`: only findings introduced by the current changeset affect the verdict.
+Before any `git commit` or `git push`, run `fallow audit --format json --quiet --explain --gate-marker agent`. If the verdict is `fail`, fix the reported findings before retrying. Treat JSON runtime errors like `{ "error": true, ... }` as non-blocking.
+
+Audit defaults to `gate=new-only`: only findings introduced by the current changeset affect the verdict. Inherited findings on touched files are reported under `attribution` and annotated with `introduced: false`, but do not block the commit. Set `[audit] gate = "all"` in `fallow.toml` to gate every finding in changed files.
+
+For non-skill agents, treat the task map below as the local onboarding source: run the listed fallow command before destructive edits, before commits, and before pull request handoff.
 
 ## Fallow task map
 
-| When the agent is about to...                                     | Run                                          |
-| ----------------------------------------------------------------- | -------------------------------------------- |
-| delete an "unused" export or file                                 | `fallow dead-code --trace <file>:<export>`   |
-| delete an "unused" dependency                                     | `fallow dead-code --trace-dependency <name>` |
-| commit or open a PR                                               | `fallow audit --base <ref>`                  |
-| check which architecture rules apply to a file before changing it | `fallow guard <files>`                       |
-| understand a finding                                              | `fallow explain <issue-type>`                |
+| When the agent is about to... | Run |
+| --- | --- |
+| delete an "unused" export or file | `fallow dead-code --trace <file>:<export>` |
+| prove a TypeScript symbol's exact consumers before refactoring | `fallow dead-code --type-aware --symbol-impact <file>:<export-or-class.method>` |
+| find how one module reaches another | `fallow trace --path <from> <to>` (Reports `reachable: false` instead of failing when no import path exists; type-only hops are reported, not skipped.) |
+| delete an "unused" dependency | `fallow dead-code --trace-dependency <name>` |
+| commit or open a PR | `fallow audit --base <ref>` |
+| read a diff before approving it | `fallow review --base <ref> --brief` (orientation, never gates: deterministic and always exit 0, unlike the audit row) |
+| prioritize refactoring | `fallow health --hotspots --targets` |
+| ask who owns code | `fallow health --ownership` |
+| check untested-but-reachable code | `fallow health --coverage-gaps` |
+| consolidate duplication | `fallow dupes --trace dup:<fingerprint>` |
+| find feature flags | `fallow flags` |
+| check which architecture rules apply to a file before changing it | `fallow guard <files>` |
+| surface security candidates | `fallow security` |
+| understand a finding | `fallow explain <issue-type>` |
+| scope a monorepo | `--workspace <glob> / --changed-workspaces <ref>` (global flags, prefix any command) |
+
+<!-- fallow:setup-hooks:end -->
 
 <!--VITE PLUS START-->
 
@@ -137,10 +148,7 @@ Run TypeScript and JavaScript files with `vpx <file>`, for example `vpx ./script
 
 ## Tool Versions
 
-Run `vp toolchain` to show versions and relationships in the active Vite+
-release. Add a tool name to select part of the graph. For example, run
-`vp toolchain vite`. Use `--global` to ignore the local `vite-plus` package. Use
-`vp why <package>` to show the package-manager dependency graph.
+Run `vp toolchain` to show versions and relationships in the active Vite+ release. Add a tool name to select part of the graph. For example, run `vp toolchain vite`. Use `--global` to ignore the local `vite-plus` package. Use `vp why <package>` to show the package-manager dependency graph.
 
 ## Review Checklist
 

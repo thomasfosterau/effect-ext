@@ -1,0 +1,176 @@
+/**
+ * @copyright Thomas Foster
+ *
+ * A consumer of the EMITTED declarations (`packages/effect-utilities/dist`),
+ * resolved through the package's `exports` exactly as an npm install would.
+ * Every `Equals<…>` assertion fails if a declaration degrades on emit — a
+ * brand that emits as `string`, a codec whose `Type` emits as `unknown`, a
+ * reader whose signature emits as `any` (an unresolved name in a `.d.ts` is
+ * the error type under `skipLibCheck`). Type-checked by `vp run check`; never
+ * executed.
+ *
+ * @module dist-consumer
+ */
+
+import * as Option from "effect/Option";
+import type * as Schema from "effect/Schema";
+import type * as SchemaIssue from "effect/SchemaIssue";
+import type * as Effect from "effect/Effect";
+import {
+  Allocator,
+  Ast,
+  Bounded,
+  BufferStruct,
+  Ids,
+  Issues,
+  Layout,
+  LiteralExact,
+  Str,
+  String,
+  StructOfArrays,
+  TriState,
+  Url,
+  Vec,
+} from "@thomasfosterau/effect-utilities";
+import * as VecEntry from "@thomasfosterau/effect-utilities/Vec";
+import * as TriStateEntry from "@thomasfosterau/effect-utilities/TriState";
+import * as BoundedEntry from "@thomasfosterau/effect-utilities/Bounded";
+
+type Assert<T extends true> = T;
+type Equals<A, B> =
+  (<X>() => X extends A ? 1 : 2) extends <X>() => X extends B ? 1 : 2 ? true : false;
+type Not<T extends boolean> = T extends true ? false : true;
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+// ── Ids ────────────────────────────────────────────────────────────────
+const PersonId = Ids.make("PersonId");
+const AgentPersonId = Ids.refine(Ids.make("AgentId"), "PersonId");
+type PersonId = typeof PersonId.Type;
+
+declare const raw: string;
+// @ts-expect-error -- the brand survives declaration emit
+export const rawAsPerson: PersonId = raw;
+
+// ── TriState ───────────────────────────────────────────────────────────
+const summary = TriState.clearable(Ids.Slug);
+const Update = { summary, birthPlaceId: TriState.clearableNullOr(PersonId) };
+
+// ── Bounded ────────────────────────────────────────────────────────────
+const pagination = Bounded.pagination({ maxLimit: 100 });
+const strictPagination = Bounded.requiredPagination({ maxLimit: 100 });
+// @ts-expect-error -- `maxLimit` stays required through declaration emit
+export const uncapped = Bounded.pagination({});
+// @ts-expect-error -- the Option guard survives declaration emit
+export const misread = TriState.readNullOr(Option.none<string>());
+
+// ── LiteralExact ───────────────────────────────────────────────────────
+const statuses = LiteralExact.tuple<"a" | "b">()(["a", "b"]);
+// @ts-expect-error -- the exhaustiveness check survives declaration emit
+export const partial = LiteralExact.tuple<"a" | "b">()(["a"]);
+
+type NullOrFieldsOfA = ReturnType<
+  typeof TriState.toNullOrFields<{ readonly a: Option.Option<string> }>
+>;
+
+// ── Layout, Vec, StructOfArrays, BufferStruct ─────────────────────────
+const Point = Layout.struct({ x: Layout.i32, y: Layout.f64, alive: Layout.bool });
+type Point = Layout.Type<typeof Point>;
+type MakeVec = ReturnType<typeof Vec.make<typeof Layout.u16>>;
+type MakeSoa = ReturnType<typeof StructOfArrays.make<typeof Point.fields>>;
+
+// ── Str, String ────────────────────────────────────────────────────────
+type SplitOnce = ReturnType<typeof Str.splitOnce>;
+
+// ── Url ────────────────────────────────────────────────────────────────
+const ApiUrl = Url.schema({ scheme: "https", hostname: "api.example.com" });
+// @ts-expect-error -- a plain string is not a branded Url after emit
+export const plainUrl: Url.Url<{ readonly scheme: "https" }> = raw;
+
+export type Checks = [
+  // Ids
+  Assert<Not<Equals<PersonId, string>>>,
+  Assert<Equals<typeof PersonId.Encoded, string>>,
+  Assert<Not<Equals<typeof AgentPersonId.Type, string>>>,
+  Assert<Equals<typeof Ids.Uuid.Type, string>>,
+  Assert<Equals<ReturnType<typeof Ids.slug>, Schema.String>>,
+  // TriState
+  Assert<Equals<typeof summary, Schema.optionalKey<Schema.OptionFromNullOr<Schema.String>>>>,
+  // The nullable encoding's decoded type is exactly `PersonId`, `null` and
+  // `undefined`, asserted part by part so no `| null` union is written here.
+  Assert<Equals<NonNullable<typeof Update.birthPlaceId.Type>, PersonId>>,
+  Assert<Equals<Extract<typeof Update.birthPlaceId.Type, null>, null>>,
+  Assert<Equals<Extract<typeof Update.birthPlaceId.Type, undefined>, undefined>>,
+  Assert<Equals<ReturnType<typeof TriState.suppliedValue<number>>, Option.Option<number>>>,
+  Assert<Equals<ReturnType<typeof TriState.read<number>>, TriState.TriState<number>>>,
+  Assert<Equals<NonNullable<ReturnType<typeof TriState.toNullOr<number>>>, number>>,
+  Assert<Equals<Extract<ReturnType<typeof TriState.toNullOr<number>>, null>, null>>,
+  Assert<Equals<Extract<ReturnType<typeof TriState.toNullOr<number>>, undefined>, undefined>>,
+  Assert<Equals<typeof TriStateEntry.suppliedValue, typeof TriState.suppliedValue>>,
+  // Bounded
+  Assert<Equals<typeof Bounded.IdList.Type, ReadonlyArray<string>>>,
+  Assert<Equals<typeof Bounded.IdList.Encoded, string | ReadonlyArray<string>>>,
+  Assert<Equals<typeof pagination.limit.Type, number>>,
+  Assert<Equals<typeof BoundedEntry.PageOffset, typeof Bounded.PageOffset>>,
+  Assert<Equals<typeof strictPagination, Bounded.RequiredPagination>>,
+  Assert<Equals<NonNullable<Bounded.IdListOptions["maxLength"]>, Option.Option<number>>>,
+  // The page window is built on `Schema.Finite` (#75), and says so on emit.
+  Assert<Equals<typeof Bounded.PageOffset, Schema.Finite>>,
+  Assert<Equals<ReturnType<typeof Bounded.pageLimit>, Schema.Finite>>,
+  Assert<Equals<typeof strictPagination.limit, Schema.Finite>>,
+  Assert<Equals<keyof NullOrFieldsOfA, "a">>,
+  Assert<Equals<NonNullable<NullOrFieldsOfA["a"]>, string>>,
+  Assert<Equals<Extract<NullOrFieldsOfA["a"], null>, null>>,
+  Assert<Equals<Extract<NullOrFieldsOfA["a"], undefined>, never>>,
+  // Issues
+  Assert<Equals<Parameters<typeof Issues.leaves>[0], SchemaIssue.Issue>>,
+  Assert<Equals<ReturnType<typeof Issues.pathToJsonPointer>, string>>,
+  Assert<Equals<Issues.PointedIssue["pointer"], string>>,
+  // LiteralExact
+  Assert<Equals<typeof statuses, readonly ["a", "b"]>>,
+  // Ast
+  Assert<Equals<ReturnType<typeof Ast.fieldTraits>, ReadonlyArray<Ast.FieldTraits>>>,
+  // Layout
+  Assert<Equals<Layout.Type<typeof Layout.u8>, number>>,
+  Assert<Equals<Layout.Type<typeof Layout.u64>, bigint>>,
+  Assert<Equals<Layout.Type<typeof Layout.bool>, boolean>>,
+  Assert<Equals<Point, { x: number; y: number; alive: boolean }>>,
+  Assert<Equals<Layout.Type<ReturnType<typeof Layout.array<typeof Layout.u8, 4>>>, Array<number>>>,
+  // Vec
+  Assert<Equals<Effect.Success<MakeVec>, Vec.Vec<number, typeof Layout.u16>>>,
+  Assert<Equals<Effect.Error<MakeVec>, Allocator.AllocationError>>,
+  Assert<Equals<Vec.Element<Effect.Success<MakeVec>>, number>>,
+  Assert<Equals<typeof VecEntry.push, typeof Vec.push>>,
+  // StructOfArrays
+  Assert<Equals<Effect.Success<MakeSoa>, StructOfArrays.StructOfArrays<typeof Point.fields>>>,
+  // BufferStruct
+  Assert<Equals<BufferStruct.FieldType<typeof Layout.f32>, number>>,
+  // Allocator
+  Assert<Equals<Effect.Error<ReturnType<typeof Allocator.allocate>>, Allocator.AllocationError>>,
+  Assert<Equals<Allocator.AllocationError["_tag"], "AllocationError">>,
+  // Str
+  Assert<Equals<ReturnType<typeof Str.len>, number>>,
+  Assert<Equals<SplitOnce, Option.Option<readonly [Str.Str, Str.Str]>>>,
+  Assert<Equals<Str.Utf8Error["_tag"], "Utf8Error">>,
+  // String
+  Assert<Equals<ReturnType<typeof String.make>, Effect.Effect<String.String>>>,
+  Assert<Equals<Effect.Error<ReturnType<typeof String.from>>, Allocator.AllocationError>>,
+  // Url
+  Assert<
+    Equals<
+      typeof ApiUrl.Type,
+      Url.Url<{ readonly scheme: "https"; readonly hostname: "api.example.com" }>
+    >
+  >,
+  Assert<Equals<typeof ApiUrl.Encoded, string>>,
+  // Nothing degraded to `any`
+  Assert<Not<IsAny<typeof Url.resolve>>>,
+  Assert<Not<IsAny<typeof Vec.push>>>,
+  Assert<Not<IsAny<typeof StructOfArrays.column>>>,
+  Assert<Not<IsAny<typeof BufferStruct.make>>>,
+  Assert<Not<IsAny<typeof Str.split>>>,
+  Assert<Not<IsAny<typeof String.pushStr>>>,
+  Assert<Not<IsAny<Allocator.Allocator>>>,
+  Assert<Not<IsAny<typeof TriState.read>>>,
+  Assert<Not<IsAny<typeof Issues.pointers>>>,
+  Assert<Not<IsAny<typeof Bounded.idList>>>,
+];

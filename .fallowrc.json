@@ -1,10 +1,36 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
-  "entry": ["src/index.ts", "src/*.ts", "test/**/*.test.ts", "vite.config.ts"],
-  "ignorePatterns": ["**/dist/**", "**/coverage/**"],
+  "entry": [
+    "packages/effect-utilities/src/index.ts",
+    "packages/effect-utilities/src/Allocator.ts",
+    "packages/effect-utilities/src/Ast.ts",
+    "packages/effect-utilities/src/Bounded.ts",
+    "packages/effect-utilities/src/BufferStruct.ts",
+    "packages/effect-utilities/src/Ids.ts",
+    "packages/effect-utilities/src/Issues.ts",
+    "packages/effect-utilities/src/Layout.ts",
+    "packages/effect-utilities/src/LiteralExact.ts",
+    "packages/effect-utilities/src/Str.ts",
+    "packages/effect-utilities/src/String.ts",
+    "packages/effect-utilities/src/StructOfArrays.ts",
+    "packages/effect-utilities/src/TriState.ts",
+    "packages/effect-utilities/src/Url.ts",
+    "packages/effect-utilities/src/Vec.ts",
+    "packages/*/tests/**/*.test.ts",
+    "packages/*/tests/**/*.types.ts",
+    "tests/dist-consumer/src/*.ts",
+    "**/vite.config.ts",
+    "vite.package.ts"
+  ],
+  "ignorePatterns": ["**/dist/**", "**/docs/**", "**/coverage/**"],
   "ignoreDependencies": [
     "@types/node",
+    "@effect/docgen",
+    "@effect/tsgo",
+    "@effect/language-service",
+    "@typescript/native",
     "typescript",
+    "tsx",
     "vite",
     "vitest",
     "vite-plus",
@@ -27,6 +53,28 @@
     "circular-dependencies": "error",
     "boundary-violation": "error",
     "stale-suppressions": "warn"
+  },
+  "boundaries": {
+    "zones": [
+      {
+        "name": "effect-utilities",
+        "patterns": ["packages/effect-utilities/**"]
+      },
+      {
+        "name": "dist-consumer",
+        "patterns": ["tests/dist-consumer/**"]
+      }
+    ],
+    "rules": [
+      {
+        "from": "effect-utilities",
+        "allow": []
+      },
+      {
+        "from": "dist-consumer",
+        "allow": ["effect-utilities"]
+      }
+    ]
   },
   "health": {
     "maxCyclomatic": 20,

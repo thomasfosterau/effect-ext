@@ -1,0 +1,119 @@
+{
+  "$schema": "https://www.schemastore.org/package",
+  "name": "@thomasfosterau/effect-utilities",
+  "version": "0.0.0",
+  "description": "Extensions to the Effect standard library: Allocator-backed binary layouts, buffer structs, vectors, struct-of-arrays and Rust-style UTF-8 strings, plus Schema helpers (the update tri-state, issue → RFC 6901 JSON Pointer, bounded pagination and id-list codecs, branded UUID ids and slugs, exact literal-union tuples, AST / decode-probe introspection, and URLs whose components are part of their type).",
+  "keywords": [
+    "allocator",
+    "arraybuffer",
+    "effect",
+    "effect-schema",
+    "json-pointer",
+    "pagination",
+    "rfc6901",
+    "schema",
+    "slug",
+    "struct-of-arrays",
+    "typescript",
+    "url",
+    "utf8",
+    "uuid"
+  ],
+  "homepage": "https://github.com/thomasfosterau/effect-ext#readme",
+  "bugs": {
+    "url": "https://github.com/thomasfosterau/effect-ext/issues"
+  },
+  "license": "MIT",
+  "author": "Thomas Foster <me@thomasfoster.au>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thomasfosterau/effect-ext.git",
+    "directory": "packages/effect-utilities"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./Allocator": {
+      "types": "./dist/Allocator.d.ts",
+      "default": "./dist/Allocator.js"
+    },
+    "./Ast": {
+      "types": "./dist/Ast.d.ts",
+      "default": "./dist/Ast.js"
+    },
+    "./Bounded": {
+      "types": "./dist/Bounded.d.ts",
+      "default": "./dist/Bounded.js"
+    },
+    "./BufferStruct": {
+      "types": "./dist/BufferStruct.d.ts",
+      "default": "./dist/BufferStruct.js"
+    },
+    "./Ids": {
+      "types": "./dist/Ids.d.ts",
+      "default": "./dist/Ids.js"
+    },
+    "./Issues": {
+      "types": "./dist/Issues.d.ts",
+      "default": "./dist/Issues.js"
+    },
+    "./Layout": {
+      "types": "./dist/Layout.d.ts",
+      "default": "./dist/Layout.js"
+    },
+    "./LiteralExact": {
+      "types": "./dist/LiteralExact.d.ts",
+      "default": "./dist/LiteralExact.js"
+    },
+    "./Str": {
+      "types": "./dist/Str.d.ts",
+      "default": "./dist/Str.js"
+    },
+    "./String": {
+      "types": "./dist/String.d.ts",
+      "default": "./dist/String.js"
+    },
+    "./StructOfArrays": {
+      "types": "./dist/StructOfArrays.d.ts",
+      "default": "./dist/StructOfArrays.js"
+    },
+    "./TriState": {
+      "types": "./dist/TriState.d.ts",
+      "default": "./dist/TriState.js"
+    },
+    "./Url": {
+      "types": "./dist/Url.d.ts",
+      "default": "./dist/Url.js"
+    },
+    "./Vec": {
+      "types": "./dist/Vec.d.ts",
+      "default": "./dist/Vec.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@effect/language-service": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/coverage-istanbul": "catalog:",
+    "effect": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "catalog:peers"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
