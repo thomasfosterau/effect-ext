@@ -103,7 +103,7 @@ catalog:
 # `catalog:peers` with these ranges in the published manifest (see
 # scripts/release.sh). The floor is the oldest `effect` every package has been
 # type-checked, tested and had its examples run against: 4.0.0, the first
-# stable release (raised from rc.118 in #29). The AI packages'
+# stable release (raised from rc.118 in #30). The AI packages'
 # `@effect/ai-anthropic` / `@effect/platform-node` peers share it.
 #
 # `@cloudflare/workers-types` is the gateway's optional, types-only peer. The
