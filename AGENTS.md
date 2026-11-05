@@ -4,15 +4,16 @@
 
 This repo publishes `effect-ext`: experimental extensions to the Effect (v4) standard library, as a single package at the repository root. Each `src/<Module>.ts` is a public entry point (`effect-ext/<Module>`), re-exported as a namespace from `src/index.ts`.
 
-| Module           | Entry                       | What it is                                                                                               |
-| ---------------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `Allocator`      | `effect-ext/Allocator`      | An `Allocator` service (a `Context.Reference`) handing out `ArrayBuffer` blocks: heap, arena and tracked |
-| `Layout`         | `effect-ext/Layout`         | Binary layouts (`u8` … `f64`, `bool`, structs, fixed arrays) with C-like alignment                       |
-| `BufferStruct`   | `effect-ext/BufferStruct`   | Structs whose fields live in an `ArrayBuffer`, exposed as ordinary properties                            |
-| `Vec`            | `effect-ext/Vec`            | A growable, `ArrayBuffer`-backed array, like Rust's `Vec<T>`                                             |
-| `StructOfArrays` | `effect-ext/StructOfArrays` | A growable struct-of-arrays container with typed-array columns                                           |
-| `String`         | `effect-ext/String`         | A growable, Allocator-backed UTF-8 string, like Rust's `String`                                          |
-| `Str`            | `effect-ext/Str`            | An immutable UTF-8 string slice, like Rust's `str`; usable as a `HashMap` key                            |
+| Module           | Entry                       | What it is                                                                                                                                     |
+| ---------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Allocator`      | `effect-ext/Allocator`      | An `Allocator` service (a `Context.Reference`) handing out `ArrayBuffer` blocks: heap, arena and tracked                                       |
+| `Layout`         | `effect-ext/Layout`         | Binary layouts (`u8` … `f64`, `bool`, structs, fixed arrays) with C-like alignment                                                             |
+| `BufferStruct`   | `effect-ext/BufferStruct`   | Structs whose fields live in an `ArrayBuffer`, exposed as ordinary properties                                                                  |
+| `Vec`            | `effect-ext/Vec`            | A growable, `ArrayBuffer`-backed array, like Rust's `Vec<T>`                                                                                   |
+| `StructOfArrays` | `effect-ext/StructOfArrays` | A growable struct-of-arrays container with typed-array columns                                                                                 |
+| `String`         | `effect-ext/String`         | A growable, Allocator-backed UTF-8 string, like Rust's `String`                                                                                |
+| `Str`            | `effect-ext/Str`            | An immutable UTF-8 string slice, like Rust's `str`; usable as a `HashMap` key                                                                  |
+| `Url`            | `effect-ext/Url`            | Absolute URLs (WHATWG serialisation) branded with the components they were checked against: scheme, hostname / domain, port, credentials, path |
 
 Shared internals live in `src/internal/`: `bytes.ts` (a growable byte buffer), `iterator.ts` (the `indexed` iterator) and `utf8.ts` (the byte-level UTF-8 algorithms behind `String` and `Str`). They are not entry points.
 
