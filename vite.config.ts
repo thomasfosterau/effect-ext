@@ -95,7 +95,6 @@ export default defineConfig({
       // applications' log shape.
       "effect/no-unknown-parameters": "warn",
       "effect/no-unsafe-dictionary-type": "warn",
-      "effect/no-runtime-typeof": "warn",
       "typescript/no-explicit-any": "off",
       "typescript/no-empty-object-type": "off",
       "typescript/ban-ts-comment": "off",
@@ -225,10 +224,6 @@ export default defineConfig({
           "effecttsgo/any-unknown-in-error-context": "off",
         },
       },
-      // Test fixtures are the seams under test, not domain code: a
-      // wall-clock `Date` standing in for a publication stamp, a `CI`
-      // variable toggled to drive a reporter. Each stays visible as a
-      // warning, because a fixture cannot be written another way.
       {
         files: ["**/tests/**/*.ts"],
         rules: {
@@ -238,10 +233,6 @@ export default defineConfig({
           // Same reason: each case is an entry point, so providing its
           // layers there is exactly where `Effect.provide` belongs.
           "effecttsgo/strict-effect-provide": "off",
-          "effect/require-safety-comment-for-type-assertion": "warn",
-          "effect/use-clock-service": "warn",
-          "effect/avoid-process-env": "warn",
-          "effect/require-effect-concurrency": "warn",
         },
       },
     ],

@@ -56,12 +56,15 @@ describe("TestClipboard", () => {
     const result = await Effect.runPromise(
       Effect.gen(function* () {
         yield* control.setDenied(true);
-        const errors = yield* Effect.all([
-          Effect.flip(clipboard.readString),
-          Effect.flip(clipboard.read),
-          Effect.flip(clipboard.writeString("x")),
-          Effect.flip(clipboard.write([])),
-        ]);
+        const errors = yield* Effect.all(
+          [
+            Effect.flip(clipboard.readString),
+            Effect.flip(clipboard.read),
+            Effect.flip(clipboard.writeString("x")),
+            Effect.flip(clipboard.write([])),
+          ],
+          { concurrency: 1 },
+        );
         yield* control.setDenied(false);
         yield* clipboard.writeString("ok");
         return { messages: errors.map((error) => error.message), text: yield* control.text };

@@ -68,16 +68,19 @@ describe("TestGeolocation", () => {
 
   it("fails watchers with the given reason", async () => {
     const reasons = await Effect.runPromise(
-      Effect.forEach(["PermissionDenied", "PositionUnavailable", "Timeout"] as const, (failure) =>
-        Effect.gen(function* () {
-          const { geolocation, control } = yield* TestGeolocation.make({
-            latitude: 0,
-            longitude: 0,
-          });
-          yield* control.fail(failure);
-          const error = yield* Effect.flip(Stream.runDrain(geolocation.watchPosition()));
-          return error.reason._tag;
-        }),
+      Effect.forEach(
+        ["PermissionDenied", "PositionUnavailable", "Timeout"] as const,
+        (failure) =>
+          Effect.gen(function* () {
+            const { geolocation, control } = yield* TestGeolocation.make({
+              latitude: 0,
+              longitude: 0,
+            });
+            yield* control.fail(failure);
+            const error = yield* Effect.flip(Stream.runDrain(geolocation.watchPosition()));
+            return error.reason._tag;
+          }),
+        { concurrency: 1 },
       ),
     );
     expect(reasons).toStrictEqual(["PermissionDenied", "PositionUnavailable", "Timeout"]);

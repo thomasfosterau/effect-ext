@@ -485,6 +485,9 @@ describe("route and isNavigationRequest", () => {
 
   it("recognises only navigations", () => {
     expect(isNavigationRequest(new Request(URL_A))).toBe(false);
+    // SAFETY: `isNavigationRequest` reads only `mode`, and the `Request`
+    // constructor rejects `mode: "navigate"`, so a navigation can only be
+    // stood in for structurally.
     expect(isNavigationRequest({ mode: "navigate" } as Request)).toBe(true);
   });
 });

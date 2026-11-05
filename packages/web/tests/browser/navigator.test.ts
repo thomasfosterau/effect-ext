@@ -44,17 +44,20 @@ describe("Navigator.info", () => {
   it("takes documented defaults where the agent says nothing", async () => {
     const navigator = Navigator.make({ navigator: undefined, events: undefined });
     const result = await Effect.runPromise(
-      Effect.all({
-        info: navigator.info,
-        onLine: navigator.onLine,
-        connection: navigator.connection,
-        userActivation: navigator.userActivation,
-        canShare: navigator.canShare({ url: "https://example.com" }),
-        vibrate: navigator.vibrate(100),
-        onLineChanges: Stream.runCollect(navigator.onLineChanges),
-        languageChanges: Stream.runCollect(navigator.languageChanges),
-        connectionChanges: Stream.runCollect(navigator.connectionChanges),
-      }),
+      Effect.all(
+        {
+          info: navigator.info,
+          onLine: navigator.onLine,
+          connection: navigator.connection,
+          userActivation: navigator.userActivation,
+          canShare: navigator.canShare({ url: "https://example.com" }),
+          vibrate: navigator.vibrate(100),
+          onLineChanges: Stream.runCollect(navigator.onLineChanges),
+          languageChanges: Stream.runCollect(navigator.languageChanges),
+          connectionChanges: Stream.runCollect(navigator.connectionChanges),
+        },
+        { concurrency: 1 },
+      ),
     );
     expect(result).toStrictEqual({
       info: {
@@ -338,11 +341,14 @@ describe("Navigator calls", () => {
   it("fails storage calls Unsupported without a storage manager, and maps rejections", async () => {
     const bare = Navigator.make({ navigator: {}, events: undefined });
     const unsupported = await Effect.runPromise(
-      Effect.all([
-        Effect.flip(bare.storage.estimate),
-        Effect.flip(bare.storage.persisted),
-        Effect.flip(bare.storage.persist),
-      ]),
+      Effect.all(
+        [
+          Effect.flip(bare.storage.estimate),
+          Effect.flip(bare.storage.persisted),
+          Effect.flip(bare.storage.persist),
+        ],
+        { concurrency: 1 },
+      ),
     );
     expect(unsupported.map((error) => [error.operation, error.reason])).toStrictEqual([
       ["storage.estimate", "Unsupported"],
@@ -360,11 +366,14 @@ describe("Navigator calls", () => {
       events: undefined,
     });
     const outcome = await Effect.runPromise(
-      Effect.all({
-        estimate: rejecting.storage.estimate,
-        persisted: Effect.map(Effect.flip(rejecting.storage.persisted), (error) => error.reason),
-        persist: Effect.map(Effect.flip(rejecting.storage.persist), (error) => error.reason),
-      }),
+      Effect.all(
+        {
+          estimate: rejecting.storage.estimate,
+          persisted: Effect.map(Effect.flip(rejecting.storage.persisted), (error) => error.reason),
+          persist: Effect.map(Effect.flip(rejecting.storage.persist), (error) => error.reason),
+        },
+        { concurrency: 1 },
+      ),
     );
     expect(outcome).toStrictEqual({
       estimate: { usageBytes: Option.none(), quotaBytes: Option.none() },
