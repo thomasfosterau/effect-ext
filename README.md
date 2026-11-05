@@ -1,29 +1,43 @@
-# effect-utilities
+# effect-ext
 
-Experimental extensions to the [Effect](https://effect.website) standard library, published as one package, [`@thomasfosterau/effect-utilities`](packages/effect-utilities/README.md):
+Experimental extensions to [Effect](https://effect.website), in two families of packages:
 
-- **Binary data** — an `Allocator` service handing out `ArrayBuffer` blocks, binary `Layout`s with C-like alignment, `BufferStruct`s, a growable `Vec`, a `StructOfArrays` container, and Rust-style UTF-8 `String` / `Str` with byte offsets and Rust's method names.
-- **Schema** — partial-update fields that keep "absent" and "cleared" apart, `SchemaIssue` trees rendered as RFC 6901 JSON Pointers, bounded pagination and id-list codecs, branded UUIDs and slugs, exact literal-union tuples, field introspection by decode probe, and URLs whose scheme, host, port, credentials and path are part of their type.
+- **[`@thomasfosterau/effect-utilities`](packages/effect-utilities/README.md)** — extensions to the Effect standard library.
+  - **Binary data** — an `Allocator` service handing out `ArrayBuffer` blocks, binary `Layout`s with C-like alignment, `BufferStruct`s, a growable `Vec`, a `StructOfArrays` container, and Rust-style UTF-8 `String` / `Str` with byte offsets and Rust's method names.
+  - **Schema** — partial-update fields that keep "absent" and "cleared" apart, `SchemaIssue` trees rendered as RFC 6901 JSON Pointers, bounded pagination and id-list codecs, branded UUIDs and slugs, exact literal-union tuples, field introspection by decode probe, and URLs whose scheme, host, port, credentials and path are part of their type.
+- **The `@thomasfosterau/effect-ai-*` family and `effect-evals`** — purely additive extensions to Effect's AI module (`effect/ai`): the service abstractions upstream lacks (reranking, classification, speech, transcription, images, moderation, voice conversion), first-party providers for vendors the Effect org doesn't ship, a Cloudflare AI Gateway routing layer, and an Effect-native evaluation toolkit. Each is written to feel like it belongs in `effect/ai` itself: a `Context.Service` tag per capability, `Layer`-based wiring, every failure an `AiError`, `Effect.withSpan` telemetry.
 
-> **Status:** experimental. APIs may change between minor versions until 1.0. This repository and its package have been created using Claude Code.
+> **Status:** experimental and pre-1.0. APIs may change between minor versions, so pin what you use. This repository and its packages have been created using Claude Code.
 
-The Schema modules other than `Url` were developed in `thomasfosterau/effect-schema-ext` and moved here before either package was first published; a `effect-schema-ext#NN` reference in a comment is an issue in that tracker.
+Two repositories were merged into this one before or after their packages were first published, and comments ported from them cite their trackers: `effect-schema-ext#NN` is `thomasfosterau/effect-schema-ext` (the Schema modules other than `Url`), and in the AI packages a bare `#NNN` written before the merge is `thomasfosterau/effect-ai-ext`'s tracker (see [AGENTS.md](AGENTS.md)).
 
 ## Packages
 
-| Package | Description |
-| --- | --- |
-| [`@thomasfosterau/effect-utilities`](packages/effect-utilities/README.md) | The extensions, one subpath per module: `Allocator`, `Layout`, `BufferStruct`, `Vec`, `StructOfArrays`, `String`, `Str`, `TriState`, `Issues`, `Bounded`, `Ids`, `LiteralExact`, `Ast`, `Url`. |
+| Package | What it is | Peers |
+| --- | --- | --- |
+| [`@thomasfosterau/effect-utilities`](packages/effect-utilities) | Standard-library extensions, one subpath per module: `Allocator`, `Layout`, `BufferStruct`, `Vec`, `StructOfArrays`, `String`, `Str`, `TriState`, `Issues`, `Bounded`, `Ids`, `LiteralExact`, `Ast`, `Url` | `effect` |
+| [`@thomasfosterau/effect-ai-ext`](packages/effect-ai-ext) | Provider-neutral service abstractions: `RerankerModel`, `ClassifierModel`, `SpeechModel`, `TranscriptionModel`, `ImageModel`, `ModerationModel`, `VoiceConversionModel`; one subpath per module | `effect` |
+| [`@thomasfosterau/effect-ai-mistral`](packages/effect-ai-mistral) | Mistral provider: `LanguageModel` over chat completions, streaming and tool calls | `effect` |
+| [`@thomasfosterau/effect-ai-cohere`](packages/effect-ai-cohere) | Cohere provider: embed, rerank, classify, chat | `effect` |
+| [`@thomasfosterau/effect-ai-voyage`](packages/effect-ai-voyage) | Voyage AI provider: embed, rerank | `effect` |
+| [`@thomasfosterau/effect-ai-elevenlabs`](packages/effect-ai-elevenlabs) | ElevenLabs provider: text-to-speech, speech-to-text, voice conversion | `effect` |
+| [`@thomasfosterau/effect-ai-gateway`](packages/effect-ai-gateway) | Routes `@effect/ai-anthropic` and gateway-native Cohere / OpenAI moderation through a Cloudflare AI Gateway (Worker binding or public HTTPS endpoint), bring-your-own-key | `effect`, `@effect/ai-anthropic`, optional `@cloudflare/workers-types` |
+| [`@thomasfosterau/effect-evals`](packages/effect-evals) | LLM evaluation toolkit: datasets, scorers, thresholds, G-Eval and RAG metrics, a caching runner, and the `effect-evals` CLI | `effect`, optional `@effect/platform-node` (CLI only) |
 
-Published as ESM with declarations and `"sideEffects": false`; requires Node.js 22 or later.
+Each package's README is its API reference, and each published package's `CHANGELOG.md` is written by Changesets. Every package is ESM with declarations and `"sideEffects": false`.
 
 ## Install
 
+Install the packages you need next to `effect`, which must be a single copy in your dependency tree (two copies break `Context`, `Layer` and `Schema` identity):
+
 ```sh
-pnpm add @thomasfosterau/effect-utilities effect
+pnpm add effect @thomasfosterau/effect-utilities
+pnpm add effect @thomasfosterau/effect-ai-ext @thomasfosterau/effect-ai-voyage
 ```
 
-## Example
+The published peer floor is `effect >=4.0.0-rc.118`. Node 22.18 or later, or any runtime with `fetch` (Cloudflare Workers included) for the AI packages.
+
+## Examples
 
 ```ts
 import { Effect, Schema } from "effect";
@@ -39,13 +53,40 @@ const cleared = Schema.decodeUnknownSync(UpdateNote)({ id: "n1", summary: null }
 TriState.read(cleared.summary); // { _tag: "Clear" }
 ```
 
+Rerank documents with Voyage behind the provider-neutral `RerankerModel` service, so the call site never names the vendor:
+
+```ts
+import { Config, Effect, Layer } from "effect";
+import { FetchHttpClient } from "effect/http";
+import { RerankerModel } from "@thomasfosterau/effect-ai-ext";
+import { VoyageClient, VoyageRerankerModel } from "@thomasfosterau/effect-ai-voyage";
+
+const RerankerLive = VoyageRerankerModel.layer({ model: "rerank-2.5" }).pipe(
+  Layer.provide(VoyageClient.layerConfig({ apiKey: Config.Redacted("VOYAGE_API_KEY") })),
+  Layer.provide(FetchHttpClient.layer),
+);
+
+const program = Effect.gen(function* () {
+  const reranker = yield* RerankerModel.RerankerModel;
+  const { results } = yield* reranker.rerank({
+    query: "what is effect?",
+    documents: ["a TypeScript library", "a fruit", "a functional effect system"],
+    topN: 2,
+  });
+  return results;
+}).pipe(Effect.provide(RerankerLive));
+```
+
+Swapping in Cohere (`CohereRerankerModel`) or the gateway's Cohere route changes only the layer. Every provider client takes an `apiUrl` override, which is how a routing layer such as the gateway repoints it at a proxy for BYOK.
+
 ## Documentation
 
-- [Package README](packages/effect-utilities/README.md) — the API reference, module by module.
+- The package READMEs — the API reference, module by module.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — setup, hooks and the individual checks.
 - [AGENTS.md](AGENTS.md) — repository conventions and the verification gates.
 - [PUBLISHING.md](PUBLISHING.md) — the changesets release flow and its one-time setup.
-- [SECURITY.md](SECURITY.md) — vulnerability reporting and the supply-chain posture.
+- [SECURITY.md](SECURITY.md) — vulnerability reporting, credentials and the supply-chain posture.
+- [Issues](https://github.com/thomasfosterau/effect-ext/issues)
 
 ## License
 

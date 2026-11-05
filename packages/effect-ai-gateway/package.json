@@ -1,0 +1,72 @@
+{
+  "name": "@thomasfosterau/effect-ai-gateway",
+  "version": "0.5.1",
+  "description": "Route Effect AI providers (Anthropic, Cohere, OpenAI moderation) through a Cloudflare AI Gateway Worker binding or its public HTTPS endpoint, BYOK.",
+  "keywords": [
+    "ai",
+    "ai-gateway",
+    "anthropic",
+    "byok",
+    "cloudflare",
+    "cohere",
+    "effect",
+    "moderation",
+    "openai",
+    "reranker"
+  ],
+  "homepage": "https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ai-gateway#readme",
+  "bugs": {
+    "url": "https://github.com/thomasfosterau/effect-ext/issues"
+  },
+  "license": "MIT",
+  "author": "Thomas Foster <me@thomasfoster.au>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomasfosterau/effect-ext.git",
+    "directory": "packages/effect-ai-gateway"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    },
+    "access": "public"
+  },
+  "dependencies": {
+    "@thomasfosterau/effect-ai-ext": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@effect/ai-anthropic": "catalog:",
+    "@effect/language-service": "catalog:",
+    "@vitest/coverage-istanbul": "catalog:",
+    "effect": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@cloudflare/workers-types": "catalog:peers",
+    "@effect/ai-anthropic": "catalog:peers",
+    "effect": "catalog:peers"
+  },
+  "peerDependenciesMeta": {
+    "@cloudflare/workers-types": {
+      "optional": true
+    }
+  }
+}

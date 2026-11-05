@@ -12,9 +12,9 @@ vp check       # format + lint
 vp run check   # type gates
 ```
 
-## Adding a module
+## Adding a module or a package
 
-A new module follows the checklist under Conventions in [AGENTS.md](AGENTS.md#conventions).
+A new `effect-utilities` module follows the checklist under Conventions in [AGENTS.md](AGENTS.md#conventions); a new AI provider or abstraction follows the patterns under [The AI packages](AGENTS.md#the-ai-packages).
 
 ## Branch model
 
@@ -26,7 +26,7 @@ Hooks are managed by Vite+; the editable [.vite-hooks/pre-commit](.vite-hooks/pr
 
 ## CI expectations
 
-CI ([ci.yml](.github/workflows/ci.yml)) runs on Node 22 and 24 (each from a pinned major with `check-latest: true`, never `node-version: latest`, which resolves to pre-releases) and runs the same gates as [AGENTS.md § Verification](AGENTS.md#verification), plus `pnpm audit --audit-level high`. [release.yml](.github/workflows/release.yml) runs changesets/action on `trunk` (see [PUBLISHING.md](PUBLISHING.md)). Both workflows are hardened: `permissions: {}` at the top with per-job scopes, every action pinned to a full commit SHA, `persist-credentials: false` wherever nothing pushes, no secrets or OIDC in anything a Dependabot PR can trigger (Release skips `dependabot[bot]`), and no `GITHUB_PATH` writes (steps call `pnpm exec vp …`).
+CI ([ci.yml](.github/workflows/ci.yml)) runs on Node 22 and 24 (each from a pinned major with `check-latest: true`, never `node-version: latest`, which resolves to pre-releases) and runs the same gates as [AGENTS.md § Verification](AGENTS.md#verification), plus `pnpm audit --audit-level high`; `uvx zizmor --offline .github` should stay clean (its configuration is [.github/zizmor.yml](.github/zizmor.yml)). [release.yml](.github/workflows/release.yml) runs changesets/action on `trunk` (see [PUBLISHING.md](PUBLISHING.md)). Both workflows are hardened: `permissions: {}` at the top with per-job scopes, every action pinned to a full commit SHA, `persist-credentials: false` wherever nothing pushes, no secrets or OIDC in anything a Dependabot PR can trigger (Release skips `dependabot[bot]`), and no `GITHUB_PATH` writes (steps call `pnpm exec vp …`).
 
 ## Pre-PR checklist
 
@@ -41,6 +41,8 @@ The gates themselves, in order, are in [AGENTS.md § Verification](AGENTS.md#ver
 ```sh
 vp lint                                              # oxlint only
 vp fmt                                               # oxfmt, writing fixes
-vp run --filter ./packages/effect-utilities check    # the package's own type gate
+vp run --filter ./packages/effect-utilities check    # one package's own type gate
 vp test run tests/Str.test.ts                        # single file (from inside the package)
+vp run -r test:coverage                              # the per-package coverage floors
+vp run check:dist                                    # built entries load and type-check; the effect-evals bin runs
 ```

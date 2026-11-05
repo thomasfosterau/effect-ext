@@ -1,7 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "entry": [
-    "packages/effect-utilities/src/index.ts",
     "packages/effect-utilities/src/Allocator.ts",
     "packages/effect-utilities/src/Ast.ts",
     "packages/effect-utilities/src/Bounded.ts",
@@ -19,8 +18,16 @@
     "packages/*/tests/**/*.test.ts",
     "packages/*/tests/**/*.types.ts",
     "tests/dist-consumer/src/*.ts",
+    "packages/*/src/index.ts",
+    "packages/effect-ai-ext/entries/*.ts",
+    "packages/effect-ai-ext/src/*Model.ts",
+    "packages/effect-evals/src/cli/main.ts",
+    "packages/effect-evals/src/cli/loader.mjs",
+    "packages/effect-evals/bin/effect-evals.js",
+    "packages/effect-evals/tests/fixtures/**",
     "**/vite.config.ts",
-    "vite.package.ts"
+    "vite.package.ts",
+    "scripts/check-dist.mjs"
   ],
   "ignorePatterns": ["**/dist/**", "**/docs/**", "**/coverage/**"],
   "ignoreDependencies": [
@@ -37,7 +44,8 @@
     "@changesets/cli",
     "@changesets/changelog-github",
     "@vitest/coverage-istanbul",
-    "fallow"
+    "fallow",
+    "@enfect/oxlint"
   ],
   "rules": {
     "unused-files": "error",
@@ -63,6 +71,34 @@
       {
         "name": "dist-consumer",
         "patterns": ["tests/dist-consumer/**"]
+      },
+      {
+        "name": "ai-ext",
+        "patterns": ["packages/effect-ai-ext/**"]
+      },
+      {
+        "name": "gateway",
+        "patterns": ["packages/effect-ai-gateway/**"]
+      },
+      {
+        "name": "mistral",
+        "patterns": ["packages/effect-ai-mistral/**"]
+      },
+      {
+        "name": "cohere",
+        "patterns": ["packages/effect-ai-cohere/**"]
+      },
+      {
+        "name": "voyage",
+        "patterns": ["packages/effect-ai-voyage/**"]
+      },
+      {
+        "name": "elevenlabs",
+        "patterns": ["packages/effect-ai-elevenlabs/**"]
+      },
+      {
+        "name": "evals",
+        "patterns": ["packages/effect-evals/**"]
       }
     ],
     "rules": [
@@ -73,6 +109,34 @@
       {
         "from": "dist-consumer",
         "allow": ["effect-utilities"]
+      },
+      {
+        "from": "ai-ext",
+        "allow": []
+      },
+      {
+        "from": "gateway",
+        "allow": ["ai-ext"]
+      },
+      {
+        "from": "mistral",
+        "allow": []
+      },
+      {
+        "from": "cohere",
+        "allow": ["ai-ext"]
+      },
+      {
+        "from": "voyage",
+        "allow": ["ai-ext"]
+      },
+      {
+        "from": "elevenlabs",
+        "allow": ["ai-ext"]
+      },
+      {
+        "from": "evals",
+        "allow": []
       }
     ]
   },
@@ -81,5 +145,25 @@
     "maxCognitive": 15,
     "maxCrap": 30,
     "coverage": "coverage/coverage-final.json"
-  }
+  },
+  // Each AI package's tests/helpers/effect.ts is the one shared harness shape,
+  // copied whole into every package so a suite can reach for any helper; a
+  // package whose suite does not use one yet still carries it. The AI modules
+  // export the same short names (`make`, `layer`, `Options`, `contramap`);
+  // the barrels re-export each module as a namespace (`MistralClient.layer`),
+  // so the shared names are the API shape, not a duplicate.
+  "ignoreExports": [
+    {
+      "file": "packages/*/tests/helpers/effect.ts",
+      "exports": ["runTestExit", "recordingTracer", "RecordedSpan", "RecordingTracer"]
+    },
+    {
+      "file": "packages/effect-ai-*/src/*.ts",
+      "exports": ["make", "layer", "Options", "contramap"]
+    },
+    {
+      "file": "packages/effect-evals/src/*.ts",
+      "exports": ["make", "layer", "Options", "contramap"]
+    }
+  ]
 }

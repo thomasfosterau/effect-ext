@@ -1,6 +1,7 @@
-# pnpm workspace for `@thomasfosterau/effect-utilities` — the published
-# package under packages/* plus the dist-consumer declaration check under
-# tests/*.
+# pnpm workspace for the published packages under packages/* —
+# `@thomasfosterau/effect-utilities` and the `@thomasfosterau/effect-ai-*` /
+# `effect-evals` family (merged in from thomasfosterau/effect-ai-ext) — plus
+# the dist-consumer declaration check under tests/*.
 #
 # The `catalog:` protocol pins versions that MUST be singletons across the
 # workspace. Effect especially: two copies of `effect` break Context / Layer /
@@ -27,12 +28,25 @@ catalogMode: strict
 catalog:
   "@changesets/changelog-github": ^1.0.1
   "@changesets/cli": ^3.0.3
+  # The gateway's optional, types-only peer (see `catalogs.peers`); the dev pin
+  # is what its binding-compatibility test checks a real `Ai` against.
+  "@cloudflare/workers-types": ^5.20261029.1
+  # The Effect line (see the header): equal to `effect` below.
+  "@effect/ai-anthropic": 4.0.6
   # Compiles AND executes every JSDoc `@example` in packages/*/src (the
   # `docgen` task). Its `typescript` peer (`^5`) resolves to the TS6 alias
   # below, which pnpm tolerates via `peerDependencyRules`; the JS API it uses
   # is unchanged in 6.
   "@effect/docgen": ^4.0.6
   "@effect/language-service": ^0.87.5
+  # `effect-evals`' optional CLI peer. Equal to `effect`.
+  "@effect/platform-node": 4.0.6
+  # Transitive only (via @effect/platform-node's `^` range); pinned and
+  # overridden so it cannot float ahead of `effect`. BUMP BY HAND with the rest
+  # of the Effect line: no manifest names it, so Dependabot's `effect` group
+  # never proposes it, and nothing flags a stale pin — the `effect` override
+  # rewrites its peer spec too, so `pnpm peers check` stays silent.
+  "@effect/platform-node-shared": 4.0.6
   # Effect Language Service as a native (TypeScript-Go) binary — the TS7 side
   # of the 6/7 split. `effect-tsgo patch` overwrites the native `tsc` binary
   # with an Effect-patched build matched by gitHead, so this pins in lockstep
@@ -63,7 +77,7 @@ catalog:
   effect: 4.0.6
   fallow: 3.37.0
   # `@effect/docgen` runs each example under tsx.
-  tsx: ^4.23.13
+  tsx: ^4.23.15
   # TypeScript 6/7 side-by-side: TS7 (the native Go compiler) ships no JS API
   # until 7.1, so JS-API consumers (@effect/language-service, @effect/docgen)
   # stay on TS6 while native `tsc` type-checks this library. The alias keeps
@@ -83,14 +97,24 @@ catalog:
   vite: npm:@voidzero-dev/vite-plus-core@1.4.0
   vitest: 5.0.5
 
-# Peer ranges the PUBLISHED package declares. Kept as a named catalog so the
+# Peer ranges the PUBLISHED packages declare. Kept as a named catalog so the
 # strict catalog mode still governs them while they stay ranges (an exact
 # `4.0.0-rc.115` peer would reject a consumer on rc.116). `pnpm pack` replaces
 # `catalog:peers` with these ranges in the published manifest (see
 # scripts/release.sh). The floor is the oldest `effect` the package has been
 # type-checked and tested against (rc.118, the line the whole programme moved to in website#2015).
+#
+# `@cloudflare/workers-types` is the gateway's optional, types-only peer. The
+# gateway's `dist/index.d.ts` names nothing from it (the Worker binding is
+# typed by the gateway's own structural `WorkersAiBinding`), so the floor is
+# the first release whose `Ai` is assignable to `WorkersAiBinding`:
+# 4.20250312.0, the first whose `AiGateway` declares `getUrl()`. Re-verify
+# assignability at the floor before moving it.
 catalogs:
   peers:
+    "@cloudflare/workers-types": ">=4.20250312.0"
+    "@effect/ai-anthropic": ">=4.0.0-rc.118"
+    "@effect/platform-node": ">=4.0.0-rc.118"
     effect: ">=4.0.0-rc.118"
 
 overrides:
@@ -111,14 +135,19 @@ overrides:
   # `effect` MUST be a singleton (see the header): force every resolution to
   # the catalog version so a hoisting reshuffle cannot introduce a second copy.
   effect: "catalog:"
+  # Keep equal to `effect`'s pin (bumped by hand, see its catalog entry).
+  "@effect/platform-node-shared": "catalog:"
   # Vite+'s managed pins (`vp migrate`): the `@*` range keeps the override on
   # transitive / peer semver ranges and leaves `catalog:` references intact.
   vite@*: "catalog:"
   vitest@*: "catalog:"
 nodeLinker: hoisted
+# msgpackr-extract arrives via @effect/platform-node and builds an optional
+# native accelerator.
 allowBuilds:
   esbuild: true
   fallow: true
+  msgpackr-extract: true
 peerDependencyRules:
   allowAny:
     - vite
