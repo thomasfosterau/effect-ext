@@ -143,7 +143,7 @@ const roundAway = (n: number) => (n < 0 ? -Math.round(-n) : Math.round(n))
 const roundTiesEven = (n: number) => (Math.abs(n % 1) === 0.5 ? 2 * Math.round(n / 2) : Math.round(n))
 
 /** @internal */
-export const makeFloat = <A extends number>(config: {
+export const buildFloat = <A extends number>(config: {
   readonly round: (n: number) => number
   readonly mantissaDigits: number
   readonly epsilon: number
@@ -262,7 +262,7 @@ const nextUp64 = (n: number): number => {
  * @category instances
  * @since 0.1.0
  */
-export const F64: Float<number> = /* @__PURE__ */ makeFloat<number>({
+export const F64: Float<number> = /* @__PURE__ */ buildFloat<number>({
   round: (n) => n,
   mantissaDigits: 53,
   epsilon: Number.EPSILON,

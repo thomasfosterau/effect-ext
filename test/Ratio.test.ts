@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 import * as Arr from "effect/Array"
-import * as Equal from "effect/Equal"
+import * as Eq from "effect/Equal"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import { pipe } from "effect/Function"
@@ -25,7 +25,7 @@ describe("Ratio", () => {
     expect(Result.isFailure(Ratio.fromFraction(1n, 0n))).toBe(true)
   })
   it("structural equality and hashing", () => {
-    expect(Equal.equals(Ratio.make(1, 2), Ratio.make(2, 4))).toBe(true)
+    expect(Eq.equals(Ratio.make(1, 2), Ratio.make(2, 4))).toBe(true)
     expect(HashSet.size(HashSet.make(Ratio.make(1, 2), Ratio.make(3, 6), Ratio.make(1, 3)))).toBe(2)
   })
   it("field laws", () => {

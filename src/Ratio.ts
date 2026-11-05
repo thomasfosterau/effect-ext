@@ -22,13 +22,13 @@
  * @since 0.1.0
  */
 import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
+import * as Eq from "effect/Equal"
 import type * as Eqv from "effect/Equivalence"
 import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import type * as Ord from "effect/Order"
 import type { Pipeable } from "effect/Pipeable"
-import * as Predicate from "effect/Predicate"
+import * as P from "effect/Predicate"
 import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
@@ -47,7 +47,7 @@ const TypeId = "~effect-numeric/Ratio"
  * @category models
  * @since 0.1.0
  */
-export interface Ratio extends Equal.Equal, Pipeable {
+export interface Ratio extends Eq.Equal, Pipeable {
   readonly [TypeId]: typeof TypeId
   readonly numer: bigint
   readonly denom: bigint
@@ -56,7 +56,7 @@ export interface Ratio extends Equal.Equal, Pipeable {
 }
 
 /** Only `RatioImpl` instances carry `TypeId`, so its presence identifies a {@link Ratio}. */
-const hasTypeId = <T>(u: T): u is T & Ratio => Predicate.hasProperty(u, TypeId)
+const hasTypeId = <T>(u: T): u is T & Ratio => P.hasProperty(u, TypeId)
 
 class RatioImpl extends Value implements Ratio {
   readonly [TypeId] = TypeId
@@ -67,7 +67,7 @@ class RatioImpl extends Value implements Ratio {
     this.numer = numer
     this.denom = denom
   }
-  [Equal.symbol](that: Equal.Equal): boolean {
+  [Eq.symbol](that: Eq.Equal): boolean {
     return hasTypeId(that) && that.numer === this.numer && that.denom === this.denom
   }
   [Hash.symbol](): number {
