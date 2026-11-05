@@ -48,7 +48,7 @@ describe("gatewayUrlConfig", () => {
   });
 
   it("treats an empty CF_AIG_GATEWAY_ID as missing", async () => {
-    // rc.118's ConfigProvider reads "" as an absent value, so an empty
+    // effect's ConfigProvider reads "" as an absent value, so an empty
     // variable fails the same way an unset one does (no silent empty id).
     const exit = await runTestExit(
       withConfig({ CF_ACCOUNT_ID: "acct", CF_AIG_GATEWAY_ID: "", CF_AIG_TOKEN: "secret" }),

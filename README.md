@@ -35,7 +35,7 @@ pnpm add effect @thomasfosterau/effect-utilities
 pnpm add effect @thomasfosterau/effect-ai-ext @thomasfosterau/effect-ai-voyage
 ```
 
-The published peer floor is `effect >=4.0.0-rc.118`. Node 22.18 or later, or any runtime with `fetch` (Cloudflare Workers included) for the AI packages.
+The published peer floor is `effect >=4.0.0`. Node 22.18 or later, or any runtime with `fetch` (Cloudflare Workers included) for the AI packages.
 
 ## Examples
 
