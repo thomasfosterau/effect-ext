@@ -1,0 +1,62 @@
+{
+  "name": "@thomasfosterau/effect-ai-elevenlabs",
+  "version": "0.3.4",
+  "description": "Effect AI provider for ElevenLabs — SpeechModel (TTS, one-shot + streaming), TranscriptionModel (Scribe STT), and VoiceConversionModel (speech-to-speech).",
+  "keywords": [
+    "ai",
+    "effect",
+    "elevenlabs",
+    "speech-to-text",
+    "streaming",
+    "stt",
+    "text-to-speech",
+    "tts",
+    "voice-conversion"
+  ],
+  "homepage": "https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ai-elevenlabs#readme",
+  "bugs": {
+    "url": "https://github.com/thomasfosterau/effect-ext/issues"
+  },
+  "license": "MIT",
+  "author": "Thomas Foster <me@thomasfoster.au>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomasfosterau/effect-ext.git",
+    "directory": "packages/effect-ai-elevenlabs"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    },
+    "access": "public"
+  },
+  "dependencies": {
+    "@thomasfosterau/effect-ai-ext": "workspace:*"
+  },
+  "devDependencies": {
+    "@effect/language-service": "catalog:",
+    "@vitest/coverage-istanbul": "catalog:",
+    "effect": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "catalog:peers"
+  }
+}

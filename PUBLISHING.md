@@ -14,12 +14,14 @@ The version step (`pnpm run version`) runs `changeset version`, then `vp fmt`, t
 
 ## Maintainer setup (one-time)
 
+The `@thomasfosterau/effect-ai-*` packages and `@thomasfosterau/effect-evals` are already on npm, published from `thomasfosterau/effect-ai-ext` before it was merged here; their trusted publisher still names that repository and must be repointed (step 3) before the next release, or their publish fails auth while the others go through. Their changelogs continue in each package's `CHANGELOG.md`. Their version tags (`@thomasfosterau/effect-ai-ext@0.5.1`, …) live in effect-ai-ext: push them here before the first release (`git fetch <effect-ai-ext> 'refs/tags/*:refs/tags/*' && git push origin --tags`; the commits they name are in this history), or `changeset tag` will tag each AI package's current, already-published version again and the Release workflow will create a GitHub release for it.
+
 `@thomasfosterau/effect-utilities` has not been published yet. npm's trusted-publisher binding is configured per package on npmjs.com, which needs the package to exist — so the first release is a one-off owner action (a manual `npm publish` of the `pnpm pack` tarball from a machine with an npm session, or a classic token used once and then revoked), after which the following steps make the automated flow work end-to-end:
 
 0. **Rename the default branch to `trunk`** (#8). On GitHub it is still `main`, while CI, Release, Changesets and the fallow gate all target `trunk`; until the rename, no workflow runs. **Settings → General → Default branch** (GitHub retargets open PRs).
 1. **Allow Actions to open the Version Packages PR.** In the repo: **Settings → Actions → General → Workflow permissions** → enable **"Allow GitHub Actions to create and approve pull requests"**. Without this the built-in `GITHUB_TOKEN` is forbidden from opening pull requests and the workflow fails at the PR-creation step — even though the job already grants `pull-requests: write`.
 2. **Create and protect the `release` environment.** **Settings → Environments → New environment → `release`** → enable **Required reviewers** (yourself) and restrict deployment to the `trunk` branch, so publishing pauses for manual approval. The Release workflow names this environment; until it exists the job cannot run.
-3. **Configure the trusted publisher.** On npmjs.com, open `@thomasfosterau/effect-utilities` → **Settings → Trusted Publisher** and add:
+3. **Configure the trusted publisher**, for every published package: `@thomasfosterau/effect-utilities`, `effect-ai-ext`, `effect-ai-gateway`, `effect-ai-mistral`, `effect-ai-cohere`, `effect-ai-voyage`, `effect-ai-elevenlabs` and `effect-evals` (for the AI packages, replace the existing `thomasfosterau/effect-ai-ext` binding). On npmjs.com, open the package → **Settings → Trusted Publisher** and add:
    - Provider: **GitHub Actions**
    - Repository: `thomasfosterau/effect-ext`
    - Workflow: `release.yml`

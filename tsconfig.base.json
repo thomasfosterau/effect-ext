@@ -11,6 +11,10 @@
     "moduleResolution": "bundler",
     "target": "esnext",
     "lib": ["esnext", "dom", "dom.iterable"],
+    // No ambient `@types/*` unless a tsconfig asks: the gateway's declarations
+    // are proved to need nothing from `@cloudflare/workers-types` (scripts/
+    // check-dist.mjs), and a package that wants Node's types names them.
+    "types": [],
     // Source imports are written `./x.ts`; the build rewrites them to `./x.js`
     // in the emitted JavaScript. The emitted `.d.ts` keeps `./x.ts`, which
     // both `bundler` and `nodenext` consumers resolve (verified 2026-09-18).
@@ -39,6 +43,12 @@
         // is what actually makes warnings non-blocking in the check tasks.
         "ignoreEffectWarningsInTscExitCode": true,
         "diagnosticSeverity": {
+          // Effect 4 marks much of its surface `@stability unstable` (the
+          // `effect/http*` modules, `AiError`, ...), so at its default
+          // severity this warns on hundreds of uses in the AI providers and
+          // drowns the warnings that matter. A suggestion keeps the reminder
+          // in the editor.
+          "unstableApiUsage": "suggestion",
           "abortControllerInEffect": "warning",
           "asyncFunction": "warning",
           "cryptoRandomUUID": "warning",

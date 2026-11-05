@@ -1,7 +1,15 @@
 /**
  * Root workspace config: the repo-wide fmt / lint / staged passes and the root
- * `check`, `docgen` and `test:coverage` aggregates. Per-package tasks come
- * from `vite.package.ts`.
+ * `check`, `docgen`, `check:dist` and `test:coverage` aggregates. Every
+ * package's own tasks come from `vite.package.ts`; this file compiles
+ * nothing, but a new package adds itself to the aggregate lists below and to
+ * `coverageFloors`.
+ *
+ * The lint config is one rule set for the whole workspace. The `effect-ai-*`
+ * family and `effect-evals` (merged in from thomasfosterau/effect-ai-ext)
+ * came with a looser one: their relaxations are scoped to `aiPackages` in
+ * `overrides` below, each with its reason, so `effect-utilities` keeps the
+ * stricter set.
  *
  * @copyright Thomas Foster
  */
@@ -9,6 +17,48 @@
 import { defineConfig } from "vite-plus";
 import { recommended } from "@effect/tsgo/oxlint-presets";
 import effect from "@enfect/oxlint";
+import { type CoverageFloor, resolveCoverageThresholds } from "./vite.package.ts";
+import { coverageFloor as cohereFloor } from "./packages/effect-ai-cohere/vite.config.ts";
+import { coverageFloor as elevenlabsFloor } from "./packages/effect-ai-elevenlabs/vite.config.ts";
+import { coverageFloor as aiExtFloor } from "./packages/effect-ai-ext/vite.config.ts";
+import { coverageFloor as gatewayFloor } from "./packages/effect-ai-gateway/vite.config.ts";
+import { coverageFloor as mistralFloor } from "./packages/effect-ai-mistral/vite.config.ts";
+import { coverageFloor as voyageFloor } from "./packages/effect-ai-voyage/vite.config.ts";
+import { coverageFloor as evalsFloor } from "./packages/effect-evals/vite.config.ts";
+import { coverageFloor as utilitiesFloor } from "./packages/effect-utilities/vite.config.ts";
+
+/**
+ * Each package's coverage ratchet, keyed by its directory. The floors live
+ * next to each package's config; listing them here makes the root
+ * `test:coverage` run enforce them package by package, as glob thresholds,
+ * because Vitest reads `coverage` from the root config only and ignores the
+ * projects' own.
+ */
+const coverageFloors = {
+  "effect-ai-cohere": cohereFloor,
+  "effect-ai-elevenlabs": elevenlabsFloor,
+  "effect-ai-ext": aiExtFloor,
+  "effect-ai-gateway": gatewayFloor,
+  "effect-ai-mistral": mistralFloor,
+  "effect-ai-voyage": voyageFloor,
+  "effect-evals": evalsFloor,
+  "effect-utilities": utilitiesFloor,
+} satisfies Readonly<Record<string, CoverageFloor>>;
+
+/** The packages that came from thomasfosterau/effect-ai-ext (see the header). */
+const aiPackages = ["packages/effect-ai-*/**", "packages/effect-evals/**"];
+
+/** Every package name, for the root aggregates. */
+const packageNames = [
+  "@thomasfosterau/effect-ai-cohere",
+  "@thomasfosterau/effect-ai-elevenlabs",
+  "@thomasfosterau/effect-ai-ext",
+  "@thomasfosterau/effect-ai-gateway",
+  "@thomasfosterau/effect-ai-mistral",
+  "@thomasfosterau/effect-ai-voyage",
+  "@thomasfosterau/effect-evals",
+  "@thomasfosterau/effect-utilities",
+];
 
 export default defineConfig({
   // Staged-file checks run by `vp staged` (pre-commit).
@@ -16,7 +66,9 @@ export default defineConfig({
     "*.{js,ts,css,json,md}": "vp check --fix",
   },
   fmt: {
-    ignorePatterns: ["**/dist/**", "**/docs/**", "**/coverage/**"],
+    // CHANGELOG.md files are written by `changeset version` and never
+    // hand-edited, so the formatter leaves them as Changesets wrote them.
+    ignorePatterns: ["**/dist/**", "**/docs/**", "**/coverage/**", "**/CHANGELOG.md"],
     overrides: [
       {
         files: ["**/*.md"],
@@ -56,8 +108,9 @@ export default defineConfig({
             "The `Buffer` global is typed `any` wherever @cloudflare/workers-types is loaded. Use Uint8Array / TextEncoder / DataView.",
         },
       ],
-      // docgen's own tags: every export carries `@since` and `@category`
-      // (AGENTS.md), and module headers `@module` / `@copyright`.
+      // docgen's own tags: every `effect-utilities` export carries `@since`
+      // and `@category` (AGENTS.md), and module headers `@module` /
+      // `@copyright`. The AI packages use `@category` only.
       "jsdoc/check-tag-names": [
         "error",
         { definedTags: ["since", "category", "module", "copyright"] },
@@ -89,8 +142,222 @@ export default defineConfig({
       "typescript/ban-ts-comment": "off",
       "unicorn/no-empty-file": "off",
       "vite-plus/prefer-vite-plus-imports": "error",
+      // Each AI package's `tests/helpers/effect.ts` asserts a typed failure
+      // through `expectFailureInstanceOf`, and `node:assert` is used too.
+      "vitest/expect-expect": [
+        "error",
+        {
+          assertFunctionNames: [
+            "expect",
+            "expect*",
+            "assert",
+            "assert*",
+            "expectFailureInstanceOf",
+          ],
+        },
+      ],
+      // `expect(value, message)`: Vitest's second argument labels a failure.
+      "vitest/valid-expect": ["error", { maxArgs: 2 }],
     },
     overrides: [
+      // ---- The AI packages: the rule set they arrived with ----
+      {
+        files: aiPackages,
+        rules: {
+          // `casting-awareness` is an awareness prompt, not a defect rule — it
+          // fires on every `as`, including the narrowings the Fetch / Workers
+          // types structurally require. Stays visible as a warning.
+          "effect/casting-awareness": "warn",
+          // Hard-codes abbreviations (`Arr`, `P`, `R`, …) with no options; the
+          // AI packages use the full-name convention (`import * as Option from
+          // "effect/Option"`) they share with their consumers.
+          "effect/prefer-namespace-imports": "off",
+          // `prefer-option-over-null` also fires on `?: T | undefined`, the
+          // ONLY spelling of an optional member `exactOptionalPropertyTypes`
+          // lets a caller forward an optional of its own into. A bare `null` /
+          // `undefined` in a return type is still a finding to read.
+          "effect/prefer-option-over-null": "warn",
+          // `unknown` is the honest type at the boundaries these libraries sit
+          // on: a caught failure handed to an error tracker or a log line, and
+          // the free-form fields of a structured log event.
+          "effect/no-unknown-parameters": "warn",
+          "effect/no-unsafe-dictionary-type": "warn",
+          "effect/no-runtime-typeof": "warn",
+          // Spreading into a fresh object or array inside `map` is how this
+          // family builds immutable values (a `readonly` embedding copied into
+          // a mutable result); mutating in place would break the readonly
+          // types the rule's fix needs.
+          "oxc/no-map-spread": "off",
+          // Effect 4 marks much of its surface `@stability unstable` (the
+          // `effect/http*` modules, `AiError`, ...), so this fires on ~900
+          // uses across the providers and drowns the findings that matter. The
+          // language service keeps it as an editor suggestion
+          // (tsconfig.base.json).
+          "effecttsgo/unstable-api-usage": "off",
+          // Oxlint's `suspicious` category, which effect-ext enables and the
+          // AI packages arrived without (effect-ai-ext#161). Each rule below
+          // fired on them at the merge; paying them down, and deleting each
+          // line here as it reaches zero, is #24.
+          // The AI suites provide layers per test with `Effect.provide`
+          // (AGENTS.md → Tests), not `@effect/vitest`'s `layer(...)`.
+          "effecttsgo/strict-effect-provide": "off",
+          "typescript/no-unnecessary-type-arguments": "off",
+          "typescript/no-unnecessary-type-conversion": "off",
+          "typescript/no-unnecessary-type-assertion": "off",
+          "typescript/no-unnecessary-type-parameters": "off",
+          "typescript/consistent-return": "off",
+          "unicorn/consistent-function-scoping": "off",
+          "eslint/no-shadow": "off",
+          "promise/always-return": "off",
+        },
+      },
+      // Build/test configs are evaluated by Vite and Vitest in bare Node,
+      // before any Effect runtime exists — there is no `Config` provider to
+      // read from and no `FileSystem` service to call, so `process.env` and
+      // `node:*` are the only things that work there. The same holds for the
+      // other plain-Node files: the dist guard under `scripts/`, the
+      // `effect-evals` bin launcher and its module-resolution hook
+      // (`loader.mjs`), which run before the CLI's Effect runtime exists, and
+      // the loader test fixtures that stand in for a consumer's plain modules.
+      {
+        files: [
+          "scripts/**",
+          "packages/effect-evals/bin/**",
+          "packages/effect-evals/src/cli/loader.mjs",
+          "packages/effect-evals/tests/fixtures/loader/**",
+        ],
+        rules: {
+          "effect/avoid-node-imports": "off",
+          "effect/avoid-sync-fs": "off",
+          "effect/avoid-process-env": "off",
+          // Plain Node: native loops, `.length` and `Object.fromEntries` are
+          // the idiom.
+          "effect/imperative-loops": "off",
+          "effect/no-length-comparison": "off",
+          "effect/prefer-arr-match": "off",
+          "effect/avoid-native-object-helpers": "off",
+          "effect/use-console-service": "off",
+          "effect/use-filesystem-service": "off",
+          "effect/use-path-service": "off",
+          "effect/avoid-native-fetch": "off",
+          "effect/effect-promise-vs-trypromise": "off",
+          // Plain Node again: `child_process` / `os` / `try`-`catch` / a native
+          // `.sort()` are what is available without an Effect runtime, and
+          // `makeDistResolve` is a hook factory, not an Effect service.
+          "effect/use-command-executor-service": "off",
+          "effect/use-temp-file-scoped": "off",
+          "effect/avoid-try-catch": "off",
+          "effect/prefer-arr-sort": "off",
+          "effect/no-service-constructor-imports": "off",
+          "effect/no-conditional-empty-object-spread": "off",
+          // No Schema or tagged-error runtime is loaded here: the dist guard
+          // reports through a thrown `Error` and reads `package.json` and
+          // `tsc`'s output with `JSON.parse`, as plain Node does.
+          "effect/avoid-untagged-errors": "off",
+          "effect/avoid-direct-json": "off",
+          // The dist guard imports each entry in turn so its report reads in
+          // order and one failing import is attributed to its specifier.
+          "eslint/no-await-in-loop": "off",
+          // `flatMap` over a fresh spread of two diagnostic arrays, not an
+          // element modified in place.
+          "oxc/no-map-spread": "off",
+        },
+      },
+      // Each AI package's `tests/helpers/effect.ts` IS the test harness
+      // boundary `effect-run-in-body` names as the place to run an Effect
+      // (`runTest` wraps `Effect.runPromise`), and its recording tracer must
+      // hand Effect a mutable native `Map`: `Tracer.Span.attributes` is a
+      // `ReadonlyMap` the span's own `attribute(key, value)` writes through.
+      {
+        files: ["packages/*/tests/helpers/effect.ts"],
+        rules: {
+          "effect/effect-run-in-body": "off",
+          "effect/avoid-native-object-helpers": "off",
+        },
+      },
+      // The bin and loader tests spawn the real plain-Node launcher and
+      // resolution hook as a child `node` with the bin's own flags, in a
+      // scratch package they lay out on disk: what they assert is Node's own
+      // process behaviour (argv, stderr warnings), which only the Node APIs
+      // reproduce.
+      {
+        files: [
+          "packages/effect-evals/tests/cli/bin.test.ts",
+          "packages/effect-evals/tests/cli/loader.test.ts",
+        ],
+        rules: {
+          "effect/avoid-node-imports": "off",
+          "effect/avoid-sync-fs": "off",
+          "effect/use-command-executor-service": "off",
+          "effect/use-filesystem-service": "off",
+          "effect/use-path-service": "off",
+          "effect/use-temp-file-scoped": "off",
+        },
+      },
+      // `cli/Discover` globs with Node's `fs.promises.glob`: effect's
+      // `FileSystem` has no glob (its paths go through the `Path` service).
+      {
+        files: ["packages/effect-evals/src/cli/Discover.ts"],
+        rules: {
+          "effect/use-filesystem-service": "off",
+        },
+      },
+      // `Cache.hashKey` canonicalises native `Map` / `Set` inputs (a golden
+      // is any user value), so its tests must build native ones: a `HashMap`
+      // would test a different input and break the pinned digest.
+      {
+        files: ["packages/effect-evals/tests/cache.test.ts"],
+        rules: {
+          "effect/avoid-native-object-helpers": "off",
+        },
+      },
+      // `jsonValidity` reports `JSON.parse`'s own `SyntaxError` message as its
+      // reason (the user-facing point of the scorer); Schema's JSON codec
+      // discards that cause for a generic "a valid JSON string" issue.
+      // Its `Effect.try` necessarily carries `JSON.parse`'s thrown value as
+      // `unknown` until `catchIf(isSyntaxError, …)` narrows it out and the
+      // remainder dies, so `any-unknown-in-error-context` cannot apply.
+      {
+        files: ["packages/effect-evals/src/scorers/JsonValidity.ts"],
+        rules: {
+          "effect/avoid-direct-json": "off",
+          "effecttsgo/any-unknown-in-error-context": "off",
+        },
+      },
+      // `Cache.hashKey` hands `crypto.subtle.digest`'s rejection on as
+      // `unknown` for one step before `Effect.orDie` turns it into a defect
+      // (SHA-256 over bytes cannot fail); a typed error would name a failure
+      // no caller can see.
+      {
+        files: ["packages/effect-evals/src/Cache.ts"],
+        rules: {
+          "effecttsgo/any-unknown-in-error-context": "off",
+        },
+      },
+      // `cli/Run` builds a user eval file's exported `layer`, whose error and
+      // services are whatever that file declares (`Layer.Layer<R, unknown>`):
+      // the CLI cannot name them, and every failure is reported, not typed.
+      {
+        files: ["packages/effect-evals/src/cli/Run.ts"],
+        rules: {
+          "effecttsgo/any-unknown-in-error-context": "off",
+        },
+      },
+      // The AI packages' test fixtures are the seams under test, not domain
+      // code: a wall-clock `Date` standing in for a publication stamp, a `CI`
+      // variable toggled to drive a reporter, or a single type assertion
+      // that narrows a stub or a decoded fixture. Each stays visible as a
+      // warning, because a fixture cannot be written another way.
+      {
+        files: ["packages/effect-ai-*/tests/**/*.ts", "packages/effect-evals/tests/**/*.ts"],
+        rules: {
+          "effect/require-safety-comment-for-type-assertion": "warn",
+          "effect/use-clock-service": "warn",
+          "effect/avoid-process-env": "warn",
+          "effect/require-effect-concurrency": "warn",
+        },
+      },
+      // ---- effect-utilities ----
       // `@effect/vitest` is Effect's own test runner, released in lockstep
       // with `effect` and pinned exactly beside it in the catalog, so an
       // "unstable" break arrives in the `effect` Dependabot PR and fails
@@ -122,11 +389,13 @@ export default defineConfig({
       },
       // Vite evaluates a config module synchronously in bare Node, before any
       // Effect runtime exists, so the config IS the run boundary: reading
-      // `VITEST_MAX_WORKERS` through `Config` has to run there.
+      // `VITEST_MAX_WORKERS` through `Config` has to run there. The configs
+      // are plain build tooling: `Object.fromEntries` is the idiom.
       {
-        files: ["vite.package.ts"],
+        files: ["vite.package.ts", "vite.config.ts", "packages/*/vite.config.ts"],
         rules: {
           "effect/effect-run-in-body": "off",
+          "effect/avoid-native-object-helpers": "off",
         },
       },
       // Type-level tests: the expect-error directives ARE the assertions
@@ -192,7 +461,7 @@ export default defineConfig({
       check: {
         command: "echo 'check: every type gate green'",
         dependsOn: [
-          "@thomasfosterau/effect-utilities#check",
+          ...packageNames.map((name) => `${name}#check`),
           "@effect-utilities/dist-consumer#check",
         ],
         cache: false,
@@ -202,7 +471,18 @@ export default defineConfig({
       // package's (git-ignored) `docs/`. Same pure-graph-node shape.
       docgen: {
         command: "echo 'docgen: every example compiled and ran'",
-        dependsOn: ["@thomasfosterau/effect-utilities#docgen"],
+        dependsOn: packageNames.map((name) => `${name}#docgen`),
+        cache: false,
+      },
+      // Dist-level import check (scripts/check-dist.mjs): imports every
+      // built entry and subpath under Node ESM, fails on a value export the
+      // bundled `.d.ts` declares but the bundle lacks, type-checks every
+      // bundled `.d.ts` with `skipLibCheck: false`, and launches the
+      // `effect-evals` bin from a packed tarball under `node_modules`. Reads
+      // `dist/`, hence the build edges.
+      "check:dist": {
+        command: "node scripts/check-dist.mjs",
+        dependsOn: packageNames.map((name) => `${name}#build`),
         cache: false,
       },
       // Every package's unit suite under one Istanbul coverage map
@@ -228,7 +508,19 @@ export default defineConfig({
       reporter: ["text-summary", "json-summary", "json"],
       reportsDirectory: "./coverage",
       include: ["packages/*/src/**/*.ts"],
-      exclude: ["**/*.d.ts"],
+      exclude: ["**/*.d.ts", "packages/effect-evals/src/cli/main.ts"],
+      // Per package, not global: a glob's numbers aggregate only the files it
+      // matches, so one package's surplus never offsets another's drop. A
+      // weaker extra check, not the gate: the map here merges every package's
+      // tests, so a package's files also count lines another package's tests
+      // reach. The gate is `vp run -r test:coverage`, where each package's
+      // own config measures it with only its own tests.
+      thresholds: Object.fromEntries(
+        Object.entries(coverageFloors).map(([dir, floor]) => [
+          `packages/${dir}/src/**`,
+          { ...resolveCoverageThresholds(floor) },
+        ]),
+      ),
     },
   },
 });

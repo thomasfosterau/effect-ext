@@ -1,9 +1,9 @@
 {
   "$schema": "https://www.schemastore.org/package",
-  "name": "effect-utilities-workspace",
+  "name": "effect-ext-workspace",
   "version": "0.0.0",
   "private": true,
-  "description": "Workspace for @thomasfosterau/effect-utilities: extensions to the Effect standard library.",
+  "description": "Workspace for @thomasfosterau/effect-utilities (extensions to the Effect standard library) and the @thomasfosterau/effect-ai-* / effect-evals family (extensions to Effect's AI module).",
   "license": "MIT",
   "author": "Thomas Foster <me@thomasfoster.au>",
   "type": "module",
@@ -39,5 +39,5 @@
     "node": "^22.18.0 || ^24.11.0 || >=26.0.0",
     "pnpm": ">=11"
   },
-  "packageManager": "pnpm@11.18.0"
+  "packageManager": "pnpm@11.27.0"
 }

@@ -24,6 +24,11 @@
 #   (`catalogs.peers.effect`, a `>=` range) is a tested claim that Dependabot
 #   has never rewritten (#60, #63), and it is never Dependabot's to move
 #   (AGENTS.md, Common pitfalls).
+#   `@effect/ai-anthropic` and `@effect/platform-node` are on the same line;
+#   `@effect/platform-node-shared` is named only in the catalog and
+#   `overrides`, so Dependabot never proposes it: bump it by hand to the same
+#   version in the same PR.
+# - `cloudflare`: `@cloudflare/*` (the gateway's types-only peer).
 # - `changesets`, `fallow`: their own sets.
 # - `minor-and-patch`: everything else's minor and patch updates in one PR;
 #   a major outside the sets above stays its own PR.
@@ -35,8 +40,9 @@
 #   (`npm:typescript@<v>`, must match `@effect/tsgo`'s components table).
 #   Set them on the `toolchain` PR that moves their partner.
 # - the `overrides` literals in pnpm-workspace.yaml (`undici`, a security
-#   floor; drop it once nothing resolves below the fix) and the catalog's
-#   `catalogs.peers` floor.
+#   floor; drop it once nothing resolves below the fix), the catalog's
+#   `catalogs.peers` floors, and `@effect/platform-node-shared` (equal to
+#   `effect`).
 # - the npm version the Release workflow installs (`npm install -g npm@…`).
 #
 # `cooldown` waits 1 day, Dependabot's smallest unit (whole days only). That
@@ -93,6 +99,12 @@ updates:
         exclude-patterns:
           - "@effect/tsgo"
           - "@effect/docgen"
+        update-types: ["major", "minor", "patch"]
+      cloudflare:
+        applies-to: version-updates
+        patterns:
+          - "@cloudflare/*"
+          - "wrangler"
         update-types: ["major", "minor", "patch"]
       changesets:
         applies-to: version-updates
