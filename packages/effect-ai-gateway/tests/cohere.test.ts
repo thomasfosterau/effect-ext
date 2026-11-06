@@ -283,6 +283,30 @@ describe("Cohere reranker", () => {
     expect(failure.reason._tag).toBe("RateLimitError");
   });
 
+  it("still maps a non-2xx status when its body cannot be read", async () => {
+    const ai = stubAiBinding(() => ({
+      run: async () => {
+        const response = new Response(null, { status: 429 });
+        // The body read is best-effort: a rejected `text()` leaves the
+        // description empty rather than replacing the status mapping.
+        Object.defineProperty(response, "text", {
+          value: () => Promise.reject(new TypeError("body stream already read")),
+        });
+        return response;
+      },
+    }));
+
+    const failure = await expectFailureInstanceOf(
+      Effect.gen(function* () {
+        const reranker = yield* makeCohereReranker(binding(ai));
+        return yield* reranker.rerank({ query: "q", documents: ["a", "b"] });
+      }),
+      AiError.AiError,
+    );
+
+    expect(failure.reason._tag).toBe("RateLimitError");
+  });
+
   it("fails with AiError (not a defect) when the gateway binding call rejects", async () => {
     const failure = await expectFailureInstanceOf(
       Effect.gen(function* () {

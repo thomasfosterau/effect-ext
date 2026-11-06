@@ -21,7 +21,7 @@
  * @copyright Thomas Foster
  */
 
-import type * as Cause from "effect/Cause";
+import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 
 /**
@@ -122,6 +122,11 @@ export interface GatewayBinding {
   readonly gatewayId: string;
 }
 
+// The `UnknownError` the callback form of `Effect.tryPromise` builds, spelled
+// out so the rejection keeps that type and message.
+const unknownError = (cause: unknown): Cause.UnknownError =>
+  new Cause.UnknownError(cause, "An error occurred in Effect.tryPromise");
+
 /**
  * Resolves the base URL for a provider routed through this gateway
  * (`https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/<provider>`)
@@ -141,7 +146,12 @@ export const gatewayUrl = (
   binding: GatewayBinding,
   provider: GatewayProvider,
 ): Effect.Effect<string> =>
-  Effect.orDie(Effect.tryPromise(() => binding.ai.gateway(binding.gatewayId).getUrl(provider)));
+  Effect.orDie(
+    Effect.tryPromise({
+      try: () => binding.ai.gateway(binding.gatewayId).getUrl(provider),
+      catch: unknownError,
+    }),
+  );
 
 /**
  * Runs one request through the gateway's universal endpoint
@@ -173,4 +183,7 @@ export const gatewayRun = (
   binding: GatewayBinding,
   data: GatewayUniversalRequest,
 ): Effect.Effect<Response, Cause.UnknownError> =>
-  Effect.tryPromise((signal) => binding.ai.gateway(binding.gatewayId).run(data, { signal }));
+  Effect.tryPromise({
+    try: (signal) => binding.ai.gateway(binding.gatewayId).run(data, { signal }),
+    catch: unknownError,
+  });
