@@ -4,6 +4,8 @@ Maintained by Thomas Foster, with a workflow meant to be approachable for both h
 
 ## Setup
 
+Open in a Codespace or Dev Container: `.devcontainer/` provisions it with the same hook as agent sessions.
+
 Node `^22.18.0 || ^24.11.0 || >=26.0.0`, pnpm 11 (the `packageManager` pin; `corepack enable` provides it) and [Vite+](https://viteplus.dev/) (`vp`).
 
 ```sh
