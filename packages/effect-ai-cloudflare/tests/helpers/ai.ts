@@ -14,7 +14,7 @@
  * @module tests/helpers/ai
  */
 
-import type { WorkersAiBinding, WorkersAiGateway } from "@thomasfosterau/effect-ai-gateway";
+import type { WorkersAiBinding, WorkersAiGateway } from "@thomasfosterau/effect-ai-cloudflare";
 
 /** The slice of the AI Gateway runtime object a stub implements. */
 export type GatewayStub = Partial<WorkersAiGateway>;

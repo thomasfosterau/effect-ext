@@ -22,7 +22,7 @@ import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import { LanguageModel } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
-import { anthropicLanguageModelLayerFromUrl } from "@thomasfosterau/effect-ai-gateway";
+import { anthropicLanguageModelLayerFromUrl } from "@thomasfosterau/effect-ai-cloudflare";
 import { runTest, runTestExit } from "./helpers/effect";
 
 interface CapturedRequest {

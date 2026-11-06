@@ -64,8 +64,8 @@
         "patterns": ["tests/dist-consumer/**"]
       },
       {
-        "name": "gateway",
-        "patterns": ["packages/effect-ai-gateway/**"]
+        "name": "cloudflare",
+        "patterns": ["packages/effect-ai-cloudflare/**"]
       },
       {
         "name": "mistral",
@@ -94,7 +94,7 @@
         "allow": ["effect-ext"]
       },
       {
-        "from": "gateway",
+        "from": "cloudflare",
         "allow": ["effect-ext"]
       },
       {

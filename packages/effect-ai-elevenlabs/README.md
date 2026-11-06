@@ -2,7 +2,7 @@
 
 An [Effect](https://effect.website) AI provider for **ElevenLabs** — the audio leg of the `@thomasfosterau/effect-ai-*` family. Effect ships no ElevenLabs package, so this implements [`@thomasfosterau/effect-ext`](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ext)'s audio abstractions directly against the ElevenLabs API.
 
-- **`ElevenLabsClient`** — the low-level HTTP client (binary and chunked streaming audio, multipart uploads), every failure mapped to `AiError`. Its `apiUrl` override is the BYOK contract used by a routing layer (the gateway), and the key is sent as the `xi-api-key` header.
+- **`ElevenLabsClient`** — the low-level HTTP client (binary and chunked streaming audio, multipart uploads), every failure mapped to `AiError`. Its `apiUrl` override is the BYOK contract used by a routing layer (`@thomasfosterau/effect-ai-cloudflare`), and the key is sent as the `xi-api-key` header.
 - **`ElevenLabsSpeechModel`** — the `SpeechModel` (text-to-speech): a one-shot `generate` returning the full audio buffer, and a backpressured, interruption-safe `stream` of audio chunks.
 - **`ElevenLabsTranscriptionModel`** — the `TranscriptionModel` over Scribe (speech-to-text) with per-word segment timestamps and detected language.
 - **`ElevenLabsVoiceConversionModel`** — the `VoiceConversionModel` (speech-to-speech).

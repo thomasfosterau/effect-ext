@@ -25,7 +25,7 @@ import {
   makeOpenAiModerationModelFromUrl,
   type OpenAiModerationCall,
   type OpenAiModerationOptions,
-} from "@thomasfosterau/effect-ai-gateway";
+} from "@thomasfosterau/effect-ai-cloudflare";
 import { expectFailureInstanceOf, runTest, runTestExit } from "./helpers/effect";
 
 interface CapturedRequest {

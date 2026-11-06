@@ -41,7 +41,7 @@ import {
   type GatewayUniversalRequest,
   type WorkersAiBinding,
   type WorkersAiGateway,
-} from "@thomasfosterau/effect-ai-gateway";
+} from "@thomasfosterau/effect-ai-cloudflare";
 
 interface Env {
   readonly AI: Ai;
@@ -96,7 +96,7 @@ export const older: WorkersAiGateway = olderGateway;
 `;
 
 const REJECTS = `
-import type { WorkersAiBinding } from "@thomasfosterau/effect-ai-gateway";
+import type { WorkersAiBinding } from "@thomasfosterau/effect-ai-cloudflare";
 
 // A binding without gateway() is rejected.
 declare const notABinding: { readonly run: Ai["run"] };

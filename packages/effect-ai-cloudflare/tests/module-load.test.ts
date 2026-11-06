@@ -21,6 +21,12 @@ const EXPORTS = [
   "anthropicLanguageModelLayer",
   "anthropicLanguageModelLayerFromUrl",
   "cfAigAuthorizationHeader",
+  "CloudflareClient",
+  "cloudflareClientLayer",
+  "cloudflareClientLayerConfig",
+  "CloudflareDecisionModel",
+  "CloudflareSchema",
+  "decisionModelLayerConfig",
   "gatewayBaseUrl",
   "gatewayRun",
   "gatewayUrl",
@@ -35,13 +41,13 @@ const EXPORTS = [
 
 describe("module load", () => {
   it("imports the package entry and exposes every provider constructor", async () => {
-    const entry: Record<string, unknown> = await import("@thomasfosterau/effect-ai-gateway");
+    const entry: Record<string, unknown> = await import("@thomasfosterau/effect-ai-cloudflare");
 
     expect(EffectRecord.keys(entry)).toEqual(expect.arrayContaining([...EXPORTS]));
   });
 
   it.each(EXPORTS)("exposes %s from the package entry", async (name) => {
-    const entry = await import("@thomasfosterau/effect-ai-gateway");
+    const entry = await import("@thomasfosterau/effect-ai-cloudflare");
 
     expect(entry[name], name).toBeDefined();
   });
@@ -49,14 +55,14 @@ describe("module load", () => {
   it.each(EffectRecord.keys(RerankerModelExt))(
     "re-exports no RerankerModel value %s (removed in 0.5.0, #97)",
     async (name) => {
-      const entry: Record<string, unknown> = await import("@thomasfosterau/effect-ai-gateway");
+      const entry: Record<string, unknown> = await import("@thomasfosterau/effect-ai-cloudflare");
 
       expect(entry, name).not.toHaveProperty(name);
     },
   );
 
   it("builds gatewayUrlConfig at module scope (the Config.string crash site)", async () => {
-    const { gatewayUrlConfig } = await import("@thomasfosterau/effect-ai-gateway");
+    const { gatewayUrlConfig } = await import("@thomasfosterau/effect-ai-cloudflare");
 
     expect(Config.isConfig(gatewayUrlConfig)).toBe(true);
   });

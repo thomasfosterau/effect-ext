@@ -8,7 +8,7 @@ You can expect an initial response within a few days. Please include a descripti
 
 ## Credentials
 
-An AI provider client takes its API key only as a `Redacted` value you pass, or one its `layerConfig` loads through `Config.Redacted`; the only implicit read is `@thomasfosterau/effect-ai-gateway`'s `…FromUrl` variants, which load `CF_AIG_TOKEN` through `Config`. The gateway's BYOK routes take no provider key at all. A way for a key to leak into a log line, a span attribute, an error message, or a request to a host other than the configured `apiUrl` is in scope.
+An AI provider client takes its API key only as a `Redacted` value you pass, or one its `layerConfig` loads through `Config.Redacted`; the only implicit read is `@thomasfosterau/effect-ai-cloudflare`'s `…FromUrl` variants, which load `CF_AIG_TOKEN` through `Config`. Its AI Gateway BYOK routes take no provider key at all. A way for a key to leak into a log line, a span attribute, an error message, or a request to a host other than the configured `apiUrl` is in scope.
 
 ## Supply-chain hardening
 

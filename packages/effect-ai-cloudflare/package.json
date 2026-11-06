@@ -1,7 +1,7 @@
 {
-  "name": "@thomasfosterau/effect-ai-gateway",
-  "version": "0.5.1",
-  "description": "Route Effect AI providers (Anthropic, Cohere, OpenAI moderation) through a Cloudflare AI Gateway Worker binding or its public HTTPS endpoint, BYOK.",
+  "name": "@thomasfosterau/effect-ai-cloudflare",
+  "version": "0.0.0",
+  "description": "Cloudflare AI for Effect: @effect/ai-cloudflare's Workers AI decision models and client, routed through a Cloudflare AI Gateway, plus Anthropic, Cohere and OpenAI moderation through the gateway's Worker binding or public HTTPS endpoint, BYOK.",
   "keywords": [
     "ai",
     "ai-gateway",
@@ -9,12 +9,14 @@
     "byok",
     "cloudflare",
     "cohere",
+    "decision-model",
     "effect",
     "moderation",
     "openai",
-    "reranker"
+    "reranker",
+    "workers-ai"
   ],
-  "homepage": "https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ai-gateway#readme",
+  "homepage": "https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ai-cloudflare#readme",
   "bugs": {
     "url": "https://github.com/thomasfosterau/effect-ext/issues"
   },
@@ -23,7 +25,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/thomasfosterau/effect-ext.git",
-    "directory": "packages/effect-ai-gateway"
+    "directory": "packages/effect-ai-cloudflare"
   },
   "files": [
     "dist",
@@ -53,6 +55,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@effect/ai-anthropic": "catalog:",
+    "@effect/ai-cloudflare": "catalog:",
     "@effect/language-service": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
     "effect": "catalog:",
@@ -62,7 +65,8 @@
   "peerDependencies": {
     "@cloudflare/workers-types": "catalog:peers",
     "@effect/ai-anthropic": "catalog:peers",
-    "effect": "catalog:peers"
+    "@effect/ai-cloudflare": "catalog:ai-cloudflare-peers",
+    "effect": "catalog:ai-cloudflare-peers"
   },
   "peerDependenciesMeta": {
     "@cloudflare/workers-types": {

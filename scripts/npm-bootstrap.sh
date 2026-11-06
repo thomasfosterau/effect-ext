@@ -21,17 +21,19 @@
 #   2. For every package, it makes sure there is exactly one trusted publisher on npm:
 #      GitHub Actions, repository thomasfosterau/<repo>, workflow file release.yml, environment
 #      release, permission "publish". An existing matching entry is left alone.
-#   3. For the five packages marked "move" (the effect-ai providers and the gateway), whose trust
+#   3. For the four packages marked "move" (the effect-ai providers), whose trust
 #      still names the deleted thomasfosterau/effect-ai-ext repository, it checks that the old entry
 #      exists, revokes it, and creates the entry for thomasfosterau/effect-ext.
-#   4. For the two packages marked "revoke" (@thomasfosterau/effect-ai-ext and -evals, merged into
-#      @thomasfosterau/effect-ext), it revokes the trust entry that still names
+#   4. For the three packages marked "revoke" (@thomasfosterau/effect-ai-ext and -evals, merged into
+#      @thomasfosterau/effect-ext, and @thomasfosterau/effect-ai-gateway, renamed
+#      @thomasfosterau/effect-ai-cloudflare, which is "new" above), it revokes the trust entry that still names
 #      thomasfosterau/effect-ai-ext and creates none, so nothing can publish them again. A package
 #      with no such entry left is skipped; an entry for any other repository fails it, to fix by hand.
-#   5. It deprecates the five superseded published packages (@thomasfosterau/effect-web, -robots,
-#      -sitemap, -effect-ai-ext and -effect-evals) across all their versions, pointing at the
-#      matching @thomasfosterau/effect-ext subpaths (its README: "Moving from effect-web",
-#      "AI service abstractions", "Evals"). A package whose `npm view <name> deprecated` already
+#   5. It deprecates the six superseded published packages (@thomasfosterau/effect-web, -robots,
+#      -sitemap, -effect-ai-ext, -effect-evals and -effect-ai-gateway) across all their versions,
+#      pointing at the matching @thomasfosterau/effect-ext subpaths (its README: "Moving from
+#      effect-web", "AI service abstractions", "Evals") or, for the gateway, at
+#      @thomasfosterau/effect-ai-cloudflare. A package whose `npm view <name> deprecated` already
 #      equals the message is skipped.
 #   It is idempotent: re-running it skips every name that already exists and every trust entry that
 #   already matches. It continues past failures, prints one line per package and a summary, and
@@ -73,7 +75,8 @@
 #   --skip-placeholders  skip the 0.0.0 placeholder publishes (a missing name is then reported as
 #                   skipped, since it cannot take a trust entry yet).
 #   --skip-trust    skip every trust check, creation, move and revoke.
-#   --skip-deprecate  skip the deprecations (effect-web, -robots, -sitemap, effect-ai-ext, -evals).
+#   --skip-deprecate  skip the deprecations (effect-web, -robots, -sitemap, effect-ai-ext, -evals,
+#                   effect-ai-gateway).
 #                   Combine them to rerun one phase on its own, e.g. --skip-placeholders
 #                   --skip-deprecate reruns only the trust phase.
 #   -h, --help      show this header.
@@ -88,8 +91,9 @@ OLD_AI_REPO="thomasfosterau/effect-ai-ext"
 # action|name|repo|directory ("." = repo root)|workflow|environment|license
 #   new  = placeholder (if missing) + trust
 #   move = trust move from OLD_AI_REPO to repo
-#   revoke = a package merged into another and deprecated below: its OLD_AI_REPO trust entry is
-#            revoked and none is created (repo/directory name where it went, for the log only)
+#   revoke = a package merged into or renamed to another and deprecated below: its OLD_AI_REPO
+#            trust entry is revoked and none is created (repo/directory name where it went, for
+#            the log only)
 PACKAGES='
 new|@thomasfosterau/charts|components|packages/charts|release.yml|release|MIT
 new|@thomasfosterau/effect-auth|effect-auth|packages/effect-auth|release.yml|release|MIT
@@ -118,13 +122,14 @@ new|@thomasfosterau/effect-rtf|effect-document|packages/rtf|release.yml|release|
 new|@thomasfosterau/effect-drizzle-ext|effect-drizzle-ext|packages/core|release.yml|release|MIT
 new|@thomasfosterau/effect-drizzle-ext-pg|effect-drizzle-ext|packages/pg|release.yml|release|MIT
 new|@thomasfosterau/effect-ext|effect-ext|packages/effect-ext|release.yml|release|MIT
-move|@thomasfosterau/effect-ai-gateway|effect-ext|packages/effect-ai-gateway|release.yml|release|MIT
+new|@thomasfosterau/effect-ai-cloudflare|effect-ext|packages/effect-ai-cloudflare|release.yml|release|MIT
 move|@thomasfosterau/effect-ai-mistral|effect-ext|packages/effect-ai-mistral|release.yml|release|MIT
 move|@thomasfosterau/effect-ai-cohere|effect-ext|packages/effect-ai-cohere|release.yml|release|MIT
 move|@thomasfosterau/effect-ai-voyage|effect-ext|packages/effect-ai-voyage|release.yml|release|MIT
 move|@thomasfosterau/effect-ai-elevenlabs|effect-ext|packages/effect-ai-elevenlabs|release.yml|release|MIT
 revoke|@thomasfosterau/effect-ai-ext|effect-ext|packages/effect-ext|release.yml|release|MIT
 revoke|@thomasfosterau/effect-evals|effect-ext|packages/effect-ext|release.yml|release|MIT
+revoke|@thomasfosterau/effect-ai-gateway|effect-ext|packages/effect-ai-cloudflare|release.yml|release|MIT
 new|@thomasfosterau/effect-ical|effect-ical|.|release.yml|release|MIT
 new|@thomasfosterau/effect-rdf|effect-rdf|packages/core|release.yml|release|MIT
 new|@thomasfosterau/effect-csvw|effect-rdf|packages/csvw|release.yml|release|MIT
@@ -165,6 +170,7 @@ DEPRECATIONS="
 @thomasfosterau/effect-sitemap|Moved to @thomasfosterau/effect-ext (subpath /Sitemap); $SITE
 @thomasfosterau/effect-ai-ext|Merged into @thomasfosterau/effect-ext (subpaths /RerankerModel, /ClassifierModel, /SpeechModel, /TranscriptionModel, /ImageModel, /ModerationModel, /VoiceConversionModel; upstream modules from effect/ai); $SITE
 @thomasfosterau/effect-evals|Merged into @thomasfosterau/effect-ext (subpath /evals and /evals/<Module>; the effect-evals bin ships with it); $SITE
+@thomasfosterau/effect-ai-gateway|Renamed to @thomasfosterau/effect-ai-cloudflare
 "
 
 DRY_RUN=0
@@ -432,8 +438,8 @@ while IFS='|' read -r action name repo dir wf envname license; do
   if [ "$action" = revoke ]; then
     revoke_old_trust "$name"; rc=$?
     case "$rc" in
-      0) status=ok; [ "$DRY_RUN" = 1 ] && status=dry; record "$status" "$name" "merged into $repo/$dir; $MSG" ;;
-      3) record skip "$name" "merged into $repo/$dir; $MSG" ;;
+      0) status=ok; [ "$DRY_RUN" = 1 ] && status=dry; record "$status" "$name" "superseded by $repo/$dir; $MSG" ;;
+      3) record skip "$name" "superseded by $repo/$dir; $MSG" ;;
       *) record FAIL "$name" "$MSG" ;;
     esac
     continue

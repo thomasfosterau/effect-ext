@@ -21,7 +21,7 @@ import { FetchHttpClient } from "effect/http";
 import {
   anthropicLanguageModelLayer,
   type WorkersAiBinding,
-} from "@thomasfosterau/effect-ai-gateway";
+} from "@thomasfosterau/effect-ai-cloudflare";
 import { stubAiBinding } from "./helpers/ai";
 import { runTest } from "./helpers/effect";
 

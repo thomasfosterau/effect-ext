@@ -216,7 +216,7 @@ export const packageConfig = ({
       deps: {
         // `effect`, `@effect/*` and the workspace `@thomasfosterau/*` packages
         // stay external so the published package shares the consumer's
-        // singleton copies; `@cloudflare/*` (the gateway's optional,
+        // singleton copies; `@cloudflare/*` (effect-ai-cloudflare's optional,
         // types-only peer) has no runtime presence to bundle; `node:*`
         // builtins (the `effect-evals` CLI) are the runtime's own, and naming
         // them here keeps the `neutral` platform from reporting them as

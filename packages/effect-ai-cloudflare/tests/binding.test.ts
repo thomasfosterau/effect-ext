@@ -8,7 +8,7 @@ import { assert, describe, expect, it } from "vite-plus/test";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
-import { gatewayRun, gatewayUrl } from "@thomasfosterau/effect-ai-gateway";
+import { gatewayRun, gatewayUrl } from "@thomasfosterau/effect-ai-cloudflare";
 import { stubAiBinding } from "./helpers/ai";
 import { runTest } from "./helpers/effect";
 

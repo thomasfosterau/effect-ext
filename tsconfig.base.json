@@ -11,7 +11,7 @@
     "moduleResolution": "bundler",
     "target": "esnext",
     "lib": ["esnext", "dom", "dom.iterable"],
-    // No ambient `@types/*` unless a tsconfig asks: the gateway's declarations
+    // No ambient `@types/*` unless a tsconfig asks: effect-ai-cloudflare's declarations
     // are proved to need nothing from `@cloudflare/workers-types` (scripts/
     // check-dist.mjs), and a package that wants Node's types names them.
     "types": [],

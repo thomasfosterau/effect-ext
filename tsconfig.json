@@ -3,7 +3,7 @@
   "files": [],
   "references": [
     { "path": "packages/effect-ext" },
-    { "path": "packages/effect-ai-gateway" },
+    { "path": "packages/effect-ai-cloudflare" },
     { "path": "packages/effect-ai-mistral" },
     { "path": "packages/effect-ai-cohere" },
     { "path": "packages/effect-ai-voyage" },

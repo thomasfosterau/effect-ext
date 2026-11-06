@@ -10,7 +10,7 @@
  * ElevenLabs has no upstream `@effect/ai-*` package to repoint, so the wire
  * format is handled directly here against the request interfaces / transcript
  * schema in `internal/wire`. The `apiUrl` override is the BYOK contract — a
- * routing layer (the gateway) repoints the client through it.
+ * routing layer (`@thomasfosterau/effect-ai-cloudflare`) repoints the client through it.
  *
  * **Streaming discipline.** The streaming TTS surface returns the HTTP
  * response body *as a stream* (`response.stream`), which effect's `HttpClient`

@@ -16,7 +16,7 @@ import {
   cfAigAuthorizationHeader,
   gatewayBaseUrl,
   gatewayUrlConfig,
-} from "@thomasfosterau/effect-ai-gateway";
+} from "@thomasfosterau/effect-ai-cloudflare";
 import { runTestExit } from "./helpers/effect";
 
 const withConfig = (values: Record<string, string>) =>
