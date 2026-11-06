@@ -8,7 +8,7 @@ A first-party [Effect](https://effect.website) AI provider for **Cohere**. Effec
 pnpm add @thomasfosterau/effect-ai-cohere effect
 ```
 
-`effect` (`>=4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ai-ext` is a dependency; add it yourself to import the `RerankerModel` / `ClassifierModel` tags.
+`effect` (`^4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ai-ext` is a dependency; add it yourself to import the `RerankerModel` / `ClassifierModel` tags.
 
 ## Usage
 
