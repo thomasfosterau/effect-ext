@@ -13,7 +13,7 @@ Extensions to the [Effect](https://effect.website) standard library, in two fami
 pnpm add @thomasfosterau/effect-utilities effect
 ```
 
-Peer: `effect` `>=4.0.0-rc.118`. Node.js 22 or later (the binary-data modules use `ArrayBuffer.prototype.transfer`). ESM only, `"sideEffects": false`; every module is also its own entry point:
+Peer: `effect` `>=4.0.0`. Node.js 22 or later (the binary-data modules use `ArrayBuffer.prototype.transfer`). ESM only, `"sideEffects": false`; every module is also its own entry point:
 
 ```ts
 import { Vec, TriState } from "@thomasfosterau/effect-utilities";

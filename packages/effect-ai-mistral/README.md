@@ -8,7 +8,7 @@ An [Effect](https://effect.website) AI provider for **Mistral**. Effect ships no
 pnpm add @thomasfosterau/effect-ai-mistral effect
 ```
 
-`effect` (`>=4.0.0-rc.118`) is a peer dependency: it must be a single copy across your app.
+`effect` (`>=4.0.0`) is a peer dependency: it must be a single copy across your app.
 
 ## Usage
 

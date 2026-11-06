@@ -167,26 +167,41 @@ const invalidInput = (description: string): AiError.AiError =>
     reason: new AiError.InvalidUserInputError({ description }),
   });
 
-/** An image file part's `data` as a URL OpenAI fetches or decodes itself. */
-const imageUrl = (part: Prompt.FilePartEncoded): string => {
-  const data = part.data;
+/**
+ * A file part's `data` in every shape the supported `effect` range admits:
+ * effect 4.0.6 added the tagged JSON forms encoding produces for a byte array
+ * and a URL to `Prompt.FilePartEncoded`, which 4.0.0 – 4.0.5 lack.
+ */
+type FileData =
+  | Prompt.FilePartEncoded["data"]
+  | { readonly _tag: "Uint8Array"; readonly base64: string }
+  | { readonly _tag: "URL"; readonly href: string };
+
+/**
+ * A file part's `data` as a URL OpenAI fetches or decodes itself. `data` is a
+ * parameter, not a local: a local typed `FileData` would narrow to the
+ * assigned `part.data`, which before effect 4.0.6 has no tagged forms, and
+ * the tagged branch would not type-check there.
+ */
+const dataUrl = (data: FileData, mediaType: string): string => {
   if (data instanceof URL) {
     return data.href;
   }
   if (Predicate.isString(data)) {
     return data.startsWith("data:") || data.startsWith("http")
       ? data
-      : `data:${part.mediaType};base64,${data}`;
+      : `data:${mediaType};base64,${data}`;
   }
   if (data instanceof Uint8Array) {
-    return `data:${part.mediaType};base64,${Base64.encode(data)}`;
+    return `data:${mediaType};base64,${Base64.encode(data)}`;
   }
   // The tagged JSON forms an encoded prompt carries for a byte array or a URL
   // (effect 4.0.6 and later).
-  return Predicate.isTagged(data, "URL")
-    ? data.href
-    : `data:${part.mediaType};base64,${data.base64}`;
+  return Predicate.isTagged(data, "URL") ? data.href : `data:${mediaType};base64,${data.base64}`;
 };
+
+/** An image file part's `data` as a URL OpenAI fetches or decodes itself. */
+const imageUrl = (part: Prompt.FilePartEncoded): string => dataUrl(part.data, part.mediaType);
 
 const toWirePart = (
   part: Prompt.UserMessagePartEncoded,

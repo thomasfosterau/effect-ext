@@ -12,7 +12,7 @@ A first-party [Effect](https://effect.website) AI provider for **Voyage AI** (em
 pnpm add @thomasfosterau/effect-ai-voyage @thomasfosterau/effect-ai-ext effect
 ```
 
-`effect` (`>=4.0.0-rc.118`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ai-ext` is a dependency; add it yourself to import the `RerankerModel` tag.
+`effect` (`>=4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ai-ext` is a dependency; add it yourself to import the `RerankerModel` tag.
 
 ## Usage
 

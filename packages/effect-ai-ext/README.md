@@ -18,7 +18,7 @@ No provider code, no HTTP — abstractions only. First-party provider packages (
 pnpm add @thomasfosterau/effect-ai-ext effect
 ```
 
-`effect` (`>=4.0.0-rc.118`) is a peer dependency (it must stay a singleton).
+`effect` (`>=4.0.0`) is a peer dependency (it must stay a singleton).
 
 ## A superset of `effect/ai`
 

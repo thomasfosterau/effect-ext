@@ -101,8 +101,10 @@ catalog:
 # strict catalog mode still governs them while they stay ranges (an exact
 # `4.0.0-rc.115` peer would reject a consumer on rc.116). `pnpm pack` replaces
 # `catalog:peers` with these ranges in the published manifest (see
-# scripts/release.sh). The floor is the oldest `effect` the package has been
-# type-checked and tested against (rc.118, the line the whole programme moved to in website#2015).
+# scripts/release.sh). The floor is the oldest `effect` every package has been
+# type-checked, tested and had its examples run against: 4.0.0, the first
+# stable release (raised from rc.118 in #30). The AI packages'
+# `@effect/ai-anthropic` / `@effect/platform-node` peers share it.
 #
 # `@cloudflare/workers-types` is the gateway's optional, types-only peer. The
 # gateway's `dist/index.d.ts` names nothing from it (the Worker binding is
@@ -113,9 +115,9 @@ catalog:
 catalogs:
   peers:
     "@cloudflare/workers-types": ">=4.20250312.0"
-    "@effect/ai-anthropic": ">=4.0.0-rc.118"
-    "@effect/platform-node": ">=4.0.0-rc.118"
-    effect: ">=4.0.0-rc.118"
+    "@effect/ai-anthropic": ">=4.0.0"
+    "@effect/platform-node": ">=4.0.0"
+    effect: ">=4.0.0"
 
 overrides:
   # undici <8.12.2 — GHSA-xjj6-f33q-929c (high): an unhandled error on a
