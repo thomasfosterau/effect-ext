@@ -58,7 +58,9 @@
 #   - an npm login with 2FA on the account that owns the @thomasfosterau scope. In a Codespace use the
 #     browser flow:  npm login --auth-type=web
 #     then check that  npm whoami  prints the owner's npm user name.
-#   - Each publish and each trust change asks for 2FA in the browser. On the npm 2FA page, tick
+#   - Run it from an interactive terminal: each publish and each trust change asks for 2FA there
+#     (npm prints an "Authenticate your account at" link, or asks for a one-time password), and
+#     npm fails with EOTP when it has no terminal to ask on. Each one asks for 2FA in the browser. On the npm 2FA page, tick
 #     "skip two-factor authentication for the next 5 minutes" so the batch can run; re-run the script
 #     if the window closes mid-way (it picks up where it stopped).
 #
@@ -233,11 +235,19 @@ mutate() {
     show npm "$@"
     return 0
   fi
-  if [ "$dir" = - ]; then npmc "$@"; else npmc_in "$dir" "$@"; fi
+  # On the terminal, both ways: npm asks for 2FA (the browser link, or an OTP prompt) only when its
+  # stdin and stdout are both a TTY, and fails with EOTP otherwise. The loops below feed their lists
+  # on stdin and some callers discard stdout, so neither is the terminal here without this.
+  if [ "$dir" = - ]; then npmc "$@"; else npmc_in "$dir" "$@"; fi </dev/tty >/dev/tty
 }
 
 # --- preflight ---------------------------------------------------------------------------------
 die() { echo "preflight: $*" >&2; exit 2; }
+
+# A real run answers npm's 2FA prompts, so it needs a terminal (see mutate).
+if [ "$DRY_RUN" = 0 ] && ! { : </dev/tty >/dev/tty; } 2>/dev/null; then
+  die "no terminal: npm asks for 2FA on the terminal, so run this from an interactive shell (not piped or under nohup)"
+fi
 
 command -v node >/dev/null 2>&1 || die "node is not on PATH"
 command -v npm >/dev/null 2>&1 || die "npm is not on PATH"
@@ -348,7 +358,7 @@ ensure_trust() {
     done <<< "$entries"
     while IFS=$'\t' read -r id r f e; do
       if [ "$move" = 1 ] && [ "$r" = "$old" ]; then
-        npmc trust revoke "$name" --id "$id" || { MSG="revoke of old $old entry $id failed"; return 1; }
+        npmc trust revoke "$name" --id "$id" </dev/tty >/dev/tty || { MSG="revoke of old $old entry $id failed"; return 1; }
         sleep 2
       else
         MSG="existing trust entry $id ($r $f env=$e) is not the expected one; fix by hand"; return 1
@@ -380,7 +390,7 @@ revoke_old_trust() {
   if [ -n "$entries" ]; then
     while IFS=$'\t' read -r id r f e; do
       if [ "$r" = "$old" ]; then
-        npmc trust revoke "$name" --id "$id" || { MSG="revoke of $old entry $id failed"; return 1; }
+        npmc trust revoke "$name" --id "$id" </dev/tty >/dev/tty || { MSG="revoke of $old entry $id failed"; return 1; }
         revoked=$((revoked + 1))
         sleep 2
       else
