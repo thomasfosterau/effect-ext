@@ -3,7 +3,7 @@
  * and `src/MistralLanguageModel.ts`).
  *
  * The network is stubbed at `FetchHttpClient.Fetch` — the same technique the
- * gateway package's provider tests use. Each stub captures the outgoing
+ * effect-ai-cloudflare package's provider tests use. Each stub captures the outgoing
  * request (URL, `authorization` header, JSON body) and returns a canned
  * Mistral chat-completions response (or an SSE stream), so the tests exercise
  * request construction, prompt / tool / structured-output conversion, and

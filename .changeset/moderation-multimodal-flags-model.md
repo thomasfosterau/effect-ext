@@ -1,5 +1,5 @@
 ---
-"@thomasfosterau/effect-ai-gateway": minor
+"@thomasfosterau/effect-ai-cloudflare": minor
 ---
 
 The OpenAI moderation provider follows `ModerationModel`'s multimodal inputs and richer results (effect-ai-ext#143; the abstraction is now `@thomasfosterau/effect-ext/ModerationModel`).

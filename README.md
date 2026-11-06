@@ -25,7 +25,7 @@ Five repositories were merged into this one before or after their packages were 
 | [`@thomasfosterau/effect-ai-cohere`](packages/effect-ai-cohere) | Cohere provider: embed, rerank, classify, chat | `effect` |
 | [`@thomasfosterau/effect-ai-voyage`](packages/effect-ai-voyage) | Voyage AI provider: embed, rerank | `effect` |
 | [`@thomasfosterau/effect-ai-elevenlabs`](packages/effect-ai-elevenlabs) | ElevenLabs provider: text-to-speech, speech-to-text, voice conversion | `effect` |
-| [`@thomasfosterau/effect-ai-gateway`](packages/effect-ai-gateway) | Routes `@effect/ai-anthropic` and gateway-native Cohere / OpenAI moderation through a Cloudflare AI Gateway (Worker binding or public HTTPS endpoint), bring-your-own-key | `effect`, `@effect/ai-anthropic`, optional `@cloudflare/workers-types` |
+| [`@thomasfosterau/effect-ai-cloudflare`](packages/effect-ai-cloudflare) | Extends `@effect/ai-cloudflare`: its Workers AI decision models, routed through a Cloudflare AI Gateway, plus `@effect/ai-anthropic` and gateway-native Cohere / OpenAI moderation through the gateway (Worker binding or public HTTPS endpoint), bring-your-own-key. Formerly `@thomasfosterau/effect-ai-gateway` | `effect` and `@effect/ai-cloudflare` (`^4.0.6`), `@effect/ai-anthropic`, optional `@cloudflare/workers-types` |
 
 Each package's README is its API reference, and each published package's `CHANGELOG.md` is written by Changesets. Every package is ESM with declarations and `"sideEffects": false`.
 
@@ -80,7 +80,7 @@ const program = Effect.gen(function* () {
 }).pipe(Effect.provide(RerankerLive));
 ```
 
-Swapping in Cohere (`CohereRerankerModel`) or the gateway's Cohere route changes only the layer. Every provider client takes an `apiUrl` override, which is how a routing layer such as the gateway repoints it at a proxy for BYOK.
+Swapping in Cohere (`CohereRerankerModel`) or `effect-ai-cloudflare`'s AI Gateway Cohere route changes only the layer. Every provider client takes an `apiUrl` override, which is how a routing layer such as `effect-ai-cloudflare` repoints it at a proxy for BYOK.
 
 ## Documentation
 

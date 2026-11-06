@@ -1,5 +1,4 @@
 ---
-"@thomasfosterau/effect-ai-gateway": patch
 "@thomasfosterau/effect-ai-mistral": patch
 "@thomasfosterau/effect-ai-cohere": patch
 "@thomasfosterau/effect-ai-voyage": patch

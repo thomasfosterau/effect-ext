@@ -334,7 +334,7 @@ The provider-neutral half of the AI family: the AI service abstractions `effect/
 
 ### Boundary
 
-The seven `src/<Module>.ts` files (`aiModules` in `vite.config.ts`, `aiModuleFiles` in the root one). They import `effect` only, never another effect-ext module; the provider packages (`effect-ai-cohere`, `-voyage`, `-elevenlabs`) and the gateway import them by subpath. Each is a subpath export and a namespace on the `.` barrel. A new module adds its `exports` entry, its name to `aiModules` (and the root `aiModuleFiles`, the coverage glob and `.fallowrc.json`'s `ignoreExports` list), its barrel line and a section in the README table.
+The seven `src/<Module>.ts` files (`aiModules` in `vite.config.ts`, `aiModuleFiles` in the root one). They import `effect` only, never another effect-ext module; the provider packages (`effect-ai-cohere`, `-voyage`, `-elevenlabs`) and `effect-ai-cloudflare` import them by subpath. Each is a subpath export and a namespace on the `.` barrel. A new module adds its `exports` entry, its name to `aiModules` (and the root `aiModuleFiles`, the coverage glob and `.fallowrc.json`'s `ignoreExports` list), its barrel line and a section in the README table.
 
 ### Invariants
 

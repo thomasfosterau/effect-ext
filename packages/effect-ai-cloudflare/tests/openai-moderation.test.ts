@@ -23,7 +23,7 @@ import {
   type OpenAiModerationCall,
   type OpenAiModerationOptions,
   type WorkersAiBinding,
-} from "@thomasfosterau/effect-ai-gateway";
+} from "@thomasfosterau/effect-ai-cloudflare";
 import { stubAiBinding } from "./helpers/ai";
 import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 

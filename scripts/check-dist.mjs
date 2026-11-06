@@ -7,10 +7,11 @@
  * `src/`, else `exports` itself, as in `effect-ext`), imports the BUILT `dist/*.js` under real Node ESM (never the
  * `src` the vitest suites resolve) and asserts that every value export its
  * bundled `.d.ts` promises exists at runtime. This is the check that catches
- * a bundler folding an `export *` into an internal object — the gateway's
- * `RerankerModel` re-export shipped that way in 0.1.x, so
- * `import { make } from "@thomasfosterau/effect-ai-gateway"` threw a
- * `SyntaxError` under Node while every src-level test passed.
+ * a bundler folding an `export *` into an internal object — the
+ * `RerankerModel` re-export of `@thomasfosterau/effect-ai-gateway` (since
+ * renamed `@thomasfosterau/effect-ai-cloudflare`) shipped that way in 0.1.x,
+ * so `import { make }` from it threw a `SyntaxError` under Node while every
+ * src-level test passed.
  *
  * Every published package's bundled `dist/**\/*.d.ts` is also TYPE-CHECKED
  * with `skipLibCheck: false` (#111), keeping only diagnostics located in
@@ -18,7 +19,7 @@
  * namespace the bundle never declares, which the value-export check cannot
  * see (see `checkDeclarations`).
  *
- * The gateway's built declarations are also compiled against a Worker-shaped
+ * effect-ai-cloudflare's built declarations are also compiled against a Worker-shaped
  * probe with `@cloudflare/workers-types` loaded, proving a Worker's `env.AI`
  * is accepted unchanged (see `checkWorkersBinding`).
  *
@@ -125,7 +126,7 @@ for (const { specifier, dts } of targets) {
 /**
  * Type-checks every bundled `dist/**\/*.d.ts` of the package in `dir` with
  * `skipLibCheck: false`, as a strict consumer's compiler would (#111). The
- * value-export check above cannot see a broken declaration: the gateway's
+ * value-export check above cannot see a broken declaration: effect-ai-cloudflare's
  * bundle once typed two exports as `RerankerModel_d_exports.Service`, a
  * namespace it never declared: "Cannot find namespace" (TS2503, or TS2833
  * when the checker can suggest a name) for every consumer with
@@ -139,13 +140,13 @@ for (const { specifier, dts } of targets) {
  * No package loads ambient `types`: a consumer's compiler has only what it
  * installs and lists itself, so a bundle must not lean on any package's
  * globals (`node`, or an optional peer such as `@cloudflare/workers-types`).
- * The gateway is therefore checked without workers-types, which proves its
+ * effect-ai-cloudflare is therefore checked without workers-types, which proves its
  * `.d.ts` self-contained: it types the Worker binding with its own structural
  * slice rather than that package's ambient `Ai`, `AIGatewayProviders` and
  * `AIGatewayUniversalRequest` (#113). `lib` is pinned to the one
  * `tsconfig.base.json` sets (`esnext`, `dom`, `dom.iterable`) rather than
  * left to the target's default: bundles name DOM globals the runtimes they
- * target provide (`Response` in the gateway, `Blob` in elevenlabs).
+ * target provide (`Response` in effect-ai-cloudflare, `Blob` in elevenlabs).
  */
 const parsedSources = new Map();
 const checkDeclarations = (dir, paths) => {
@@ -218,13 +219,13 @@ for (const { dir, manifest } of published) {
 }
 
 /**
- * Compiles a Worker-shaped probe against the gateway's BUILT `dist/index.d.ts`
+ * Compiles a Worker-shaped probe against effect-ai-cloudflare's BUILT `dist/index.d.ts`
  * with `@cloudflare/workers-types` loaded (and no `lib.dom`, as a Workers
  * project is configured), expecting no diagnostics: a Worker's `env.AI`,
- * typed `Ai` by that package, is accepted unchanged wherever the gateway
+ * typed `Ai` by that package, is accepted unchanged wherever effect-ai-cloudflare
  * takes a binding (#113). `tests/workers-types-binding.test.ts` proves the
  * same against `src`; this proves the declaration bundler kept it so. The
- * probe is a virtual file beside the gateway, so workers-types (its
+ * probe is a virtual file beside effect-ai-cloudflare, so workers-types (its
  * devDependency) resolves from there.
  */
 const checkWorkersBinding = (dir, paths) => {
@@ -238,7 +239,7 @@ import {
   makeCohereReranker,
   makeOpenAiModerationModel,
   type GatewayBinding,
-} from "@thomasfosterau/effect-ai-gateway";
+} from "@thomasfosterau/effect-ai-cloudflare";
 
 declare const env: { readonly AI: Ai };
 const binding: GatewayBinding = { ai: env.AI, gatewayId: "website" };
@@ -280,7 +281,7 @@ export const probes = [
     ...program.getSyntacticDiagnostics(source),
     ...program.getSemanticDiagnostics(source),
   ];
-  // A probe that silently resolved the gateway from anywhere but its dist
+  // A probe that silently resolved effect-ai-cloudflare from anywhere but its dist
   // would prove nothing.
   const dts = path.join(dir, "dist", "index.d.ts");
   if (program.getSourceFile(dts) === undefined) {
@@ -289,16 +290,16 @@ export const probes = [
   return diagnostics;
 };
 
-const gateway = published.find(
-  ({ manifest }) => manifest.name === "@thomasfosterau/effect-ai-gateway",
+const cloudflare = published.find(
+  ({ manifest }) => manifest.name === "@thomasfosterau/effect-ai-cloudflare",
 );
-if (gateway !== undefined) {
+if (cloudflare !== undefined) {
   try {
-    const diagnostics = checkWorkersBinding(gateway.dir, distPaths);
+    const diagnostics = checkWorkersBinding(cloudflare.dir, distPaths);
     if (diagnostics.length > 0) {
       failures++;
       console.error(
-        `FAIL ${gateway.manifest.name} accepts a workers-types \`Ai\` binding:\n` +
+        `FAIL ${cloudflare.manifest.name} accepts a workers-types \`Ai\` binding:\n` +
           ts.formatDiagnostics(diagnostics, {
             getCanonicalFileName: (f) => f,
             getCurrentDirectory: () => root,
@@ -306,11 +307,11 @@ if (gateway !== undefined) {
           }),
       );
     } else {
-      console.log(`ok   ${gateway.manifest.name} accepts a workers-types \`Ai\` binding`);
+      console.log(`ok   ${cloudflare.manifest.name} accepts a workers-types \`Ai\` binding`);
     }
   } catch (error) {
     failures++;
-    console.error(`FAIL ${gateway.manifest.name} workers-types binding probe: ${String(error)}`);
+    console.error(`FAIL ${cloudflare.manifest.name} workers-types binding probe: ${String(error)}`);
   }
 }
 

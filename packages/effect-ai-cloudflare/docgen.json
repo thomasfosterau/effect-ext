@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/@effect/docgen/schema.json",
   "runExamples": true,
-  "srcLink": "https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ai-gateway/src/",
+  "srcLink": "https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ai-cloudflare/src/",
   "enforceVersion": false,
   "exclude": ["src/internal/**/*.ts"],
   "parseCompilerOptions": {
@@ -30,7 +30,7 @@
     "rewriteRelativeImportExtensions": true,
     "types": ["node"],
     "paths": {
-      "@thomasfosterau/effect-ai-gateway": ["../../dist/index"],
+      "@thomasfosterau/effect-ai-cloudflare": ["../../dist/index"],
       "@thomasfosterau/effect-ext": ["../../../effect-ext/dist/index"],
       "@thomasfosterau/effect-ext/*": ["../../../effect-ext/dist/*"]
     }

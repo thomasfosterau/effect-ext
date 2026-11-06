@@ -23,7 +23,7 @@ import {
   COHERE_RERANK_MODEL,
   makeCohereEmbeddingModelFromUrl,
   makeCohereRerankerFromUrl,
-} from "@thomasfosterau/effect-ai-gateway";
+} from "@thomasfosterau/effect-ai-cloudflare";
 import { expectFailureInstanceOf, runTest, runTestExit } from "./helpers/effect";
 
 interface CapturedRequest {

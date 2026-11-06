@@ -4,7 +4,7 @@
  * `CohereRerankerModel`, `CohereClassifierModel`).
  *
  * The network is stubbed at `FetchHttpClient.Fetch` — the same technique the
- * gateway and mistral provider tests use. Each stub captures the outgoing
+ * effect-ai-cloudflare and mistral provider tests use. Each stub captures the outgoing
  * request (URL, `authorization` header, JSON body) and returns a canned Cohere
  * v2 response (or an SSE stream), so the tests exercise request construction,
  * prompt / tool / structured-output conversion, and response decoding without

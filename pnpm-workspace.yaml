@@ -29,11 +29,18 @@ catalogMode: strict
 catalog:
   "@changesets/changelog-github": ^1.0.1
   "@changesets/cli": ^3.0.3
-  # The gateway's optional, types-only peer (see `catalogs.peers`); the dev pin
-  # is what its binding-compatibility test checks a real `Ai` against.
+  # effect-ai-cloudflare's optional, types-only peer (see `catalogs.peers`);
+  # the dev pin is what its binding-compatibility test checks a real `Ai`
+  # against.
   "@cloudflare/workers-types": ^5.20261029.1
   # The Effect line (see the header): equal to `effect` below.
   "@effect/ai-anthropic": 4.0.6
+  # effect-ai-cloudflare's required peer: its `CloudflareClient` (Workers AI
+  # REST, routed through an AI Gateway by `gatewayId`) and
+  # `CloudflareDecisionModel` (Clef). The Effect line: equal to `effect`
+  # below, since its own peer is `effect: ^<its version>`. Its published
+  # range, and the `effect` floor it forces, are `catalogs.ai-cloudflare-peers`.
+  "@effect/ai-cloudflare": 4.0.6
   # Compiles AND executes every JSDoc `@example` in packages/*/src (the
   # `docgen` task). Its `typescript` peer (`^5`) resolves to the TS6 alias
   # below, which pnpm tolerates via `peerDependencyRules`; the JS API it uses
@@ -133,12 +140,11 @@ catalog:
 # owner's peer-range policy, decided per package: a package whose own
 # dependencies require a newer `effect` gets a named catalog of its own
 # (`<dependency>-peers`) whose comment names that dependency; the rest stay
-# here. None does today (the runtime dependencies are workspace packages on
-# the same floor).
+# here. One does today: effect-ai-cloudflare, in `ai-cloudflare-peers` below.
 #
-# `@cloudflare/workers-types` is the gateway's optional, types-only peer. The
-# gateway's `dist/index.d.ts` names nothing from it (the Worker binding is
-# typed by the gateway's own structural `WorkersAiBinding`), so the floor is
+# `@cloudflare/workers-types` is effect-ai-cloudflare's optional, types-only
+# peer. Its `dist/index.d.ts` names nothing from it (the Worker binding is
+# typed by the package's own structural `WorkersAiBinding`), so the floor is
 # the first release whose `Ai` is assignable to `WorkersAiBinding`:
 # 4.20250312.0, the first whose `AiGateway` declares `getUrl()`. Re-verify
 # assignability at the floor before moving it.
@@ -159,6 +165,16 @@ catalogs:
     # the robots grammar is written against.
     "@thomasfosterau/effect-parse": ^0.4.1
     effect: ^4.0.0
+  # effect-ai-cloudflare only. It peers on `@effect/ai-cloudflare` and builds
+  # on its `CloudflareClient` with the `gatewayId` option, which first shipped
+  # in @effect/ai-cloudflare 4.0.6 (4.0.1–4.0.5 have no AI Gateway routing;
+  # 4.0.7–4.1.2 add nothing this package uses). @effect/ai-cloudflare 4.0.6
+  # peers on `effect: ^4.0.6`, so that is this package's `effect` floor.
+  # Proved at the floor: the dev pins of both are 4.0.6. Every other package
+  # stays on `peers.effect` (`^4.0.0`).
+  ai-cloudflare-peers:
+    "@effect/ai-cloudflare": ^4.0.6
+    effect: ^4.0.6
 
 overrides:
   # undici <8.12.2 — GHSA-xjj6-f33q-929c (high): an unhandled error on a

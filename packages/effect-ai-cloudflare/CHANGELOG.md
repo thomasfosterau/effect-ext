@@ -1,4 +1,8 @@
-# @thomasfosterau/effect-ai-gateway
+# @thomasfosterau/effect-ai-cloudflare
+
+## Released as @thomasfosterau/effect-ai-gateway
+
+This package was published as `@thomasfosterau/effect-ai-gateway` until 0.5.1 and renamed before its first release under this name (0.1.0). The entries below are that package's.
 
 ## 0.5.1
 

@@ -24,7 +24,7 @@ import effect from "@enfect/oxlint";
 import { type CoverageFloor, resolveCoverageThresholds } from "./vite.package.ts";
 import { coverageFloor as cohereFloor } from "./packages/effect-ai-cohere/vite.config.ts";
 import { coverageFloor as elevenlabsFloor } from "./packages/effect-ai-elevenlabs/vite.config.ts";
-import { coverageFloor as gatewayFloor } from "./packages/effect-ai-gateway/vite.config.ts";
+import { coverageFloor as cloudflareFloor } from "./packages/effect-ai-cloudflare/vite.config.ts";
 import { coverageFloor as mistralFloor } from "./packages/effect-ai-mistral/vite.config.ts";
 import { coverageFloor as voyageFloor } from "./packages/effect-ai-voyage/vite.config.ts";
 import {
@@ -43,7 +43,7 @@ import {
 const coverageFloors = {
   "packages/effect-ai-cohere/src/**": cohereFloor,
   "packages/effect-ai-elevenlabs/src/**": elevenlabsFloor,
-  "packages/effect-ai-gateway/src/**": gatewayFloor,
+  "packages/effect-ai-cloudflare/src/**": cloudflareFloor,
   "packages/effect-ai-mistral/src/**": mistralFloor,
   "packages/effect-ai-voyage/src/**": voyageFloor,
   "packages/effect-ext/src/**": effectExtFloor,
@@ -99,7 +99,7 @@ const timeTests = "packages/effect-ext/tests/time/**";
 const packageNames = [
   "@thomasfosterau/effect-ai-cohere",
   "@thomasfosterau/effect-ai-elevenlabs",
-  "@thomasfosterau/effect-ai-gateway",
+  "@thomasfosterau/effect-ai-cloudflare",
   "@thomasfosterau/effect-ai-mistral",
   "@thomasfosterau/effect-ai-voyage",
   "@thomasfosterau/effect-ext",
