@@ -86,41 +86,65 @@ link_tool() {
   ln -sfn "$src" "$dest" 2>/dev/null || log "could not link $name"
 }
 
-# `vp` gets a re-exec shim rather than a plain symlink. A symlink always
-# resolves to $PROJECT_DIR's node_modules/vite-plus, even when invoked with
-# cwd inside a `.claude/worktrees/*` checkout — so the CLI process loads the
-# primary tree's vitest while the worktree's test modules resolve the
-# worktree's own copy. Two physical instances of the same vitest version
-# corrupt its module-level suite-collector state, and every describe() in the
-# worktree throws `Cannot read properties of undefined (reading 'config')`
-# (gardeneria #1663). The shim instead walks up from $PWD for the nearest
-# project-local vite-plus and re-execs that, falling back to the primary
-# checkout's when none is found above cwd.
-VP_SHIM_MARKER="# generated-by: .claude/hooks/session-start.sh (vp re-exec shim, gardeneria issue #1663)"
-write_vp_shim() {
-  dest="$LOCAL_BIN/vp"
+# The repo's tools get re-exec shims rather than plain symlinks, for two
+# reasons.
+#
+# `node_modules/.bin/<tool>` is pnpm's sh shim, which derives its `basedir`
+# from `$0`. Run through a symlink, `$0` is `~/.local/bin/<tool>`, so the shim
+# looks under `~/.local/`, node exits with MODULE_NOT_FOUND, and
+# `.claude/hooks/fallow-gate.sh` reads that as an audit runtime error and lets
+# every commit through ungated (thomasfosterau/effect-wikimedia#219). A script
+# that `exec`s the shim by its real path keeps `$0` right.
+#
+# `vp` has a second reason. A symlink always resolves to $PROJECT_DIR's
+# node_modules/vite-plus, even when invoked with cwd inside a
+# `.claude/worktrees/*` checkout — so the CLI process loads the primary tree's
+# vitest while the worktree's test modules resolve the worktree's own copy.
+# Two physical instances of the same vitest version corrupt its module-level
+# suite-collector state, and every describe() in the worktree throws
+# `Cannot read properties of undefined (reading 'config')` (gardeneria #1663).
+#
+# So each shim walks up from $PWD for the nearest project-local copy and
+# re-execs that, falling back to the primary checkout's when none is found
+# above cwd. The marker is a prefix of the one the earlier vp-only shim
+# carried, so a shim from either version is recognised and regenerated.
+SHIM_MARKER="# generated-by: .claude/hooks/session-start.sh"
+# write_shim <name> <path of the tool relative to a checkout root>
+write_shim() {
+  name="$1"
+  rel="$2"
+  dest="$LOCAL_BIN/$name"
+  [ -x "$PROJECT_DIR/$rel" ] || return 0
   # Leave a real, non-generated file alone: something deliberately installed
-  # it. A stale symlink or a shim we generated earlier is fair game to
-  # regenerate — the embedded fallback path can change across containers.
+  # it. A symlink (what earlier versions of this hook made) or a shim we
+  # generated earlier is fair game to replace — the embedded fallback path
+  # can change across containers.
   if [ -e "$dest" ] && [ ! -L "$dest" ] \
-    && ! grep -qF "$VP_SHIM_MARKER" "$dest" 2>/dev/null; then
+    && ! grep -qF "$SHIM_MARKER" "$dest" 2>/dev/null; then
     return 0
   fi
   cat >"$dest.tmp" <<SHIM
 #!/usr/bin/env bash
-$VP_SHIM_MARKER
+$SHIM_MARKER ($name re-exec shim)
 dir="\$PWD"
 while [ -n "\$dir" ]; do
-  if [ -x "\$dir/node_modules/vite-plus/bin/vp" ]; then
-    exec "\$dir/node_modules/vite-plus/bin/vp" "\$@"
+  if [ -x "\$dir/$rel" ]; then
+    exec "\$dir/$rel" "\$@"
   fi
   [ "\$dir" = "/" ] && break
   dir="\$(dirname "\$dir")"
 done
-exec "$PROJECT_DIR/node_modules/vite-plus/bin/vp" "\$@"
+exec "$PROJECT_DIR/$rel" "\$@"
 SHIM
+  # `mv -f` replaces a symlink at $dest itself rather than writing through it.
   chmod +x "$dest.tmp" 2>/dev/null && mv -f "$dest.tmp" "$dest" 2>/dev/null \
-    || { rm -f "$dest.tmp" 2>/dev/null; log "could not write vp shim"; }
+    || { rm -f "$dest.tmp" 2>/dev/null; log "could not write $name shim"; }
+}
+
+write_tool_shims() {
+  write_shim fallow node_modules/.bin/fallow
+  write_shim tsx node_modules/.bin/tsx
+  write_shim vp node_modules/vite-plus/bin/vp
 }
 
 # ── 1. Repo binaries the documented workflows invoke directly ─────────────────
@@ -128,9 +152,7 @@ SHIM
 # only from node_modules/.bin; `tsx` runs docgen's examples and ad-hoc
 # scripts. `vp` is included for the remote/web runner,
 # where the global launcher does not exist.
-link_tool "$PROJECT_DIR/node_modules/.bin/fallow"
-link_tool "$PROJECT_DIR/node_modules/.bin/tsx"
-write_vp_shim
+write_tool_shims
 
 # ── 2. Bare `node` (gardeneria #1462) ─────────────────────────────────────────
 # Only repair a shim that is already failing — see the header for why this is
@@ -169,10 +191,8 @@ if [ -f "$PROJECT_DIR/pnpm-lock.yaml" ]; then
   fi
   (cd "$PROJECT_DIR" && "${PNPM[@]}" install --frozen-lockfile >/dev/null 2>&1) \
     || log "dependency install failed; continuing"
-  # node_modules/.bin only exists after the install, so re-link what it provides.
-  link_tool "$PROJECT_DIR/node_modules/.bin/fallow"
-  link_tool "$PROJECT_DIR/node_modules/.bin/tsx"
-  write_vp_shim
+  # node_modules/.bin only exists after the install, so rewrite the shims for what it provides.
+  write_tool_shims
 fi
 
 exit 0

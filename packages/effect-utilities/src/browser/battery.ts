@@ -14,6 +14,7 @@
  *
  * @since 0.2.0
  */
+import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -128,9 +129,12 @@ export const make = (
     });
   }
   let pending: Promise<BatteryManagerLike> | undefined;
-  const manager: Effect.Effect<Option.Option<BatteryManagerLike>> = Effect.tryPromise(() => {
-    pending ??= getBattery();
-    return pending;
+  const manager: Effect.Effect<Option.Option<BatteryManagerLike>> = Effect.tryPromise({
+    try: () => {
+      pending ??= getBattery();
+      return pending;
+    },
+    catch: (cause) => new Cause.UnknownError(cause, "navigator.getBattery() rejected"),
   }).pipe(Effect.option);
   return Battery.of({
     supported: true,

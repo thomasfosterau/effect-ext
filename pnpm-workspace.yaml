@@ -108,13 +108,13 @@ catalog:
   "@typescript/native": "npm:typescript@7.0.2"
   # vite-plus pins `oxlint`, `oxfmt` and `vitest` to exact versions, so this
   # entry decides the oxlint `effect-tsgo patch --oxlint` has to support (see
-  # the @effect/tsgo note above): 1.4.0 carries oxlint 1.89.0 and
-  # oxlint-tsgolint 7.0.2004. `vite` is the same release under its aliased
+  # the @effect/tsgo note above): 1.5.0 carries oxlint 1.91.0 and
+  # oxlint-tsgolint 7.0.2005. `vite` is the same release under its aliased
   # core package, and `vitest` must match vite-plus's exact pin
-  # (1.4.0 -> 5.0.5, `vp toolchain vitest`) because the `vitest@*` override
+  # (1.5.0 -> 5.1.0, `vp toolchain vitest`) because the `vitest@*` override
   # forces every semver resolution to the catalog singleton.
   vite-plus: 1.5.0
-  vite: npm:@voidzero-dev/vite-plus-core@1.4.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.5.0
   vitest: 5.1.0
 
 # Peer ranges the PUBLISHED packages declare. Kept as a named catalog so the

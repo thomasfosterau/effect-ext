@@ -186,7 +186,10 @@ export const requestViaBinding = <S extends Schema.Top>(
       Effect.mapError((cause) => transportFailure(origin, cause)),
       Effect.map((response): NormalizedResponse => ({
         status: response.status,
-        text: Effect.tryPromise(() => response.text()).pipe(Effect.orElseSucceed(() => "")),
+        text: Effect.tryPromise({
+          try: () => response.text(),
+          catch: (cause) => bodyReadFailure(origin, cause),
+        }).pipe(Effect.orElseSucceed(() => "")),
         json: Effect.tryPromise({
           try: () => response.json(),
           catch: (cause) => bodyReadFailure(origin, cause),
