@@ -181,17 +181,42 @@ fi
 # pnpm, and the family standard allows no yarn or npx invocation.
 # `fallow hooks install --target agent --agent claude` overwrites this script
 # without asking, so re-apply this block after regenerating.
+# The check is made on the checkout's top level, so a commit run from a
+# subdirectory is still audited; a worktree is exactly one path component
+# under `.claude/worktrees/` and shares the project's git directory, so neither
+# a repository nested inside one nor a separate clone at that path is trusted.
 GATE_PROJECT="${CLAUDE_PROJECT_DIR:-}"
 GATE_PROJECT="${GATE_PROJECT%/}"
-case "$PWD" in
-  "$GATE_PROJECT" | "$GATE_PROJECT"/.claude/worktrees/*) ;;
-  *)
-    if [ -n "$GATE_PROJECT" ]; then
-      echo "fallow-gate: $PWD is not this project or one of its worktrees; not running its tooling, skipping audit." >&2
-      exit 0
-    fi
+# `--show-toplevel` prints a physical path, so compare against the physical
+# project path (CLAUDE_PROJECT_DIR may go through a symlink).
+if [ -n "$GATE_PROJECT" ]; then
+  GATE_PROJECT="$(cd "$GATE_PROJECT" 2>/dev/null && pwd -P || printf '%s' "$GATE_PROJECT")"
+fi
+GATE_CHECKOUT="$(git rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PWD")"
+GATE_TRUSTED=
+case "$GATE_CHECKOUT" in
+  "$GATE_PROJECT") GATE_TRUSTED=1 ;;
+  "$GATE_PROJECT"/.claude/worktrees/*)
+    case "${GATE_CHECKOUT#"$GATE_PROJECT"/.claude/worktrees/}" in
+      */* | '') ;;
+      *)
+        # A worktree of this project shares its git directory; a separate
+        # clone placed at that path does not.
+        GATE_COMMON="$(git -C "$GATE_CHECKOUT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+        GATE_PROJECT_COMMON="$(git -C "$GATE_PROJECT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+        if [ -n "$GATE_COMMON" ] && [ -n "$GATE_PROJECT_COMMON" ] \
+          && [ "$(realpath "$GATE_COMMON" 2>/dev/null)" = "$(realpath "$GATE_PROJECT_COMMON" 2>/dev/null)" ]; then
+          GATE_TRUSTED=1
+        fi
+        ;;
+    esac
     ;;
 esac
+if [ -n "$GATE_PROJECT" ] && [ -z "$GATE_TRUSTED" ]; then
+  echo "fallow-gate: $GATE_CHECKOUT is not this project or one of its worktrees; not running its tooling, skipping audit." >&2
+  exit 0
+fi
+cd "$GATE_CHECKOUT" || exit 0
 if command -v vp >/dev/null 2>&1 && [ -x ./node_modules/.bin/fallow ]; then
   RUNNER=(vp exec fallow)
   BIN_DESC="vp exec fallow ($PWD/node_modules/.bin/fallow)"
