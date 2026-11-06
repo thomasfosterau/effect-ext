@@ -41,8 +41,16 @@ permissions: {}
 
 jobs:
   devcontainer:
-    name: build and provision
+    name: build and provision (${{ matrix.ownership }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # `host-uid`: the CLI's default on Linux, which re-maps the image
+        # user's UID to the checkout owner's. `uid-1000`: the checkout owned
+        # by another UID with no re-mapping, as a Codespace can be (its clone
+        # is not made by the container user).
+        ownership: [host-uid, uid-1000]
     timeout-minutes: 30
     permissions:
       contents: read
@@ -64,9 +72,23 @@ jobs:
           check-latest: true
       # `up` fails when the image, a feature or `postCreateCommand` fails.
       - name: Build and start the container
+        env:
+          OWNERSHIP: ${{ matrix.ownership }}
         run: |
           set -o pipefail
-          pnpm dlx "$DEVCONTAINER_CLI" up --workspace-folder . --log-level info 2>&1 | tee "$RUNNER_TEMP/up.log"
+          extra=()
+          if [ "$OWNERSHIP" = uid-1000 ]; then
+            sudo chown -R 1000:1000 .
+            extra=(--update-remote-user-uid-default off)
+          fi
+          pnpm dlx "$DEVCONTAINER_CLI" up --workspace-folder . --log-level info "${extra[@]}" 2>&1 | tee "$RUNNER_TEMP/up.log"
+      # The hook logs and continues on every failure; any such line fails here.
+      - name: Assert the hook reported no failure
+        run: |
+          if grep -E '\[session-start\] .*(fail|unavailable|could not|cannot|broken)' "$RUNNER_TEMP/up.log"; then
+            echo "::error::the session-start hook reported a failure (above)"
+            exit 1
+          fi
       # A login shell, as a Codespaces terminal is: `~/.local/bin` (where the
       # hook links `vp` / `vpx`) is on PATH through the profile.
       - name: Assert the container is provisioned
@@ -75,7 +97,7 @@ jobs:
           echo "catalog vite-plus pin: $pin"
           run() { pnpm dlx "$DEVCONTAINER_CLI" exec --workspace-folder . bash -lc "$1"; }
           set -x
-          run 'id; echo "HOME=$HOME"; pwd; echo "PATH=$PATH"; env | grep -E "^(VP_|VITE_PLUS|PNPM|COREPACK)" || true; ls -ld . "$HOME/.vite-plus" "$HOME/.vite-plus/bin" "$HOME/.local/share/vite-plus" "$HOME/.local/bin"/* 2>&1; command -v -a vp node pnpm; cat /etc/os-release | head -3; ls -la /home'
+          run 'id; echo "HOME=$HOME"; pwd; echo "PATH=$PATH"; env | grep -E "^(VP_|VITE_PLUS|PNPM|COREPACK)" || true; ls -ld . "$HOME/.vite-plus" "$HOME/.vite-plus/bin" "$HOME/.local/share/vite-plus" "$HOME/.local/bin"/* 2>&1; type -a vp node pnpm; cat /etc/os-release | head -3; ls -la /home'
           run "vp --version | tee /dev/stderr | grep -F 'v$pin'"
           run 'node --version'
           run 'test -d node_modules/.pnpm && test -x node_modules/.bin/vp'
