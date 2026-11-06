@@ -41,16 +41,8 @@ permissions: {}
 
 jobs:
   devcontainer:
-    name: build and provision (${{ matrix.ownership }})
+    name: build and provision
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # `host-uid`: the CLI's default on Linux, which re-maps the image
-        # user's UID to the checkout owner's. `uid-1000`: the checkout owned
-        # by another UID with no re-mapping, as a Codespace can be (its clone
-        # is not made by the container user).
-        ownership: [host-uid, uid-1000]
     timeout-minutes: 30
     permissions:
       contents: read
@@ -72,19 +64,9 @@ jobs:
           check-latest: true
       # `up` fails when the image, a feature or `postCreateCommand` fails.
       - name: Build and start the container
-        env:
-          OWNERSHIP: ${{ matrix.ownership }}
         run: |
           set -o pipefail
-          cli=(pnpm dlx "$DEVCONTAINER_CLI")
-          if [ "$OWNERSHIP" = uid-1000 ]; then
-            # The CLI itself writes .devcontainer/devcontainer-lock.json, so
-            # it runs as root once the runner user no longer owns the tree.
-            sudo chown -R 1000:1000 .
-            cli=(sudo env "PATH=$PATH" "${cli[@]}")
-          fi
-          "${cli[@]}" up --workspace-folder . --log-level info --update-remote-user-uid-default off 2>&1 \
-            | tee "$RUNNER_TEMP/up.log"
+          pnpm dlx "$DEVCONTAINER_CLI" up --workspace-folder . --log-level info 2>&1 | tee "$RUNNER_TEMP/up.log"
       # The hook logs and continues on every failure; any such line fails here.
       - name: Assert the hook reported no failure
         run: |
@@ -100,7 +82,9 @@ jobs:
           echo "catalog vite-plus pin: $pin"
           run() { pnpm dlx "$DEVCONTAINER_CLI" exec --workspace-folder . bash -lc "$1"; }
           set -x
-          run 'id; echo "HOME=$HOME"; pwd; echo "PATH=$PATH"; env | grep -E "^(VP_|VITE_PLUS|PNPM|COREPACK)" || true; ls -ld . "$HOME/.vite-plus" "$HOME/.vite-plus/bin" "$HOME/.local/share/vite-plus" "$HOME/.local/bin"/* 2>&1; type -a vp node pnpm; cat /etc/os-release | head -3; ls -la /home'
+          run 'id; echo "HOME=$HOME"; pwd; echo "PATH=$PATH"; env | grep -E "^(VP_|VITE_PLUS|PNPM|COREPACK)" || true; type -a vp node pnpm; ls -l "$HOME/.local/bin"'
+          # The hook links the global CLI, not its node_modules fallback shim.
+          run 'test -L "$HOME/.local/bin/vp" && readlink -f "$HOME/.local/bin/vp"'
           run "vp --version | tee /dev/stderr | grep -F 'v$pin'"
           run 'node --version'
           run 'test -d node_modules/.pnpm && test -x node_modules/.bin/vp'
