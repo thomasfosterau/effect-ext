@@ -35,6 +35,10 @@ import {
 import * as VecEntry from "@thomasfosterau/effect-utilities/Vec";
 import * as TriStateEntry from "@thomasfosterau/effect-utilities/TriState";
 import * as BoundedEntry from "@thomasfosterau/effect-utilities/Bounded";
+import { Langtag, Mime, Sitemap, UriTemplate, Web } from "@thomasfosterau/effect-utilities";
+import * as Robots from "@thomasfosterau/effect-utilities/Robots";
+import * as Browser from "@thomasfosterau/effect-utilities/Browser";
+import * as Negotiate from "@thomasfosterau/effect-utilities/Negotiate";
 
 type Assert<T extends true> = T;
 type Equals<A, B> =
@@ -50,6 +54,11 @@ type PersonId = typeof PersonId.Type;
 declare const raw: string;
 // @ts-expect-error -- the brand survives declaration emit
 export const rawAsPerson: PersonId = raw;
+
+// ── Langtag (merged in from effect-web) ─────────────────────────────────
+type LanguageTag = Langtag.LanguageTag.LanguageTag;
+// @ts-expect-error -- the LanguageTag brand survives declaration emit
+export const rawAsTag: LanguageTag = raw;
 
 // ── TriState ───────────────────────────────────────────────────────────
 const summary = TriState.clearable(Ids.Slug);
@@ -173,4 +182,14 @@ export type Checks = [
   Assert<Not<IsAny<typeof TriState.read>>>,
   Assert<Not<IsAny<typeof Issues.pointers>>>,
   Assert<Not<IsAny<typeof Bounded.idList>>>,
+  // The modules merged in from effect-web, through the barrel and subpaths
+  Assert<Not<IsAny<LanguageTag>>>,
+  Assert<Equals<ReturnType<typeof Langtag.LanguageTag.parse>, Option.Option<LanguageTag>>>,
+  Assert<Not<IsAny<typeof Mime.MimeType.parse>>>,
+  Assert<Not<IsAny<typeof UriTemplate.UriTemplate.expand>>>,
+  Assert<Not<IsAny<typeof Web.appendVary>>>,
+  Assert<Not<IsAny<typeof Sitemap.renderSitemap>>>,
+  Assert<Not<IsAny<typeof Robots.isAllowed>>>,
+  Assert<Not<IsAny<typeof Browser.Locks.withLock>>>,
+  Assert<Not<IsAny<typeof Negotiate.negotiateRepresentation>>>,
 ];

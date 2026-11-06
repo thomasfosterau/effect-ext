@@ -25,7 +25,7 @@ const setIfAbsent = (headers: Headers.Headers, name: string, value: string): Hea
  *
  * @example
  * ```ts
- * import { SECURITY_HEADER_DEFAULTS } from "@thomasfosterau/effect-web"
+ * import { SECURITY_HEADER_DEFAULTS } from "@thomasfosterau/effect-utilities/Web"
  *
  * SECURITY_HEADER_DEFAULTS["X-Frame-Options"] // "DENY"
  * ```
@@ -52,7 +52,7 @@ export const SECURITY_HEADER_DEFAULTS = {
  * @example
  * ```ts
  * import * as Headers from "effect/http/Headers"
- * import { securityHeaders } from "@thomasfosterau/effect-web"
+ * import { securityHeaders } from "@thomasfosterau/effect-utilities/Web"
  *
  * const headers = securityHeaders(Headers.fromInput({ "x-frame-options": "SAMEORIGIN" }))
  * Headers.get(headers, "x-frame-options") // Option.some("SAMEORIGIN") — the route's own value wins
@@ -82,7 +82,7 @@ export const securityHeaders = (headers: Headers.Headers): Headers.Headers =>
  * @example
  * ```ts
  * import * as Headers from "effect/http/Headers"
- * import { stageNoindex } from "@thomasfosterau/effect-web"
+ * import { stageNoindex } from "@thomasfosterau/effect-utilities/Web"
  *
  * Headers.get(stageNoindex(Headers.empty, { indexable: false }), "x-robots-tag") // Option.some("noindex")
  * Headers.has(stageNoindex(Headers.empty, { indexable: true }), "x-robots-tag") // false
@@ -107,7 +107,7 @@ export const stageNoindex = (
  * @example
  * ```ts
  * import * as Headers from "effect/http/Headers"
- * import { appendVary } from "@thomasfosterau/effect-web"
+ * import { appendVary } from "@thomasfosterau/effect-utilities/Web"
  *
  * const headers = appendVary(Headers.fromInput({ vary: "accept" }), ["Accept", "Cookie"])
  * Headers.get(headers, "vary") // Option.some("accept, Cookie")
@@ -177,7 +177,7 @@ export type RouteVaryClass = "locale-invariant" | "format-negotiated" | "negotia
  *
  * @example
  * ```ts
- * import { VARY_BY_ROUTE_CLASS } from "@thomasfosterau/effect-web"
+ * import { VARY_BY_ROUTE_CLASS } from "@thomasfosterau/effect-utilities/Web"
  *
  * VARY_BY_ROUTE_CLASS["negotiated"] // ["Cookie", "Accept-Language", "Accept"]
  * ```
@@ -200,7 +200,7 @@ export const VARY_BY_ROUTE_CLASS: Readonly<Record<RouteVaryClass, ReadonlyArray<
  * @example
  * ```ts
  * import * as Headers from "effect/http/Headers"
- * import { responseVary } from "@thomasfosterau/effect-web"
+ * import { responseVary } from "@thomasfosterau/effect-utilities/Web"
  *
  * Headers.get(responseVary(Headers.empty, "negotiated"), "vary") // Option.some("Cookie, Accept-Language, Accept")
  * Headers.has(responseVary(Headers.empty, "locale-invariant"), "vary") // false
@@ -227,7 +227,7 @@ export const responseVary = (
  *
  * @example
  * ```ts
- * import { LOCALE_INVARIANT_ASSET_PATHS } from "@thomasfosterau/effect-web"
+ * import { LOCALE_INVARIANT_ASSET_PATHS } from "@thomasfosterau/effect-utilities/Web"
  *
  * LOCALE_INVARIANT_ASSET_PATHS.has("/robots.txt") // true
  * ```
@@ -260,7 +260,7 @@ export const LOCALE_INVARIANT_ASSET_PATHS: ReadonlySet<string> = new Set([
  *
  * @example
  * ```ts
- * import { isOpenGraphCard } from "@thomasfosterau/effect-web"
+ * import { isOpenGraphCard } from "@thomasfosterau/effect-utilities/Web"
  *
  * isOpenGraphCard("/og/abc123.png") // true
  * isOpenGraphCard("/og-default.png") // false
@@ -278,7 +278,7 @@ export const isOpenGraphCard = (pathname: string): boolean =>
  *
  * @example
  * ```ts
- * import { makeLocaleInvariantAssetMatcher } from "@thomasfosterau/effect-web"
+ * import { makeLocaleInvariantAssetMatcher } from "@thomasfosterau/effect-utilities/Web"
  *
  * const isInvariant = makeLocaleInvariantAssetMatcher(["/favicon.ico"], (p) => p.startsWith("/static/"))
  * isInvariant("/favicon.ico") // true
@@ -304,7 +304,7 @@ export const makeLocaleInvariantAssetMatcher = (
  *
  * @example
  * ```ts
- * import { isLocaleInvariantAsset } from "@thomasfosterau/effect-web"
+ * import { isLocaleInvariantAsset } from "@thomasfosterau/effect-utilities/Web"
  *
  * isLocaleInvariantAsset("/sitemap.xml") // true
  * isLocaleInvariantAsset("/og/card.png") // true
@@ -339,7 +339,7 @@ export interface RouteClassifier {
  *
  * @example
  * ```ts
- * import { classifyRoute } from "@thomasfosterau/effect-web"
+ * import { classifyRoute } from "@thomasfosterau/effect-utilities/Web"
  *
  * classifyRoute("/robots.txt") // "locale-invariant"
  * classifyRoute("/posts/1") // "negotiated"
@@ -385,7 +385,7 @@ export const PRIVATE_NO_STORE = "private, no-store";
  * @example
  * ```ts
  * import * as Headers from "effect/http/Headers"
- * import { ensureCacheControl } from "@thomasfosterau/effect-web"
+ * import { ensureCacheControl } from "@thomasfosterau/effect-utilities/Web"
  *
  * Headers.get(ensureCacheControl(Headers.empty), "cache-control") // Option.some("private, no-store")
  * Headers.get(ensureCacheControl(Headers.fromInput({ "cache-control": "public, max-age=3600" })), "cache-control") // Option.some("public, max-age=3600")
@@ -415,7 +415,7 @@ export const ensureCacheControl = (headers: Headers.Headers): Headers.Headers =>
  * @example
  * ```ts
  * import * as Headers from "effect/http/Headers"
- * import { cacheControlForViewer } from "@thomasfosterau/effect-web"
+ * import { cacheControlForViewer } from "@thomasfosterau/effect-utilities/Web"
  *
  * const declared = Headers.fromInput({ "cache-control": "public, max-age=60" })
  * Headers.get(cacheControlForViewer(declared, { viewerResolved: true }), "cache-control") // Option.some("private, no-store")
@@ -442,7 +442,7 @@ export const cacheControlForViewer = (
  * ```ts
  * import * as Headers from "effect/http/Headers"
  * import * as HttpServerResponse from "effect/http/HttpServerResponse"
- * import { ensureCacheControl, securityHeaders, updateHeaders } from "@thomasfosterau/effect-web"
+ * import { ensureCacheControl, securityHeaders, updateHeaders } from "@thomasfosterau/effect-utilities/Web"
  *
  * const response = updateHeaders(HttpServerResponse.text("hi"), (headers) => ensureCacheControl(securityHeaders(headers)))
  * Headers.get(response.headers, "cache-control") // Option.some("private, no-store")

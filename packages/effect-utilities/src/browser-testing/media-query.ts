@@ -1,5 +1,5 @@
 /**
- * A controllable `matchMedia` for tests of code that uses `./browser`'s
+ * A controllable `matchMedia` for tests of code that uses `Browser`'s
  * `MediaQuery`: {@link layer} provides the real adapter over an in-memory
  * `matchMedia`, plus {@link Control} to make a query start or stop
  * matching. Changes fire `change` on every list for the query, as the
@@ -28,7 +28,7 @@ import { type MatchMediaLike, make as makeMediaQuery, MediaQuery } from "../brow
 export class Control extends Context.Service<
   Control,
   { readonly set: (query: string, matches: boolean) => Effect.Effect<void> }
->()("@thomasfosterau/effect-web/testing/MediaQueryControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/MediaQueryControl") {}
 
 /**
  * What {@link make} builds: the `MediaQuery` service over the in-memory
@@ -62,7 +62,7 @@ class TestMediaQueryList extends EventTarget {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestMediaQuery } from "@thomasfosterau/effect-web/testing"
+ * import { TestMediaQuery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { mediaQuery, control } = TestMediaQuery.make()
  * Effect.runPromise(
@@ -105,8 +105,8 @@ export const make = (initial?: Readonly<Record<string, boolean>>): Fixture => {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { MediaQuery } from "@thomasfosterau/effect-web/browser"
- * import { TestMediaQuery } from "@thomasfosterau/effect-web/testing"
+ * import { MediaQuery } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestMediaQuery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const dark = MediaQuery.matches("(prefers-color-scheme: dark)")
  * Effect.runPromise(

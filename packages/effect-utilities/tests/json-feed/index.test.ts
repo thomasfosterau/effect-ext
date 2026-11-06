@@ -15,7 +15,7 @@ import {
   jsonFeedResponse,
   LOW_CHURN_CACHE_CONTROL,
   type JsonFeedOptions,
-} from "@thomasfosterau/effect-json-feed";
+} from "@thomasfosterau/effect-utilities/JsonFeed";
 
 const BASE = "https://example.com";
 const PUBLISHED = DateTime.makeUnsafe("2026-01-02T03:04:05Z");

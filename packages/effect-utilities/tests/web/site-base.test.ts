@@ -9,7 +9,7 @@ import * as Effect from "effect/Effect";
 import * as Logger from "effect/Logger";
 import * as Option from "effect/Option";
 import * as References from "effect/References";
-import { normalizeSiteBase, siteBase } from "@thomasfosterau/effect-web";
+import { normalizeSiteBase, siteBase } from "@thomasfosterau/effect-utilities/Web";
 
 const FALLBACK = "https://example.com";
 const linkBase = siteBase({ key: "PUBLIC_SITE_URL", fallback: FALLBACK });

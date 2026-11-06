@@ -19,7 +19,7 @@ import {
   isBlockedHost,
   RedirectRejected,
   UnsafeUrl,
-} from "@thomasfosterau/effect-web/net";
+} from "@thomasfosterau/effect-utilities/Net";
 
 /** The URL a stubbed `fetch` was called with, whatever form it took. */
 const urlOf = (input: Parameters<typeof fetch>[0]): string =>

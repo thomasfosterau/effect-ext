@@ -40,7 +40,7 @@ export interface SessionDegradedReport {
  *
  * @example
  * ```ts
- * import { describeSessionDegraded, SESSION_DEGRADED_LOG_MESSAGE } from "@thomasfosterau/effect-web"
+ * import { describeSessionDegraded, SESSION_DEGRADED_LOG_MESSAGE } from "@thomasfosterau/effect-utilities/Web"
  *
  * const error = new Error("db down")
  * const report = describeSessionDegraded(error)

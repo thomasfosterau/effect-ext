@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-encoding` — the WHATWG Encoding Standard on
+ * `@thomasfosterau/effect-utilities/Encoding` — the WHATWG Encoding Standard on
  * Effect.
  *
  * - `Encoding` — labels to encodings, BOM sniffing, and fatal decoding of
@@ -8,4 +8,4 @@
  *
  * @since 0.1.0
  */
-export * as Encoding from "./encoding.ts";
+export * as Encoding from "./encoding/encoding.ts";

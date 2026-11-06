@@ -116,7 +116,7 @@ const extensionOf = (nameOrExtension: string): string => {
  *
  * @example
  * ```ts
- * import { Extension } from "@thomasfosterau/effect-mime"
+ * import { Extension } from "@thomasfosterau/effect-utilities/Mime"
  *
  * console.log(Extension.mimeTypeFor("Report.DOCX"))
  * // Option.some("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -138,7 +138,7 @@ export const mimeTypeFor = (
  *
  * @example
  * ```ts
- * import { Extension } from "@thomasfosterau/effect-mime"
+ * import { Extension } from "@thomasfosterau/effect-utilities/Mime"
  *
  * console.log(Extension.extensionFor("image/jpeg; q=1")) // Option.some("jpg")
  * ```
@@ -164,7 +164,7 @@ export const extensionFor = (
  *
  * @example
  * ```ts
- * import { Extension } from "@thomasfosterau/effect-mime"
+ * import { Extension } from "@thomasfosterau/effect-utilities/Mime"
  *
  * const table = Extension.extend({ ".GEOJSON": "application/geo+json" })
  * console.log(Extension.mimeTypeFor("map.geojson", table)) // Option.some("application/geo+json")

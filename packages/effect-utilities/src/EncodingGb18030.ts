@@ -1,5 +1,5 @@
 /**
- * The Chinese (simplified) indexes for `@thomasfosterau/effect-encoding`: index gb18030 and index gb18030 ranges. Opt-in: a
+ * The Chinese (simplified) indexes for `@thomasfosterau/effect-utilities/Encoding`: index gb18030 and index gb18030 ranges. Opt-in: a
  * program that imports this entry and provides its `tables` (see
  * `Encoding.tablesLayer`) can encode gb18030 and GBK, and decode them on a runtime
  * whose `TextDecoder` lacks them.
@@ -12,7 +12,7 @@
  *
  * @since 0.1.0
  */
-import type { Tables } from "../encoding.ts";
+import type { Tables } from "./encoding/encoding.ts";
 
 /**
  * The Chinese (simplified) indexes, for `Encoding.tablesLayer`.
@@ -20,8 +20,8 @@ import type { Tables } from "../encoding.ts";
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Encoding } from "@thomasfosterau/effect-encoding"
- * import * as Gb18030 from "@thomasfosterau/effect-encoding/gb18030"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
+ * import * as Gb18030 from "@thomasfosterau/effect-utilities/EncodingGb18030"
  *
  * const bytes = await Effect.runPromise(
  *   Encoding.encode("中文", { encoding: "gb18030" }).pipe(Effect.provide(Encoding.tablesLayer(Gb18030.tables))),

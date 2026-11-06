@@ -6,7 +6,13 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Schema from "effect/Schema";
-import { encode, parse, RobotsTxt, RobotsTxtFromString, Rule } from "@thomasfosterau/effect-robots";
+import {
+  encode,
+  parse,
+  RobotsTxt,
+  RobotsTxtFromString,
+  Rule,
+} from "@thomasfosterau/effect-utilities/Robots";
 
 /** A failing case's input as a JSON string literal, so control characters show. */
 const quoted = Schema.encodeSync(Schema.fromJsonString(Schema.String));

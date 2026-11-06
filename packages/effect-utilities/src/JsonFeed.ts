@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-json-feed` — a JSON Feed 1.1 document
+ * `@thomasfosterau/effect-utilities/JsonFeed` — a JSON Feed 1.1 document
  * (`feed.json`) built from a feed description and its entries, and served
  * as an `HttpServerResponse` behind the low-churn edge cache.
  *
@@ -18,7 +18,7 @@
 import * as Arr from "effect/Array";
 import * as DateTime from "effect/DateTime";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
-import { compact } from "./internal/compact.ts";
+import { compact } from "./internal/json-feed/compact.ts";
 
 // ── The document ───────────────────────────────────────────────────────
 
@@ -223,7 +223,7 @@ const authors = (
  * @example
  * ```ts
  * import * as DateTime from "effect/DateTime"
- * import { buildJsonFeedItem } from "@thomasfosterau/effect-json-feed"
+ * import { buildJsonFeedItem } from "@thomasfosterau/effect-utilities/JsonFeed"
  *
  * buildJsonFeedItem("https://example.com", {
  *   path: "/posts/1",
@@ -277,7 +277,7 @@ export const buildJsonFeedItem = (base: string, entry: JsonFeedEntry): JsonFeedI
  *
  * @example
  * ```ts
- * import { buildJsonFeed } from "@thomasfosterau/effect-json-feed"
+ * import { buildJsonFeed } from "@thomasfosterau/effect-utilities/JsonFeed"
  *
  * const feed = buildJsonFeed(
  *   { base: "https://example.com", title: "Example" },
@@ -328,7 +328,7 @@ export const JSON_FEED_CONTENT_TYPE = "application/feed+json";
  * the whole document for an hour, so any enumeration behind it runs at most
  * once per hour per edge, and a mutation purges its `Cache-Tag` rather than
  * waiting out the TTL (PERF-CACHE-002). The same value as
- * `@thomasfosterau/effect-sitemap`'s.
+ * `@thomasfosterau/effect-utilities/Sitemap`'s.
  *
  * @since 0.1.0
  * @category constants
@@ -359,7 +359,7 @@ export interface JsonFeedResponseOptions {
  * @example
  * ```ts
  * import * as HttpServerResponse from "effect/http/HttpServerResponse"
- * import { buildJsonFeed, jsonFeedResponse } from "@thomasfosterau/effect-json-feed"
+ * import { buildJsonFeed, jsonFeedResponse } from "@thomasfosterau/effect-utilities/JsonFeed"
  *
  * const feed = buildJsonFeed({ base: "https://example.com", title: "Example" }, [])
  * const response = jsonFeedResponse(feed, { cacheTag: "feed" })
@@ -394,4 +394,4 @@ export const jsonFeedResponse = (
  *
  * @since 0.1.0
  */
-export * from "./parse.ts";
+export * from "./json-feed/parse.ts";

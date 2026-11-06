@@ -4,7 +4,7 @@
  * binding is exported so an unused-local error can never stand in for the
  * assertion a directive expects.
  */
-import type { JsonFeedAuthor, JsonFeedEntry } from "@thomasfosterau/effect-json-feed";
+import type { JsonFeedAuthor, JsonFeedEntry } from "@thomasfosterau/effect-utilities/JsonFeed";
 
 export const html: JsonFeedEntry = { path: "/a", contentHtml: "<p>A</p>" };
 export const text: JsonFeedEntry = { path: "/a", contentText: "A" };

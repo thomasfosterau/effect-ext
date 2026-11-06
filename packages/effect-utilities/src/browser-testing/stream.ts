@@ -15,7 +15,7 @@ import * as Stream from "effect/Stream";
  * fiber, and returns once the stream has emitted its first element (or
  * ended, or failed).
  *
- * Every change stream in `@thomasfosterau/effect-web/browser` emits the
+ * Every change stream in `@thomasfosterau/effect-utilities/Browser` emits the
  * current value first, after its listeners are attached, so once this
  * returns, a change driven through a double's `Control` is guaranteed to be
  * observed. Forking and then sleeping guarantees nothing: the child fiber
@@ -26,8 +26,8 @@ import * as Stream from "effect/Stream";
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Fiber from "effect/Fiber"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
- * import { TestNavigator, observe } from "@thomasfosterau/effect-web/testing"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNavigator, observe } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.gen(function* () {
  *   const control = yield* TestNavigator.Control

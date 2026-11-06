@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
-import { Color, Length, Syntax } from "@thomasfosterau/effect-css";
+import { Color, Length, Syntax } from "@thomasfosterau/effect-utilities/Css";
 import colorFunction from "./fixtures/css-parsing-tests/color_function_4.json" with { type: "json" };
 import hex3 from "./fixtures/css-parsing-tests/color_hexadecimal_3.json" with { type: "json" };
 import hex4 from "./fixtures/css-parsing-tests/color_hexadecimal_4.json" with { type: "json" };

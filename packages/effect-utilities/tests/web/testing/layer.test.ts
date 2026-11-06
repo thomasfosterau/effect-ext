@@ -1,6 +1,6 @@
 /**
- * Unit tests for the combined layers: `./browser`'s live `layer` (built
- * under Node, where most APIs are missing) and `./testing`'s `layer`.
+ * Unit tests for the combined layers: `Browser`'s live `layer` (built
+ * under Node, where most APIs are missing) and `BrowserTesting`'s `layer`.
  */
 
 import { describe, expect, it } from "vite-plus/test";
@@ -21,7 +21,7 @@ import {
   PageVisibility,
   ScreenOrientation,
   WakeLock,
-} from "@thomasfosterau/effect-web/browser";
+} from "@thomasfosterau/effect-utilities/Browser";
 import {
   layer as testLayer,
   TestBattery,
@@ -37,7 +37,7 @@ import {
   TestPermissions,
   TestScreenOrientation,
   TestWakeLock,
-} from "@thomasfosterau/effect-web/testing";
+} from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 const everyService = Effect.all(
   [

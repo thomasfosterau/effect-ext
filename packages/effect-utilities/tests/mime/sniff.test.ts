@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import { Extension, MimeType, Sniff } from "@thomasfosterau/effect-mime";
+import { Extension, MimeType, Sniff } from "@thomasfosterau/effect-utilities/Mime";
 
 const ascii = (text: string): Uint8Array => Uint8Array.from(text, (char) => char.charCodeAt(0));
 const bytes = (...values: ReadonlyArray<number>): Uint8Array => Uint8Array.from(values);

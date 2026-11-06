@@ -1,6 +1,6 @@
 /**
  * An in-memory `BroadcastChannel` hub for tests of code that uses
- * `./browser`'s `Broadcast`: every channel opened through one hub with the
+ * `Browser`'s `Broadcast`: every channel opened through one hub with the
  * same name reaches every other (never itself), with the platform's
  * structured-clone semantics and asynchronous delivery. {@link Control}
  * records what was posted and injects a message from "another context" —
@@ -46,7 +46,7 @@ export class Control extends Context.Service<
     readonly posted: Effect.Effect<ReadonlyArray<Posted>>;
     readonly deliver: (name: string, message: unknown) => Effect.Effect<void>;
   }
->()("@thomasfosterau/effect-web/testing/BroadcastControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/BroadcastControl") {}
 
 /**
  * What {@link make} builds: the `Broadcast` service over the in-memory hub,
@@ -67,7 +67,7 @@ export interface Fixture {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestBroadcast } from "@thomasfosterau/effect-web/testing"
+ * import { TestBroadcast } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { broadcast, control } = TestBroadcast.make()
  * const program = Effect.scoped(
@@ -132,8 +132,8 @@ export const make = (): Fixture => {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Broadcast } from "@thomasfosterau/effect-web/browser"
- * import { TestBroadcast } from "@thomasfosterau/effect-web/testing"
+ * import { Broadcast } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestBroadcast } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.map(Broadcast.Broadcast, (broadcast) => broadcast.supported)
  * Effect.runPromise(Effect.provide(program, TestBroadcast.layer)).then(console.log) // true

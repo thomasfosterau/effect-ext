@@ -80,7 +80,7 @@ const parseUrl = (url: string | URL): URL | null => (URL.canParse(url) ? new URL
 
 /** RFC 3986 `segment-nz`: one or more `pchar`s. */
 const SEGMENT_NZ = /^(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|%[0-9A-Fa-f]{2})+$/u;
-const SCHEMES = ["http:", "https:", "ws:", "wss:"];
+const SCHEMES = new Set(["http:", "https:", "ws:", "wss:"]);
 
 /**
  * Whether `suffix` may follow `/.well-known/`: a non-empty path segment
@@ -88,7 +88,7 @@ const SCHEMES = ["http:", "https:", "ws:", "wss:"];
  *
  * @example
  * ```ts
- * import { WellKnown } from "@thomasfosterau/effect-uri-template"
+ * import { WellKnown } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * console.log(WellKnown.isValidSuffix("security.txt"), WellKnown.isValidSuffix("a/b")) // true false
  * ```
@@ -107,7 +107,7 @@ export const isValidSuffix = (suffix: string): boolean =>
  * @example
  * ```ts
  * import * as Result from "effect/Result"
- * import { WellKnown } from "@thomasfosterau/effect-uri-template"
+ * import { WellKnown } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const url = WellKnown.url("https://example.org/tables/1.csv", "csvm")
  * console.log(Result.map(url, (url) => url.href)) // Success("https://example.org/.well-known/csvm")
@@ -126,7 +126,7 @@ export const url = (origin: string | URL, suffix: string): Result.Result<URL, We
     );
   }
   const parsed = parseUrl(origin);
-  return parsed === null || !SCHEMES.includes(parsed.protocol)
+  return parsed === null || !SCHEMES.has(parsed.protocol)
     ? Result.fail(
         new WellKnownError({
           reason: "InvalidOrigin",
@@ -142,7 +142,7 @@ export const url = (origin: string | URL, suffix: string): Result.Result<URL, We
  *
  * @example
  * ```ts
- * import { WellKnown } from "@thomasfosterau/effect-uri-template"
+ * import { WellKnown } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * console.log(WellKnown.suffixOf("https://example.org/.well-known/acme-challenge/token"))
  * // { _id: "Option", _tag: "Some", value: "acme-challenge" }

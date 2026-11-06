@@ -23,7 +23,7 @@ import {
   stageNoindex,
   updateWebHeaders,
   VARY_BY_ROUTE_CLASS,
-} from "@thomasfosterau/effect-web";
+} from "@thomasfosterau/effect-utilities/Web";
 
 const vary = (headers: Headers.Headers): Option.Option<string> => Headers.get(headers, "vary");
 

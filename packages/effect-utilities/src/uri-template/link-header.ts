@@ -16,7 +16,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
-import { pctEncode } from "./internal/encoding.ts";
+import { pctEncode } from "../internal/uri-template/encoding.ts";
 
 /**
  * A `title*` value (RFC 8187): the decoded text and its language tag, if
@@ -91,7 +91,7 @@ const relsOf = (value: string): ReadonlyArray<string> =>
  *
  * @example
  * ```ts
- * import { LinkHeader } from "@thomasfosterau/effect-uri-template"
+ * import { LinkHeader } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const next = LinkHeader.make("/items?page=3", { rel: "next" })
  * console.log(LinkHeader.serialize([next])) // "</items?page=3>; rel=next"
@@ -170,7 +170,7 @@ const first = (parameters: ReadonlyArray<Parameter>, name: string): Option.Optio
     ([, value]) => value,
   );
 
-const SINGLE = ["rel", "anchor", "type", "media", "title", "title*", "hreflang"];
+const SINGLE = new Set(["rel", "anchor", "type", "media", "title", "title*", "hreflang"]);
 
 const linkOf = (target: string, rawParameters: string, base: string | URL | undefined): Link => {
   const parameters = Arr.map(
@@ -189,7 +189,7 @@ const linkOf = (target: string, rawParameters: string, base: string | URL | unde
       Arr.filter(parameters, ([name]) => name === "hreflang"),
       ([, value]) => value,
     ),
-    params: Arr.filter(parameters, ([name]) => !SINGLE.includes(name)),
+    params: Arr.filter(parameters, ([name]) => !SINGLE.has(name)),
   };
 };
 
@@ -201,7 +201,7 @@ const linkOf = (target: string, rawParameters: string, base: string | URL | unde
  *
  * @example
  * ```ts
- * import { LinkHeader } from "@thomasfosterau/effect-uri-template"
+ * import { LinkHeader } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const links = LinkHeader.parse(
  *   '</tables/1-metadata.json>; rel="describedby"; type="application/csvm+json"',
@@ -250,7 +250,7 @@ const serializeLink = (link: Link): string => {
  *
  * @example
  * ```ts
- * import { LinkHeader } from "@thomasfosterau/effect-uri-template"
+ * import { LinkHeader } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * console.log(
  *   LinkHeader.serialize([
@@ -275,7 +275,7 @@ export const serialize = (links: ReadonlyArray<Link>): string =>
  *
  * @example
  * ```ts
- * import { LinkHeader } from "@thomasfosterau/effect-uri-template"
+ * import { LinkHeader } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * console.log(LinkHeader.hasRel(LinkHeader.make("/a", { rel: "Next" }), "next")) // true
  * ```
@@ -290,7 +290,7 @@ export const hasRel = (link: Link, rel: string): boolean => link.rel.includes(no
  *
  * @example
  * ```ts
- * import { LinkHeader } from "@thomasfosterau/effect-uri-template"
+ * import { LinkHeader } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const links = LinkHeader.parse('<meta.json>; rel="describedby", <next>; rel=next')
  * console.log(LinkHeader.findRel(links, "describedby")._tag) // "Some"
@@ -307,7 +307,7 @@ export const findRel = (links: ReadonlyArray<Link>, rel: string): Option.Option<
  *
  * @example
  * ```ts
- * import { LinkHeader } from "@thomasfosterau/effect-uri-template"
+ * import { LinkHeader } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const links = LinkHeader.parse('<a.fr.html>; rel=alternate; hreflang=fr, <a.de.html>; rel=alternate; hreflang=de')
  * console.log(LinkHeader.filterRel(links, "alternate").length) // 2
@@ -340,7 +340,7 @@ const isLinks = (input: unknown): input is ReadonlyArray<Link> =>
  * @example
  * ```ts
  * import * as Schema from "effect/Schema"
- * import { LinkHeader } from "@thomasfosterau/effect-uri-template"
+ * import { LinkHeader } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const links = Schema.decodeUnknownSync(LinkHeader.LinkHeaderFromString)('<https://example.org/>; rel="up"')
  * console.log(Schema.encodeSync(LinkHeader.LinkHeaderFromString)(links)) // "<https://example.org/>; rel=up"

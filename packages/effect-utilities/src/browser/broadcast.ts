@@ -27,8 +27,8 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import { reasonOf } from "../internal/dom.ts";
-import { ambientBroadcastChannel } from "../internal/globals.ts";
+import { reasonOf } from "../internal/web/dom.ts";
+import { ambientBroadcastChannel } from "../internal/web/globals.ts";
 
 /**
  * The structural slice of a `BroadcastChannel` this module uses.
@@ -127,7 +127,7 @@ export interface Channel<A> {
 
 /**
  * The broadcast-channel service. Provide {@link layer} in a browser, or
- * `TestBroadcast.layer` from `@thomasfosterau/effect-web/testing` in tests.
+ * `TestBroadcast.layer` from `@thomasfosterau/effect-utilities/BrowserTesting` in tests.
  *
  * - `supported` — whether the context has `BroadcastChannel`.
  * - `open` — opens a {@link RawChannel}, closed with its scope.
@@ -141,7 +141,7 @@ export class Broadcast extends Context.Service<
     readonly supported: boolean;
     readonly open: (name: string) => Effect.Effect<RawChannel, BroadcastError, Scope.Scope>;
   }
->()("@thomasfosterau/effect-web/browser/Broadcast") {}
+>()("@thomasfosterau/effect-utilities/Browser/Broadcast") {}
 
 /**
  * Builds the {@link Broadcast} service over a channel factory; `undefined`
@@ -151,7 +151,7 @@ export class Broadcast extends Context.Service<
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Broadcast } from "@thomasfosterau/effect-web/browser"
+ * import { Broadcast } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const broadcast = Broadcast.make(undefined)
  * Effect.runPromise(Effect.flip(Effect.scoped(broadcast.open("sync")))).then((error) =>
@@ -227,7 +227,7 @@ export const make = (factory: BroadcastChannelFactory | undefined): Broadcast["S
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Broadcast } from "@thomasfosterau/effect-web/browser"
+ * import { Broadcast } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const program = Effect.map(Broadcast.Broadcast, (broadcast) => broadcast.supported)
  * Effect.runPromise(Effect.provide(program, Broadcast.layer)).then(console.log) // true under Node 18+
@@ -254,8 +254,8 @@ export const layer: Layer.Layer<Broadcast> = Layer.sync(Broadcast, () => {
  * import * as Effect from "effect/Effect"
  * import * as Schema from "effect/Schema"
  * import * as Stream from "effect/Stream"
- * import { Broadcast } from "@thomasfosterau/effect-web/browser"
- * import { TestBroadcast } from "@thomasfosterau/effect-web/testing"
+ * import { Broadcast } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestBroadcast } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const SignedOut = Schema.Struct({ type: Schema.Literal("signed-out"), at: Schema.Number })
  *

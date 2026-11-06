@@ -2,7 +2,7 @@
  * The JSON:API error responses a web front door emits at its seam — the
  * guard statuses (403 cross-origin, 503 no runtime) and their serialiser.
  * Dependency-free: the §6 negotiation errors themselves come from
- * `@thomasfosterau/effect-jsonapi` through the `./negotiate` entry, which
+ * `@thomasfosterau/effect-jsonapi` through the `Negotiate` module, which
  * builds on this module.
  *
  * @since 0.1.0
@@ -69,7 +69,7 @@ const WRITE_METHODS = HashSet.make("POST", "PUT", "PATCH", "DELETE");
  *
  * @example
  * ```ts
- * import { isMutatingMethod } from "@thomasfosterau/effect-web"
+ * import { isMutatingMethod } from "@thomasfosterau/effect-utilities/Web"
  *
  * isMutatingMethod("patch") // true
  * isMutatingMethod("GET") // false
@@ -119,7 +119,7 @@ export interface JsonApiErrorDocument {
  *
  * @example
  * ```ts
- * import { CROSS_ORIGIN_REJECTED, jsonApiErrorDocument } from "@thomasfosterau/effect-web"
+ * import { CROSS_ORIGIN_REJECTED, jsonApiErrorDocument } from "@thomasfosterau/effect-utilities/Web"
  *
  * jsonApiErrorDocument(CROSS_ORIGIN_REJECTED).errors[0].status // "403"
  * ```
@@ -146,7 +146,7 @@ export const jsonApiErrorDocument = (error: NegotiationError): JsonApiErrorDocum
  * @example
  * ```ts
  * import * as Headers from "effect/http/Headers"
- * import { jsonApiErrorResponse, SERVICE_UNAVAILABLE } from "@thomasfosterau/effect-web"
+ * import { jsonApiErrorResponse, SERVICE_UNAVAILABLE } from "@thomasfosterau/effect-utilities/Web"
  *
  * const response = jsonApiErrorResponse(SERVICE_UNAVAILABLE)
  * response.status // 503
@@ -170,7 +170,7 @@ export const jsonApiErrorResponse = (
  *
  * @example
  * ```ts
- * import { jsonApiErrorResponseWeb, CROSS_ORIGIN_REJECTED } from "@thomasfosterau/effect-web"
+ * import { jsonApiErrorResponseWeb, CROSS_ORIGIN_REJECTED } from "@thomasfosterau/effect-utilities/Web"
  *
  * const response = jsonApiErrorResponseWeb(CROSS_ORIGIN_REJECTED)
  * response.status // 403

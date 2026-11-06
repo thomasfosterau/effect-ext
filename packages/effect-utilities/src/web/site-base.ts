@@ -45,7 +45,7 @@ const isSiteOrigin = (url: URL): boolean =>
  *
  * @example
  * ```ts
- * import { normalizeSiteBase } from "@thomasfosterau/effect-web"
+ * import { normalizeSiteBase } from "@thomasfosterau/effect-utilities/Web"
  *
  * normalizeSiteBase(" https://Example.com:443/ ") // Option.some("https://example.com")
  * normalizeSiteBase("https://example.com/blog") // Option.none()
@@ -77,7 +77,7 @@ export const normalizeSiteBase = (value: string): Option.Option<string> =>
  * ```ts
  * import * as ConfigProvider from "effect/ConfigProvider"
  * import * as Effect from "effect/Effect"
- * import { siteBase } from "@thomasfosterau/effect-web"
+ * import { siteBase } from "@thomasfosterau/effect-utilities/Web"
  *
  * const linkBase = siteBase({ key: "PUBLIC_SITE_URL", fallback: "https://example.com" })
  *

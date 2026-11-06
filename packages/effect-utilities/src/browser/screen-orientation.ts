@@ -21,8 +21,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import { reasonOf, watch } from "../internal/dom.ts";
-import { ambientScreenOrientation } from "../internal/globals.ts";
+import { reasonOf, watch } from "../internal/web/dom.ts";
+import { ambientScreenOrientation } from "../internal/web/globals.ts";
 
 /**
  * The structural slice of `screen.orientation` this module uses. `lock` is
@@ -91,7 +91,7 @@ const REJECTION_REASONS = {
 
 /**
  * The screen-orientation service. Provide {@link layer} in a page, or
- * `TestScreenOrientation.layer` from `@thomasfosterau/effect-web/testing`
+ * `TestScreenOrientation.layer` from `@thomasfosterau/effect-utilities/BrowserTesting`
  * in tests.
  *
  * - `supported` — whether the agent has `screen.orientation` at all (a
@@ -115,7 +115,7 @@ export class ScreenOrientation extends Context.Service<
       orientation: OrientationLockType,
     ) => Effect.Effect<void, OrientationError, Scope.Scope>;
   }
->()("@thomasfosterau/effect-web/browser/ScreenOrientation") {}
+>()("@thomasfosterau/effect-utilities/Browser/ScreenOrientation") {}
 
 const sameOrientation = (self: Orientation, that: Orientation): boolean =>
   self.type === that.type && self.angle === that.angle;
@@ -128,7 +128,7 @@ const sameOrientation = (self: Orientation, that: Orientation): boolean =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { ScreenOrientation } from "@thomasfosterau/effect-web/browser"
+ * import { ScreenOrientation } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const orientation = ScreenOrientation.make(undefined)
  * Effect.runPromise(Effect.flip(Effect.scoped(orientation.lock("landscape")))).then((error) =>
@@ -184,7 +184,7 @@ export const make = (
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { ScreenOrientation } from "@thomasfosterau/effect-web/browser"
+ * import { ScreenOrientation } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const program = Effect.map(ScreenOrientation.ScreenOrientation, (orientation) => orientation.supported)
  * Effect.runPromise(Effect.provide(program, ScreenOrientation.layer)).then(console.log) // false under Node
@@ -203,8 +203,8 @@ export const layer: Layer.Layer<ScreenOrientation> = Layer.sync(ScreenOrientatio
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { ScreenOrientation } from "@thomasfosterau/effect-web/browser"
- * import { TestScreenOrientation } from "@thomasfosterau/effect-web/testing"
+ * import { ScreenOrientation } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestScreenOrientation } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * Effect.runPromise(
  *   Effect.provide(ScreenOrientation.current, TestScreenOrientation.layer()),
@@ -233,8 +233,8 @@ export const current: Effect.Effect<
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { ScreenOrientation } from "@thomasfosterau/effect-web/browser"
- * import { TestScreenOrientation } from "@thomasfosterau/effect-web/testing"
+ * import { ScreenOrientation } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestScreenOrientation } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(ScreenOrientation.changes, 1))
  * Effect.runPromise(Effect.provide(program, TestScreenOrientation.layer())).then(console.log)
@@ -257,8 +257,8 @@ export const changes: Stream.Stream<Orientation, never, ScreenOrientation> = Str
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { ScreenOrientation } from "@thomasfosterau/effect-web/browser"
- * import { TestScreenOrientation } from "@thomasfosterau/effect-web/testing"
+ * import { ScreenOrientation } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestScreenOrientation } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.gen(function* () {
  *   const control = yield* TestScreenOrientation.Control

@@ -10,11 +10,11 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import { Encoding } from "@thomasfosterau/effect-encoding";
-import * as Big5 from "@thomasfosterau/effect-encoding/big5";
-import * as EucKr from "@thomasfosterau/effect-encoding/euc-kr";
-import * as Gb18030 from "@thomasfosterau/effect-encoding/gb18030";
-import * as Japanese from "@thomasfosterau/effect-encoding/japanese";
+import { Encoding } from "@thomasfosterau/effect-utilities/Encoding";
+import * as Big5 from "@thomasfosterau/effect-utilities/EncodingBig5";
+import * as EucKr from "@thomasfosterau/effect-utilities/EncodingEucKr";
+import * as Gb18030 from "@thomasfosterau/effect-utilities/EncodingGb18030";
+import * as Japanese from "@thomasfosterau/effect-utilities/EncodingJapanese";
 import wpt from "./fixtures/wpt-cjk.json" with { type: "json" };
 
 const ALL = Encoding.tablesLayer(Japanese.tables, Gb18030.tables, Big5.tables, EucKr.tables);

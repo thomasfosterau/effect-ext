@@ -24,7 +24,8 @@
 #   (`catalogs.peers.effect`, a `>=` range) is a tested claim that Dependabot
 #   has never rewritten (#60, #63), and it is never Dependabot's to move
 #   (AGENTS.md, Common pitfalls).
-#   `@effect/ai-anthropic` and `@effect/platform-node` are on the same line;
+#   `@effect/ai-anthropic`, `@effect/platform-browser` and `@effect/platform-node`
+#   are on the same line;
 #   `@effect/platform-node-shared` is named only in the catalog and
 #   `overrides`, so Dependabot never proposes it: bump it by hand to the same
 #   version in the same PR.

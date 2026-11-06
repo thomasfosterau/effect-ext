@@ -22,7 +22,7 @@ import * as String from "effect/String";
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { resolveClientIp } from "@thomasfosterau/effect-web"
+ * import { resolveClientIp } from "@thomasfosterau/effect-utilities/Web"
  *
  * resolveClientIp(() => "203.0.113.7") // Option.some("203.0.113.7")
  * resolveClientIp(() => "") // Option.none()

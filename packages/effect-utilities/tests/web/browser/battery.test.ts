@@ -1,5 +1,5 @@
 /**
- * Unit tests for `./browser`'s `Battery`, driven through `./testing`'s
+ * Unit tests for `Browser`'s `Battery`, driven through `BrowserTesting`'s
  * `TestBattery`.
  */
 
@@ -9,8 +9,8 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import { Battery } from "@thomasfosterau/effect-web/browser";
-import { observe, TestBattery } from "@thomasfosterau/effect-web/testing";
+import { Battery } from "@thomasfosterau/effect-utilities/Browser";
+import { observe, TestBattery } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, Battery.Battery | TestBattery.Control>,

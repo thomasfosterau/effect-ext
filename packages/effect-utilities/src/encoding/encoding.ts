@@ -16,10 +16,10 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
-import * as Cjk from "./internal/cjk.ts";
-import * as Decoder from "./internal/decoder.ts";
-import * as Encoder from "./internal/encoder.ts";
-import { LABELS, NAMES, type Name } from "./internal/labels.ts";
+import * as Cjk from "../internal/encoding/cjk.ts";
+import * as Decoder from "../internal/encoding/decoder.ts";
+import * as Encoder from "../internal/encoding/encoder.ts";
+import { LABELS, NAMES, type Name } from "../internal/encoding/labels.ts";
 
 /**
  * An encoding's name, as the Encoding Standard spells it (`UTF-8`,
@@ -38,7 +38,7 @@ export type EncodingName = Name;
  *
  * @example
  * ```ts
- * import { Encoding } from "@thomasfosterau/effect-encoding"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
  *
  * console.log(Encoding.ENCODING_NAMES.length) // 40
  * ```
@@ -58,7 +58,7 @@ export const ENCODING_NAMES: ReadonlyArray<EncodingName> = NAMES;
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { Encoding } from "@thomasfosterau/effect-encoding"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
  *
  * console.log(Encoding.getEncoding(" Latin1 ")) // Option.some("windows-1252")
  * console.log(Option.isNone(Encoding.getEncoding("utf-7"))) // true
@@ -89,7 +89,7 @@ export type Bom = Decoder.ByteOrderMark;
  *
  * @example
  * ```ts
- * import { Encoding } from "@thomasfosterau/effect-encoding"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
  *
  * console.log(Encoding.sniffBom(new Uint8Array([0xff, 0xfe, 0x41, 0x00])))
  * // Option.some({ encoding: "UTF-16LE", length: 2 })
@@ -175,7 +175,7 @@ export class UnsupportedEncodingError extends Schema.TaggedError<UnsupportedEnco
  *
  * @example
  * ```ts
- * import { Encoding } from "@thomasfosterau/effect-encoding"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
  *
  * console.log(Encoding.isSupported("UTF-8")) // true
  * console.log(Encoding.isSupported("x-user-defined")) // true (bundled)
@@ -230,7 +230,7 @@ const lift = (result: Result.Result<string, Decoder.Failure>): Effect.Effect<str
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Encoding } from "@thomasfosterau/effect-encoding"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
  *
  * const latin1 = await Effect.runPromise(
  *   Encoding.decode(new Uint8Array([0x63, 0x61, 0x66, 0xe9]), { encoding: "windows-1252" }),
@@ -267,7 +267,7 @@ export const decode = (
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { Encoding } from "@thomasfosterau/effect-encoding"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
  *
  * // "€" (E2 82 AC) split across two chunks
  * const chunks = Stream.make(new Uint8Array([0x31, 0xe2, 0x82]), new Uint8Array([0xac]))
@@ -309,7 +309,7 @@ export const decodeStream: {
 
 /**
  * One of the CJK index sets, from an opt-in entry
- * (`@thomasfosterau/effect-encoding/japanese`, `/gb18030`, `/big5`,
+ * (`@thomasfosterau/effect-utilities/EncodingJapanese`, `/gb18030`, `/big5`,
  * `/euc-kr`), each exporting `tables`. Give them to {@link tablesLayer}.
  * Kept out of the main entry so a program that never meets a CJK encoding
  * never loads the indexes (a few hundred kilobytes).
@@ -339,7 +339,7 @@ export type IndexData = Cjk.CjkIndexData;
  * @category tables
  */
 export const EncodingTables: Context.Reference<Tables> = /*#__PURE__*/ Context.Reference(
-  "@thomasfosterau/effect-encoding/EncodingTables",
+  "@thomasfosterau/effect-utilities/Encoding/EncodingTables",
   { defaultValue: () => Cjk.EMPTY },
 );
 
@@ -353,9 +353,9 @@ export const EncodingTables: Context.Reference<Tables> = /*#__PURE__*/ Context.R
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Encoding } from "@thomasfosterau/effect-encoding"
- * import * as EucKr from "@thomasfosterau/effect-encoding/euc-kr"
- * import * as Japanese from "@thomasfosterau/effect-encoding/japanese"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
+ * import * as EucKr from "@thomasfosterau/effect-utilities/EncodingEucKr"
+ * import * as Japanese from "@thomasfosterau/effect-utilities/EncodingJapanese"
  *
  * const program = Effect.gen(function* () {
  *   const bytes = yield* Encoding.encode("カナ", { encoding: "ISO-2022-JP" })
@@ -381,7 +381,7 @@ export const tablesLayer = (...tables: ReadonlyArray<Tables>): Layer.Layer<never
  *
  * @example
  * ```ts
- * import { Encoding } from "@thomasfosterau/effect-encoding"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
  *
  * console.log(Encoding.getOutputEncoding("UTF-16LE")) // "UTF-8"
  * console.log(Encoding.getOutputEncoding("windows-1252")) // "windows-1252"
@@ -403,7 +403,7 @@ export const getOutputEncoding = (encoding: EncodingName): EncodingName =>
  *
  * @example
  * ```ts
- * import { Encoding } from "@thomasfosterau/effect-encoding"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
  *
  * console.log(Encoding.canEncode("windows-1252")) // true
  * console.log(Encoding.canEncode("UTF-16LE")) // false
@@ -502,7 +502,7 @@ const liftEncoded = (
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Encoding } from "@thomasfosterau/effect-encoding"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
  *
  * const bytes = await Effect.runPromise(Encoding.encode("café €5", { encoding: "windows-1252" }))
  * console.log(Array.from(bytes, (byte) => byte.toString(16))) // ["63", "61", "66", "e9", "20", "80", "35"]
@@ -548,7 +548,7 @@ export const encode = (
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { Encoding } from "@thomasfosterau/effect-encoding"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
  *
  * const chunks = await Effect.runPromise(
  *   Stream.runCollect(

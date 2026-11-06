@@ -1,5 +1,5 @@
 /**
- * A controllable `IdleDetector` for tests of code that uses `./browser`'s
+ * A controllable `IdleDetector` for tests of code that uses `Browser`'s
  * `IdleDetection`: {@link layer} provides the real adapter over an
  * in-memory detector constructor, plus {@link Control} to grant or deny the
  * permission, answer a permission prompt, and change the user and screen
@@ -70,7 +70,7 @@ export class Control extends Context.Service<
     readonly running: Effect.Effect<number>;
     readonly thresholds: Effect.Effect<ReadonlyArray<number>>;
   }
->()("@thomasfosterau/effect-web/testing/IdleDetectionControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/IdleDetectionControl") {}
 
 /**
  * What {@link make} builds: the `IdleDetection` service over the in-memory
@@ -98,7 +98,7 @@ interface State {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestIdleDetection } from "@thomasfosterau/effect-web/testing"
+ * import { TestIdleDetection } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { idleDetection, control } = TestIdleDetection.make()
  * Effect.runPromise(Effect.andThen(idleDetection.requestPermission, control.running)).then(
@@ -188,8 +188,8 @@ export const make = (options?: Options): Fixture => {
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { IdleDetection } from "@thomasfosterau/effect-web/browser"
- * import { TestIdleDetection } from "@thomasfosterau/effect-web/testing"
+ * import { IdleDetection } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestIdleDetection } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.flip(Stream.runDrain(IdleDetection.watch({ threshold: "1 minute" })))
  * Effect.runPromise(Effect.provide(program, TestIdleDetection.layer())).then((error) =>

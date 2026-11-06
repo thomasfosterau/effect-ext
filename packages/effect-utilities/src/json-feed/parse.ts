@@ -13,8 +13,8 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import type { JsonFeed, JsonFeedAttachment, JsonFeedAuthor, JsonFeedItem } from "./index.ts";
-import { compact } from "./internal/compact.ts";
+import type { JsonFeed, JsonFeedAttachment, JsonFeedAuthor, JsonFeedItem } from "../JsonFeed.ts";
+import { compact } from "../internal/json-feed/compact.ts";
 
 /**
  * Something {@link decodeJsonFeed} dropped or repaired: where (a JSON path
@@ -231,7 +231,7 @@ const parseError = (reason: JsonFeedParseError["reason"], message: string): Json
  * @example
  * ```ts
  * import * as Result from "effect/Result"
- * import { decodeJsonFeed } from "@thomasfosterau/effect-json-feed"
+ * import { decodeJsonFeed } from "@thomasfosterau/effect-utilities/JsonFeed"
  *
  * const parsed = decodeJsonFeed({
  *   version: "https://jsonfeed.org/version/1",
@@ -294,7 +294,7 @@ const UnknownFromJson = Schema.fromJsonString(Schema.Unknown);
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { parseJsonFeed } from "@thomasfosterau/effect-json-feed"
+ * import { parseJsonFeed } from "@thomasfosterau/effect-utilities/JsonFeed"
  *
  * const { feed } = await Effect.runPromise(
  *   parseJsonFeed('{"version":"https://jsonfeed.org/version/1.1","title":"Example","items":[]}'),

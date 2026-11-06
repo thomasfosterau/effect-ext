@@ -1,5 +1,5 @@
 /**
- * Unit tests for `./browser`'s `Notifications`, driven through `./testing`'s
+ * Unit tests for `Browser`'s `Notifications`, driven through `BrowserTesting`'s
  * `TestNotifications` (and `TestPermissions` for the permission stream).
  */
 
@@ -8,8 +8,12 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import { Notifications } from "@thomasfosterau/effect-web/browser";
-import { observe, TestNotifications, TestPermissions } from "@thomasfosterau/effect-web/testing";
+import { Notifications } from "@thomasfosterau/effect-utilities/Browser";
+import {
+  observe,
+  TestNotifications,
+  TestPermissions,
+} from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, Notifications.Notifications | TestNotifications.Control>,

@@ -14,7 +14,7 @@ import {
   renderRssItem,
   rssResponse,
   type RssChannel,
-} from "@thomasfosterau/effect-rss-feed";
+} from "@thomasfosterau/effect-utilities/RssFeed";
 
 const BASE = "https://example.com";
 const PUBLISHED = DateTime.makeUnsafe("2026-03-04T05:06:07Z");

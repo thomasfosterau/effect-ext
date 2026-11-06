@@ -58,7 +58,7 @@ const byQualityDescending: Order.Order<Preference> = Order.mapInput(
  *
  * @example
  * ```ts
- * import { AcceptLanguage } from "@thomasfosterau/effect-langtag"
+ * import { AcceptLanguage } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(AcceptLanguage.parse("fr-CH, fr;q=0.9, en;q=0.8, de;q=0.7, *;q=0.5"))
  * // [{ range: "fr-CH", quality: 1 }, { range: "fr", quality: 0.9 }, …, { range: "*", quality: 0.5 }]

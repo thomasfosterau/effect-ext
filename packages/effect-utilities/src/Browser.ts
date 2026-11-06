@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-web/browser` — browser platform APIs as Effect
+ * `@thomasfosterau/effect-utilities/Browser` — browser platform APIs as Effect
  * services, alongside the ones `@effect/platform-browser` already provides
  * (`Clipboard`, `Geolocation`, `Permissions`, `IndexedDb`, the
  * `localStorage`-backed `KeyValueStore`, workers and sockets).
@@ -30,22 +30,22 @@
  * - `PermissionStatus` — permission state as a stream, over
  *   `@effect/platform-browser`'s `Permissions`.
  *
- * Test doubles for every service live in `@thomasfosterau/effect-web/testing`.
+ * Test doubles for every service live in `@thomasfosterau/effect-utilities/BrowserTesting`.
  *
  * Requires the optional peer `@effect/platform-browser`.
  *
  * @since 0.2.0
  */
-export * as Battery from "./battery.ts";
-export * as Broadcast from "./broadcast.ts";
-export * as Fullscreen from "./fullscreen.ts";
-export * as IdleDetection from "./idle-detection.ts";
-export { layer } from "./layer.ts";
-export * as Locks from "./locks.ts";
-export * as MediaQuery from "./media-query.ts";
-export * as Navigator from "./navigator.ts";
-export * as Notifications from "./notifications.ts";
-export * as PageVisibility from "./page-visibility.ts";
-export * as PermissionStatus from "./permission-status.ts";
-export * as ScreenOrientation from "./screen-orientation.ts";
-export * as WakeLock from "./wake-lock.ts";
+export * as Battery from "./browser/battery.ts";
+export * as Broadcast from "./browser/broadcast.ts";
+export * as Fullscreen from "./browser/fullscreen.ts";
+export * as IdleDetection from "./browser/idle-detection.ts";
+export { layer } from "./browser/layer.ts";
+export * as Locks from "./browser/locks.ts";
+export * as MediaQuery from "./browser/media-query.ts";
+export * as Navigator from "./browser/navigator.ts";
+export * as Notifications from "./browser/notifications.ts";
+export * as PageVisibility from "./browser/page-visibility.ts";
+export * as PermissionStatus from "./browser/permission-status.ts";
+export * as ScreenOrientation from "./browser/screen-orientation.ts";
+export * as WakeLock from "./browser/wake-lock.ts";

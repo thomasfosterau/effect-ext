@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-css` — CSS on Effect.
+ * `@thomasfosterau/effect-utilities/Css` — CSS on Effect.
  *
  * - `Syntax` — CSS Syntax Level 3: parse a `style` attribute's
  *   declarations, a stylesheet, a rule, a declaration or a component
@@ -17,12 +17,12 @@
  *
  * @since 0.1.0
  */
-export * as AnPlusB from "./an-plus-b.ts";
-export * as Color from "./color.ts";
-export * as Font from "./font.ts";
-export * as Length from "./length.ts";
-export * as Serialize from "./serialize.ts";
-export * as Shorthand from "./shorthand.ts";
-export * as Syntax from "./syntax.ts";
-export * as Text from "./text.ts";
-export * as Token from "./token.ts";
+export * as AnPlusB from "./css/an-plus-b.ts";
+export * as Color from "./css/color.ts";
+export * as Font from "./css/font.ts";
+export * as Length from "./css/length.ts";
+export * as Serialize from "./css/serialize.ts";
+export * as Shorthand from "./css/shorthand.ts";
+export * as Syntax from "./css/syntax.ts";
+export * as Text from "./css/text.ts";
+export * as Token from "./css/token.ts";

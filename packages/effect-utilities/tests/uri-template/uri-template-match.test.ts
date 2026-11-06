@@ -10,7 +10,7 @@ import * as Predicate from "effect/Predicate";
 import * as Record from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import { UriTemplate } from "@thomasfosterau/effect-uri-template";
+import { UriTemplate } from "@thomasfosterau/effect-utilities/UriTemplate";
 import extendedTests from "./fixtures/uritemplate-test/extended-tests.json" with { type: "json" };
 import specExamplesBySection from "./fixtures/uritemplate-test/spec-examples-by-section.json" with { type: "json" };
 import specExamples from "./fixtures/uritemplate-test/spec-examples.json" with { type: "json" };

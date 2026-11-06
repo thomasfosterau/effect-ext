@@ -1,5 +1,5 @@
 /**
- * Test doubles for `./browser`'s `Locks`: an in-memory lock manager that
+ * Test doubles for `Browser`'s `Locks`: an in-memory lock manager that
  * follows the Web Locks request algorithm (FIFO per name, shared/exclusive
  * compatibility, `ifAvailable`, `steal`, `signal`, `query`), and the layer
  * over it.
@@ -91,8 +91,8 @@ const refusal = (
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Option from "effect/Option"
- * import { Locks } from "@thomasfosterau/effect-web/browser"
- * import { TestLocks } from "@thomasfosterau/effect-web/testing"
+ * import { Locks } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestLocks } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const origin = TestLocks.makeLockManager()
  * const tabA = Locks.make(origin)
@@ -252,8 +252,8 @@ export const makeLockManager = (options?: {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Locks } from "@thomasfosterau/effect-web/browser"
- * import { TestLocks } from "@thomasfosterau/effect-web/testing"
+ * import { Locks } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestLocks } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.succeed(42).pipe(Locks.withLock("job"))
  * Effect.runPromise(Effect.provide(program, TestLocks.layer())).then(console.log) // 42

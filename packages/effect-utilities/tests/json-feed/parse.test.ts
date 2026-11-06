@@ -15,7 +15,7 @@ import {
   JsonFeedParseError,
   parseJsonFeed,
   type ParsedJsonFeed,
-} from "@thomasfosterau/effect-json-feed";
+} from "@thomasfosterau/effect-utilities/JsonFeed";
 
 const success = (input: unknown): ParsedJsonFeed =>
   Result.getOrThrowWith(decodeJsonFeed(input), (error) => error);

@@ -15,8 +15,8 @@ import {
   JSON_FEED_CONTENT_TYPE,
   jsonFeedResponse,
   LOW_CHURN_CACHE_CONTROL,
-} from "@thomasfosterau/effect-sitemap";
-import * as JsonFeedDocument from "@thomasfosterau/effect-json-feed";
+} from "@thomasfosterau/effect-utilities/Sitemap";
+import * as JsonFeedDocument from "@thomasfosterau/effect-utilities/JsonFeed";
 
 const NODE_ID = "0b54f5a1-6f2d-4f4e-9a0f-2f63c1f6a111";
 const BASE = "https://thomasfoster.au";

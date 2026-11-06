@@ -60,7 +60,7 @@ export class Control extends Context.Service<
     readonly setPosition: (fix: Fix) => Effect.Effect<void>;
     readonly fail: (failure: Failure) => Effect.Effect<void>;
   }
->()("@thomasfosterau/effect-web/testing/GeolocationControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/GeolocationControl") {}
 
 const GEOLOCATION_TYPE_ID = "~@effect/platform-browser/Geolocation";
 
@@ -126,7 +126,7 @@ export interface Fixture {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestGeolocation } from "@thomasfosterau/effect-web/testing"
+ * import { TestGeolocation } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.gen(function* () {
  *   const { geolocation } = yield* TestGeolocation.make({ latitude: -33.87, longitude: 151.21 })
@@ -200,7 +200,7 @@ export const make = (initial?: Fix): Effect.Effect<Fixture> =>
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Geolocation from "@effect/platform-browser/Geolocation"
- * import { TestGeolocation } from "@thomasfosterau/effect-web/testing"
+ * import { TestGeolocation } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const here = Effect.flatMap(Geolocation.Geolocation, (geo) => geo.getCurrentPosition())
  * Effect.runPromise(

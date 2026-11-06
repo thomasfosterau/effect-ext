@@ -1,6 +1,6 @@
 /**
  * A controllable `screen.orientation` for tests of code that uses
- * `./browser`'s `ScreenOrientation`: {@link layer} provides the real
+ * `Browser`'s `ScreenOrientation`: {@link layer} provides the real
  * adapter over an in-memory orientation, plus {@link Control} to rotate the
  * screen (firing `change`, as the browser does), see the current lock, and
  * refuse lock requests the way a browser does.
@@ -65,7 +65,7 @@ export class Control extends Context.Service<
     readonly locked: Effect.Effect<Option.Option<OrientationLockType>>;
     readonly setRefusal: (refusal: Refusal | undefined) => Effect.Effect<void>;
   }
->()("@thomasfosterau/effect-web/testing/ScreenOrientationControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/ScreenOrientationControl") {}
 
 /**
  * What {@link make} builds: the `ScreenOrientation` service over the
@@ -133,7 +133,7 @@ class LockableTestOrientation extends TestOrientation {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestScreenOrientation } from "@thomasfosterau/effect-web/testing"
+ * import { TestScreenOrientation } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { orientation, control } = TestScreenOrientation.make()
  * Effect.runPromise(Effect.andThen(control.rotate("landscape-primary"), orientation.angle)).then(
@@ -181,8 +181,8 @@ export const make = (options?: Options): Fixture => {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { ScreenOrientation } from "@thomasfosterau/effect-web/browser"
- * import { TestScreenOrientation } from "@thomasfosterau/effect-web/testing"
+ * import { ScreenOrientation } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestScreenOrientation } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.flip(ScreenOrientation.withLock(Effect.void, "landscape"))
  * Effect.runPromise(

@@ -11,7 +11,7 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import { Encoding } from "@thomasfosterau/effect-encoding";
+import { Encoding } from "@thomasfosterau/effect-utilities/Encoding";
 import wpt from "./fixtures/wpt-single-byte.json" with { type: "json" };
 
 const SINGLE_BYTE: ReadonlyArray<Encoding.EncodingName> = [

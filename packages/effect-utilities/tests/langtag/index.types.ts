@@ -4,7 +4,11 @@
  * error can never stand in for the assertion a directive expects.
  */
 import * as Option from "effect/Option";
-import { LanguageRange, LanguageTag, negotiateLanguage } from "@thomasfosterau/effect-langtag";
+import {
+  LanguageRange,
+  LanguageTag,
+  negotiateLanguage,
+} from "@thomasfosterau/effect-utilities/Langtag";
 
 // A plain string is not a LanguageTag.
 // @ts-expect-error — not branded

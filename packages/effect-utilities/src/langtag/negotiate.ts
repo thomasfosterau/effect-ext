@@ -25,7 +25,7 @@ import { lookup, matchesBasic } from "./language-range.ts";
  *
  * @example
  * ```ts
- * import { negotiateLanguage } from "@thomasfosterau/effect-langtag"
+ * import { negotiateLanguage } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(negotiateLanguage(["en", "de", "fr"], "de-CH, fr;q=0.8"))
  * // { _id: "Option", _tag: "Some", value: "de" }

@@ -199,7 +199,7 @@ const SHORTHANDS: ReadonlyArray<Entry> = [
  *
  * @example
  * ```ts
- * import { Shorthand } from "@thomasfosterau/effect-css"
+ * import { Shorthand } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Shorthand.isShorthand("MARGIN")) // true
  * console.log(Shorthand.isShorthand("margin-top")) // false
@@ -227,7 +227,7 @@ export const isShorthand = (name: string): boolean =>
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { Shorthand, Syntax } from "@thomasfosterau/effect-css"
+ * import { Shorthand, Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * const [margin] = Syntax.parseDeclarationList("margin: 1px 2px")
  * if (margin?._tag === "Declaration") {

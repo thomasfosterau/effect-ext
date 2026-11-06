@@ -8,7 +8,7 @@ import * as Arr from "effect/Array";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
-import { AnPlusB, Syntax, Token } from "@thomasfosterau/effect-css";
+import { AnPlusB, Syntax, Token } from "@thomasfosterau/effect-utilities/Css";
 
 type ComponentValue = Token.ComponentValue;
 import anPlusB from "./fixtures/css-parsing-tests/An+B.json" with { type: "json" };

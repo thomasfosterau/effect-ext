@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-robots` — the Robots Exclusion Protocol
+ * `@thomasfosterau/effect-utilities/Robots` — the Robots Exclusion Protocol
  * (RFC 9309) for Effect.
  *
  * Three layers, in one entry:
@@ -44,7 +44,7 @@ import * as Token from "@thomasfosterau/effect-parse/Token";
  *
  * @example
  * ```ts
- * import { Rule } from "@thomasfosterau/effect-robots"
+ * import { Rule } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const rule = new Rule({ path: "/admin", allow: false })
  * rule.path // "/admin"
@@ -63,7 +63,7 @@ export class Rule extends Data.Class<{
  *
  * @example
  * ```ts
- * import { RobotGroup, Rule } from "@thomasfosterau/effect-robots"
+ * import { RobotGroup, Rule } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const group = new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })] })
  * group.crawlDelay // undefined
@@ -83,7 +83,7 @@ export class RobotGroup extends Data.Class<{
  *
  * @example
  * ```ts
- * import { RobotsTxt } from "@thomasfosterau/effect-robots"
+ * import { RobotsTxt } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const robots = new RobotsTxt({ groups: [], sitemaps: ["https://example.com/sitemap.xml"] })
  * robots.sitemaps.length // 1
@@ -285,7 +285,7 @@ const ungroupLines = (robotsTxt: RobotsTxt): Array<Line> => [
  * @example
  * ```ts
  * import * as Schema from "effect/Schema"
- * import { RobotsTxtFromString } from "@thomasfosterau/effect-robots"
+ * import { RobotsTxtFromString } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const robots = Schema.decodeUnknownSync(RobotsTxtFromString)("User-agent: *\nDisallow: /admin")
  * robots.groups.length // 1
@@ -315,7 +315,7 @@ export type RobotsTxtFromString = typeof RobotsTxtFromString.Type;
  *
  * @example
  * ```ts
- * import { parse } from "@thomasfosterau/effect-robots"
+ * import { parse } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const robots = parse("User-agent: *\nDisallow: /admin\nAllow: /admin/public\n\nSitemap: https://example.com/sitemap.xml")
  * robots.groups[0]?.rules.length // 2
@@ -333,7 +333,7 @@ export const parse = (content: string): RobotsTxt =>
  *
  * @example
  * ```ts
- * import { encode, RobotGroup, RobotsTxt, Rule } from "@thomasfosterau/effect-robots"
+ * import { encode, RobotGroup, RobotsTxt, Rule } from "@thomasfosterau/effect-utilities/Robots"
  *
  * encode(new RobotsTxt({
  *   groups: [new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })] })],
@@ -423,7 +423,7 @@ const normalizePath = (path: string): string => {
  *
  * @example
  * ```ts
- * import { isAllowed, parse } from "@thomasfosterau/effect-robots"
+ * import { isAllowed, parse } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const robots = parse("User-agent: *\nDisallow: /admin\nAllow: /admin/public")
  * isAllowed(robots, "MyBot", "/admin") // false
@@ -446,7 +446,7 @@ export const isAllowed = (robotsTxt: RobotsTxt, userAgent: string, urlPath: stri
  *
  * @example
  * ```ts
- * import { getCrawlDelay, parse } from "@thomasfosterau/effect-robots"
+ * import { getCrawlDelay, parse } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const robots = parse("User-agent: Googlebot\nCrawl-delay: 5\nDisallow: /x\n\nUser-agent: *\nCrawl-delay: 10\nDisallow: /y")
  * getCrawlDelay(robots, "Googlebot") // 5
@@ -466,7 +466,7 @@ export const getCrawlDelay = (robotsTxt: RobotsTxt, userAgent: string): number |
  *
  * @example
  * ```ts
- * import { getSitemaps, parse } from "@thomasfosterau/effect-robots"
+ * import { getSitemaps, parse } from "@thomasfosterau/effect-utilities/Robots"
  *
  * getSitemaps(parse("Sitemap: https://example.com/sitemap.xml")) // ["https://example.com/sitemap.xml"]
  * ```
@@ -524,7 +524,7 @@ export interface EvaluateOptions {
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { evaluateRobots, parse } from "@thomasfosterau/effect-robots"
+ * import { evaluateRobots, parse } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const robots = parse("User-agent: *\nCrawl-delay: 3600\nDisallow: /private/\nAllow: /private/public/")
  * evaluateRobots(robots, "mybot", "/private/secret")
@@ -649,7 +649,7 @@ export interface RobotsCache<R = never> {
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Option from "effect/Option"
- * import { noRobotsCache } from "@thomasfosterau/effect-robots"
+ * import { noRobotsCache } from "@thomasfosterau/effect-utilities/Robots"
  *
  * await Effect.runPromise(noRobotsCache.put("https://example.com", "User-agent: *", 60))
  * Option.isNone(await Effect.runPromise(noRobotsCache.get("https://example.com"))) // true
@@ -670,7 +670,7 @@ export const noRobotsCache: RobotsCache = {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { memoryRobotsCache } from "@thomasfosterau/effect-robots"
+ * import { memoryRobotsCache } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const cache = memoryRobotsCache()
  * await Effect.runPromise(cache.put("https://example.com", "User-agent: *\nDisallow: /", 60))
@@ -736,14 +736,14 @@ const isNeverRefusal = (_error: HttpClientError.HttpClientError): boolean => fal
  * request yields {@link ROBOTS_REFUSED_SENTINEL} instead. Never fails.
  *
  * Redirect policy is the client's: provide one whose redirects are
- * revalidated against the SSRF block list (`@thomasfosterau/effect-web/net`).
+ * revalidated against the SSRF block list (`@thomasfosterau/effect-utilities/Net`).
  *
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as HttpClient from "effect/http/HttpClient"
  * import * as HttpClientResponse from "effect/http/HttpClientResponse"
- * import { fetchRobots, ROBOTS_NO_RESTRICTIONS } from "@thomasfosterau/effect-robots"
+ * import { fetchRobots, ROBOTS_NO_RESTRICTIONS } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const notFound = HttpClient.make((request) =>
  *   Effect.succeed(HttpClientResponse.fromWeb(request, new Response("nope", { status: 404 }))),
@@ -854,7 +854,7 @@ export const ROBOTS_REFUSED_REASON =
  * import * as Effect from "effect/Effect"
  * import * as HttpClient from "effect/http/HttpClient"
  * import * as HttpClientResponse from "effect/http/HttpClientResponse"
- * import { makeRobotsChecker, memoryRobotsCache } from "@thomasfosterau/effect-robots"
+ * import { makeRobotsChecker, memoryRobotsCache } from "@thomasfosterau/effect-utilities/Robots"
  *
  * const site = HttpClient.make((request) =>
  *   Effect.succeed(HttpClientResponse.fromWeb(request, new Response("User-agent: *\nDisallow: /secret/", { status: 200 }))),
@@ -953,7 +953,7 @@ export const NON_PRODUCTION_BODY = ["User-agent: *", "Disallow: /", ""].join("\n
  *
  * @example
  * ```ts
- * import { productionBody } from "@thomasfosterau/effect-robots"
+ * import { productionBody } from "@thomasfosterau/effect-utilities/Robots"
  *
  * productionBody({ disallow: ["/login", "/*\/edit"], sitemapUrl: "https://example.com/sitemap.xml", comments: ["All crawlers welcome."] })
  * // "# All crawlers welcome.\nUser-agent: *\nDisallow: /login\nDisallow: /*\/edit\n\nSitemap: https://example.com/sitemap.xml\n"
@@ -988,7 +988,7 @@ export const productionBody = (policy: RobotsPolicy): string =>
  *
  * @example
  * ```ts
- * import { NON_PRODUCTION_BODY, robotsBody } from "@thomasfosterau/effect-robots"
+ * import { NON_PRODUCTION_BODY, robotsBody } from "@thomasfosterau/effect-utilities/Robots"
  *
  * robotsBody(false, { disallow: ["/login"], sitemapUrl: "https://example.com/sitemap.xml" }) === NON_PRODUCTION_BODY // true
  * robotsBody(true, { disallow: ["/login"], sitemapUrl: "https://example.com/sitemap.xml" }).includes("Sitemap: https://example.com/sitemap.xml") // true
@@ -1023,7 +1023,7 @@ export const LOW_CHURN_CACHE_CONTROL =
  *   isRobotsBody,
  *   ROBOTS_NO_RESTRICTIONS,
  *   ROBOTS_UNAVAILABLE_SENTINEL,
- * } from "@thomasfosterau/effect-robots"
+ * } from "@thomasfosterau/effect-utilities/Robots"
  *
  * isRobotsBody("User-agent: *\nDisallow: /admin") // true
  * isRobotsBody(ROBOTS_NO_RESTRICTIONS) // false

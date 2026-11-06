@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import { LanguageRange } from "@thomasfosterau/effect-langtag";
+import { LanguageRange } from "@thomasfosterau/effect-utilities/Langtag";
 
 describe("LanguageRange syntax", () => {
   it("tells basic and extended ranges apart", () => {

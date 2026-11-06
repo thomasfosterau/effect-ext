@@ -4,7 +4,7 @@
  * unused-local error can never stand in for the assertion a directive
  * expects.
  */
-import type { RssItem } from "@thomasfosterau/effect-rss-feed";
+import type { RssItem } from "@thomasfosterau/effect-utilities/RssFeed";
 
 export const titled: RssItem = { path: "/a", title: "A" };
 export const described: RssItem = { path: "/a", description: "A" };

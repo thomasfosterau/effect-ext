@@ -1,5 +1,5 @@
 /**
- * Unit tests for `./browser`'s `Broadcast`, driven through `./testing`'s
+ * Unit tests for `Browser`'s `Broadcast`, driven through `BrowserTesting`'s
  * in-memory `TestBroadcast` hub.
  */
 
@@ -9,8 +9,8 @@ import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import { Broadcast } from "@thomasfosterau/effect-web/browser";
-import { TestBroadcast } from "@thomasfosterau/effect-web/testing";
+import { Broadcast } from "@thomasfosterau/effect-utilities/Browser";
+import { TestBroadcast } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 const Ping = Schema.Struct({ type: Schema.Literal("ping"), at: Schema.Number });
 

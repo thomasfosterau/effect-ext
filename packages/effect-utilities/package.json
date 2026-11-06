@@ -2,22 +2,35 @@
   "$schema": "https://www.schemastore.org/package",
   "name": "@thomasfosterau/effect-utilities",
   "version": "0.0.0",
-  "description": "Extensions to the Effect standard library: Allocator-backed binary layouts, buffer structs, vectors, struct-of-arrays and Rust-style UTF-8 strings, plus Schema helpers (the update tri-state, issue → RFC 6901 JSON Pointer, bounded pagination and id-list codecs, branded UUID ids and slugs, exact literal-union tuples, AST / decode-probe introspection, and URLs whose components are part of their type).",
+  "description": "Extensions to the Effect standard library: Allocator-backed binary data (layouts, buffer structs, vectors, struct-of-arrays, Rust-style UTF-8 strings), Schema helpers (the update tri-state, issue → RFC 6901 JSON Pointer, bounded codecs, ids, exact literal tuples, introspection, typed URLs), and web-platform building blocks (request/response policies, SSRF-safe fetch, content negotiation, service workers, browser APIs as services, robots.txt, sitemaps, RSS / Atom / JSON Feed, URI Templates, BCP 47 language tags, CSS parsing, WHATWG encodings and MIME types).",
   "keywords": [
     "allocator",
     "arraybuffer",
+    "atom",
+    "bcp47",
+    "browser",
+    "css",
     "effect",
     "effect-schema",
+    "encoding",
+    "json-feed",
     "json-pointer",
+    "mime",
     "pagination",
     "rfc6901",
+    "robots-txt",
+    "rss",
     "schema",
+    "service-worker",
+    "sitemap",
     "slug",
     "struct-of-arrays",
     "typescript",
+    "uri-template",
     "url",
     "utf8",
-    "uuid"
+    "uuid",
+    "web"
   ],
   "homepage": "https://github.com/thomasfosterau/effect-ext#readme",
   "bugs": {
@@ -51,13 +64,49 @@
       "types": "./dist/Ast.d.ts",
       "default": "./dist/Ast.js"
     },
+    "./AtomFeed": {
+      "types": "./dist/AtomFeed.d.ts",
+      "default": "./dist/AtomFeed.js"
+    },
     "./Bounded": {
       "types": "./dist/Bounded.d.ts",
       "default": "./dist/Bounded.js"
     },
+    "./Browser": {
+      "types": "./dist/Browser.d.ts",
+      "default": "./dist/Browser.js"
+    },
+    "./BrowserTesting": {
+      "types": "./dist/BrowserTesting.d.ts",
+      "default": "./dist/BrowserTesting.js"
+    },
     "./BufferStruct": {
       "types": "./dist/BufferStruct.d.ts",
       "default": "./dist/BufferStruct.js"
+    },
+    "./Css": {
+      "types": "./dist/Css.d.ts",
+      "default": "./dist/Css.js"
+    },
+    "./Encoding": {
+      "types": "./dist/Encoding.d.ts",
+      "default": "./dist/Encoding.js"
+    },
+    "./EncodingBig5": {
+      "types": "./dist/EncodingBig5.d.ts",
+      "default": "./dist/EncodingBig5.js"
+    },
+    "./EncodingEucKr": {
+      "types": "./dist/EncodingEucKr.d.ts",
+      "default": "./dist/EncodingEucKr.js"
+    },
+    "./EncodingGb18030": {
+      "types": "./dist/EncodingGb18030.d.ts",
+      "default": "./dist/EncodingGb18030.js"
+    },
+    "./EncodingJapanese": {
+      "types": "./dist/EncodingJapanese.d.ts",
+      "default": "./dist/EncodingJapanese.js"
     },
     "./Ids": {
       "types": "./dist/Ids.d.ts",
@@ -67,6 +116,18 @@
       "types": "./dist/Issues.d.ts",
       "default": "./dist/Issues.js"
     },
+    "./JsonFeed": {
+      "types": "./dist/JsonFeed.d.ts",
+      "default": "./dist/JsonFeed.js"
+    },
+    "./Langtag": {
+      "types": "./dist/Langtag.d.ts",
+      "default": "./dist/Langtag.js"
+    },
+    "./LangtagRegistry": {
+      "types": "./dist/LangtagRegistry.d.ts",
+      "default": "./dist/LangtagRegistry.js"
+    },
     "./Layout": {
       "types": "./dist/Layout.d.ts",
       "default": "./dist/Layout.js"
@@ -74,6 +135,38 @@
     "./LiteralExact": {
       "types": "./dist/LiteralExact.d.ts",
       "default": "./dist/LiteralExact.js"
+    },
+    "./Mime": {
+      "types": "./dist/Mime.d.ts",
+      "default": "./dist/Mime.js"
+    },
+    "./Negotiate": {
+      "types": "./dist/Negotiate.d.ts",
+      "default": "./dist/Negotiate.js"
+    },
+    "./Net": {
+      "types": "./dist/Net.d.ts",
+      "default": "./dist/Net.js"
+    },
+    "./Observability": {
+      "types": "./dist/Observability.d.ts",
+      "default": "./dist/Observability.js"
+    },
+    "./Robots": {
+      "types": "./dist/Robots.d.ts",
+      "default": "./dist/Robots.js"
+    },
+    "./RssFeed": {
+      "types": "./dist/RssFeed.d.ts",
+      "default": "./dist/RssFeed.js"
+    },
+    "./ServiceWorker": {
+      "types": "./dist/ServiceWorker.d.ts",
+      "default": "./dist/ServiceWorker.js"
+    },
+    "./Sitemap": {
+      "types": "./dist/Sitemap.d.ts",
+      "default": "./dist/Sitemap.js"
     },
     "./Str": {
       "types": "./dist/Str.d.ts",
@@ -91,6 +184,10 @@
       "types": "./dist/TriState.d.ts",
       "default": "./dist/TriState.js"
     },
+    "./UriTemplate": {
+      "types": "./dist/UriTemplate.d.ts",
+      "default": "./dist/UriTemplate.js"
+    },
     "./Url": {
       "types": "./dist/Url.d.ts",
       "default": "./dist/Url.js"
@@ -98,6 +195,10 @@
     "./Vec": {
       "types": "./dist/Vec.d.ts",
       "default": "./dist/Vec.js"
+    },
+    "./Web": {
+      "types": "./dist/Web.d.ts",
+      "default": "./dist/Web.js"
     }
   },
   "publishConfig": {
@@ -105,13 +206,30 @@
   },
   "devDependencies": {
     "@effect/language-service": "catalog:",
+    "@effect/platform-browser": "catalog:",
     "@effect/vitest": "catalog:",
+    "@thomasfosterau/effect-jsonapi": "catalog:",
+    "@thomasfosterau/effect-parse": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
     "effect": "catalog:"
   },
   "peerDependencies": {
+    "@effect/platform-browser": "catalog:peers",
+    "@thomasfosterau/effect-jsonapi": "catalog:peers",
+    "@thomasfosterau/effect-parse": "catalog:peers",
     "effect": "catalog:peers"
+  },
+  "peerDependenciesMeta": {
+    "@effect/platform-browser": {
+      "optional": true
+    },
+    "@thomasfosterau/effect-jsonapi": {
+      "optional": true
+    },
+    "@thomasfosterau/effect-parse": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=22"

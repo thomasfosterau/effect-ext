@@ -1,12 +1,12 @@
 /**
- * Unit tests for `./testing`'s `TestClipboard`, the in-memory double for
+ * Unit tests for `BrowserTesting`'s `TestClipboard`, the in-memory double for
  * `@effect/platform-browser`'s `Clipboard`.
  */
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Clipboard from "@effect/platform-browser/Clipboard";
 import * as Effect from "effect/Effect";
-import { TestClipboard } from "@thomasfosterau/effect-web/testing";
+import { TestClipboard } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 describe("TestClipboard", () => {
   it("reads and writes text, clears, and exposes the contents", async () => {

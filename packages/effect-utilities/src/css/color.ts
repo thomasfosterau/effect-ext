@@ -14,9 +14,9 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Record from "effect/Record";
 import * as Str from "effect/String";
-import * as Mix from "./internal/mix.ts";
-import { NAMED_COLORS } from "./internal/named-colors.ts";
-import * as Spaces from "./internal/spaces.ts";
+import * as Mix from "../internal/css/mix.ts";
+import { NAMED_COLORS } from "../internal/css/named-colors.ts";
+import * as Spaces from "../internal/css/spaces.ts";
 import { parseComponentValue } from "./syntax.ts";
 import type { ComponentValue } from "./token.ts";
 
@@ -711,7 +711,7 @@ const parseKeyword = (value: string): Option.Option<Color> => {
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { Color } from "@thomasfosterau/effect-css"
+ * import { Color } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Option.map(Color.parse("hsl(120deg 100% 25% / 50%)"), Color.serialize))
  * // Option.some("rgba(0, 128, 0, 0.5)")
@@ -844,7 +844,7 @@ const serializeMix = (mix: {
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { Color } from "@thomasfosterau/effect-css"
+ * import { Color } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Option.map(Color.parse("#0088"), Color.serialize)) // Option.some("rgba(0, 0, 136, 0.533333)")
  * console.log(Option.map(Color.parse("Red"), Color.serialize)) // Option.some("red")
@@ -912,7 +912,7 @@ export interface Srgb {
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { Color } from "@thomasfosterau/effect-css"
+ * import { Color } from "@thomasfosterau/effect-utilities/Css"
  *
  * const red = Option.flatMap(Color.parse("oklch(62.8% 0.2577 29.23)"), Color.toSrgb)
  * console.log(Option.map(red, ({ red }) => Math.round(red * 255))) // Option.some(255)
@@ -1079,7 +1079,7 @@ const resolveMix = (mix: {
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { Color } from "@thomasfosterau/effect-css"
+ * import { Color } from "@thomasfosterau/effect-utilities/Css"
  *
  * const mixed = Option.flatMap(Color.parse("color-mix(in srgb, red 25%, blue)"), Color.resolve)
  * console.log(Option.map(mixed, Color.serialize)) // Option.some("color(srgb 0.25 0 0.75)")

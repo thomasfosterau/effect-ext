@@ -1,5 +1,5 @@
 /**
- * Unit tests for `./browser`'s `Navigator`, driven through `./testing`'s
+ * Unit tests for `Browser`'s `Navigator`, driven through `BrowserTesting`'s
  * `TestNavigator` (the real adapter over an in-memory navigator) and, for
  * the degraded paths, through `Navigator.make` over a sparse navigator.
  */
@@ -9,8 +9,8 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import { Navigator } from "@thomasfosterau/effect-web/browser";
-import { TestNavigator, observe } from "@thomasfosterau/effect-web/testing";
+import { Navigator } from "@thomasfosterau/effect-utilities/Browser";
+import { TestNavigator, observe } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 describe("Navigator.info", () => {
   it("reports the agent's self-description", async () => {

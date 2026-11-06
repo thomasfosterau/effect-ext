@@ -1,5 +1,5 @@
 /**
- * A controllable battery for tests of code that uses `./browser`'s
+ * A controllable battery for tests of code that uses `Browser`'s
  * `Battery`: {@link layer} provides the real adapter over an in-memory
  * `navigator.getBattery()`, plus {@link Control} to change the charge and
  * charging state, firing the matching events as the browser does.
@@ -59,7 +59,7 @@ export class Control extends Context.Service<
     readonly set: (readings: Omit<Options, "supported" | "reject">) => Effect.Effect<void>;
     readonly requests: Effect.Effect<number>;
   }
->()("@thomasfosterau/effect-web/testing/BatteryControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/BatteryControl") {}
 
 /**
  * What {@link make} builds: the `Battery` service over the in-memory
@@ -110,7 +110,7 @@ const FIELDS = ["charging", "level", "chargingTime", "dischargingTime"] as const
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestBattery } from "@thomasfosterau/effect-web/testing"
+ * import { TestBattery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { battery, control } = TestBattery.make()
  * Effect.runPromise(Effect.andThen(control.set({ charging: false }), battery.status)).then(
@@ -163,8 +163,8 @@ export const make = (options?: Options): Fixture => {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Battery } from "@thomasfosterau/effect-web/browser"
- * import { TestBattery } from "@thomasfosterau/effect-web/testing"
+ * import { Battery } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestBattery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * Effect.runPromise(Effect.provide(Battery.status, TestBattery.layer({ supported: false }))).then(
  *   console.log, // { _id: "Option", _tag: "None" }

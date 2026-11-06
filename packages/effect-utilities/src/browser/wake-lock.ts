@@ -20,8 +20,8 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import type * as Stream from "effect/Stream";
-import { reasonOf, settled } from "../internal/dom.ts";
-import { ambientNavigator } from "../internal/globals.ts";
+import { reasonOf, settled } from "../internal/web/dom.ts";
+import { ambientNavigator } from "../internal/web/globals.ts";
 import { PageVisibility, whileVisible } from "./page-visibility.ts";
 
 /**
@@ -95,7 +95,7 @@ const REJECTION_REASONS = {
 
 /**
  * The screen-wake-lock service. Provide {@link layer} in a page, or
- * `TestWakeLock.layer` from `@thomasfosterau/effect-web/testing` in tests.
+ * `TestWakeLock.layer` from `@thomasfosterau/effect-utilities/BrowserTesting` in tests.
  *
  * - `supported` — whether the agent has the API at all.
  * - `acquire` — requests a screen wake lock, held until the scope closes.
@@ -109,7 +109,7 @@ export class WakeLock extends Context.Service<
     readonly supported: boolean;
     readonly acquire: Effect.Effect<HeldWakeLock, WakeLockError, Scope.Scope>;
   }
->()("@thomasfosterau/effect-web/browser/WakeLock") {}
+>()("@thomasfosterau/effect-utilities/Browser/WakeLock") {}
 
 /**
  * Builds the {@link WakeLock} service over a wake-lock manager; `undefined`
@@ -118,7 +118,7 @@ export class WakeLock extends Context.Service<
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { WakeLock } from "@thomasfosterau/effect-web/browser"
+ * import { WakeLock } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const wakeLock = WakeLock.make(undefined)
  * Effect.runPromise(Effect.flip(Effect.scoped(wakeLock.acquire))).then((error) =>
@@ -175,7 +175,7 @@ export const make = (wakeLock: WakeLockLike | undefined): WakeLock["Service"] =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { WakeLock } from "@thomasfosterau/effect-web/browser"
+ * import { WakeLock } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const program = Effect.map(WakeLock.WakeLock, (wakeLock) => wakeLock.supported)
  * Effect.runPromise(Effect.provide(program, WakeLock.layer)).then(console.log) // false under Node
@@ -198,8 +198,8 @@ export const layer: Layer.Layer<WakeLock> = Layer.sync(WakeLock, () =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { WakeLock } from "@thomasfosterau/effect-web/browser"
- * import { TestWakeLock } from "@thomasfosterau/effect-web/testing"
+ * import { WakeLock } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestWakeLock } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const presenting = WakeLock.keepAwake(Effect.succeed("presented"))
  * Effect.runPromise(Effect.provide(presenting, TestWakeLock.layer())).then(console.log) // "presented"
@@ -226,8 +226,8 @@ export const keepAwake = <A, E, R>(
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Layer from "effect/Layer"
- * import { WakeLock } from "@thomasfosterau/effect-web/browser"
- * import { TestPageVisibility, TestWakeLock } from "@thomasfosterau/effect-web/testing"
+ * import { WakeLock } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPageVisibility, TestWakeLock } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const cooking = WakeLock.keepAwakeWhileVisible(Effect.sleep("5 millis"))
  * const layer = Layer.merge(TestWakeLock.layer(), TestPageVisibility.layer())

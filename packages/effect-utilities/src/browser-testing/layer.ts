@@ -1,5 +1,5 @@
 /**
- * Every `./testing` double in one layer.
+ * Every `BrowserTesting` double in one layer.
  *
  * @since 0.2.0
  */
@@ -20,7 +20,7 @@ import * as TestScreenOrientation from "./screen-orientation.ts";
 import * as TestWakeLock from "./wake-lock.ts";
 
 /**
- * Every service `layer` from `@thomasfosterau/effect-web/browser` provides,
+ * Every service `layer` from `@thomasfosterau/effect-utilities/Browser` provides,
  * each over a fresh in-memory double in its default state, together with
  * every double's `Control`. The test counterpart of that layer: provide it
  * once, then reach for a `Control` (`TestNavigator.Control`, …) to drive
@@ -29,8 +29,8 @@ import * as TestWakeLock from "./wake-lock.ts";
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
- * import { TestNavigator, layer } from "@thomasfosterau/effect-web/testing"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNavigator, layer } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.gen(function* () {
  *   const control = yield* TestNavigator.Control

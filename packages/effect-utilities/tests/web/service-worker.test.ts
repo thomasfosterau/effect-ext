@@ -14,7 +14,7 @@ import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
-import { FetchFailed } from "@thomasfosterau/effect-web/net";
+import { FetchFailed } from "@thomasfosterau/effect-utilities/Net";
 import {
   CacheError,
   Caches,
@@ -38,7 +38,7 @@ import {
   precache,
   route,
   staleWhileRevalidate,
-} from "@thomasfosterau/effect-web/service-worker";
+} from "@thomasfosterau/effect-utilities/ServiceWorker";
 
 const URL_A = "https://example.com/a";
 

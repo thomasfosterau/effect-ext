@@ -1,5 +1,5 @@
 /**
- * Unit tests for `./observability`: the structured span logger, the
+ * Unit tests for `Observability`: the structured span logger, the
  * JSON-line sink, the event trio and the auth-outcome signal.
  *
  * `spanTracer` is a plain `Tracer.Tracer` implementation (built via
@@ -25,7 +25,7 @@ import {
   logStructured,
   logWarningEvent,
   spanTracer,
-} from "@thomasfosterau/effect-web/observability";
+} from "@thomasfosterau/effect-utilities/Observability";
 
 /**
  * Decodes one logged line back into a record — the read side of the sink's

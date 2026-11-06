@@ -10,7 +10,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Str from "effect/String";
 import * as Length from "./length.ts";
-import { keyword, significant, single, type Values, valuesOf } from "./internal/values.ts";
+import { keyword, significant, single, type Values, valuesOf } from "../internal/css/values.ts";
 import type { ComponentValue } from "./token.ts";
 
 /**
@@ -108,7 +108,7 @@ const GENERIC_FAMILIES: ReadonlyArray<string> = [
 ];
 
 /** Keywords a family name made of identifiers may not start with (CSS Fonts 4 §2.1.1). */
-const RESERVED_FAMILY_KEYWORDS: ReadonlyArray<string> = [
+const RESERVED_FAMILY_KEYWORDS: ReadonlyArray<string> = new Set([
   ...GENERIC_FAMILIES,
   "initial",
   "inherit",
@@ -116,7 +116,7 @@ const RESERVED_FAMILY_KEYWORDS: ReadonlyArray<string> = [
   "default",
   "revert",
   "revert-layer",
-];
+]);
 
 const ABSOLUTE_SIZES: ReadonlyArray<string> = [
   "xx-small",
@@ -172,7 +172,7 @@ const identFamily = (idents: Arr.NonEmptyReadonlyArray<string>): Option.Option<F
   if (idents.length === 1 && GENERIC_FAMILIES.includes(head)) {
     return Option.some({ _tag: "Generic", name: head });
   }
-  return RESERVED_FAMILY_KEYWORDS.includes(head)
+  return RESERVED_FAMILY_KEYWORDS.has(head)
     ? Option.none()
     : Option.some({ _tag: "Family", name: idents.join(" ") });
 };
@@ -196,7 +196,7 @@ const familyName = (group: Values): Option.Option<FamilyName> => {
  *
  * @example
  * ```ts
- * import { Font } from "@thomasfosterau/effect-css"
+ * import { Font } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Font.parseFamily('"Helvetica Neue", Times New Roman, serif'))
  * // Option.some([{ _tag: "Family", name: "Helvetica Neue" }, { _tag: "Family", name: "Times New Roman" }, { _tag: "Generic", name: "serif" }])
@@ -226,7 +226,7 @@ const weightOf = (value: ComponentValue): Option.Option<FontWeight> => {
  *
  * @example
  * ```ts
- * import { Font } from "@thomasfosterau/effect-css"
+ * import { Font } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Font.parseWeight("bold")) // Option.some(700)
  * console.log(Font.parseWeight("350")) // Option.some(350)
@@ -261,7 +261,7 @@ const obliqueAngle = (value: ComponentValue): Option.Option<number> =>
  *
  * @example
  * ```ts
- * import { Font } from "@thomasfosterau/effect-css"
+ * import { Font } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Font.parseStyle("oblique 10deg")) // Option.some({ _tag: "Oblique", angle: 10 })
  * ```
@@ -305,7 +305,7 @@ const sizeOf = (value: ComponentValue): Option.Option<FontSize> =>
  *
  * @example
  * ```ts
- * import { Font } from "@thomasfosterau/effect-css"
+ * import { Font } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Font.parseSize("12pt")) // Option.some({ _tag: "Length", length: { value: 12, unit: "pt" } })
  * console.log(Font.parseSize("x-large")) // Option.some({ _tag: "Keyword", keyword: "x-large" })
@@ -333,7 +333,7 @@ const lineHeightOf = (value: ComponentValue): Option.Option<LineHeight> => {
  *
  * @example
  * ```ts
- * import { Font } from "@thomasfosterau/effect-css"
+ * import { Font } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Font.parseLineHeight("1.5")) // Option.some({ _tag: "Number", value: 1.5 })
  * ```
@@ -443,7 +443,7 @@ const sizeAndLineHeight = (
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { Font } from "@thomasfosterau/effect-css"
+ * import { Font } from "@thomasfosterau/effect-utilities/Css"
  *
  * const font = Font.parse("italic bold 12px/1.5 Georgia, serif")
  * console.log(Option.map(font, (one) => one._tag === "Font" && [one.weight, one.lineHeight]))

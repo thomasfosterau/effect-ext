@@ -15,8 +15,8 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
-import { watch } from "../internal/dom.ts";
-import { ambientDocument } from "../internal/globals.ts";
+import { watch } from "../internal/web/dom.ts";
+import { ambientDocument } from "../internal/web/globals.ts";
 
 /**
  * A document's visibility: `"visible"` while any part of it is on screen,
@@ -40,7 +40,7 @@ export interface DocumentLike extends Stream.EventListener {
 
 /**
  * The page-visibility service. Provide {@link layer} in a page, or
- * `TestPageVisibility.layer` from `@thomasfosterau/effect-web/testing` in
+ * `TestPageVisibility.layer` from `@thomasfosterau/effect-utilities/BrowserTesting` in
  * tests.
  *
  * - `state` — the visibility now.
@@ -55,7 +55,7 @@ export class PageVisibility extends Context.Service<
     readonly state: Effect.Effect<VisibilityState>;
     readonly changes: Stream.Stream<VisibilityState>;
   }
->()("@thomasfosterau/effect-web/browser/PageVisibility") {}
+>()("@thomasfosterau/effect-utilities/Browser/PageVisibility") {}
 
 // Takes any string, not just `DocumentVisibilityState`: `prerender` (a
 // pre-2021 value) and any future value read as hidden, the safe side for
@@ -70,7 +70,7 @@ const normalise = (state: string): VisibilityState => (state === "visible" ? "vi
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { PageVisibility } from "@thomasfosterau/effect-web/browser"
+ * import { PageVisibility } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const visibility = PageVisibility.make(undefined)
  * Effect.runPromise(visibility.state).then(console.log) // "visible"
@@ -98,7 +98,7 @@ export const make = (document: DocumentLike | undefined): PageVisibility["Servic
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { PageVisibility } from "@thomasfosterau/effect-web/browser"
+ * import { PageVisibility } from "@thomasfosterau/effect-utilities/Browser"
  *
  * Effect.runPromise(Effect.provide(PageVisibility.state, PageVisibility.layer)).then(console.log) // "visible"
  * ```
@@ -116,8 +116,8 @@ export const layer: Layer.Layer<PageVisibility> = Layer.sync(PageVisibility, () 
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { PageVisibility } from "@thomasfosterau/effect-web/browser"
- * import { TestPageVisibility } from "@thomasfosterau/effect-web/testing"
+ * import { PageVisibility } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPageVisibility } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * Effect.runPromise(
  *   Effect.provide(PageVisibility.state, TestPageVisibility.layer("hidden")),
@@ -140,8 +140,8 @@ export const state: Effect.Effect<VisibilityState, never, PageVisibility> = Effe
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { PageVisibility } from "@thomasfosterau/effect-web/browser"
- * import { TestPageVisibility } from "@thomasfosterau/effect-web/testing"
+ * import { PageVisibility } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPageVisibility } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(PageVisibility.changes, 1))
  * Effect.runPromise(Effect.provide(program, TestPageVisibility.layer())).then(console.log) // ["visible"]
@@ -161,8 +161,8 @@ export const changes: Stream.Stream<VisibilityState, never, PageVisibility> = St
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { PageVisibility } from "@thomasfosterau/effect-web/browser"
- * import { TestPageVisibility } from "@thomasfosterau/effect-web/testing"
+ * import { PageVisibility } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPageVisibility } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const resume = Effect.andThen(PageVisibility.awaitVisible, Effect.succeed("resumed"))
  * Effect.runPromise(Effect.provide(resume, TestPageVisibility.layer())).then(console.log) // "resumed"
@@ -189,8 +189,8 @@ export const awaitVisible: Effect.Effect<void, never, PageVisibility> = Effect.f
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { PageVisibility } from "@thomasfosterau/effect-web/browser"
- * import { TestPageVisibility } from "@thomasfosterau/effect-web/testing"
+ * import { PageVisibility } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPageVisibility } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const poll = Effect.log("poll").pipe(Effect.repeat({ times: 2 }), Effect.andThen(Effect.never))
  * const program = PageVisibility.whileVisible(poll).pipe(Effect.timeoutOption("10 millis"))

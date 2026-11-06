@@ -123,7 +123,7 @@ const parameterAt = (
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { MimeType } from "@thomasfosterau/effect-mime"
+ * import { MimeType } from "@thomasfosterau/effect-utilities/Mime"
  *
  * const parsed = MimeType.parse('Text/HTML; Charset="utf-8"; charset=latin1')
  * console.log(Option.map(parsed, MimeType.essence)) // Option.some("text/html")
@@ -166,7 +166,7 @@ export const parse = (input: string): Option.Option<MimeType> => {
  *
  * @example
  * ```ts
- * import { MimeType } from "@thomasfosterau/effect-mime"
+ * import { MimeType } from "@thomasfosterau/effect-utilities/Mime"
  *
  * console.log(
  *   MimeType.serialize({ type: "text", subtype: "plain", parameters: [["title", "a b"]] }),
@@ -190,7 +190,7 @@ export const serialize = (mimeType: MimeType): string =>
  *
  * @example
  * ```ts
- * import { MimeType } from "@thomasfosterau/effect-mime"
+ * import { MimeType } from "@thomasfosterau/effect-utilities/Mime"
  *
  * console.log(MimeType.essence({ type: "image", subtype: "svg+xml", parameters: [] })) // "image/svg+xml"
  * ```
@@ -206,7 +206,7 @@ export const essence = (mimeType: MimeType): string => `${mimeType.type}/${mimeT
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { MimeType } from "@thomasfosterau/effect-mime"
+ * import { MimeType } from "@thomasfosterau/effect-utilities/Mime"
  *
  * const parsed = MimeType.parse("text/csv; charset=windows-1252")
  * console.log(Option.flatMap(parsed, (mimeType) => MimeType.parameter(mimeType, "Charset")))
@@ -230,7 +230,7 @@ export const parameter = (mimeType: MimeType, name: string): Option.Option<strin
  *
  * @example
  * ```ts
- * import { MimeType } from "@thomasfosterau/effect-mime"
+ * import { MimeType } from "@thomasfosterau/effect-utilities/Mime"
  *
  * console.log(MimeType.isXml({ type: "image", subtype: "svg+xml", parameters: [] })) // true
  * ```
@@ -260,7 +260,7 @@ export type MimeTypeFromString = typeof MimeTypeFromString.Type;
  * @example
  * ```ts
  * import * as Schema from "effect/Schema"
- * import { MimeType } from "@thomasfosterau/effect-mime"
+ * import { MimeType } from "@thomasfosterau/effect-utilities/Mime"
  *
  * const decoded = Schema.decodeUnknownSync(MimeType.MimeTypeFromString)("Application/JSON")
  * console.log(decoded.subtype) // "json"

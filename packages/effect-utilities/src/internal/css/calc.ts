@@ -10,7 +10,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Record from "effect/Record";
 import * as Str from "effect/String";
-import type { ComponentValue } from "../token.ts";
+import type { ComponentValue } from "../../css/token.ts";
 
 /** A simplified value: a coefficient per unit; `""` is a bare number. */
 export type Terms = Readonly<Record<string, number>>;

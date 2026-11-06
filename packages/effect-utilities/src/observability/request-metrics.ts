@@ -73,7 +73,7 @@ const scopeStore = (): AsyncLocalStorage<RequestMetricScope> =>
  *
  * @example
  * ```ts
- * import { incrementRequestMetric, withRequestMetrics } from "@thomasfosterau/effect-web/observability"
+ * import { incrementRequestMetric, withRequestMetrics } from "@thomasfosterau/effect-utilities/Observability"
  *
  * const value = await withRequestMetrics(
  *   async () => {
@@ -106,7 +106,7 @@ export const withRequestMetrics = <A>(
  *
  * @example
  * ```ts
- * import { incrementRequestMetric, withRequestMetrics } from "@thomasfosterau/effect-web/observability"
+ * import { incrementRequestMetric, withRequestMetrics } from "@thomasfosterau/effect-utilities/Observability"
  *
  * incrementRequestMetric() // no scope: a no-op
  * await withRequestMetrics(
@@ -130,7 +130,7 @@ export const incrementRequestMetric = (amount = 1): void => {
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { currentRequestMetrics, incrementRequestMetric, withRequestMetrics } from "@thomasfosterau/effect-web/observability"
+ * import { currentRequestMetrics, incrementRequestMetric, withRequestMetrics } from "@thomasfosterau/effect-utilities/Observability"
  *
  * Option.isNone(currentRequestMetrics()) // true
  * await withRequestMetrics(
@@ -170,7 +170,7 @@ export const currentRequestMetrics = (): Option.Option<RequestMetrics> =>
  *
  * @example
  * ```ts
- * import { countingProxy, withRequestMetrics } from "@thomasfosterau/effect-web/observability"
+ * import { countingProxy, withRequestMetrics } from "@thomasfosterau/effect-utilities/Observability"
  *
  * class Client {
  *   readonly rows = ["row"]

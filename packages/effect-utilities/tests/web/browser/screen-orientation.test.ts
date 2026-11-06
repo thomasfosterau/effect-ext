@@ -1,6 +1,6 @@
 /**
- * Unit tests for `./browser`'s `ScreenOrientation`, driven through
- * `./testing`'s `TestScreenOrientation` (and `TestFullscreen` for the
+ * Unit tests for `Browser`'s `ScreenOrientation`, driven through
+ * `BrowserTesting`'s `TestScreenOrientation` (and `TestFullscreen` for the
  * composed form).
  */
 
@@ -10,8 +10,12 @@ import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import { Fullscreen, ScreenOrientation } from "@thomasfosterau/effect-web/browser";
-import { observe, TestFullscreen, TestScreenOrientation } from "@thomasfosterau/effect-web/testing";
+import { Fullscreen, ScreenOrientation } from "@thomasfosterau/effect-utilities/Browser";
+import {
+  observe,
+  TestFullscreen,
+  TestScreenOrientation,
+} from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, ScreenOrientation.ScreenOrientation | TestScreenOrientation.Control>,

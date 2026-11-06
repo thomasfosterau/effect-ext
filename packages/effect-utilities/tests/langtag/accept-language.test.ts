@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import { AcceptLanguage, negotiateLanguage } from "@thomasfosterau/effect-langtag";
+import { AcceptLanguage, negotiateLanguage } from "@thomasfosterau/effect-utilities/Langtag";
 
 describe("AcceptLanguage.parse", () => {
   it("orders by quality, keeping the header's order between equals", () => {

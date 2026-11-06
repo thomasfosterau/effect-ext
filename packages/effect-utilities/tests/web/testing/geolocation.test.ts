@@ -1,5 +1,5 @@
 /**
- * Unit tests for `./testing`'s `TestGeolocation`, the in-memory double for
+ * Unit tests for `BrowserTesting`'s `TestGeolocation`, the in-memory double for
  * `@effect/platform-browser`'s `Geolocation`.
  */
 
@@ -8,7 +8,7 @@ import * as Geolocation from "@effect/platform-browser/Geolocation";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
-import { TestGeolocation, observe } from "@thomasfosterau/effect-web/testing";
+import { TestGeolocation, observe } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 describe("TestGeolocation", () => {
   it("answers getCurrentPosition with the latest fix", async () => {

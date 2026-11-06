@@ -1,12 +1,12 @@
 /**
- * Unit tests for `./testing`'s `observe`.
+ * Unit tests for `BrowserTesting`'s `observe`.
  */
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
-import { observe } from "@thomasfosterau/effect-web/testing";
+import { observe } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 describe("observe", () => {
   it("returns once the first element is out, and collects `count` elements", async () => {

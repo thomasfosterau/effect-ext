@@ -4,7 +4,10 @@
  * tests match on.
  */
 import { describe, expect, it } from "vite-plus/test";
-import { describeSessionDegraded, SESSION_DEGRADED_LOG_MESSAGE } from "@thomasfosterau/effect-web";
+import {
+  describeSessionDegraded,
+  SESSION_DEGRADED_LOG_MESSAGE,
+} from "@thomasfosterau/effect-utilities/Web";
 
 describe("describeSessionDegraded", () => {
   it("pairs the fixed log message with the error and forwards the error verbatim", () => {

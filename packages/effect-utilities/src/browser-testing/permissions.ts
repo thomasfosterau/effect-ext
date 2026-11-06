@@ -1,6 +1,6 @@
 /**
  * A controllable Permissions API for tests of code that uses
- * `@effect/platform-browser`'s `Permissions` (and `./browser`'s
+ * `@effect/platform-browser`'s `Permissions` (and `Browser`'s
  * `PermissionStatus`, which builds on it): {@link layer} provides
  * `Permissions` over an in-memory permission table, plus {@link Control} to
  * grant, deny or reset a permission. Each `query` returns a live status
@@ -34,7 +34,7 @@ export type States = Readonly<Partial<Record<PermissionName, PermissionState>>>;
 export class Control extends Context.Service<
   Control,
   { readonly set: (name: PermissionName, state: PermissionState) => Effect.Effect<void> }
->()("@thomasfosterau/effect-web/testing/PermissionsControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/PermissionsControl") {}
 
 /** A permission status whose `state` reads the double's live table. */
 class TestPermissionStatus<Name extends PermissionName> extends EventTarget {
@@ -74,7 +74,7 @@ export interface Fixture {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestPermissions } from "@thomasfosterau/effect-web/testing"
+ * import { TestPermissions } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { permissions, control } = TestPermissions.make({ camera: "denied" })
  * const program = Effect.andThen(control.set("camera", "granted"), permissions.query("camera"))
@@ -129,8 +129,8 @@ export const make = (initial?: States, unsupported?: ReadonlyArray<PermissionNam
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { PermissionStatus } from "@thomasfosterau/effect-web/browser"
- * import { TestPermissions } from "@thomasfosterau/effect-web/testing"
+ * import { PermissionStatus } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPermissions } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * Effect.runPromise(
  *   Effect.provide(PermissionStatus.state("microphone"), TestPermissions.layer()),

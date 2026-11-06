@@ -5,7 +5,7 @@
  */
 import type * as Option from "effect/Option";
 import type * as Result from "effect/Result";
-import { LinkHeader, UriTemplate, WellKnown } from "@thomasfosterau/effect-uri-template";
+import { LinkHeader, UriTemplate, WellKnown } from "@thomasfosterau/effect-utilities/UriTemplate";
 
 export declare const template: UriTemplate.UriTemplate;
 

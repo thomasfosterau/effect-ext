@@ -26,8 +26,8 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
-import { pendingPromise, reasonOf, settled } from "../internal/dom.ts";
-import { ambientNavigator } from "../internal/globals.ts";
+import { pendingPromise, reasonOf, settled } from "../internal/web/dom.ts";
+import { ambientNavigator } from "../internal/web/globals.ts";
 
 /**
  * A lock's mode. Any number of `"shared"` holders may hold a lock together;
@@ -180,7 +180,7 @@ export interface LockManagerRequestOptions {
 /**
  * The structural slice of the browser's `LockManager` this module calls. The
  * live `navigator.locks` satisfies it; so does the in-memory manager in
- * `@thomasfosterau/effect-web/testing` (`TestLocks.makeLockManager`).
+ * `@thomasfosterau/effect-utilities/BrowserTesting` (`TestLocks.makeLockManager`).
  *
  * @since 0.2.0
  * @category models
@@ -214,7 +214,7 @@ export interface LockInfoLike {
 
 /**
  * The Web Locks service. Provide {@link layer} in a browser, or
- * `TestLocks.layer` from `@thomasfosterau/effect-web/testing` in tests.
+ * `TestLocks.layer` from `@thomasfosterau/effect-utilities/BrowserTesting` in tests.
  *
  * - `supported` — whether the context has a lock manager at all; when it is
  *   `false` every operation fails `Unsupported`.
@@ -240,7 +240,7 @@ export class Locks extends Context.Service<
     ) => Effect.Effect<Option.Option<HeldLock>, LockError, Scope.Scope>;
     readonly query: Effect.Effect<LockSnapshot, LockError>;
   }
->()("@thomasfosterau/effect-web/browser/Locks") {}
+>()("@thomasfosterau/effect-utilities/Browser/Locks") {}
 
 /** What a request's scope finalizer releases, filled in once the lock is granted. */
 interface RequestState {
@@ -265,8 +265,8 @@ const toInfo = (info: LockInfoLike): LockInfo => ({
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Locks } from "@thomasfosterau/effect-web/browser"
- * import { TestLocks } from "@thomasfosterau/effect-web/testing"
+ * import { Locks } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestLocks } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * // Two "tabs" over one origin-wide lock manager.
  * const manager = TestLocks.makeLockManager()
@@ -406,7 +406,7 @@ export const make = (manager: LockManagerLike | undefined): Locks["Service"] => 
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Locks } from "@thomasfosterau/effect-web/browser"
+ * import { Locks } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const program = Effect.gen(function* () {
  *   const locks = yield* Locks.Locks
@@ -446,8 +446,8 @@ const runHolding = <A, E, R>(
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Locks } from "@thomasfosterau/effect-web/browser"
- * import { TestLocks } from "@thomasfosterau/effect-web/testing"
+ * import { Locks } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestLocks } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const refreshToken = Effect.succeed("fresh-token").pipe(Locks.withLock("auth-refresh"))
  *
@@ -493,8 +493,8 @@ export const withLock: {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Locks } from "@thomasfosterau/effect-web/browser"
- * import { TestLocks } from "@thomasfosterau/effect-web/testing"
+ * import { Locks } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestLocks } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const poll = Effect.succeed("polled").pipe(Locks.withLockIfAvailable("poller"))
  *
@@ -543,8 +543,8 @@ export const withLockIfAvailable: {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Locks } from "@thomasfosterau/effect-web/browser"
- * import { TestLocks } from "@thomasfosterau/effect-web/testing"
+ * import { Locks } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestLocks } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Locks.query.pipe(Locks.withLock("export"))
  * Effect.runPromise(Effect.provide(program, TestLocks.layer())).then((snapshot) =>

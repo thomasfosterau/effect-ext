@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
-import { Shorthand, Syntax, Token } from "@thomasfosterau/effect-css";
+import { Shorthand, Syntax, Token } from "@thomasfosterau/effect-utilities/Css";
 
 /** Serialise one component value back to text, for comparison. */
 const textOf = (value: Token.ComponentValue): string => {

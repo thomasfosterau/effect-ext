@@ -1,5 +1,5 @@
 /**
- * Shared plumbing for the `./browser` adapters: reading a `DOMException`'s
+ * Shared plumbing for the `Browser` adapters: reading a `DOMException`'s
  * name off an unknown rejection, turning "a value plus the events that say
  * it changed" into a deduplicated `Stream`, and the promise plumbing the
  * platform's promise-shaped APIs need.

@@ -1,5 +1,5 @@
 /**
- * A controllable Fullscreen API for tests of code that uses `./browser`'s
+ * A controllable Fullscreen API for tests of code that uses `Browser`'s
  * `Fullscreen`: {@link layer} provides the real adapter over an in-memory
  * document, plus {@link Control} to make elements, grant or refuse
  * requests, and leave fullscreen as the user pressing Esc would. Every
@@ -63,7 +63,7 @@ export class Control extends Context.Service<
     readonly setAllowed: (allowed: boolean) => Effect.Effect<void>;
     readonly exit: Effect.Effect<void>;
   }
->()("@thomasfosterau/effect-web/testing/FullscreenControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/FullscreenControl") {}
 
 /**
  * What {@link make} builds: the `Fullscreen` service over the in-memory
@@ -117,7 +117,7 @@ class TestDocument extends EventTarget {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestFullscreen } from "@thomasfosterau/effect-web/testing"
+ * import { TestFullscreen } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { fullscreen, control } = TestFullscreen.make()
  * const program = Effect.gen(function* () {
@@ -177,8 +177,8 @@ export const make = (options?: Options): Fixture => {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Fullscreen } from "@thomasfosterau/effect-web/browser"
- * import { TestFullscreen } from "@thomasfosterau/effect-web/testing"
+ * import { Fullscreen } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestFullscreen } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.gen(function* () {
  *   const control = yield* TestFullscreen.Control

@@ -1,6 +1,6 @@
 /**
  * A controllable document visibility for tests of code that uses
- * `./browser`'s `PageVisibility`: {@link layer} provides the real adapter
+ * `Browser`'s `PageVisibility`: {@link layer} provides the real adapter
  * over an in-memory document, plus {@link Control} to hide and show it.
  * Changes fire `visibilitychange`, as the browser does.
  *
@@ -25,7 +25,7 @@ import {
 export class Control extends Context.Service<
   Control,
   { readonly set: (state: VisibilityState) => Effect.Effect<void> }
->()("@thomasfosterau/effect-web/testing/PageVisibilityControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/PageVisibilityControl") {}
 
 /**
  * What {@link make} builds: the `PageVisibility` service over the in-memory
@@ -59,7 +59,7 @@ class TestDocument extends EventTarget {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestPageVisibility } from "@thomasfosterau/effect-web/testing"
+ * import { TestPageVisibility } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { visibility, control } = TestPageVisibility.make()
  * Effect.runPromise(Effect.andThen(control.set("hidden"), visibility.state)).then(console.log) // "hidden"
@@ -91,8 +91,8 @@ export const make = (initial: VisibilityState = "visible"): Fixture => {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { PageVisibility } from "@thomasfosterau/effect-web/browser"
- * import { TestPageVisibility } from "@thomasfosterau/effect-web/testing"
+ * import { PageVisibility } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPageVisibility } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.gen(function* () {
  *   const control = yield* TestPageVisibility.Control

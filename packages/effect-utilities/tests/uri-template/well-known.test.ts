@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
-import { WellKnown } from "@thomasfosterau/effect-uri-template";
+import { WellKnown } from "@thomasfosterau/effect-utilities/UriTemplate";
 
 const href = (origin: string | URL, suffix: string) =>
   Result.map(WellKnown.url(origin, suffix), (url) => url.href);

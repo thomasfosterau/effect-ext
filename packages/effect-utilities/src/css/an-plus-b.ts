@@ -121,7 +121,7 @@ const offsetAfter = (rest: ReadonlyArray<ComponentValue>, tail: Tail): Option.Op
  *
  * @example
  * ```ts
- * import { AnPlusB } from "@thomasfosterau/effect-css"
+ * import { AnPlusB } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(AnPlusB.parse("2n + 1")) // Option.some([2, 1])
  * console.log(AnPlusB.parse("even")) // Option.some([2, 0])

@@ -14,7 +14,7 @@
  * `canShare` / `vibrate`, returns `false`).
  *
  * The Permissions, Clipboard and Geolocation members of `navigator` are
- * `@effect/platform-browser`'s services; `./browser`'s `PermissionStatus`
+ * `@effect/platform-browser`'s services; `Browser`'s `PermissionStatus`
  * module builds on its `Permissions`.
  *
  * @since 0.2.0
@@ -26,8 +26,8 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import { reasonOf, watch } from "../internal/dom.ts";
-import { ambientEventTarget, ambientNavigator } from "../internal/globals.ts";
+import { reasonOf, watch } from "../internal/web/dom.ts";
+import { ambientEventTarget, ambientNavigator } from "../internal/web/globals.ts";
 
 /**
  * The structural slice of `navigator.connection` (the Network Information
@@ -60,7 +60,7 @@ export interface StorageManagerLike {
  * The structural slice of `navigator` this module reads. Every member is
  * optional: the browser's `navigator` satisfies it, a worker's
  * `WorkerNavigator` satisfies it, and a test builds only what it needs
- * (`TestNavigator` in `@thomasfosterau/effect-web/testing` builds all of it).
+ * (`TestNavigator` in `@thomasfosterau/effect-utilities/BrowserTesting` builds all of it).
  *
  * @since 0.2.0
  * @category models
@@ -261,7 +261,7 @@ const REJECTION_REASONS = {
 
 /**
  * The navigator service. Provide {@link layer} in a browser or a worker, or
- * `TestNavigator.layer` from `@thomasfosterau/effect-web/testing` in tests.
+ * `TestNavigator.layer` from `@thomasfosterau/effect-utilities/BrowserTesting` in tests.
  *
  * - `info` — the agent's self-description ({@link NavigatorInfo}).
  * - `languages` / `languageChanges` — preferred languages, now and as they
@@ -309,7 +309,7 @@ export class Navigator extends Context.Service<
       readonly persist: Effect.Effect<boolean, NavigatorError>;
     };
   }
->()("@thomasfosterau/effect-web/browser/Navigator") {}
+>()("@thomasfosterau/effect-utilities/Browser/Navigator") {}
 
 const readLanguages = (navigator: NavigatorLike | undefined): ReadonlyArray<string> =>
   Arr.match(navigator?.languages ?? [], {
@@ -361,7 +361,7 @@ const tryCall = <A>(
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const navigator = Navigator.make({
  *   navigator: { userAgent: "Example/1.0", languages: ["en-AU", "en"], onLine: true },
@@ -466,7 +466,7 @@ export const make = (environment: NavigatorEnvironment): Navigator["Service"] =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
  *
  * Effect.runPromise(Effect.provide(Navigator.onLine, Navigator.layer)).then(console.log) // true
  * ```
@@ -487,8 +487,8 @@ export const layer: Layer.Layer<Navigator> = Layer.sync(Navigator, () =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
- * import { TestNavigator } from "@thomasfosterau/effect-web/testing"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNavigator } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.map(Navigator.info, (info) => info.hardwareConcurrency)
  * Effect.runPromise(
@@ -511,8 +511,8 @@ export const info: Effect.Effect<NavigatorInfo, never, Navigator> = Effect.flatM
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
- * import { TestNavigator } from "@thomasfosterau/effect-web/testing"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNavigator } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * Effect.runPromise(
  *   Effect.provide(Navigator.onLine, TestNavigator.layer({ onLine: false })),
@@ -535,8 +535,8 @@ export const onLine: Effect.Effect<boolean, never, Navigator> = Effect.flatMap(
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
- * import { TestNavigator } from "@thomasfosterau/effect-web/testing"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNavigator } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(Navigator.onLineChanges, 1))
  * Effect.runPromise(Effect.provide(program, TestNavigator.layer())).then(console.log) // [true]
@@ -556,8 +556,8 @@ export const onLineChanges: Stream.Stream<boolean, never, Navigator> = Stream.un
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
- * import { TestNavigator } from "@thomasfosterau/effect-web/testing"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNavigator } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const flush = Effect.andThen(Navigator.awaitOnLine, Effect.succeed("flushed"))
  * Effect.runPromise(Effect.provide(flush, TestNavigator.layer())).then(console.log) // "flushed"
@@ -580,8 +580,8 @@ export const awaitOnLine: Effect.Effect<void, never, Navigator> = Effect.flatMap
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
- * import { TestNavigator } from "@thomasfosterau/effect-web/testing"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNavigator } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(Navigator.languageChanges, 1))
  * Effect.runPromise(
@@ -606,8 +606,8 @@ export const languageChanges: Stream.Stream<
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
- * import { TestNavigator } from "@thomasfosterau/effect-web/testing"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNavigator } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Navigator.share({ title: "Effect", url: "https://effect.website" }).pipe(
  *   Effect.catchTag("NavigatorError", (error) =>
@@ -632,8 +632,8 @@ export const share = (data: ShareData): Effect.Effect<void, NavigatorError, Navi
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
- * import { TestNavigator } from "@thomasfosterau/effect-web/testing"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNavigator } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Navigator.sendBeacon("https://example.com/collect", "event=exit")
  * Effect.runPromise(Effect.provide(program, TestNavigator.layer()))

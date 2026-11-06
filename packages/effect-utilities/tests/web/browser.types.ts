@@ -1,5 +1,5 @@
 /**
- * Type-level tests for the `./browser` and `./testing` entries: the
+ * Type-level tests for the `Browser` and `BrowserTesting` entries: the
  * expect-error directives are the assertions, checked by tsconfig.test.json
  * (which resolves the package names to `src/`). Every binding is exported so
  * an unused-local error can never stand in for the assertion a directive
@@ -23,8 +23,8 @@ import {
   PageVisibility,
   ScreenOrientation,
   WakeLock,
-} from "@thomasfosterau/effect-web/browser";
-import { observe } from "@thomasfosterau/effect-web/testing";
+} from "@thomasfosterau/effect-utilities/Browser";
+import { observe } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 /** A compile-time assertion: `T` must be exactly `true`. */
 type Assert<T extends true> = T;

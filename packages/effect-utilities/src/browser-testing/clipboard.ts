@@ -32,7 +32,7 @@ export class Control extends Context.Service<
     readonly setText: (text: string) => Effect.Effect<void>;
     readonly setDenied: (denied: boolean) => Effect.Effect<void>;
   }
->()("@thomasfosterau/effect-web/testing/ClipboardControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/ClipboardControl") {}
 
 /**
  * What {@link make} builds: the `Clipboard` service over the in-memory
@@ -59,7 +59,7 @@ interface State {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestClipboard } from "@thomasfosterau/effect-web/testing"
+ * import { TestClipboard } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { clipboard, control } = TestClipboard.make()
  * Effect.runPromise(Effect.andThen(clipboard.writeString("copied"), control.text)).then(console.log) // "copied"
@@ -127,7 +127,7 @@ export const make = (text?: string): Fixture => {
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Clipboard from "@effect/platform-browser/Clipboard"
- * import { TestClipboard } from "@thomasfosterau/effect-web/testing"
+ * import { TestClipboard } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const paste = Effect.flatMap(Clipboard.Clipboard, (clipboard) => clipboard.readString)
  * Effect.runPromise(Effect.provide(paste, TestClipboard.layer("hello"))).then(console.log) // "hello"

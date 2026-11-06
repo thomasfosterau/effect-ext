@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-mime` — MIME types, MIME sniffing and `data:`
+ * `@thomasfosterau/effect-utilities/Mime` — MIME types, MIME sniffing and `data:`
  * URLs, after the WHATWG MIME Sniffing and Fetch standards.
  *
  * - `MimeType` — parse and serialise `type/subtype;name=value`, its
@@ -13,7 +13,7 @@
  *
  * @since 0.1.0
  */
-export * as DataUrl from "./data-url.ts";
-export * as Extension from "./extension.ts";
-export * as MimeType from "./mime-type.ts";
-export * as Sniff from "./sniff.ts";
+export * as DataUrl from "./mime/data-url.ts";
+export * as Extension from "./mime/extension.ts";
+export * as MimeType from "./mime/mime-type.ts";
+export * as Sniff from "./mime/sniff.ts";

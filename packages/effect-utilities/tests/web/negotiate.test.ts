@@ -20,7 +20,7 @@ import {
   JSONAPI_MEDIA_TYPE,
   jsonApiErrorResponseWeb,
   SERVICE_UNAVAILABLE,
-} from "@thomasfosterau/effect-web";
+} from "@thomasfosterau/effect-utilities/Web";
 import {
   chooseNegotiatedResponse,
   endpointPaths,
@@ -34,7 +34,7 @@ import {
   requestForRouter,
   requestForRouterWeb,
   UNSUPPORTED_MEDIA_TYPE,
-} from "@thomasfosterau/effect-web/negotiate";
+} from "@thomasfosterau/effect-utilities/Negotiate";
 
 const ORIGIN = "https://thomasfoster.au";
 const UUID = "0b9aab8a-3d24-4b85-a3a6-046cba9856ce";

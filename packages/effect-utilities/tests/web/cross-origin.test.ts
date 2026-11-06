@@ -21,7 +21,7 @@ import {
   isCrossOrigin,
   isCrossOriginRejected,
   isCrossOriginRejectedWeb,
-} from "@thomasfosterau/effect-web";
+} from "@thomasfosterau/effect-utilities/Web";
 
 const ORIGIN = "https://thomasfoster.au";
 

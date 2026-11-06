@@ -1,5 +1,6 @@
 /**
- * XML text helpers for the renderer. Not part of the public API.
+ * XML text helpers for the `RssFeed` and `AtomFeed` renderers. Not part of
+ * the public API.
  */
 
 /**

@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Predicate from "effect/Predicate";
-import { Serialize, Syntax, type Token } from "@thomasfosterau/effect-css";
+import { Serialize, Syntax, type Token } from "@thomasfosterau/effect-utilities/Css";
 
 type ComponentValue = Token.ComponentValue;
 import componentValueList from "./fixtures/css-parsing-tests/component_value_list.json" with { type: "json" };

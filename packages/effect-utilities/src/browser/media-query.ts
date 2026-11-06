@@ -13,8 +13,8 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
-import { watch } from "../internal/dom.ts";
-import { ambientMatchMedia } from "../internal/globals.ts";
+import { watch } from "../internal/web/dom.ts";
+import { ambientMatchMedia } from "../internal/web/globals.ts";
 
 /**
  * The structural slice of a `MediaQueryList` this module reads.
@@ -36,7 +36,7 @@ export type MatchMediaLike = (query: string) => MediaQueryListLike;
 
 /**
  * The media-query service. Provide {@link layer} in a page, or
- * `TestMediaQuery.layer` from `@thomasfosterau/effect-web/testing` in tests.
+ * `TestMediaQuery.layer` from `@thomasfosterau/effect-utilities/BrowserTesting` in tests.
  *
  * - `matches` — whether `query` matches now.
  * - `changes` — whether `query` matches now, then each change. Each run
@@ -55,7 +55,7 @@ export class MediaQuery extends Context.Service<
     readonly matches: (query: string) => Effect.Effect<boolean>;
     readonly changes: (query: string) => Stream.Stream<boolean>;
   }
->()("@thomasfosterau/effect-web/browser/MediaQuery") {}
+>()("@thomasfosterau/effect-utilities/Browser/MediaQuery") {}
 
 /**
  * Builds the {@link MediaQuery} service over a `matchMedia`; `undefined`
@@ -65,7 +65,7 @@ export class MediaQuery extends Context.Service<
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { MediaQuery } from "@thomasfosterau/effect-web/browser"
+ * import { MediaQuery } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const mediaQuery = MediaQuery.make(undefined)
  * Effect.runPromise(mediaQuery.matches("(prefers-color-scheme: dark)")).then(console.log) // false
@@ -98,7 +98,7 @@ export const make = (matchMedia: MatchMediaLike | undefined): MediaQuery["Servic
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { MediaQuery } from "@thomasfosterau/effect-web/browser"
+ * import { MediaQuery } from "@thomasfosterau/effect-utilities/Browser"
  *
  * Effect.runPromise(Effect.provide(MediaQuery.matches("print"), MediaQuery.layer)).then(console.log) // false
  * ```
@@ -116,8 +116,8 @@ export const layer: Layer.Layer<MediaQuery> = Layer.sync(MediaQuery, () =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { MediaQuery } from "@thomasfosterau/effect-web/browser"
- * import { TestMediaQuery } from "@thomasfosterau/effect-web/testing"
+ * import { MediaQuery } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestMediaQuery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const wide = MediaQuery.matches("(min-width: 40rem)")
  * Effect.runPromise(
@@ -139,8 +139,8 @@ export const matches = (query: string): Effect.Effect<boolean, never, MediaQuery
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { MediaQuery } from "@thomasfosterau/effect-web/browser"
- * import { TestMediaQuery } from "@thomasfosterau/effect-web/testing"
+ * import { MediaQuery } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestMediaQuery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(MediaQuery.changes("(hover: hover)"), 1))
  * Effect.runPromise(Effect.provide(program, TestMediaQuery.layer())).then(console.log) // [false]
@@ -161,8 +161,8 @@ export const changes = (query: string): Stream.Stream<boolean, never, MediaQuery
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { MediaQuery } from "@thomasfosterau/effect-web/browser"
- * import { TestMediaQuery } from "@thomasfosterau/effect-web/testing"
+ * import { MediaQuery } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestMediaQuery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(MediaQuery.colorScheme, 1))
  * Effect.runPromise(
@@ -186,8 +186,8 @@ export const colorScheme: Stream.Stream<"light" | "dark", never, MediaQuery> = S
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { MediaQuery } from "@thomasfosterau/effect-web/browser"
- * import { TestMediaQuery } from "@thomasfosterau/effect-web/testing"
+ * import { MediaQuery } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestMediaQuery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(MediaQuery.reducedMotion, 1))
  * Effect.runPromise(Effect.provide(program, TestMediaQuery.layer())).then(console.log) // [false]
@@ -208,8 +208,8 @@ export const reducedMotion: Stream.Stream<boolean, never, MediaQuery> = changes(
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { MediaQuery } from "@thomasfosterau/effect-web/browser"
- * import { TestMediaQuery } from "@thomasfosterau/effect-web/testing"
+ * import { MediaQuery } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestMediaQuery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(MediaQuery.moreContrast, 1))
  * Effect.runPromise(Effect.provide(program, TestMediaQuery.layer())).then(console.log) // [false]
@@ -233,8 +233,8 @@ export const moreContrast: Stream.Stream<boolean, never, MediaQuery> = changes(
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { MediaQuery } from "@thomasfosterau/effect-web/browser"
- * import { TestMediaQuery } from "@thomasfosterau/effect-web/testing"
+ * import { MediaQuery } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestMediaQuery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(MediaQuery.reducedData, 1))
  * Effect.runPromise(Effect.provide(program, TestMediaQuery.layer())).then(console.log) // [false]

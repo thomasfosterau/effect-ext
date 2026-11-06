@@ -1,5 +1,5 @@
 /**
- * Unit tests for `./service-worker`'s registration notifications:
+ * Unit tests for `ServiceWorker`'s registration notifications:
  * `showNotification`, `getNotifications` over a stub `Registration`, and
  * the `notificationclick` / `notificationclose` listeners.
  */
@@ -16,7 +16,7 @@ import {
   Registration,
   type ServiceWorkerRegistrationLike,
   showNotification,
-} from "@thomasfosterau/effect-web/service-worker";
+} from "@thomasfosterau/effect-utilities/ServiceWorker";
 
 /** An in-memory registration that records what it was asked to show. */
 const stubRegistration = (

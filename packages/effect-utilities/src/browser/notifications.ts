@@ -8,7 +8,7 @@
  * registration (`registration.showNotification`) are a different contract —
  * they outlive the page, and their `notificationclick` /
  * `notificationclose` events are dispatched in the worker, not on a handle —
- * so they belong with `./service-worker`, not here.
+ * so they belong with `ServiceWorker`, not here.
  *
  * Permission state as it changes is {@link permissionChanges}, which follows
  * the browser's `PermissionStatus` for `"notifications"` (over
@@ -28,8 +28,8 @@ import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import type * as Take from "effect/Take";
 import type * as Permissions from "@effect/platform-browser/Permissions";
-import { reasonOf } from "../internal/dom.ts";
-import { ambientNavigator, ambientNotification } from "../internal/globals.ts";
+import { reasonOf } from "../internal/web/dom.ts";
+import { ambientNavigator, ambientNotification } from "../internal/web/globals.ts";
 import * as PermissionStatus from "./permission-status.ts";
 
 /**
@@ -156,7 +156,7 @@ export interface ShownNotification {
 
 /**
  * The notifications service. Provide {@link layer} in a page, or
- * `TestNotifications.layer` from `@thomasfosterau/effect-web/testing` in
+ * `TestNotifications.layer` from `@thomasfosterau/effect-utilities/BrowserTesting` in
  * tests.
  *
  * - `supported` — whether the agent has the API at all.
@@ -179,7 +179,7 @@ export class Notifications extends Context.Service<
       options?: NotificationOptions,
     ) => Effect.Effect<ShownNotification, NotificationError, Scope.Scope>;
   }
->()("@thomasfosterau/effect-web/browser/Notifications") {}
+>()("@thomasfosterau/effect-utilities/Browser/Notifications") {}
 
 type Signal = Take.Take<"click" | "close", NotificationError>;
 
@@ -205,7 +205,7 @@ const unsupported = (): Notifications["Service"] =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Notifications } from "@thomasfosterau/effect-web/browser"
+ * import { Notifications } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const notifications = Notifications.make({ Notification: undefined })
  * Effect.runPromise(Effect.flip(notifications.requestPermission)).then((error) =>
@@ -299,7 +299,7 @@ export const make = (environment: NotificationsEnvironment): Notifications["Serv
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Notifications } from "@thomasfosterau/effect-web/browser"
+ * import { Notifications } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const program = Effect.map(Notifications.Notifications, (notifications) => notifications.supported)
  * Effect.runPromise(Effect.provide(program, Notifications.layer)).then(console.log) // false under Node
@@ -321,8 +321,8 @@ export const layer: Layer.Layer<Notifications> = Layer.sync(Notifications, () =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Notifications } from "@thomasfosterau/effect-web/browser"
- * import { TestNotifications } from "@thomasfosterau/effect-web/testing"
+ * import { Notifications } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNotifications } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * Effect.runPromise(
  *   Effect.provide(Notifications.permission, TestNotifications.layer({ permission: "granted" })),
@@ -347,8 +347,8 @@ export const permission: Effect.Effect<
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Notifications } from "@thomasfosterau/effect-web/browser"
- * import { TestNotifications } from "@thomasfosterau/effect-web/testing"
+ * import { Notifications } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNotifications } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * Effect.runPromise(
  *   Effect.provide(Notifications.requestPermission, TestNotifications.layer({ answer: "granted" })),
@@ -373,8 +373,8 @@ export const requestPermission: Effect.Effect<
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { Notifications } from "@thomasfosterau/effect-web/browser"
- * import { TestNotifications } from "@thomasfosterau/effect-web/testing"
+ * import { Notifications } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNotifications } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.scoped(
  *   Effect.gen(function* () {
@@ -411,8 +411,8 @@ const fromPermissionState = (state: PermissionState): NotificationPermission =>
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { Notifications } from "@thomasfosterau/effect-web/browser"
- * import { TestPermissions } from "@thomasfosterau/effect-web/testing"
+ * import { Notifications } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPermissions } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(Notifications.permissionChanges, 1))
  * Effect.runPromise(Effect.provide(program, TestPermissions.layer())).then(console.log) // ["default"]

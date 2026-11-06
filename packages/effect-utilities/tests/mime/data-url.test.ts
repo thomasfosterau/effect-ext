@@ -7,7 +7,7 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { DataUrl, MimeType } from "@thomasfosterau/effect-mime";
+import { DataUrl, MimeType } from "@thomasfosterau/effect-utilities/Mime";
 import base64 from "./fixtures/base64.json" with { type: "json" };
 import dataUrls from "./fixtures/data-urls.json" with { type: "json" };
 

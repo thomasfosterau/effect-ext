@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-langtag/registry` — BCP 47 validity and
+ * `@thomasfosterau/effect-utilities/LangtagRegistry` — BCP 47 validity and
  * canonicalisation against a snapshot of the IANA Language Subtag Registry
  * (RFC 5646 §3).
  *
@@ -18,7 +18,13 @@
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
-import { type Extension, type LanguageTag, parse, type Subtags, subtags } from "../language-tag.ts";
+import {
+  type Extension,
+  type LanguageTag,
+  parse,
+  type Subtags,
+  subtags,
+} from "./langtag/language-tag.ts";
 import {
   EXTLANGS,
   FILE_DATE,
@@ -33,7 +39,7 @@ import {
   SCRIPTS,
   SUPPRESS_SCRIPTS,
   VARIANTS,
-} from "../internal/registry-data.ts";
+} from "./internal/langtag/registry-data.ts";
 
 /**
  * The `File-Date` of the registry snapshot this entry validates against
@@ -41,7 +47,7 @@ import {
  *
  * @example
  * ```ts
- * import { registryDate } from "@thomasfosterau/effect-langtag/registry"
+ * import { registryDate } from "@thomasfosterau/effect-utilities/LangtagRegistry"
  *
  * console.log(/^\d{4}-\d{2}-\d{2}$/.test(registryDate)) // true
  * ```
@@ -85,8 +91,8 @@ const registered = (parts: Subtags): boolean =>
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { LanguageTag } from "@thomasfosterau/effect-langtag"
- * import { isValid } from "@thomasfosterau/effect-langtag/registry"
+ * import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag"
+ * import { isValid } from "@thomasfosterau/effect-utilities/LangtagRegistry"
  *
  * const tag = (value: string) => Option.getOrThrow(LanguageTag.parse(value))
  * console.log(isValid(tag("de-CH-1996"))) // true
@@ -118,7 +124,7 @@ const suppressedScriptOf = (language: string): Option.Option<string> =>
  *
  * @example
  * ```ts
- * import { suppressScript } from "@thomasfosterau/effect-langtag/registry"
+ * import { suppressScript } from "@thomasfosterau/effect-utilities/LangtagRegistry"
  *
  * console.log(suppressScript("en")) // { _id: "Option", _tag: "Some", value: "Latn" }
  * console.log(suppressScript("zh")._tag) // "None"
@@ -196,8 +202,8 @@ const canonicalLangtag = (parts: Subtags, options: CanonicalizeOptions | undefin
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { LanguageTag } from "@thomasfosterau/effect-langtag"
- * import { canonicalize } from "@thomasfosterau/effect-langtag/registry"
+ * import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag"
+ * import { canonicalize } from "@thomasfosterau/effect-utilities/LangtagRegistry"
  *
  * const tag = (value: string) => Option.getOrThrow(LanguageTag.parse(value))
  * console.log(canonicalize(tag("iw-IL"))) // "he-IL"

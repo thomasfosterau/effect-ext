@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-uri-template` — URI Templates (RFC 6570), Web
+ * `@thomasfosterau/effect-utilities/UriTemplate` — URI Templates (RFC 6570), Web
  * Linking (RFC 8288) and well-known URIs (RFC 8615) on Effect.
  *
  * - `UriTemplate` — parse a template, expand it at all four levels, list
@@ -10,6 +10,6 @@
  *
  * @since 0.1.0
  */
-export * as LinkHeader from "./link-header.ts";
-export * as UriTemplate from "./uri-template.ts";
-export * as WellKnown from "./well-known.ts";
+export * as LinkHeader from "./uri-template/link-header.ts";
+export * as UriTemplate from "./uri-template/uri-template.ts";
+export * as WellKnown from "./uri-template/well-known.ts";

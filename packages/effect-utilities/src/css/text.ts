@@ -9,7 +9,7 @@ import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Color from "./color.ts";
 import * as Length from "./length.ts";
-import { keyword, partsOf, single, type Values } from "./internal/values.ts";
+import { keyword, partsOf, single, type Values } from "../internal/css/values.ts";
 import type { ComponentValue } from "./token.ts";
 
 /** The one significant part's keyword, if it is one of `allowed`. */
@@ -54,7 +54,7 @@ const isTextAlign = (name: string): name is TextAlign => Arr.contains(TEXT_ALIGN
  *
  * @example
  * ```ts
- * import { Text } from "@thomasfosterau/effect-css"
+ * import { Text } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Text.parseAlign("Center")) // Option.some("center")
  * ```
@@ -76,7 +76,7 @@ export type VerticalAlign =
   | { readonly _tag: "Keyword"; readonly keyword: string }
   | { readonly _tag: "Length"; readonly length: Length.Length };
 
-const VERTICAL_ALIGN: ReadonlyArray<string> = [
+const VERTICAL_ALIGN: ReadonlyArray<string> = new Set([
   "baseline",
   "sub",
   "super",
@@ -85,7 +85,7 @@ const VERTICAL_ALIGN: ReadonlyArray<string> = [
   "middle",
   "top",
   "bottom",
-];
+]);
 
 /**
  * Parses `vertical-align`: `baseline`, `sub`, `super`, `text-top`,
@@ -93,7 +93,7 @@ const VERTICAL_ALIGN: ReadonlyArray<string> = [
  *
  * @example
  * ```ts
- * import { Text } from "@thomasfosterau/effect-css"
+ * import { Text } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Text.parseVerticalAlign("-2px")) // Option.some({ _tag: "Length", length: { value: -2, unit: "px" } })
  * ```
@@ -105,7 +105,7 @@ export const parseVerticalAlign = (input: string | Values): Option.Option<Vertic
   Option.flatMap(single(input), (only) =>
     Option.orElse(
       Option.map(
-        Option.filter(keyword(only), (name) => VERTICAL_ALIGN.includes(name)),
+        Option.filter(keyword(only), (name) => VERTICAL_ALIGN.has(name)),
         (name): VerticalAlign => ({ _tag: "Keyword", keyword: name }),
       ),
       () => Option.map(Length.parse(only), (length): VerticalAlign => ({ _tag: "Length", length })),
@@ -177,7 +177,7 @@ const addLine = (lines: DecorationLine, line: LineKeyword): Option.Option<Decora
  *
  * @example
  * ```ts
- * import { Text } from "@thomasfosterau/effect-css"
+ * import { Text } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Text.parseDecorationLine("underline overline")) // Option.some(["underline", "overline"])
  * ```
@@ -204,7 +204,7 @@ export const parseDecorationLine = (input: string | Values): Option.Option<Decor
  *
  * @example
  * ```ts
- * import { Text } from "@thomasfosterau/effect-css"
+ * import { Text } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Text.parseDecorationStyle("wavy")) // Option.some("wavy")
  * ```
@@ -231,7 +231,7 @@ const thicknessOf = (value: ComponentValue): Option.Option<DecorationThickness> 
  *
  * @example
  * ```ts
- * import { Text } from "@thomasfosterau/effect-css"
+ * import { Text } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Text.parseDecorationThickness("from-font")) // Option.some({ _tag: "FromFont" })
  * ```
@@ -325,7 +325,7 @@ const addPart = (parts: Parts, value: ComponentValue): Option.Option<Parts> => {
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { Text } from "@thomasfosterau/effect-css"
+ * import { Text } from "@thomasfosterau/effect-utilities/Css"
  *
  * const decoration = Text.parseDecoration("underline wavy red 2px")
  * console.log(Option.map(decoration, (one) => [one.line, one.style, one.thickness]))

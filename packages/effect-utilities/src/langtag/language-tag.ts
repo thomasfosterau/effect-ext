@@ -15,7 +15,7 @@
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
-import { canonicalCase, parseParts, type Parts } from "./internal/grammar.ts";
+import { canonicalCase, parseParts, type Parts } from "../internal/langtag/grammar.ts";
 
 /**
  * A well-formed BCP 47 language tag in canonical case (`en-US`, `zh-Hant-TW`,
@@ -56,7 +56,7 @@ export type LanguageTag = typeof LanguageTag.Type;
  * @example
  * ```ts
  * import * as Schema from "effect/Schema"
- * import { LanguageTag } from "@thomasfosterau/effect-langtag"
+ * import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(Schema.decodeUnknownSync(LanguageTag.LanguageTagFromString)("sr-latn-rs")) // "sr-Latn-RS"
  * ```
@@ -85,7 +85,7 @@ export type LanguageTagFromString = typeof LanguageTagFromString.Type;
  *
  * @example
  * ```ts
- * import { LanguageTag } from "@thomasfosterau/effect-langtag"
+ * import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(LanguageTag.parse("en-us")) // { _id: "Option", _tag: "Some", value: "en-US" }
  * console.log(LanguageTag.parse("en-")._tag) // "None"
@@ -103,7 +103,7 @@ const decodeOption = Schema.decodeUnknownOption(LanguageTagFromString);
  *
  * @example
  * ```ts
- * import { LanguageTag } from "@thomasfosterau/effect-langtag"
+ * import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(LanguageTag.isWellFormed("de-CH-1996")) // true
  * console.log(LanguageTag.isWellFormed("de-419-DE")) // false: two regions
@@ -171,7 +171,7 @@ const EMPTY_PARTS: Parts = {
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { LanguageTag } from "@thomasfosterau/effect-langtag"
+ * import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * const tag = Option.getOrThrow(LanguageTag.parse("zh-hant-tw-u-nu-hanidec"))
  * const subtags = LanguageTag.subtags(tag)
@@ -207,7 +207,7 @@ export const subtags = (tag: LanguageTag): Subtags => {
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { LanguageTag } from "@thomasfosterau/effect-langtag"
+ * import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * const tag = Option.getOrThrow(LanguageTag.parse("pt-BR"))
  * console.log(LanguageTag.primaryLanguage(tag)) // { _id: "Option", _tag: "Some", value: "pt" }
@@ -226,7 +226,7 @@ export const primaryLanguage = (tag: LanguageTag): Option.Option<string> => subt
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { LanguageTag } from "@thomasfosterau/effect-langtag"
+ * import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * const tag = Option.getOrThrow(LanguageTag.parse("zh-Hant-TW"))
  * console.log(LanguageTag.script(tag)) // { _id: "Option", _tag: "Some", value: "Hant" }
@@ -244,7 +244,7 @@ export const script = (tag: LanguageTag): Option.Option<string> => subtags(tag).
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { LanguageTag } from "@thomasfosterau/effect-langtag"
+ * import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * const tag = Option.getOrThrow(LanguageTag.parse("es-419"))
  * console.log(LanguageTag.region(tag)) // { _id: "Option", _tag: "Some", value: "419" }
@@ -256,7 +256,7 @@ export const script = (tag: LanguageTag): Option.Option<string> => subtags(tag).
 export const region = (tag: LanguageTag): Option.Option<string> => subtags(tag).region;
 
 /** Scripts written right to left (ISO 15924), lowercase. */
-const RTL_SCRIPTS: ReadonlyArray<string> = [
+const RTL_SCRIPTS: ReadonlyArray<string> = new Set([
   "adlm",
   "arab",
   "aran",
@@ -282,7 +282,7 @@ const RTL_SCRIPTS: ReadonlyArray<string> = [
   "syrc",
   "thaa",
   "yezi",
-];
+]);
 
 /**
  * Languages whose default script is written right to left. A language
@@ -321,7 +321,7 @@ const RTL_LANGUAGES: ReadonlyArray<string> = [
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { LanguageTag } from "@thomasfosterau/effect-langtag"
+ * import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * const tag = (value: string) => Option.getOrThrow(LanguageTag.parse(value))
  * console.log(LanguageTag.direction(tag("ar-EG"))) // "rtl"
@@ -335,7 +335,7 @@ const RTL_LANGUAGES: ReadonlyArray<string> = [
 export const direction = (tag: LanguageTag): "ltr" | "rtl" => {
   const parts = subtags(tag);
   const rtl = Option.match(parts.script, {
-    onSome: (script) => RTL_SCRIPTS.includes(script.toLowerCase()),
+    onSome: (script) => RTL_SCRIPTS.has(script.toLowerCase()),
     onNone: () =>
       Option.match(parts.language, {
         onSome: (language) => RTL_LANGUAGES.includes(language),

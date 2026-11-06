@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import { Length } from "@thomasfosterau/effect-css";
+import { Length } from "@thomasfosterau/effect-utilities/Css";
 
 const sum = (input: string): Option.Option<string> =>
   Option.map(Length.parseSum(input), Length.serializeSum);

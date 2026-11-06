@@ -15,7 +15,7 @@ import {
   incrementRequestMetric,
   type RequestMetrics,
   withRequestMetrics,
-} from "@thomasfosterau/effect-web/observability";
+} from "@thomasfosterau/effect-utilities/Observability";
 
 /** A client modelled on a database class instance: every method reads `this`. */
 class FakeClient {

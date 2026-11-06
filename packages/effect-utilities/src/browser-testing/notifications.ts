@@ -1,6 +1,6 @@
 /**
  * A controllable Notifications API for tests of code that uses
- * `./browser`'s `Notifications`: {@link layer} provides the real adapter
+ * `Browser`'s `Notifications`: {@link layer} provides the real adapter
  * over an in-memory `Notification` constructor, plus {@link Control} to
  * grant or deny permission, answer a permission prompt, read back the
  * notifications shown, and click, dismiss or fail one as the browser would.
@@ -79,7 +79,7 @@ export class Control extends Context.Service<
     readonly dismiss: (index: number) => Effect.Effect<void>;
     readonly fail: (index: number) => Effect.Effect<void>;
   }
->()("@thomasfosterau/effect-web/testing/NotificationsControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/NotificationsControl") {}
 
 /**
  * What {@link make} builds: the `Notifications` service over the in-memory
@@ -139,7 +139,7 @@ class UserActivation {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestNotifications } from "@thomasfosterau/effect-web/testing"
+ * import { TestNotifications } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { notifications, control } = TestNotifications.make({ permission: "granted" })
  * const program = Effect.scoped(Effect.andThen(notifications.show("Saved"), control.shown))
@@ -208,8 +208,8 @@ export const make = (options?: Options): Fixture => {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Notifications } from "@thomasfosterau/effect-web/browser"
- * import { TestNotifications } from "@thomasfosterau/effect-web/testing"
+ * import { Notifications } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNotifications } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.andThen(
  *   Notifications.requestPermission,

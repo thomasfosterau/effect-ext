@@ -1,5 +1,5 @@
 /**
- * The Chinese (traditional) index for `@thomasfosterau/effect-encoding`: index Big5. Opt-in: a
+ * The Chinese (traditional) index for `@thomasfosterau/effect-utilities/Encoding`: index Big5. Opt-in: a
  * program that imports this entry and provides its `tables` (see
  * `Encoding.tablesLayer`) can encode Big5, and decode them on a runtime
  * whose `TextDecoder` lacks them.
@@ -12,7 +12,7 @@
  *
  * @since 0.1.0
  */
-import type { Tables } from "../encoding.ts";
+import type { Tables } from "./encoding/encoding.ts";
 
 /**
  * The Chinese (traditional) index, for `Encoding.tablesLayer`.
@@ -20,8 +20,8 @@ import type { Tables } from "../encoding.ts";
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Encoding } from "@thomasfosterau/effect-encoding"
- * import * as Big5 from "@thomasfosterau/effect-encoding/big5"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
+ * import * as Big5 from "@thomasfosterau/effect-utilities/EncodingBig5"
  *
  * const bytes = await Effect.runPromise(
  *   Encoding.encode("中文", { encoding: "Big5" }).pipe(Effect.provide(Encoding.tablesLayer(Big5.tables))),

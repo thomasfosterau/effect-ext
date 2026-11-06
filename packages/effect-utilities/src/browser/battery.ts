@@ -20,8 +20,8 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import { watch } from "../internal/dom.ts";
-import { ambientGetBattery } from "../internal/globals.ts";
+import { watch } from "../internal/web/dom.ts";
+import { ambientGetBattery } from "../internal/web/globals.ts";
 
 /**
  * The structural slice of a `BatteryManager` this module reads.
@@ -58,7 +58,7 @@ export interface BatteryState {
 
 /**
  * The battery service. Provide {@link layer} in a page, or
- * `TestBattery.layer` from `@thomasfosterau/effect-web/testing` in tests.
+ * `TestBattery.layer` from `@thomasfosterau/effect-utilities/BrowserTesting` in tests.
  *
  * - `supported` — whether the agent has `navigator.getBattery` at all.
  * - `status` — the reading now; `None` where the API is missing or
@@ -76,7 +76,7 @@ export class Battery extends Context.Service<
     readonly status: Effect.Effect<Option.Option<BatteryState>>;
     readonly changes: Stream.Stream<BatteryState>;
   }
->()("@thomasfosterau/effect-web/browser/Battery") {}
+>()("@thomasfosterau/effect-utilities/Browser/Battery") {}
 
 // The API reports an unknown time as `Infinity`.
 const seconds = (value: number): Option.Option<Duration.Duration> =>
@@ -108,7 +108,7 @@ const EVENTS = ["chargingchange", "levelchange", "chargingtimechange", "discharg
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Battery } from "@thomasfosterau/effect-web/browser"
+ * import { Battery } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const battery = Battery.make(undefined)
  * Effect.runPromise(battery.status).then(console.log) // { _id: "Option", _tag: "None" }
@@ -154,7 +154,7 @@ export const make = (
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Battery } from "@thomasfosterau/effect-web/browser"
+ * import { Battery } from "@thomasfosterau/effect-utilities/Browser"
  *
  * Effect.runPromise(Effect.provide(Battery.status, Battery.layer)).then(console.log)
  * // { _id: "Option", _tag: "None" } under Node
@@ -173,8 +173,8 @@ export const layer: Layer.Layer<Battery> = Layer.sync(Battery, () => make(ambien
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Option from "effect/Option"
- * import { Battery } from "@thomasfosterau/effect-web/browser"
- * import { TestBattery } from "@thomasfosterau/effect-web/testing"
+ * import { Battery } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestBattery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.map(Battery.status, Option.map((state) => state.level))
  * Effect.runPromise(Effect.provide(program, TestBattery.layer({ level: 0.42 }))).then(console.log)
@@ -198,8 +198,8 @@ export const status: Effect.Effect<Option.Option<BatteryState>, never, Battery> 
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { Battery } from "@thomasfosterau/effect-web/browser"
- * import { TestBattery } from "@thomasfosterau/effect-web/testing"
+ * import { Battery } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestBattery } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(
  *   Stream.map(Stream.take(Battery.changes, 1), (state) => state.charging),

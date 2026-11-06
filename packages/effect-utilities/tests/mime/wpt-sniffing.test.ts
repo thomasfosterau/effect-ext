@@ -8,7 +8,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import { MimeType, Sniff } from "@thomasfosterau/effect-mime";
+import { MimeType, Sniff } from "@thomasfosterau/effect-utilities/Mime";
 
 const fixture = (path: string): Uint8Array =>
   new Uint8Array(readFileSync(new URL(`./fixtures/mimesniff/${path}`, import.meta.url)));

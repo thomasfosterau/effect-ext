@@ -1,14 +1,14 @@
 /**
- * Unit tests for `./browser`'s `IdleDetection`, driven through
- * `./testing`'s `TestIdleDetection`.
+ * Unit tests for `Browser`'s `IdleDetection`, driven through
+ * `BrowserTesting`'s `TestIdleDetection`.
  */
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
-import { IdleDetection } from "@thomasfosterau/effect-web/browser";
-import { observe, TestIdleDetection } from "@thomasfosterau/effect-web/testing";
+import { IdleDetection } from "@thomasfosterau/effect-utilities/Browser";
+import { observe, TestIdleDetection } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, IdleDetection.IdleDetection | TestIdleDetection.Control>,

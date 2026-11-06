@@ -19,8 +19,8 @@ import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import { reasonOf } from "../internal/dom.ts";
-import { ambientIdleDetector } from "../internal/globals.ts";
+import { reasonOf } from "../internal/web/dom.ts";
+import { ambientIdleDetector } from "../internal/web/globals.ts";
 
 /**
  * The structural slice of an `IdleDetector` instance this module uses. Both
@@ -116,7 +116,7 @@ export interface WatchOptions {
 
 /**
  * The idle-detection service. Provide {@link layer} in a page, or
- * `TestIdleDetection.layer` from `@thomasfosterau/effect-web/testing` in
+ * `TestIdleDetection.layer` from `@thomasfosterau/effect-utilities/BrowserTesting` in
  * tests.
  *
  * - `supported` — whether the agent has `IdleDetector` at all.
@@ -136,7 +136,7 @@ export class IdleDetection extends Context.Service<
     readonly requestPermission: Effect.Effect<"granted" | "denied", IdleError>;
     readonly watch: (options: WatchOptions) => Stream.Stream<IdleState, IdleError>;
   }
->()("@thomasfosterau/effect-web/browser/IdleDetection") {}
+>()("@thomasfosterau/effect-utilities/Browser/IdleDetection") {}
 
 const sameState = (self: IdleState, that: IdleState): boolean =>
   self.user === that.user && self.screen === that.screen;
@@ -157,7 +157,7 @@ const unsupported = (): IdleDetection["Service"] =>
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { IdleDetection } from "@thomasfosterau/effect-web/browser"
+ * import { IdleDetection } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const idle = IdleDetection.make(undefined)
  * Effect.runPromise(Effect.flip(Stream.runDrain(idle.watch({ threshold: "1 minute" })))).then(
@@ -225,7 +225,7 @@ export const make = (IdleDetector: IdleDetectorLike | undefined): IdleDetection[
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { IdleDetection } from "@thomasfosterau/effect-web/browser"
+ * import { IdleDetection } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const program = Effect.map(IdleDetection.IdleDetection, (idle) => idle.supported)
  * Effect.runPromise(Effect.provide(program, IdleDetection.layer)).then(console.log) // false under Node
@@ -246,8 +246,8 @@ export const layer: Layer.Layer<IdleDetection> = Layer.sync(IdleDetection, () =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { IdleDetection } from "@thomasfosterau/effect-web/browser"
- * import { TestIdleDetection } from "@thomasfosterau/effect-web/testing"
+ * import { IdleDetection } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestIdleDetection } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * Effect.runPromise(
  *   Effect.provide(IdleDetection.requestPermission, TestIdleDetection.layer({ answer: "granted" })),
@@ -268,8 +268,8 @@ export const requestPermission: Effect.Effect<"granted" | "denied", IdleError, I
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { IdleDetection } from "@thomasfosterau/effect-web/browser"
- * import { TestIdleDetection } from "@thomasfosterau/effect-web/testing"
+ * import { IdleDetection } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestIdleDetection } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runHead(IdleDetection.watch({ threshold: "2 minutes" }))
  * Effect.runPromise(

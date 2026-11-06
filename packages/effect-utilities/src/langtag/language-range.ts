@@ -32,7 +32,7 @@ const EXTENDED_RANGE = /^(?:[a-z]{1,8}|\*)(?:-(?:[a-z0-9]{1,8}|\*))*$/i;
  *
  * @example
  * ```ts
- * import { LanguageRange } from "@thomasfosterau/effect-langtag"
+ * import { LanguageRange } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(LanguageRange.isBasic("en-US"), LanguageRange.isBasic("en-*")) // true false
  * ```
@@ -48,7 +48,7 @@ export const isBasic = (range: string): boolean => BASIC_RANGE.test(range);
  *
  * @example
  * ```ts
- * import { LanguageRange } from "@thomasfosterau/effect-langtag"
+ * import { LanguageRange } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(LanguageRange.isExtended("*-CH")) // true
  * ```
@@ -64,7 +64,7 @@ export const isExtended = (range: string): boolean => EXTENDED_RANGE.test(range)
  *
  * @example
  * ```ts
- * import { LanguageRange } from "@thomasfosterau/effect-langtag"
+ * import { LanguageRange } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(LanguageRange.matchesBasic("de-de", "de-DE-1996")) // true
  * console.log(LanguageRange.matchesBasic("de-de", "de-Deva")) // false
@@ -103,7 +103,7 @@ const skipTo = (
  *
  * @example
  * ```ts
- * import { LanguageRange } from "@thomasfosterau/effect-langtag"
+ * import { LanguageRange } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(LanguageRange.matchesExtended("de-*-DE", "de-Latn-DE")) // true
  * console.log(LanguageRange.matchesExtended("de-DE", "de-x-DE")) // false: `x` is never skipped
@@ -137,7 +137,7 @@ const filterWith =
  *
  * @example
  * ```ts
- * import { LanguageRange } from "@thomasfosterau/effect-langtag"
+ * import { LanguageRange } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(LanguageRange.filterBasic(["de-CH", "en"], ["en-US", "de", "de-CH-1996", "fr"]))
  * // ["de-CH-1996", "en-US"]
@@ -157,7 +157,7 @@ export const filterBasic: <A extends string>(
  *
  * @example
  * ```ts
- * import { LanguageRange } from "@thomasfosterau/effect-langtag"
+ * import { LanguageRange } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(LanguageRange.filterExtended(["*-CH"], ["de-CH", "fr-CH", "de-DE", "it-Latn-CH"]))
  * // ["de-CH", "fr-CH", "it-Latn-CH"]
@@ -178,7 +178,7 @@ export const filterExtended: <A extends string>(
  *
  * @example
  * ```ts
- * import { LanguageRange } from "@thomasfosterau/effect-langtag"
+ * import { LanguageRange } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(LanguageRange.fallbacks("zh-Hant-CN-x-private1-private2"))
  * // ["zh-Hant-CN-x-private1-private2", "zh-Hant-CN-x-private1", "zh-Hant-CN", "zh-Hant", "zh"]
@@ -208,7 +208,7 @@ export const fallbacks = (range: string): ReadonlyArray<string> => {
  *
  * @example
  * ```ts
- * import { LanguageRange } from "@thomasfosterau/effect-langtag"
+ * import { LanguageRange } from "@thomasfosterau/effect-utilities/Langtag"
  *
  * console.log(LanguageRange.lookup(["de-CH-1996", "fr"], ["fr-FR", "de"]))
  * // { _id: "Option", _tag: "Some", value: "de" }

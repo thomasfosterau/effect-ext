@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
-import { Color } from "@thomasfosterau/effect-css";
+import { Color } from "@thomasfosterau/effect-utilities/Css";
 import vectors from "./fixtures/wpt-color-mix.json" with { type: "json" };
 
 /**

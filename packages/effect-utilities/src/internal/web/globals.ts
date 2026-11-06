@@ -1,5 +1,5 @@
 /**
- * The only place the `./browser` entry reads ambient globals. Every live
+ * The only place the `Browser` module reads ambient globals. Every live
  * `layer` reads through here, inside its build (never at import), so the
  * modules stay importable — and their layers buildable — in a server render,
  * a worker or a test runner, where a global may be missing.
@@ -9,8 +9,8 @@
  * throw), so each read is typed `| undefined` for the caller to narrow.
  */
 import * as Predicate from "effect/Predicate";
-import type { BatteryManagerLike } from "../browser/battery.ts";
-import type { IdleDetectorLike } from "../browser/idle-detection.ts";
+import type { BatteryManagerLike } from "../../browser/battery.ts";
+import type { IdleDetectorLike } from "../../browser/idle-detection.ts";
 
 /** `globalThis.navigator`, where the context has one. */
 export const ambientNavigator = (): Navigator | undefined => globalThis.navigator;

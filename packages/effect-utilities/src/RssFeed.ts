@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-rss-feed` — an RSS 2.0 feed (`rss.xml`) built
+ * `@thomasfosterau/effect-utilities/RssFeed` — an RSS 2.0 feed (`rss.xml`) built
  * from a channel description and its items, and served as an
  * `HttpServerResponse` behind the low-churn edge cache.
  *
@@ -104,7 +104,7 @@ const guid = (url: string, item: RssItem): string =>
  * @example
  * ```ts
  * import * as DateTime from "effect/DateTime"
- * import { renderRssItem } from "@thomasfosterau/effect-rss-feed"
+ * import { renderRssItem } from "@thomasfosterau/effect-utilities/RssFeed"
  *
  * renderRssItem("https://example.com", {
  *   path: "/posts/1",
@@ -142,7 +142,7 @@ export const renderRssItem = (base: string, item: RssItem): string => {
  *
  * @example
  * ```ts
- * import { renderRss } from "@thomasfosterau/effect-rss-feed"
+ * import { renderRss } from "@thomasfosterau/effect-utilities/RssFeed"
  *
  * const xml = renderRss(
  *   { base: "https://example.com", title: "Example", description: "Latest changes" },
@@ -180,7 +180,7 @@ export const renderRss = (channel: RssChannel, items: Iterable<RssItem>): string
  * the whole document for an hour, so any enumeration behind it runs at most
  * once per hour per edge, and a mutation purges its `Cache-Tag` rather than
  * waiting out the TTL (PERF-CACHE-002). The same value as
- * `@thomasfosterau/effect-sitemap`'s.
+ * `@thomasfosterau/effect-utilities/Sitemap`'s.
  *
  * @since 0.1.0
  * @category constants
@@ -209,7 +209,7 @@ export interface RssResponseOptions {
  * @example
  * ```ts
  * import * as HttpServerResponse from "effect/http/HttpServerResponse"
- * import { rssResponse } from "@thomasfosterau/effect-rss-feed"
+ * import { rssResponse } from "@thomasfosterau/effect-utilities/RssFeed"
  *
  * const response = rssResponse(
  *   { base: "https://example.com", title: "Example", description: "Latest changes" },

@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { LanguageTag } from "@thomasfosterau/effect-langtag";
+import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag";
 
 const tag = (value: string): LanguageTag.LanguageTag =>
   Schema.decodeUnknownSync(LanguageTag.LanguageTagFromString)(value);

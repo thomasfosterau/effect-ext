@@ -11,7 +11,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Record from "effect/Record";
 import * as Str from "effect/String";
-import { evaluate } from "./internal/calc.ts";
+import { evaluate } from "../internal/css/calc.ts";
 import { parseComponentValue } from "./syntax.ts";
 import type { ComponentValue } from "./token.ts";
 
@@ -142,7 +142,7 @@ export type Sum = ReadonlyArray<Length>;
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { Length } from "@thomasfosterau/effect-css"
+ * import { Length } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Option.map(Length.parseSum("calc(100% - (2em + 4pt) * 2)"), Length.serializeSum))
  * // Option.some("calc(100% - 4em - 10.666667px)")
@@ -182,7 +182,7 @@ const formatNumber = (value: number): string => {
  *
  * @example
  * ```ts
- * import { Length } from "@thomasfosterau/effect-css"
+ * import { Length } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Length.serializeSum([{ value: 50, unit: "%" }, { value: -1, unit: "em" }])) // "calc(50% - 1em)"
  * ```
@@ -210,7 +210,7 @@ export const serializeSum = (sum: Sum): string => {
  *
  * @example
  * ```ts
- * import { Length } from "@thomasfosterau/effect-css"
+ * import { Length } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Length.parse("12PT")) // Option.some({ value: 12, unit: "pt" })
  * console.log(Length.parse("50%")) // Option.some({ value: 50, unit: "%" })
@@ -244,7 +244,7 @@ const parsePlain = (value: ReturnType<typeof parseComponentValue>): Option.Optio
  *
  * @example
  * ```ts
- * import { Length } from "@thomasfosterau/effect-css"
+ * import { Length } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Length.toPixels({ value: 1, unit: "in" })) // Option.some(96)
  * console.log(Length.toPixels({ value: 2, unit: "em" })) // Option.none()
@@ -265,7 +265,7 @@ export const toPixels = (length: Length): Option.Option<number> =>
  *
  * @example
  * ```ts
- * import { Length } from "@thomasfosterau/effect-css"
+ * import { Length } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Length.convert({ value: 72, unit: "pt" }, "in")) // Option.some({ value: 1, unit: "in" })
  * ```
@@ -281,7 +281,7 @@ export const convert = (length: Length, unit: AbsoluteUnit): Option.Option<Lengt
  *
  * @example
  * ```ts
- * import { Length } from "@thomasfosterau/effect-css"
+ * import { Length } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Length.serialize({ value: 1.5, unit: "em" })) // "1.5em"
  * ```

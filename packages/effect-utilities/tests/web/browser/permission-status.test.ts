@@ -1,14 +1,14 @@
 /**
- * Unit tests for `./browser`'s `PermissionStatus` (over
- * `@effect/platform-browser`'s `Permissions`), driven through `./testing`'s
+ * Unit tests for `Browser`'s `PermissionStatus` (over
+ * `@effect/platform-browser`'s `Permissions`), driven through `BrowserTesting`'s
  * `TestPermissions`.
  */
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
-import { PermissionStatus } from "@thomasfosterau/effect-web/browser";
-import { TestPermissions, observe } from "@thomasfosterau/effect-web/testing";
+import { PermissionStatus } from "@thomasfosterau/effect-utilities/Browser";
+import { TestPermissions, observe } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 describe("PermissionStatus", () => {
   it("reads and follows a permission's state", async () => {

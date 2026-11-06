@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import { resolveClientIp } from "@thomasfosterau/effect-web";
+import { resolveClientIp } from "@thomasfosterau/effect-utilities/Web";
 
 describe("resolveClientIp", () => {
   it("chooses the platform-resolved address when it's non-empty", () => {

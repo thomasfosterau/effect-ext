@@ -1,5 +1,5 @@
 /**
- * The Japanese indexes for `@thomasfosterau/effect-encoding`: index jis0208, index jis0212 and index ISO-2022-JP katakana. Opt-in: a
+ * The Japanese indexes for `@thomasfosterau/effect-utilities/Encoding`: index jis0208, index jis0212 and index ISO-2022-JP katakana. Opt-in: a
  * program that imports this entry and provides its `tables` (see
  * `Encoding.tablesLayer`) can encode Shift_JIS, EUC-JP and ISO-2022-JP, and decode them on a runtime
  * whose `TextDecoder` lacks them.
@@ -12,7 +12,7 @@
  *
  * @since 0.1.0
  */
-import type { Tables } from "../encoding.ts";
+import type { Tables } from "./encoding/encoding.ts";
 
 /**
  * The Japanese indexes, for `Encoding.tablesLayer`.
@@ -20,8 +20,8 @@ import type { Tables } from "../encoding.ts";
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Encoding } from "@thomasfosterau/effect-encoding"
- * import * as Japanese from "@thomasfosterau/effect-encoding/japanese"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
+ * import * as Japanese from "@thomasfosterau/effect-utilities/EncodingJapanese"
  *
  * const bytes = await Effect.runPromise(
  *   Encoding.encode("日本", { encoding: "Shift_JIS" }).pipe(Effect.provide(Encoding.tablesLayer(Japanese.tables))),

@@ -23,8 +23,8 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as SchemaGetter from "effect/SchemaGetter";
 import * as SchemaIssue from "effect/SchemaIssue";
-import { encodeReserved, encodeUnreserved } from "./internal/encoding.ts";
-import { compile, type MatchedValues } from "./internal/match.ts";
+import { encodeReserved, encodeUnreserved } from "../internal/uri-template/encoding.ts";
+import { compile, type MatchedValues } from "../internal/uri-template/match.ts";
 
 /**
  * Why a template was rejected, or could not be expanded.
@@ -226,7 +226,7 @@ const token = (match: RegExpMatchArray): Result.Result<Part, TemplateError> => {
  * @example
  * ```ts
  * import * as Result from "effect/Result"
- * import { UriTemplate } from "@thomasfosterau/effect-uri-template"
+ * import { UriTemplate } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const parsed = UriTemplate.parse("/search{?q,lang}")
  * console.log(Result.isSuccess(parsed)) // true
@@ -250,7 +250,7 @@ export const parse = (source: string): Result.Result<UriTemplate, TemplateError>
  * @example
  * ```ts
  * import * as Result from "effect/Result"
- * import { UriTemplate } from "@thomasfosterau/effect-uri-template"
+ * import { UriTemplate } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const template = Result.getOrThrow(UriTemplate.parse("/users{/id}{?fields*,id}"))
  * console.log(UriTemplate.variables(template)) // ["id", "fields"]
@@ -411,7 +411,7 @@ const expandPart = (part: Part, values: Variables): Result.Result<string, Templa
  * @example
  * ```ts
  * import * as Result from "effect/Result"
- * import { UriTemplate } from "@thomasfosterau/effect-uri-template"
+ * import { UriTemplate } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const template = Result.getOrThrow(UriTemplate.parse("https://api.example/users{/id}{?fields*}"))
  * console.log(Result.getOrThrow(UriTemplate.expand(template, { id: "42", fields: ["name", "email"] })))
@@ -444,7 +444,7 @@ export type UriTemplateFromString = typeof UriTemplateFromString.Type;
  * @example
  * ```ts
  * import * as Schema from "effect/Schema"
- * import { UriTemplate } from "@thomasfosterau/effect-uri-template"
+ * import { UriTemplate } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const template = Schema.decodeUnknownSync(UriTemplate.UriTemplateFromString)("{/path*}")
  * console.log(template.parts.length) // 1
@@ -520,7 +520,7 @@ export interface Matcher {
  * @example
  * ```ts
  * import * as Result from "effect/Result"
- * import { UriTemplate } from "@thomasfosterau/effect-uri-template"
+ * import { UriTemplate } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const parsed = Result.getOrThrow(UriTemplate.parse("/x{a:3}"))
  * const refused = UriTemplate.matcher(parsed)
@@ -556,7 +556,7 @@ export const matcher = (template: UriTemplate): Result.Result<Matcher, TemplateE
  * ```ts
  * import * as Option from "effect/Option"
  * import * as Result from "effect/Result"
- * import { UriTemplate } from "@thomasfosterau/effect-uri-template"
+ * import { UriTemplate } from "@thomasfosterau/effect-utilities/UriTemplate"
  *
  * const users = Result.getOrThrow(
  *   Result.flatMap(UriTemplate.parse("/users{/id}{?fields*,lang}"), UriTemplate.matcher),

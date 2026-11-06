@@ -1,6 +1,17 @@
 {
   "$schema": "../../node_modules/@effect/docgen/schema.json",
-  "exclude": ["src/index.ts", "src/internal/**"],
+  "exclude": [
+    "src/index.ts",
+    "src/internal/**",
+    "src/Browser.ts",
+    "src/BrowserTesting.ts",
+    "src/Css.ts",
+    "src/Encoding.ts",
+    "src/Langtag.ts",
+    "src/Mime.ts",
+    "src/UriTemplate.ts",
+    "src/Web.ts"
+  ],
   "runExamples": true,
   "parseCompilerOptions": {
     "noEmit": true,

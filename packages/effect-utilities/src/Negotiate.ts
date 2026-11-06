@@ -18,7 +18,7 @@
  * never has to choose between representations.
  *
  * Media types are compared as WHATWG MIME types (MIME Sniffing §4), by
- * `@thomasfosterau/effect-mime`'s `MimeType`: an `Accept` instance or a
+ * `@thomasfosterau/effect-utilities/Mime`'s `MimeType`: an `Accept` instance or a
  * `Content-Type` is parsed and matched on its essence (`type/subtype`, ASCII
  * lower-cased), so case and HTTP whitespace never decide a verdict, and a
  * `Content-Type` that is not a MIME type at all carries no media type.
@@ -36,8 +36,12 @@ import * as Record from "effect/Record";
 import * as Headers from "effect/http/Headers";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
 import { Middleware } from "@thomasfosterau/effect-jsonapi";
-import { MimeType } from "@thomasfosterau/effect-mime";
-import { isMutatingMethod, JSONAPI_MEDIA_TYPE, type NegotiationError } from "../jsonapi-error.ts";
+import { MimeType } from "./Mime.ts";
+import {
+  isMutatingMethod,
+  JSONAPI_MEDIA_TYPE,
+  type NegotiationError,
+} from "./web/jsonapi-error.ts";
 
 /**
  * The media type of the Markdown representation served to agents on
@@ -174,7 +178,7 @@ const routePatternToRegExp = (path: string): Option.Option<RegExp> => {
  *
  * @example
  * ```ts
- * import { makeApiPathMatcher } from "@thomasfosterau/effect-web/negotiate"
+ * import { makeApiPathMatcher } from "@thomasfosterau/effect-utilities/Negotiate"
  *
  * const isApiPath = makeApiPathMatcher(["/posts", "/posts/:id", "/"])
  * isApiPath("/posts/") // true
@@ -198,7 +202,7 @@ export const makeApiPathMatcher = (paths: Iterable<string>): ((pathname: string)
  *
  * @example
  * ```ts
- * import { endpointPaths, makeApiPathMatcher } from "@thomasfosterau/effect-web/negotiate"
+ * import { endpointPaths, makeApiPathMatcher } from "@thomasfosterau/effect-utilities/Negotiate"
  *
  * const groups = [{ endpoints: { list: { path: "/posts" }, get: { path: "/posts/:id" } } }]
  * endpointPaths(groups) // ["/posts", "/posts/:id"]
@@ -224,7 +228,7 @@ export const endpointPaths = (
  *
  * @example
  * ```ts
- * import { makeMarkdownPathMatcher } from "@thomasfosterau/effect-web/negotiate"
+ * import { makeMarkdownPathMatcher } from "@thomasfosterau/effect-utilities/Negotiate"
  *
  * const isMarkdownPath = makeMarkdownPathMatcher(["posts", "notes"])
  * isMarkdownPath("/posts/42") // true
@@ -432,7 +436,7 @@ const negotiateWrite = (
  * @example
  * ```ts
  * import * as HttpServerRequest from "effect/http/HttpServerRequest"
- * import { makeApiPathMatcher, negotiateRepresentation } from "@thomasfosterau/effect-web/negotiate"
+ * import { makeApiPathMatcher, negotiateRepresentation } from "@thomasfosterau/effect-utilities/Negotiate"
  *
  * const options = { isApiPath: makeApiPathMatcher(["/posts", "/posts/:id"]) }
  * const request = (accept: string) =>
@@ -461,7 +465,7 @@ export const negotiateRepresentation = (
  *
  * @example
  * ```ts
- * import { makeApiPathMatcher, negotiateWebRequest } from "@thomasfosterau/effect-web/negotiate"
+ * import { makeApiPathMatcher, negotiateWebRequest } from "@thomasfosterau/effect-utilities/Negotiate"
  *
  * const options = { isApiPath: makeApiPathMatcher(["/posts"]) }
  * negotiateWebRequest(new Request("https://example.com/posts", { headers: { accept: "application/vnd.api+json" } }), options).dispatch // true
@@ -486,7 +490,7 @@ export const negotiateWebRequest = (request: Request, options: NegotiationOption
  * ```ts
  * import * as Headers from "effect/http/Headers"
  * import * as HttpServerRequest from "effect/http/HttpServerRequest"
- * import { requestForRouter } from "@thomasfosterau/effect-web/negotiate"
+ * import { requestForRouter } from "@thomasfosterau/effect-utilities/Negotiate"
  *
  * const write = HttpServerRequest.fromWeb(
  *   new Request("https://example.com/posts", { method: "POST", headers: { "content-type": "application/vnd.api+json" } }),
@@ -509,7 +513,7 @@ export const requestForRouter = (
  *
  * @example
  * ```ts
- * import { requestForRouterWeb } from "@thomasfosterau/effect-web/negotiate"
+ * import { requestForRouterWeb } from "@thomasfosterau/effect-utilities/Negotiate"
  *
  * const write = new Request("https://example.com/posts", { method: "POST", headers: { "content-type": "application/vnd.api+json" } })
  * requestForRouterWeb(write).headers.get("content-type") // "application/json"
@@ -539,7 +543,7 @@ export const requestForRouterWeb = (request: Request): Request => {
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { chooseNegotiatedResponse } from "@thomasfosterau/effect-web/negotiate"
+ * import { chooseNegotiatedResponse } from "@thomasfosterau/effect-utilities/Negotiate"
  *
  * chooseNegotiatedResponse(Option.some("# Markdown"), () => "<html>") // "# Markdown"
  * chooseNegotiatedResponse(Option.none(), () => "<html>") // "<html>"

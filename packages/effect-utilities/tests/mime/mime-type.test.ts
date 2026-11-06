@@ -8,7 +8,7 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
-import { MimeType } from "@thomasfosterau/effect-mime";
+import { MimeType } from "@thomasfosterau/effect-utilities/Mime";
 import generated from "./fixtures/generated-mime-types.json" with { type: "json" };
 import handWritten from "./fixtures/mime-types.json" with { type: "json" };
 

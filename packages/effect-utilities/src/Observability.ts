@@ -31,7 +31,7 @@ import * as Tracer from "effect/Tracer";
  *
  * @since 0.2.0
  */
-export * from "./request-metrics.ts";
+export * from "./observability/request-metrics.ts";
 
 /**
  * The line encoder: `Schema.fromJsonString(Schema.Unknown)` in the encode
@@ -92,7 +92,7 @@ const jsonLoggerLayer = Logger.layer([jsonLogger]);
  *
  * @example
  * ```ts
- * import { logStructured } from "@thomasfosterau/effect-web/observability"
+ * import { logStructured } from "@thomasfosterau/effect-utilities/Observability"
  *
  * // prints: {"event":"read-path.db","dbQueryCount":3,"path":"/posts"}
  * logStructured({ event: "read-path.db", dbQueryCount: 3, path: "/posts" })
@@ -145,7 +145,7 @@ const NO_ATTRIBUTES: ReadonlyMap<string, unknown> = new Map();
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Tracer from "effect/Tracer"
- * import { spanTracer } from "@thomasfosterau/effect-web/observability"
+ * import { spanTracer } from "@thomasfosterau/effect-utilities/Observability"
  *
  * const tracer = spanTracer(["operations.search"])
  *
@@ -214,7 +214,7 @@ export const spanTracer = (trackedSpanNames: Iterable<string>): Tracer.Tracer =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { logEvent } from "@thomasfosterau/effect-web/observability"
+ * import { logEvent } from "@thomasfosterau/effect-utilities/Observability"
  *
  * await Effect.runPromise(logEvent("feed.consume", { cycleId: "c1", outcome: "ok" }))
  * ```
@@ -234,7 +234,7 @@ export const logEvent = (
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { logWarningEvent } from "@thomasfosterau/effect-web/observability"
+ * import { logWarningEvent } from "@thomasfosterau/effect-utilities/Observability"
  *
  * await Effect.runPromise(logWarningEvent("queue.dropped", { reason: "undecodable" }))
  * ```
@@ -253,7 +253,7 @@ export const logWarningEvent = (
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { describeError, logErrorEvent } from "@thomasfosterau/effect-web/observability"
+ * import { describeError, logErrorEvent } from "@thomasfosterau/effect-utilities/Observability"
  *
  * await Effect.runPromise(logErrorEvent("crawl.failed", { error: describeError(new Error("timeout")) }))
  * ```
@@ -278,7 +278,7 @@ export const logErrorEvent = (
  *
  * @example
  * ```ts
- * import { describeError } from "@thomasfosterau/effect-web/observability"
+ * import { describeError } from "@thomasfosterau/effect-utilities/Observability"
  *
  * describeError({ _tag: "FetchFailed", message: "timeout" }) // "FetchFailed: timeout"
  * describeError({ _tag: "Interrupted" }) // "Interrupted"
@@ -368,7 +368,7 @@ export interface AuthOutcomeFacts {
  *
  * @example
  * ```ts
- * import { deriveAuthOutcome } from "@thomasfosterau/effect-web/observability"
+ * import { deriveAuthOutcome } from "@thomasfosterau/effect-utilities/Observability"
  *
  * deriveAuthOutcome({ bindingMissing: false, hasCookie: false, sessionError: false, sessionResolved: false }) // "skipped"
  * deriveAuthOutcome({ bindingMissing: false, hasCookie: true, sessionError: false, sessionResolved: true }) // "resolved"
@@ -392,7 +392,7 @@ export const deriveAuthOutcome = (input: AuthOutcomeFacts): AuthOutcome => {
  *
  * @example
  * ```ts
- * import { logAuthOutcome } from "@thomasfosterau/effect-web/observability"
+ * import { logAuthOutcome } from "@thomasfosterau/effect-utilities/Observability"
  *
  * // prints: {"event":"read-path.auth","durationMs":12.5,"outcome":"resolved"}
  * logAuthOutcome(12.5, "resolved")

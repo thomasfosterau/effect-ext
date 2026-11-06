@@ -47,7 +47,7 @@ import { updateWebHeaders } from "./web.ts";
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { isCrossOrigin } from "@thomasfosterau/effect-web"
+ * import { isCrossOrigin } from "@thomasfosterau/effect-utilities/Web"
  *
  * isCrossOrigin(Option.some("https://evil.example"), "https://thomasfoster.au") // true
  * isCrossOrigin(Option.some("https://thomasfoster.au"), "https://thomasfoster.au") // false
@@ -77,7 +77,7 @@ export const isCrossOrigin = (origin: Option.Option<string>, expectedOrigin: str
  * @example
  * ```ts
  * import * as HttpServerRequest from "effect/http/HttpServerRequest"
- * import { isCrossOriginRejected } from "@thomasfosterau/effect-web"
+ * import { isCrossOriginRejected } from "@thomasfosterau/effect-utilities/Web"
  *
  * const request = new Request("https://thomasfoster.au/uploads", { method: "POST" })
  * request.headers.set("origin", "https://evil.example")
@@ -100,7 +100,7 @@ export const isCrossOriginRejected = (
  *
  * @example
  * ```ts
- * import { isCrossOriginRejectedWeb } from "@thomasfosterau/effect-web"
+ * import { isCrossOriginRejectedWeb } from "@thomasfosterau/effect-utilities/Web"
  *
  * const request = new Request("https://thomasfoster.au/uploads", { method: "POST" })
  * request.headers.set("origin", "https://evil.example")
@@ -129,7 +129,7 @@ export const isCrossOriginRejectedWeb = (
  * ```ts
  * import * as Option from "effect/Option"
  * import * as HttpServerRequest from "effect/http/HttpServerRequest"
- * import { crossOriginMutationRejection } from "@thomasfosterau/effect-web"
+ * import { crossOriginMutationRejection } from "@thomasfosterau/effect-utilities/Web"
  *
  * const request = new Request("https://thomasfoster.au/posts", { method: "POST" })
  * request.headers.set("origin", "https://evil.example")
@@ -158,7 +158,7 @@ export const crossOriginMutationRejection = (
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { crossOriginMutationRejectionWeb } from "@thomasfosterau/effect-web"
+ * import { crossOriginMutationRejectionWeb } from "@thomasfosterau/effect-utilities/Web"
  *
  * const request = new Request("https://thomasfoster.au/posts", { method: "POST" })
  * request.headers.set("origin", "https://evil.example")

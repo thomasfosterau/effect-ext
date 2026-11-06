@@ -7,14 +7,14 @@
  *
  * Provide `Permissions.layer` from `@effect/platform-browser/Permissions` in
  * a browser, or `TestPermissions.layer` from
- * `@thomasfosterau/effect-web/testing` in tests.
+ * `@thomasfosterau/effect-utilities/BrowserTesting` in tests.
  *
  * @since 0.2.0
  */
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Permissions from "@effect/platform-browser/Permissions";
-import { watch } from "../internal/dom.ts";
+import { watch } from "../internal/web/dom.ts";
 
 /**
  * The state of the permission `name` now: `"granted"`, `"denied"`, or
@@ -23,8 +23,8 @@ import { watch } from "../internal/dom.ts";
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { PermissionStatus } from "@thomasfosterau/effect-web/browser"
- * import { TestPermissions } from "@thomasfosterau/effect-web/testing"
+ * import { PermissionStatus } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPermissions } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * Effect.runPromise(
  *   Effect.provide(PermissionStatus.state("geolocation"), TestPermissions.layer({ geolocation: "granted" })),
@@ -50,8 +50,8 @@ export const state = (
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { PermissionStatus } from "@thomasfosterau/effect-web/browser"
- * import { TestPermissions } from "@thomasfosterau/effect-web/testing"
+ * import { PermissionStatus } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPermissions } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(PermissionStatus.changes("notifications"), 1))
  * Effect.runPromise(Effect.provide(program, TestPermissions.layer())).then(console.log) // ["prompt"]
@@ -78,8 +78,8 @@ export const changes = (
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { PermissionStatus } from "@thomasfosterau/effect-web/browser"
- * import { TestPermissions } from "@thomasfosterau/effect-web/testing"
+ * import { PermissionStatus } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestPermissions } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.andThen(PermissionStatus.awaitGranted("camera"), Effect.succeed("ready"))
  * Effect.runPromise(

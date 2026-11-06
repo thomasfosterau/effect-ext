@@ -1,6 +1,6 @@
 /**
- * `@thomasfosterau/effect-web/testing` — in-memory doubles for every
- * `@thomasfosterau/effect-web/browser` service and for the
+ * `@thomasfosterau/effect-utilities/BrowserTesting` — in-memory doubles for every
+ * `@thomasfosterau/effect-utilities/Browser` service and for the
  * `@effect/platform-browser` `Clipboard`, `Geolocation` and `Permissions`
  * services, runnable under Node with no DOM.
  *
@@ -17,7 +17,7 @@
  *   share one between layers to model several tabs.
  * - `TestNavigator`, `TestPageVisibility`, `TestMediaQuery`, `TestWakeLock`,
  *   `TestBroadcast`, `TestIdleDetection`, `TestBattery`, `TestFullscreen`,
- *   `TestScreenOrientation`, `TestNotifications` — the `./browser` services.
+ *   `TestScreenOrientation`, `TestNotifications` — the `Browser` services.
  * - `TestPermissions`, `TestClipboard`, `TestGeolocation` — the
  *   `@effect/platform-browser` services.
  *
@@ -25,19 +25,19 @@
  *
  * @since 0.2.0
  */
-export { layer } from "./layer.ts";
-export { observe } from "./stream.ts";
-export * as TestBattery from "./battery.ts";
-export * as TestBroadcast from "./broadcast.ts";
-export * as TestClipboard from "./clipboard.ts";
-export * as TestFullscreen from "./fullscreen.ts";
-export * as TestGeolocation from "./geolocation.ts";
-export * as TestIdleDetection from "./idle-detection.ts";
-export * as TestLocks from "./locks.ts";
-export * as TestMediaQuery from "./media-query.ts";
-export * as TestNavigator from "./navigator.ts";
-export * as TestNotifications from "./notifications.ts";
-export * as TestPageVisibility from "./page-visibility.ts";
-export * as TestPermissions from "./permissions.ts";
-export * as TestScreenOrientation from "./screen-orientation.ts";
-export * as TestWakeLock from "./wake-lock.ts";
+export { layer } from "./browser-testing/layer.ts";
+export { observe } from "./browser-testing/stream.ts";
+export * as TestBattery from "./browser-testing/battery.ts";
+export * as TestBroadcast from "./browser-testing/broadcast.ts";
+export * as TestClipboard from "./browser-testing/clipboard.ts";
+export * as TestFullscreen from "./browser-testing/fullscreen.ts";
+export * as TestGeolocation from "./browser-testing/geolocation.ts";
+export * as TestIdleDetection from "./browser-testing/idle-detection.ts";
+export * as TestLocks from "./browser-testing/locks.ts";
+export * as TestMediaQuery from "./browser-testing/media-query.ts";
+export * as TestNavigator from "./browser-testing/navigator.ts";
+export * as TestNotifications from "./browser-testing/notifications.ts";
+export * as TestPageVisibility from "./browser-testing/page-visibility.ts";
+export * as TestPermissions from "./browser-testing/permissions.ts";
+export * as TestScreenOrientation from "./browser-testing/screen-orientation.ts";
+export * as TestWakeLock from "./browser-testing/wake-lock.ts";

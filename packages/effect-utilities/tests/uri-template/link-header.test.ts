@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { LinkHeader } from "@thomasfosterau/effect-uri-template";
+import { LinkHeader } from "@thomasfosterau/effect-utilities/UriTemplate";
 
 describe("LinkHeader.parse — RFC 8288 §3.5", () => {
   it("reads a target, rel and title", () => {

@@ -1,4 +1,4 @@
-import { Font } from "@thomasfosterau/effect-css";
+import { Font } from "@thomasfosterau/effect-utilities/Css";
 import * as Option from "effect/Option";
 import { describe, expect, it } from "vite-plus/test";
 

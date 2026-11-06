@@ -5,8 +5,8 @@
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Str from "effect/String";
-import { parseComponentValueList } from "../syntax.ts";
-import type { ComponentValue } from "../token.ts";
+import { parseComponentValueList } from "../../css/syntax.ts";
+import type { ComponentValue } from "../../css/token.ts";
 
 /** A property value's component values. */
 export type Values = ReadonlyArray<ComponentValue>;

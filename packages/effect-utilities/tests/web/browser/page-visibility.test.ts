@@ -1,6 +1,6 @@
 /**
- * Unit tests for `./browser`'s `PageVisibility`, driven through
- * `./testing`'s `TestPageVisibility`.
+ * Unit tests for `Browser`'s `PageVisibility`, driven through
+ * `BrowserTesting`'s `TestPageVisibility`.
  */
 
 import { describe, expect, it } from "vite-plus/test";
@@ -8,8 +8,8 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
-import { PageVisibility } from "@thomasfosterau/effect-web/browser";
-import { TestPageVisibility, observe } from "@thomasfosterau/effect-web/testing";
+import { PageVisibility } from "@thomasfosterau/effect-utilities/Browser";
+import { TestPageVisibility, observe } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 describe("PageVisibility", () => {
   it("reads and follows the visibility state", async () => {

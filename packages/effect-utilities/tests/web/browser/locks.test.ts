@@ -1,6 +1,6 @@
 /**
- * Unit tests for `./browser`'s `Locks` (the Web Locks adapter), driven
- * through `./testing`'s in-memory lock manager — so they pin both the
+ * Unit tests for `Browser`'s `Locks` (the Web Locks adapter), driven
+ * through `BrowserTesting`'s in-memory lock manager — so they pin both the
  * adapter's scope/interruption contract and the manager's request
  * algorithm (FIFO, shared/exclusive, `ifAvailable`, `steal`, `signal`).
  */
@@ -11,8 +11,8 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
 import * as Schedule from "effect/Schedule";
-import { Locks } from "@thomasfosterau/effect-web/browser";
-import { TestLocks } from "@thomasfosterau/effect-web/testing";
+import { Locks } from "@thomasfosterau/effect-utilities/Browser";
+import { TestLocks } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 /**
  * Polls the origin's snapshot until `done` holds: the sync point for "the

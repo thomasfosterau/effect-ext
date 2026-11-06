@@ -7,7 +7,7 @@
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import type { FetchFailed } from "@thomasfosterau/effect-web/net";
+import type { FetchFailed } from "@thomasfosterau/effect-utilities/Net";
 import {
   type CacheError,
   type CacheMiss,
@@ -21,7 +21,7 @@ import {
   type PrecacheRejected,
   precache,
   route,
-} from "@thomasfosterau/effect-web/service-worker";
+} from "@thomasfosterau/effect-utilities/ServiceWorker";
 
 type Assert<T extends true> = T;
 type Equals<A, B> =

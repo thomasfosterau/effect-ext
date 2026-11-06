@@ -16,7 +16,7 @@
  * - `FetchHttpClient.Fetch` from `effect/http/FetchHttpClient` — the `fetch`
  *   every network step calls (default `globalThis.fetch`), the same
  *   reference Effect's own fetch client reads. A rejected `fetch` fails
- *   with `./net`'s `FetchFailed`, so one `catchTag` covers both entries.
+ *   with `Net`'s `FetchFailed`, so one `catchTag` covers both entries.
  *
  * Event types are structural ({@link FetchEventLike},
  * {@link ExtendableEventLike}, {@link ExtendableMessageEventLike}) so this
@@ -37,8 +37,8 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
-import { reasonOf } from "../internal/dom.ts";
-import { FetchFailed } from "../net/index.ts";
+import { reasonOf } from "./internal/web/dom.ts";
+import { FetchFailed } from "./Net.ts";
 
 // ---------------------------------------------------------------------------
 // Event shapes
@@ -140,7 +140,7 @@ export class PrecacheRejected extends Schema.TaggedError<PrecacheRejected>()("Pr
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Caches, cacheNames, memoryCacheStorage, openCache } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, cacheNames, memoryCacheStorage, openCache } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const names = await Effect.runPromise(
  *   openCache("v1").pipe(
@@ -155,7 +155,7 @@ export class PrecacheRejected extends Schema.TaggedError<PrecacheRejected>()("Pr
  * @category context
  */
 export const Caches: Context.Reference<CacheStorage> = /*#__PURE__*/ Context.Reference(
-  "@thomasfosterau/effect-web/service-worker/Caches",
+  "@thomasfosterau/effect-utilities/ServiceWorker/Caches",
   { defaultValue: () => globalThis.caches },
 );
 
@@ -213,7 +213,7 @@ const eventLifetime = (event: ExtendableEventLike): EventLifetimeService => ({
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { EventLifetime } from "@thomasfosterau/effect-web/service-worker"
+ * import { EventLifetime } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const program = Effect.gen(function* () {
  *   const lifetime = yield* EventLifetime
@@ -228,7 +228,7 @@ const eventLifetime = (event: ExtendableEventLike): EventLifetimeService => ({
  * @category context
  */
 export const EventLifetime: Context.Reference<EventLifetimeService> =
-  /*#__PURE__*/ Context.Reference("@thomasfosterau/effect-web/service-worker/EventLifetime", {
+  /*#__PURE__*/ Context.Reference("@thomasfosterau/effect-utilities/ServiceWorker/EventLifetime", {
     defaultValue: () => detached,
   });
 
@@ -286,7 +286,7 @@ const handle = (name: string, cache: Cache): CacheHandle => ({
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Option from "effect/Option"
- * import { Caches, memoryCacheStorage, openCache } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, memoryCacheStorage, openCache } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const program = Effect.gen(function* () {
  *   const cache = yield* openCache("v1")
@@ -315,7 +315,7 @@ export const openCache = (name: string): Effect.Effect<CacheHandle, CacheError> 
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Caches, deleteCache, memoryCacheStorage, openCache } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, deleteCache, memoryCacheStorage, openCache } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const deleted = await Effect.runPromise(
  *   openCache("v1").pipe(
@@ -338,7 +338,7 @@ export const deleteCache = (name: string): Effect.Effect<boolean, CacheError> =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Caches, cacheNames, memoryCacheStorage } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, cacheNames, memoryCacheStorage } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * await Effect.runPromise(cacheNames.pipe(Effect.provideService(Caches, memoryCacheStorage()))) // []
  * ```
@@ -360,7 +360,7 @@ export const cacheNames: Effect.Effect<
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Caches, deleteCachesExcept, memoryCacheStorage, openCache } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, deleteCachesExcept, memoryCacheStorage, openCache } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const program = Effect.gen(function* () {
  *   yield* openCache("static-v1")
@@ -400,7 +400,7 @@ export const deleteCachesExcept = (
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as FetchHttpClient from "effect/http/FetchHttpClient"
- * import { fetchRequest } from "@thomasfosterau/effect-web/service-worker"
+ * import { fetchRequest } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const stub: typeof fetch = async () => new Response("hello")
  * const response = await Effect.runPromise(
@@ -438,7 +438,7 @@ const NO_STORE = /(?:^|,)\s*no-store\s*(?:[,=]|$)/i;
  *
  * @example
  * ```ts
- * import { isCacheable } from "@thomasfosterau/effect-web/service-worker"
+ * import { isCacheable } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const get = new Request("https://example.com/app.js")
  * isCacheable(get, new Response("ok")) // true
@@ -527,7 +527,7 @@ const fetchAndCache = (
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as FetchHttpClient from "effect/http/FetchHttpClient"
- * import { Caches, EventLifetime, cacheFirst, memoryCacheStorage } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, EventLifetime, cacheFirst, memoryCacheStorage } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * let fetches = 0
  * const stub: typeof fetch = async () => (fetches++, new Response("asset"))
@@ -591,7 +591,7 @@ export interface NetworkFirstOptions extends StrategyOptions {
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as FetchHttpClient from "effect/http/FetchHttpClient"
- * import { Caches, EventLifetime, memoryCacheStorage, networkFirst } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, EventLifetime, memoryCacheStorage, networkFirst } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * let online = true
  * const stub: typeof fetch = async () => {
@@ -654,7 +654,7 @@ export const networkFirst =
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as FetchHttpClient from "effect/http/FetchHttpClient"
- * import { Caches, EventLifetime, memoryCacheStorage, staleWhileRevalidate } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, EventLifetime, memoryCacheStorage, staleWhileRevalidate } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * let version = 0
  * const stub: typeof fetch = async () => new Response(`v${++version}`)
@@ -698,7 +698,7 @@ export const staleWhileRevalidate =
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Caches, cacheOnly, memoryCacheStorage } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, cacheOnly, memoryCacheStorage } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const miss = await Effect.runPromise(
  *   Effect.flip(cacheOnly({ cacheName: "shell" })(new Request("https://example.com/"))).pipe(
@@ -728,7 +728,7 @@ export const cacheOnly =
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as FetchHttpClient from "effect/http/FetchHttpClient"
- * import { networkOnly } from "@thomasfosterau/effect-web/service-worker"
+ * import { networkOnly } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const stub: typeof fetch = async () => new Response(null, { status: 204 })
  * const response = await Effect.runPromise(
@@ -763,7 +763,7 @@ export const networkOnly: Strategy<FetchFailed> = fetchRequest;
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as FetchHttpClient from "effect/http/FetchHttpClient"
- * import { Caches, memoryCacheStorage, openCache, precache } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, memoryCacheStorage, openCache, precache } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const stub: typeof fetch = async (input) => new Response(String(input))
  * const program = Effect.gen(function* () {
@@ -834,7 +834,7 @@ export interface Route<E = never, R = never> {
  *
  * @example
  * ```ts
- * import { cacheFirst, route } from "@thomasfosterau/effect-web/service-worker"
+ * import { cacheFirst, route } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const assets = route(
  *   (request) => new URL(request.url).pathname.startsWith("/assets/"),
@@ -857,7 +857,7 @@ export const route = <E, R>(
  *
  * @example
  * ```ts
- * import { isNavigationRequest } from "@thomasfosterau/effect-web/service-worker"
+ * import { isNavigationRequest } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * isNavigationRequest(new Request("https://example.com/app.js")) // false
  * ```
@@ -897,7 +897,7 @@ type RoutesServices<Routes extends ReadonlyArray<Route<unknown, unknown>>> =
  *   networkFirst,
  *   isNavigationRequest,
  *   route,
- * } from "@thomasfosterau/effect-web/service-worker"
+ * } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const stub: typeof fetch = async () => new Response("from the network")
  *
@@ -954,7 +954,7 @@ export const fetchListener = <const Routes extends ReadonlyArray<Route<unknown, 
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Caches, deleteCachesExcept, extendableListener, memoryCacheStorage, openCache } from "@thomasfosterau/effect-web/service-worker"
+ * import { Caches, deleteCachesExcept, extendableListener, memoryCacheStorage, openCache } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const storage = memoryCacheStorage()
  * await Effect.runPromise(openCache("static-v1").pipe(Effect.provideService(Caches, storage)))
@@ -996,7 +996,7 @@ export const extendableListener = <Event extends ExtendableEventLike, E, R>(
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Schema from "effect/Schema"
- * import { messageListener } from "@thomasfosterau/effect-web/service-worker"
+ * import { messageListener } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const SkipWaiting = Schema.Struct({ type: Schema.Literal("SKIP_WAITING") })
  * const seen: Array<string> = []
@@ -1115,7 +1115,7 @@ export type ShowNotificationErrorReason = "Unsupported" | "NotAllowed" | "Invali
 
 /**
  * A registration notification call that failed: `operation` names it.
- * Distinct from `./browser`'s `NotificationError` (a page's own
+ * Distinct from `Browser`'s `NotificationError` (a page's own
  * notifications), so a `catchTag` for one never swallows the other.
  *
  * @since 0.2.0
@@ -1171,7 +1171,7 @@ const ambientRegistration = (): ServiceWorkerRegistrationLike | undefined => {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Registration, showNotification } from "@thomasfosterau/effect-web/service-worker"
+ * import { Registration, showNotification } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const shown: Array<string> = []
  * const registration = {
@@ -1188,7 +1188,7 @@ const ambientRegistration = (): ServiceWorkerRegistrationLike | undefined => {
  * @category context
  */
 export const Registration: Context.Reference<ServiceWorkerRegistrationLike | undefined> =
-  /*#__PURE__*/ Context.Reference("@thomasfosterau/effect-web/service-worker/Registration", {
+  /*#__PURE__*/ Context.Reference("@thomasfosterau/effect-utilities/ServiceWorker/Registration", {
     defaultValue: ambientRegistration,
   });
 
@@ -1216,7 +1216,7 @@ const withRegistration = <A>(
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Registration, showNotification } from "@thomasfosterau/effect-web/service-worker"
+ * import { Registration, showNotification } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const program = Effect.flip(showNotification("x").pipe(Effect.provideService(Registration, undefined)))
  * Effect.runPromise(program).then((error) => console.log(error.reason)) // "Unsupported"
@@ -1239,7 +1239,7 @@ export const showNotification = (
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { getNotifications, Registration } from "@thomasfosterau/effect-web/service-worker"
+ * import { getNotifications, Registration } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const registration = {
  *   showNotification: async () => {},
@@ -1289,7 +1289,7 @@ const notificationListener =
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Schema from "effect/Schema"
- * import { notificationClickListener } from "@thomasfosterau/effect-web/service-worker"
+ * import { notificationClickListener } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const Chat = Schema.Struct({ room: Schema.String })
  * const opened: Array<string> = []
@@ -1329,7 +1329,7 @@ export const notificationClickListener = notificationListener("notificationclick
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Schema from "effect/Schema"
- * import { notificationCloseListener } from "@thomasfosterau/effect-web/service-worker"
+ * import { notificationCloseListener } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const dismissed: Array<unknown> = []
  * const onClose = Effect.runSync(
@@ -1464,7 +1464,7 @@ export interface MemoryCacheStorageOptions {
  *
  * @example
  * ```ts
- * import { memoryCacheStorage } from "@thomasfosterau/effect-web/service-worker"
+ * import { memoryCacheStorage } from "@thomasfosterau/effect-utilities/ServiceWorker"
  *
  * const storage = memoryCacheStorage()
  * const cache = await storage.open("v1")

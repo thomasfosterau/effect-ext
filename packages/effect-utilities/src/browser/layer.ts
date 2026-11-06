@@ -1,5 +1,5 @@
 /**
- * Every live `./browser` service in one layer, together with the
+ * Every live `Browser` service in one layer, together with the
  * `@effect/platform-browser` services they sit beside.
  *
  * @since 0.2.0
@@ -33,7 +33,7 @@ import * as WakeLock from "./wake-lock.ts";
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Locks, Navigator, layer } from "@thomasfosterau/effect-web/browser"
+ * import { Locks, Navigator, layer } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const program = Effect.gen(function* () {
  *   const locks = yield* Locks.Locks

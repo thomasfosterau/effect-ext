@@ -1,5 +1,5 @@
 /**
- * Unit tests for `./browser`'s `MediaQuery`, driven through `./testing`'s
+ * Unit tests for `Browser`'s `MediaQuery`, driven through `BrowserTesting`'s
  * `TestMediaQuery`.
  */
 
@@ -7,8 +7,8 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
-import { MediaQuery } from "@thomasfosterau/effect-web/browser";
-import { TestMediaQuery, observe } from "@thomasfosterau/effect-web/testing";
+import { MediaQuery } from "@thomasfosterau/effect-utilities/Browser";
+import { TestMediaQuery, observe } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 describe("MediaQuery", () => {
   it("reads and follows a query", async () => {

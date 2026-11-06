@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-langtag` — BCP 47 language tags (RFC 5646) and
+ * `@thomasfosterau/effect-utilities/Langtag` — BCP 47 language tags (RFC 5646) and
  * language-range matching (RFC 4647) on Effect.
  *
  * - `LanguageTag` — parse a tag into canonical case (a branded string),
@@ -13,7 +13,7 @@
  *
  * @since 0.1.0
  */
-export * as AcceptLanguage from "./accept-language.ts";
-export * as LanguageRange from "./language-range.ts";
-export * as LanguageTag from "./language-tag.ts";
-export { negotiateLanguage } from "./negotiate.ts";
+export * as AcceptLanguage from "./langtag/accept-language.ts";
+export * as LanguageRange from "./langtag/language-range.ts";
+export * as LanguageTag from "./langtag/language-tag.ts";
+export { negotiateLanguage } from "./langtag/negotiate.ts";

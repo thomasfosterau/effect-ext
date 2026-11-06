@@ -57,7 +57,7 @@ const isPrivateIpv4 = (host: string): boolean => {
 };
 
 /** Hostnames that always resolve to loopback / internal networks. */
-const BLOCKED_HOSTNAMES: ReadonlyArray<string> = ["localhost"];
+const BLOCKED_HOSTNAMES: ReadonlyArray<string> = new Set(["localhost"]);
 
 /** Hostname suffixes reserved for non-public name resolution. */
 const BLOCKED_HOST_SUFFIXES: ReadonlyArray<string> = [
@@ -114,7 +114,7 @@ const embeddedIpv4 = (v6: string): Option.Option<string> => {
  *
  * @example
  * ```ts
- * import { isBlockedHost } from "@thomasfosterau/effect-web/net"
+ * import { isBlockedHost } from "@thomasfosterau/effect-utilities/Net"
  *
  * isBlockedHost("169.254.169.254") // true
  * isBlockedHost("localhost.") // true
@@ -129,7 +129,7 @@ export const isBlockedHost = (hostname: string): boolean => {
   const host = hostname.toLowerCase().replace(/\.+$/, "");
 
   if (
-    BLOCKED_HOSTNAMES.includes(host) ||
+    BLOCKED_HOSTNAMES.has(host) ||
     BLOCKED_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix))
   ) {
     return true;
@@ -187,7 +187,7 @@ export class UnsafeUrl extends Schema.TaggedError<UnsafeUrl>()("UnsafeUrl", {
  * @example
  * ```ts
  * import * as Result from "effect/Result"
- * import { checkUrl } from "@thomasfosterau/effect-web/net"
+ * import { checkUrl } from "@thomasfosterau/effect-utilities/Net"
  *
  * Result.isSuccess(checkUrl("https://example.com/page")) // true
  * Result.match(checkUrl("http://127.0.0.1/"), { onFailure: (e) => e.reason, onSuccess: () => "ok" }) // "blocked-host"
@@ -228,7 +228,7 @@ export const checkUrl = (url: string): Result.Result<URL, UnsafeUrl> => {
  *
  * @example
  * ```ts
- * import { assertAllowedUrl, UnsafeUrl } from "@thomasfosterau/effect-web/net"
+ * import { assertAllowedUrl, UnsafeUrl } from "@thomasfosterau/effect-utilities/Net"
  *
  * assertAllowedUrl("https://example.com/page").href // "https://example.com/page"
  * let thrown: Error | undefined
@@ -283,7 +283,7 @@ export class FetchFailed extends Schema.TaggedError<FetchFailed>()("FetchFailed"
 const MAX_REDIRECT_HOPS = 5;
 
 /** HTTP status codes that carry a `Location` redirect. */
-const REDIRECT_STATUSES: ReadonlyArray<number> = [301, 302, 303, 307, 308];
+const REDIRECT_STATUSES: ReadonlyArray<number> = new Set([301, 302, 303, 307, 308]);
 
 /**
  * A validated final response: the response itself and the URL the bytes
@@ -338,7 +338,7 @@ const hopBudget = (maxHops: number): number =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { followRedirects } from "@thomasfosterau/effect-web/net"
+ * import { followRedirects } from "@thomasfosterau/effect-utilities/Net"
  *
  * const stub: typeof fetch = async (input) =>
  *   String(input) === "https://example.com/"
@@ -375,7 +375,7 @@ export const followRedirects = (
         try: () => fetchImpl(currentUrl, { ...init, redirect: "manual" }),
         catch: (cause) => new FetchFailed({ url: currentUrl, cause }),
       });
-      if (!REDIRECT_STATUSES.includes(response.status)) {
+      if (!REDIRECT_STATUSES.has(response.status)) {
         // Final hop: `currentUrl`'s host was validated above, so the bytes come
         // from a validated origin.
         return { response, finalUrl: currentUrl };
@@ -431,7 +431,7 @@ export const followRedirects = (
  *
  * @example
  * ```ts
- * import { fetchFollowingRedirects, UnsafeUrl } from "@thomasfosterau/effect-web/net"
+ * import { fetchFollowingRedirects, UnsafeUrl } from "@thomasfosterau/effect-utilities/Net"
  *
  * const stub: typeof fetch = async () => new Response("ok")
  * const { response, finalUrl } = await fetchFollowingRedirects("https://example.com/page", {}, 5, stub)

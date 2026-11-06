@@ -1,5 +1,5 @@
 /**
- * A controllable `navigator` for tests of code that uses `./browser`'s
+ * A controllable `navigator` for tests of code that uses `Browser`'s
  * `Navigator`: {@link layer} provides the real `Navigator` adapter over an
  * in-memory navigator, plus {@link Control} to drive it (go offline, change
  * languages, change the connection) and to read back what the code under
@@ -124,7 +124,7 @@ export class Control extends Context.Service<
     readonly beacons: Effect.Effect<ReadonlyArray<Beacon>>;
     readonly vibrations: Effect.Effect<ReadonlyArray<VibratePattern>>;
   }
->()("@thomasfosterau/effect-web/testing/NavigatorControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/NavigatorControl") {}
 
 /** A `navigator.connection` whose fields read the double's live state. */
 class TestConnection extends EventTarget {
@@ -230,7 +230,7 @@ const installBeacon = (
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestNavigator } from "@thomasfosterau/effect-web/testing"
+ * import { TestNavigator } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { navigator, control } = TestNavigator.make({ onLine: false })
  * Effect.runPromise(
@@ -327,8 +327,8 @@ export const make = (options?: Options): Fixture => {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Navigator } from "@thomasfosterau/effect-web/browser"
- * import { TestNavigator } from "@thomasfosterau/effect-web/testing"
+ * import { Navigator } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestNavigator } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.gen(function* () {
  *   yield* Navigator.sendBeacon("https://example.com/collect", "bye")

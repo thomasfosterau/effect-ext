@@ -24,6 +24,9 @@ catalogs:
     '@effect/language-service':
       specifier: ^0.87.5
       version: 0.87.5
+    '@effect/platform-browser':
+      specifier: 4.0.6
+      version: 4.0.6
     '@effect/platform-node':
       specifier: 4.0.6
       version: 4.0.6
@@ -36,6 +39,12 @@ catalogs:
     '@enfect/oxlint':
       specifier: 0.9.0
       version: 0.9.0
+    '@thomasfosterau/effect-jsonapi':
+      specifier: ^0.20.0
+      version: 0.20.0
+    '@thomasfosterau/effect-parse':
+      specifier: ^0.4.1
+      version: 0.4.1
     '@types/node':
       specifier: ^26.6.6
       version: 26.6.6
@@ -285,9 +294,18 @@ importers:
       '@effect/language-service':
         specifier: 'catalog:'
         version: 0.87.5
+      '@effect/platform-browser':
+        specifier: 'catalog:'
+        version: 4.0.6(effect@4.0.6)
       '@effect/vitest':
         specifier: 'catalog:'
         version: 4.0.6(effect@4.0.6)(vitest@5.0.5)
+      '@thomasfosterau/effect-jsonapi':
+        specifier: 'catalog:'
+        version: 0.20.0(effect@4.0.6)
+      '@thomasfosterau/effect-parse':
+        specifier: 'catalog:'
+        version: 0.4.1(effect@4.0.6)
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
@@ -499,6 +517,11 @@ packages:
     resolution: {integrity: sha512-IRfvvwqQLabVTIw9hhIj4scOGIYPfa13QuEFv+dBWE6p47R+RR0J8jQvfDINFf0Vn80XXVjNRtZxkZpkKXLx2A==}
     engines: {node: '>=0.10.0'}
     hasBin: true
+
+  '@effect/platform-browser@4.0.6':
+    resolution: {integrity: sha512-i4bf1+FlUnZypqK0pQ5cq46KhroTgqFGktFn2WorwIk+yc+RuZO6qsF+Sk6lY5uHwdHTOLGMlnlXSJ8u1UG42g==}
+    peerDependencies:
+      effect: 4.0.6
 
   '@effect/platform-node-shared@4.0.6':
     resolution: {integrity: sha512-0PhyC4uG30xGtsajnxjkcBWfTjNRzUh4ZKl1Kvo/MNyCTb+W2O+fBzf7wCRCoqt+nLudiq4V7vX40Q8XIBuMaQ==}
@@ -1129,6 +1152,18 @@ packages:
     engines: {node: '>=12', npm: '>=6'}
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
+
+  '@thomasfosterau/effect-jsonapi@0.20.0':
+    resolution: {integrity: sha512-vn/MBiwWhqeEWS/RxhgjgREg7ErpmGCCP8u1/ESz+bKAWX0Yes9CvruULkq2d6buIihpVSDL+SDDSzVJOY/vIw==}
+    engines: {node: '>=22', pnpm: '>=11'}
+    peerDependencies:
+      effect: 4.0.6
+
+  '@thomasfosterau/effect-parse@0.4.1':
+    resolution: {integrity: sha512-7/jiPHebeKmJjfUxMdjoWCqW6a1WHLqqFk7lnl23oYAHXO1Dk55fq1MOROARy5rgUTvZegPAuUuSDt51JJXgtw==}
+    engines: {node: '>=22', pnpm: '>=11'}
+    peerDependencies:
+      effect: 4.0.6
 
   '@ts-morph/common@0.29.0':
     resolution: {integrity: sha512-35oUmphHbJvQ/+UTwFNme/t2p3FoKiGJ5auTjjpNTop2dyREspirjMy82PLSC1pnDJ8ah1GU98hwpVt64YXQsg==}
@@ -2581,6 +2616,10 @@ snapshots:
       repeat-string: 1.6.1
       strip-color: 0.1.0
 
+  '@effect/platform-browser@4.0.6(effect@4.0.6)':
+    dependencies:
+      effect: 4.0.6
+
   '@effect/platform-node-shared@4.0.6(effect@4.0.6)':
     dependencies:
       '@types/ws': 8.18.2
@@ -2956,6 +2995,14 @@ snapshots:
   '@testing-library/user-event@14.6.7(@testing-library/dom@10.4.2)':
     dependencies:
       '@testing-library/dom': 10.4.2
+
+  '@thomasfosterau/effect-jsonapi@0.20.0(effect@4.0.6)':
+    dependencies:
+      effect: 4.0.6
+
+  '@thomasfosterau/effect-parse@0.4.1(effect@4.0.6)':
+    dependencies:
+      effect: 4.0.6
 
   '@ts-morph/common@0.29.0':
     dependencies:

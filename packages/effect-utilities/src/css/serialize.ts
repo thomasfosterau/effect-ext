@@ -62,7 +62,7 @@ const identifierCodePoint = (
  * @example
  * ```ts
  * import { strictEqual } from "node:assert"
- * import { Serialize } from "@thomasfosterau/effect-css"
+ * import { Serialize } from "@thomasfosterau/effect-utilities/Css"
  *
  * strictEqual(Serialize.identifier("1st"), "\\31 st")
  * strictEqual(Serialize.identifier("a b"), "a\\ b")
@@ -97,7 +97,7 @@ const stringCodePoint = (codePoint: number): string => {
  * @example
  * ```ts
  * import { strictEqual } from "node:assert"
- * import { Serialize } from "@thomasfosterau/effect-css"
+ * import { Serialize } from "@thomasfosterau/effect-utilities/Css"
  *
  * strictEqual(Serialize.string('say "hi"'), '"say \\"hi\\""')
  * ```
@@ -115,7 +115,7 @@ export const string = (value: string): string =>
  * @example
  * ```ts
  * import { strictEqual } from "node:assert"
- * import { Serialize } from "@thomasfosterau/effect-css"
+ * import { Serialize } from "@thomasfosterau/effect-utilities/Css"
  *
  * strictEqual(Serialize.url("a.png"), 'url("a.png")')
  * ```
@@ -130,10 +130,10 @@ const urlCodePoint = (codePoint: number): string => {
   if (codePoint === 0) return "\uFFFD";
   if (isControl(codePoint) || codePoint === 0x20) return escapeCodePoint(codePoint);
   const char = String.fromCodePoint(codePoint);
-  return URL_SPECIAL.includes(char) ? `\\${char}` : char;
+  return URL_SPECIAL.has(char) ? `\\${char}` : char;
 };
 
-const URL_SPECIAL: ReadonlyArray<string> = ['"', "'", "(", ")", "\\"];
+const URL_SPECIAL: ReadonlyArray<string> = new Set(['"', "'", "(", ")", "\\"]);
 
 /** A dimension's unit, its `e` escaped where it would read as an exponent. */
 const unit = (value: string): string => {
@@ -297,13 +297,19 @@ const IDENT_LIKE: ReadonlyArray<Edge> = ["ident", "function", "url"];
 const NUMERIC: ReadonlyArray<Edge> = ["number", "percentage", "dimension"];
 
 /** What may not follow each token without a comment between (CSS Syntax 3 §9, the table). */
-const AFTER_IDENT: ReadonlyArray<Edge> = [...IDENT_LIKE, "delim:-", ...NUMERIC, "cdc", "("];
+const AFTER_IDENT: ReadonlyArray<Edge> = new Set([
+  ...IDENT_LIKE,
+  "delim:-",
+  ...NUMERIC,
+  "cdc",
+  "(",
+]);
 const AFTER_KEYWORD: ReadonlyArray<Edge> = [...IDENT_LIKE, "delim:-", ...NUMERIC, "cdc"];
 
 const needsComment = (previous: Edge, next: Edge): boolean => {
   switch (previous) {
     case "ident":
-      return AFTER_IDENT.includes(next);
+      return AFTER_IDENT.has(next);
     case "at-keyword":
     case "hash":
     case "dimension":
@@ -344,7 +350,7 @@ const needsComment = (previous: Edge, next: Edge): boolean => {
  * @example
  * ```ts
  * import { strictEqual } from "node:assert"
- * import { Serialize, Syntax } from "@thomasfosterau/effect-css"
+ * import { Serialize, Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * strictEqual(Serialize.componentValues(Syntax.parseComponentValueList("rgb( 0 , 1 )  12.0px")), "rgb( 0 , 1 ) 12.0px")
  * ```
@@ -376,7 +382,7 @@ const trimWhitespace = (values: ReadonlyArray<ComponentValue>): ReadonlyArray<Co
  * @example
  * ```ts
  * import { strictEqual } from "node:assert"
- * import { Serialize, Syntax } from "@thomasfosterau/effect-css"
+ * import { Serialize, Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * const [declaration] = Syntax.parseDeclarationList("color:red  !IMPORTANT")
  * if (declaration?._tag === "Declaration") {
@@ -398,7 +404,7 @@ export const declaration = (value: Declaration): string =>
  * @example
  * ```ts
  * import { strictEqual } from "node:assert"
- * import { Serialize, Syntax } from "@thomasfosterau/effect-css"
+ * import { Serialize, Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * strictEqual(
  *   Serialize.declarationList(Syntax.parseDeclarationList("color:red;;margin : 0 auto;")),

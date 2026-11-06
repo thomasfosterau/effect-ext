@@ -9,7 +9,7 @@
  */
 /* oxlint-disable effect/imperative-loops, effect/avoid-direct-tag-checks, effect/prefer-match-over-switch, effect/no-length-comparison, effect/prefer-arr-match -- the specification's consume-* algorithms over a token cursor, transcribed step for step: one token-type dispatch per token, on the hot path every parse takes. */
 import * as Option from "effect/Option";
-import { tokenize, type Located } from "./internal/tokenizer.ts";
+import { tokenize, type Located } from "../internal/css/tokenizer.ts";
 import type { Block, ComponentValue, Func, Token } from "./token.ts";
 
 /**
@@ -333,7 +333,7 @@ const consumeNestedQualifiedRule = (input: Cursor, offset: number): QualifiedRul
  *
  * @example
  * ```ts
- * import { Syntax } from "@thomasfosterau/effect-css"
+ * import { Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * const items = Syntax.parseBlockContents("color: red; &:hover { color: blue } margin: 0")
  * console.log(items.map((item) => item._tag)) // ["Declaration", "QualifiedRule", "Declaration"]
@@ -377,7 +377,7 @@ export const parseBlockContents = (
  *
  * @example
  * ```ts
- * import { Syntax } from "@thomasfosterau/effect-css"
+ * import { Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * const [color] = Syntax.parseDeclarationList("color: red !important; margin: 0")
  * console.log(color?._tag === "Declaration" && color.important) // true
@@ -421,7 +421,7 @@ export const parseDeclarationList = (
  *
  * @example
  * ```ts
- * import { Syntax } from "@thomasfosterau/effect-css"
+ * import { Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * const parsed = Syntax.parseDeclaration("width: 10px")
  * console.log(parsed._tag === "Declaration" && parsed.name) // "width"
@@ -449,7 +449,7 @@ export const parseDeclaration = (css: string): Declaration | SyntaxError => {
  *
  * @example
  * ```ts
- * import { Syntax } from "@thomasfosterau/effect-css"
+ * import { Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * const rules = Syntax.parseStylesheet("p { color: red } @media print { p { color: black } }")
  * console.log(rules.map((rule) => rule._tag)) // ["QualifiedRule", "AtRule"]
@@ -467,7 +467,7 @@ export const parseStylesheet = (css: string): ReadonlyArray<AtRule | QualifiedRu
  *
  * @example
  * ```ts
- * import { Syntax } from "@thomasfosterau/effect-css"
+ * import { Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Syntax.parseRuleList("a {} b {}").length) // 2
  * ```
@@ -483,7 +483,7 @@ export const parseRuleList = (css: string): ReadonlyArray<AtRule | QualifiedRule
  *
  * @example
  * ```ts
- * import { Syntax } from "@thomasfosterau/effect-css"
+ * import { Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Syntax.parseRule("@import 'a.css';")._tag) // "AtRule"
  * console.log(Syntax.parseRule("a {} b {}")._tag) // "SyntaxError"
@@ -518,7 +518,7 @@ export const parseRule = (css: string): AtRule | QualifiedRule | SyntaxError => 
  *
  * @example
  * ```ts
- * import { Syntax } from "@thomasfosterau/effect-css"
+ * import { Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * const [value] = Syntax.parseComponentValueList("rgb(0 0 0)")
  * console.log(value?._tag === "Func" && value.name) // "rgb"
@@ -539,7 +539,7 @@ export const parseComponentValueList = (css: string): ReadonlyArray<ComponentVal
  *
  * @example
  * ```ts
- * import { Syntax } from "@thomasfosterau/effect-css"
+ * import { Syntax } from "@thomasfosterau/effect-utilities/Css"
  *
  * console.log(Syntax.parseComponentValue(" 4px ")._tag) // "Dimension"
  * ```

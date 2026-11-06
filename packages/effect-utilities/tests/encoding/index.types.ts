@@ -4,7 +4,7 @@
  * never stand in for the assertion a directive expects.
  */
 import type * as Effect from "effect/Effect";
-import { Encoding } from "@thomasfosterau/effect-encoding";
+import { Encoding } from "@thomasfosterau/effect-utilities/Encoding";
 
 export const name: Encoding.EncodingName = "windows-1252";
 

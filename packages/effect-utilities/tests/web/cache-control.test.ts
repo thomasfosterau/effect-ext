@@ -14,7 +14,7 @@ import {
   PRIVATE_NO_STORE,
   updateHeaders,
   updateWebHeaders,
-} from "@thomasfosterau/effect-web";
+} from "@thomasfosterau/effect-utilities/Web";
 
 const ensure = (response: Response): Response => updateWebHeaders(response, ensureCacheControl);
 

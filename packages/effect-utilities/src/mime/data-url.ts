@@ -58,7 +58,7 @@ const BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
  *
  * @example
  * ```ts
- * import { DataUrl } from "@thomasfosterau/effect-mime"
+ * import { DataUrl } from "@thomasfosterau/effect-utilities/Mime"
  *
  * console.log(DataUrl.forgivingBase64Decode(" ab cd")) // Option.some(Uint8Array [105, 183, 29])
  * ```
@@ -92,7 +92,7 @@ export const forgivingBase64Decode = (input: string): Option.Option<Uint8Array> 
  * @example
  * ```ts
  * import * as Option from "effect/Option"
- * import { DataUrl, MimeType } from "@thomasfosterau/effect-mime"
+ * import { DataUrl, MimeType } from "@thomasfosterau/effect-utilities/Mime"
  *
  * const processed = DataUrl.process("data:image/png;base64,iVBORw0KGgo=")
  * console.log(Option.map(processed, ({ mimeType }) => MimeType.serialize(mimeType))) // Option.some("image/png")

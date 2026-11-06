@@ -13,7 +13,7 @@ import {
   type RouteVaryClass,
   responseVary,
   securityHeaders,
-} from "@thomasfosterau/effect-web";
+} from "@thomasfosterau/effect-utilities/Web";
 import * as Headers from "effect/http/Headers";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
 import {
@@ -22,9 +22,12 @@ import {
   followRedirects,
   type RedirectRejected,
   type UnsafeUrl,
-} from "@thomasfosterau/effect-web/net";
-import { type Negotiation, negotiateRepresentation } from "@thomasfosterau/effect-web/negotiate";
-import { spanTracer } from "@thomasfosterau/effect-web/observability";
+} from "@thomasfosterau/effect-utilities/Net";
+import {
+  type Negotiation,
+  negotiateRepresentation,
+} from "@thomasfosterau/effect-utilities/Negotiate";
+import { spanTracer } from "@thomasfosterau/effect-utilities/Observability";
 
 /** A compile-time assertion: `T` must be exactly `true`. */
 type Assert<T extends true> = T;

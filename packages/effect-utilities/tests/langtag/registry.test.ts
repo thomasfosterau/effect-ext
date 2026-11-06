@@ -1,18 +1,18 @@
 /**
- * Unit tests for `./registry`: RFC 5646 §2.2.9 validity and §4.5
+ * Unit tests for `LangtagRegistry`: RFC 5646 §2.2.9 validity and §4.5
  * canonicalisation against the IANA Language Subtag Registry snapshot.
  */
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { LanguageTag } from "@thomasfosterau/effect-langtag";
+import { LanguageTag } from "@thomasfosterau/effect-utilities/Langtag";
 import {
   canonicalize,
   isValid,
   registryDate,
   suppressScript,
-} from "@thomasfosterau/effect-langtag/registry";
+} from "@thomasfosterau/effect-utilities/LangtagRegistry";
 
 const tag = (value: string): LanguageTag.LanguageTag =>
   Schema.decodeUnknownSync(LanguageTag.LanguageTagFromString)(value);

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Record from "effect/Record";
-import { Color } from "@thomasfosterau/effect-css";
+import { Color } from "@thomasfosterau/effect-utilities/Css";
 import vectors from "./fixtures/wpt-color-valid.json" with { type: "json" };
 
 /** A vector: the input, its expected specified value and the tolerance it gives, if any. */

@@ -1,5 +1,5 @@
 /**
- * The Korean index for `@thomasfosterau/effect-encoding`: index EUC-KR. Opt-in: a
+ * The Korean index for `@thomasfosterau/effect-utilities/Encoding`: index EUC-KR. Opt-in: a
  * program that imports this entry and provides its `tables` (see
  * `Encoding.tablesLayer`) can encode EUC-KR, and decode them on a runtime
  * whose `TextDecoder` lacks them.
@@ -12,7 +12,7 @@
  *
  * @since 0.1.0
  */
-import type { Tables } from "../encoding.ts";
+import type { Tables } from "./encoding/encoding.ts";
 
 /**
  * The Korean index, for `Encoding.tablesLayer`.
@@ -20,8 +20,8 @@ import type { Tables } from "../encoding.ts";
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Encoding } from "@thomasfosterau/effect-encoding"
- * import * as EucKr from "@thomasfosterau/effect-encoding/euc-kr"
+ * import { Encoding } from "@thomasfosterau/effect-utilities/Encoding"
+ * import * as EucKr from "@thomasfosterau/effect-utilities/EncodingEucKr"
  *
  * const bytes = await Effect.runPromise(
  *   Encoding.encode("한국", { encoding: "EUC-KR" }).pipe(Effect.provide(Encoding.tablesLayer(EucKr.tables))),

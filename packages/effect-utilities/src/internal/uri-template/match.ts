@@ -11,7 +11,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Record from "effect/Record";
 import * as Result from "effect/Result";
-import type { Operator, Part, VariableSpec } from "../uri-template.ts";
+import type { Operator, Part, VariableSpec } from "../../uri-template/uri-template.ts";
 import { encodeReserved } from "./encoding.ts";
 
 /** What a match recovers: each defined variable, a string, a list or a record of strings. */
@@ -157,7 +157,7 @@ const isQuery = (part: Part): part is Expression =>
 
 // ---- refusals ----
 
-const EXPLODABLE: ReadonlyArray<Operator> = ["/", ".", "?", "&"];
+const EXPLODABLE: ReadonlyArray<Operator> = new Set(["/", ".", "?", "&"]);
 const NAMED: ReadonlyArray<Operator> = [";", "?", "&"];
 
 /** The refusal for one expression on its own, if any. */
@@ -168,7 +168,7 @@ const refuseExpression = (expression: Expression): Option.Option<Refusal> => {
   }
   if (
     Arr.some(expression.variables, (spec) => spec.explode) &&
-    !EXPLODABLE.includes(expression.operator)
+    !EXPLODABLE.has(expression.operator)
   ) {
     return refuse(`explode under "${expression.operator}" cannot tell a list from a record`);
   }

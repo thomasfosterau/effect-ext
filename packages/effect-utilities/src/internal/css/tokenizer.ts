@@ -6,7 +6,7 @@
  */
 /* oxlint-disable effect/imperative-loops, effect/no-length-comparison, effect/prefer-arr-match, effect/prefer-match-over-switch, effect/no-known-value-widening -- a transcription of the specification's tokenizer state machine: a cursor over code points, consumed one at a time, is the algorithm as written. */
 import * as Str from "effect/String";
-import type { Token } from "../token.ts";
+import type { Token } from "../../css/token.ts";
 
 /** A token and the code-point offset in the preprocessed input it starts at. */
 export interface Located {

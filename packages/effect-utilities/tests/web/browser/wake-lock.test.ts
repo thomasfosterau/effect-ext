@@ -1,5 +1,5 @@
 /**
- * Unit tests for `./browser`'s `WakeLock`, driven through `./testing`'s
+ * Unit tests for `Browser`'s `WakeLock`, driven through `BrowserTesting`'s
  * `TestWakeLock` (and `TestPageVisibility` for the re-acquiring form).
  */
 
@@ -8,8 +8,8 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Schedule from "effect/Schedule";
-import { WakeLock } from "@thomasfosterau/effect-web/browser";
-import { TestPageVisibility, TestWakeLock } from "@thomasfosterau/effect-web/testing";
+import { WakeLock } from "@thomasfosterau/effect-utilities/Browser";
+import { TestPageVisibility, TestWakeLock } from "@thomasfosterau/effect-utilities/BrowserTesting";
 
 /** Polls `read` until `done` holds (the browser settles wake locks asynchronously). */
 const until = <A>(read: Effect.Effect<A>, done: (value: A) => boolean) =>

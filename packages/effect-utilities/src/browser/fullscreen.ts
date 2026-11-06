@@ -23,8 +23,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import { reasonOf, settled, watch } from "../internal/dom.ts";
-import { ambientDocument } from "../internal/globals.ts";
+import { reasonOf, settled, watch } from "../internal/web/dom.ts";
+import { ambientDocument } from "../internal/web/globals.ts";
 
 /**
  * The structural slice of an `Element` this module calls. Every DOM
@@ -92,7 +92,7 @@ const REJECTION_REASONS = {
 
 /**
  * The fullscreen service. Provide {@link layer} in a page, or
- * `TestFullscreen.layer` from `@thomasfosterau/effect-web/testing` in
+ * `TestFullscreen.layer` from `@thomasfosterau/effect-utilities/BrowserTesting` in
  * tests.
  *
  * - `supported` — whether the document may go fullscreen at all.
@@ -114,7 +114,7 @@ export class Fullscreen extends Context.Service<
       options?: FullscreenOptions,
     ) => Effect.Effect<void, FullscreenError, Scope.Scope>;
   }
->()("@thomasfosterau/effect-web/browser/Fullscreen") {}
+>()("@thomasfosterau/effect-utilities/Browser/Fullscreen") {}
 
 const unsupported = (): Fullscreen["Service"] =>
   Fullscreen.of({
@@ -132,7 +132,7 @@ const unsupported = (): Fullscreen["Service"] =>
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Fullscreen } from "@thomasfosterau/effect-web/browser"
+ * import { Fullscreen } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const fullscreen = Fullscreen.make(undefined)
  * console.log(fullscreen.supported) // false
@@ -178,7 +178,7 @@ export const make = (document: DocumentFullscreenLike | undefined): Fullscreen["
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Fullscreen } from "@thomasfosterau/effect-web/browser"
+ * import { Fullscreen } from "@thomasfosterau/effect-utilities/Browser"
  *
  * const program = Effect.map(Fullscreen.Fullscreen, (fullscreen) => fullscreen.supported)
  * Effect.runPromise(Effect.provide(program, Fullscreen.layer)).then(console.log) // false under Node
@@ -195,8 +195,8 @@ export const layer: Layer.Layer<Fullscreen> = Layer.sync(Fullscreen, () => make(
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Fullscreen } from "@thomasfosterau/effect-web/browser"
- * import { TestFullscreen } from "@thomasfosterau/effect-web/testing"
+ * import { Fullscreen } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestFullscreen } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * Effect.runPromise(Effect.provide(Fullscreen.element, TestFullscreen.layer())).then(console.log)
  * // { _id: "Option", _tag: "None" }
@@ -219,8 +219,8 @@ export const element: Effect.Effect<
  * ```ts
  * import * as Effect from "effect/Effect"
  * import * as Stream from "effect/Stream"
- * import { Fullscreen } from "@thomasfosterau/effect-web/browser"
- * import { TestFullscreen } from "@thomasfosterau/effect-web/testing"
+ * import { Fullscreen } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestFullscreen } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Stream.runCollect(Stream.take(Fullscreen.changes, 1))
  * Effect.runPromise(Effect.provide(program, TestFullscreen.layer())).then(console.log)
@@ -246,8 +246,8 @@ export const changes: Stream.Stream<
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { Fullscreen } from "@thomasfosterau/effect-web/browser"
- * import { TestFullscreen } from "@thomasfosterau/effect-web/testing"
+ * import { Fullscreen } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestFullscreen } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = Effect.gen(function* () {
  *   const control = yield* TestFullscreen.Control

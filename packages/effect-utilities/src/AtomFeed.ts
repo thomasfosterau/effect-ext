@@ -1,5 +1,5 @@
 /**
- * `@thomasfosterau/effect-atom-feed` — an Atom (RFC 4287) feed
+ * `@thomasfosterau/effect-utilities/AtomFeed` — an Atom (RFC 4287) feed
  * (`atom.xml`) built from a feed description and its entries, and served as
  * an `HttpServerResponse` behind the low-churn edge cache.
  *
@@ -129,7 +129,7 @@ const persons = (base: string, people: ReadonlyArray<AtomPerson> | undefined): s
  * @example
  * ```ts
  * import * as DateTime from "effect/DateTime"
- * import { renderAtomEntry } from "@thomasfosterau/effect-atom-feed"
+ * import { renderAtomEntry } from "@thomasfosterau/effect-utilities/AtomFeed"
  *
  * renderAtomEntry("https://example.com", {
  *   path: "/posts/1",
@@ -168,7 +168,7 @@ export const renderAtomEntry = (base: string, entry: AtomEntry): string => {
  * @example
  * ```ts
  * import * as DateTime from "effect/DateTime"
- * import { renderAtom } from "@thomasfosterau/effect-atom-feed"
+ * import { renderAtom } from "@thomasfosterau/effect-utilities/AtomFeed"
  *
  * const updated = DateTime.makeUnsafe("2026-03-04T00:00:00Z")
  * const xml = renderAtom(
@@ -211,7 +211,7 @@ export const renderAtom = (options: AtomFeedOptions, entries: Iterable<AtomEntry
  * the whole document for an hour, so any enumeration behind it runs at most
  * once per hour per edge, and a mutation purges its `Cache-Tag` rather than
  * waiting out the TTL (PERF-CACHE-002). The same value as
- * `@thomasfosterau/effect-sitemap`'s.
+ * `@thomasfosterau/effect-utilities/Sitemap`'s.
  *
  * @since 0.1.0
  * @category constants
@@ -241,7 +241,7 @@ export interface AtomResponseOptions {
  * ```ts
  * import * as DateTime from "effect/DateTime"
  * import * as HttpServerResponse from "effect/http/HttpServerResponse"
- * import { atomResponse } from "@thomasfosterau/effect-atom-feed"
+ * import { atomResponse } from "@thomasfosterau/effect-utilities/AtomFeed"
  *
  * const response = atomResponse(
  *   { base: "https://example.com", title: "Example", updated: DateTime.makeUnsafe("2026-03-04T00:00:00Z") },

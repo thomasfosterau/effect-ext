@@ -14,7 +14,7 @@ import {
   renderAtom,
   renderAtomEntry,
   type AtomFeedOptions,
-} from "@thomasfosterau/effect-atom-feed";
+} from "@thomasfosterau/effect-utilities/AtomFeed";
 
 const BASE = "https://example.com";
 const UPDATED = DateTime.makeUnsafe("2026-03-04T05:06:07Z");

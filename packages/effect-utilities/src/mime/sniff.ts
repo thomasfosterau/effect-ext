@@ -17,7 +17,7 @@ import {
   IMAGE,
   SCRIPTABLE,
   TEXT,
-} from "./internal/patterns.ts";
+} from "../internal/mime/patterns.ts";
 import { essence, isXml, parse, type MimeType } from "./mime-type.ts";
 
 /**
@@ -198,7 +198,7 @@ const isMp3WithoutId3 = (bytes: Uint8Array): boolean => {
  *
  * @example
  * ```ts
- * import { Sniff } from "@thomasfosterau/effect-mime"
+ * import { Sniff } from "@thomasfosterau/effect-utilities/Mime"
  *
  * console.log(Sniff.matchImage(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])))
  * // Option.some("image/png")
@@ -217,7 +217,7 @@ export const matchImage: Signature = matchTable(IMAGE);
  *
  * @example
  * ```ts
- * import { Sniff } from "@thomasfosterau/effect-mime"
+ * import { Sniff } from "@thomasfosterau/effect-utilities/Mime"
  *
  * console.log(Sniff.matchAudioOrVideo(new TextEncoder().encode("OggS\u0000"))) // Option.some("application/ogg")
  * ```
@@ -239,7 +239,7 @@ export const matchAudioOrVideo: Signature = (bytes) =>
  *
  * @example
  * ```ts
- * import { Sniff } from "@thomasfosterau/effect-mime"
+ * import { Sniff } from "@thomasfosterau/effect-utilities/Mime"
  *
  * console.log(Sniff.matchFont(new TextEncoder().encode("wOF2...."))) // Option.some("font/woff2")
  * ```
@@ -256,7 +256,7 @@ export const matchFont: Signature = matchTable(FONT);
  *
  * @example
  * ```ts
- * import { Sniff } from "@thomasfosterau/effect-mime"
+ * import { Sniff } from "@thomasfosterau/effect-utilities/Mime"
  *
  * console.log(Sniff.matchArchive(new Uint8Array([0x50, 0x4b, 0x03, 0x04]))) // Option.some("application/zip")
  * ```
@@ -309,12 +309,12 @@ export interface SniffOptions {
 }
 
 /** The exact `Content-Type` values that set the check-for-apache-bug flag (§5.1). */
-const APACHE_BUG_TYPES: ReadonlyArray<string> = [
+const APACHE_BUG_TYPES: ReadonlyArray<string> = new Set([
   "text/plain",
   "text/plain; charset=ISO-8859-1",
   "text/plain; charset=iso-8859-1",
   "text/plain; charset=UTF-8",
-];
+]);
 
 const UNKNOWN_TYPES: ReadonlyArray<string> = ["unknown/unknown", "application/unknown", "*/*"];
 
@@ -393,7 +393,7 @@ const textOrBinary = (bytes: Uint8Array): string => {
  *
  * @example
  * ```ts
- * import { MimeType, Sniff } from "@thomasfosterau/effect-mime"
+ * import { MimeType, Sniff } from "@thomasfosterau/effect-utilities/Mime"
  *
  * const pdf = new TextEncoder().encode("%PDF-1.7\n")
  * console.log(MimeType.essence(Sniff.sniff(pdf))) // "application/pdf"
@@ -423,10 +423,7 @@ export const sniff = (bytes: Uint8Array, options: SniffOptions = {}): MimeType =
         if (options.noSniff === true || isXml(mimeType) || essence(mimeType) === "text/html") {
           return mimeType;
         }
-        if (
-          options.checkForApacheBug === true &&
-          APACHE_BUG_TYPES.includes(options.supplied ?? "")
-        ) {
+        if (options.checkForApacheBug === true && APACHE_BUG_TYPES.has(options.supplied ?? "")) {
           return computed(textOrBinary(header));
         }
         const pattern =

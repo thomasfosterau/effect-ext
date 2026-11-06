@@ -1,5 +1,5 @@
 /**
- * A controllable screen wake lock for tests of code that uses `./browser`'s
+ * A controllable screen wake lock for tests of code that uses `Browser`'s
  * `WakeLock`: {@link layer} provides the real adapter over an in-memory
  * `navigator.wakeLock`, plus {@link Control} to see how many locks are held,
  * to release them as the browser does when a page is hidden, and to refuse
@@ -45,7 +45,7 @@ export class Control extends Context.Service<
     readonly releaseAll: Effect.Effect<void>;
     readonly setDenied: (denied: boolean) => Effect.Effect<void>;
   }
->()("@thomasfosterau/effect-web/testing/WakeLockControl") {}
+>()("@thomasfosterau/effect-utilities/BrowserTesting/WakeLockControl") {}
 
 /**
  * What {@link make} builds: the `WakeLock` service over the in-memory
@@ -77,7 +77,7 @@ interface State {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { TestWakeLock } from "@thomasfosterau/effect-web/testing"
+ * import { TestWakeLock } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const { wakeLock, control } = TestWakeLock.make()
  * const program = Effect.scoped(Effect.andThen(wakeLock.acquire, control.held))
@@ -134,8 +134,8 @@ export const make = (options?: Options): Fixture => {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import { WakeLock } from "@thomasfosterau/effect-web/browser"
- * import { TestWakeLock } from "@thomasfosterau/effect-web/testing"
+ * import { WakeLock } from "@thomasfosterau/effect-utilities/Browser"
+ * import { TestWakeLock } from "@thomasfosterau/effect-utilities/BrowserTesting"
  *
  * const program = WakeLock.keepAwake(
  *   Effect.flatMap(TestWakeLock.Control, (control) => control.held),

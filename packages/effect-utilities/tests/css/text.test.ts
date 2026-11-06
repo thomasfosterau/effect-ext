@@ -1,4 +1,4 @@
-import { Color, Text } from "@thomasfosterau/effect-css";
+import { Color, Text } from "@thomasfosterau/effect-utilities/Css";
 import * as Option from "effect/Option";
 import { describe, expect, it } from "vite-plus/test";
 

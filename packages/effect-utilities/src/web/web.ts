@@ -70,7 +70,7 @@ const changedEntries = (
  *
  * @example
  * ```ts
- * import { ensureCacheControl, securityHeaders, updateWebHeaders } from "@thomasfosterau/effect-web"
+ * import { ensureCacheControl, securityHeaders, updateWebHeaders } from "@thomasfosterau/effect-utilities/Web"
  *
  * const response = updateWebHeaders(new Response("hi"), (headers) => ensureCacheControl(securityHeaders(headers)))
  * response.headers.get("cache-control") // "private, no-store"
@@ -106,7 +106,7 @@ export const updateWebHeaders = (
  *
  * @example
  * ```ts
- * import { securityHeaders, applyToWebHeaders } from "@thomasfosterau/effect-web"
+ * import { securityHeaders, applyToWebHeaders } from "@thomasfosterau/effect-utilities/Web"
  *
  * const headers = new Headers({ "x-frame-options": "SAMEORIGIN" })
  * applyToWebHeaders(headers, securityHeaders)

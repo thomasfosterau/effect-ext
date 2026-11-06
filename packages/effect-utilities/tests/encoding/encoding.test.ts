@@ -12,8 +12,8 @@ import * as Exit from "effect/Exit";
 import * as Option from "effect/Option";
 import * as Record from "effect/Record";
 import * as Stream from "effect/Stream";
-import { Encoding } from "@thomasfosterau/effect-encoding";
-import { LABELS } from "../src/internal/labels.ts";
+import { Encoding } from "@thomasfosterau/effect-utilities/Encoding";
+import { LABELS } from "../../src/internal/encoding/labels.ts";
 
 const bytes = (...values: ReadonlyArray<number>): Uint8Array => new Uint8Array(values);
 
