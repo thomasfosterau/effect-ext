@@ -37,7 +37,7 @@ catalog:
   # `docgen` task). Its `typescript` peer (`^5`) resolves to the TS6 alias
   # below, which pnpm tolerates via `peerDependencyRules`; the JS API it uses
   # is unchanged in 6.
-  "@effect/docgen": ^4.0.6
+  "@effect/docgen": ^4.1.2
   "@effect/language-service": ^0.87.5
   # Optional peer of effect-utilities: only the `Browser` and
   # `BrowserTesting` modules import it (its `Permissions`, `Clipboard` and
