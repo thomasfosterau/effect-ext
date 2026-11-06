@@ -20,7 +20,7 @@ import * as EffectRecord from "effect/Record";
 import * as Redacted from "effect/Redacted";
 import { AiError, EmbeddingModel } from "effect/ai";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/http";
-import { RerankerModel } from "@thomasfosterau/effect-ai-ext";
+import { RerankerModel } from "@thomasfosterau/effect-ext";
 import {
   VoyageClient,
   VoyageEmbeddingModel,

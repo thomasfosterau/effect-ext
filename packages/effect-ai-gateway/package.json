@@ -48,7 +48,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@thomasfosterau/effect-ai-ext": "workspace:*"
+    "@thomasfosterau/effect-ext": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",

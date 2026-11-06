@@ -4,15 +4,15 @@ A first-party [Effect](https://effect.website) AI provider for **Voyage AI** (em
 
 - **`VoyageClient`** — the low-level HTTP client for `/v1/embeddings` and `/v1/rerank`, every failure mapped to `AiError`. Its `apiUrl` override targets a proxy or a routing layer (the Cloudflare AI Gateway repoints it for BYOK).
 - **`VoyageEmbeddingModel`** — an `effect/ai` `EmbeddingModel` over `/v1/embeddings`, with `model` + `inputType` + `outputDimension` options and the current model/dimension matrix exposed as `EMBEDDING_MODELS`.
-- **`VoyageRerankerModel`** — a `@thomasfosterau/effect-ai-ext` `RerankerModel` over `/v1/rerank`.
+- **`VoyageRerankerModel`** — a `@thomasfosterau/effect-ext` `RerankerModel` over `/v1/rerank`.
 
 ## Install
 
 ```sh
-pnpm add @thomasfosterau/effect-ai-voyage @thomasfosterau/effect-ai-ext effect
+pnpm add @thomasfosterau/effect-ai-voyage @thomasfosterau/effect-ext effect
 ```
 
-`effect` (`^4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ai-ext` is a dependency; add it yourself to import the `RerankerModel` tag.
+`effect` (`^4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ext` is a dependency; add it yourself to import the `RerankerModel` tag.
 
 ## Usage
 
@@ -45,7 +45,7 @@ const program = Effect.flatMap(EmbeddingModel.EmbeddingModel, (model) =>
 ```ts
 import { Config, Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
-import { RerankerModel } from "@thomasfosterau/effect-ai-ext";
+import { RerankerModel } from "@thomasfosterau/effect-ext";
 import { VoyageClient, VoyageRerankerModel } from "@thomasfosterau/effect-ai-voyage";
 
 const RerankerLayer = VoyageRerankerModel.layer({ model: "rerank-2.5" }).pipe(
@@ -90,7 +90,7 @@ Results are returned in input order whatever order Voyage reports them in. `EMBE
 
 ### `VoyageRerankerModel`
 
-A `RerankerModel` from `@thomasfosterau/effect-ai-ext`. `layer(options)` and `make(options)` take `{ model, truncation? }`; `topN` is sent as Voyage's `top_k`. `RERANKER_MODELS` lists the current reranker ids. Validation, sorting and the empty-documents short-circuit come from `RerankerModel.make`.
+A `RerankerModel` from `@thomasfosterau/effect-ext`. `layer(options)` and `make(options)` take `{ model, truncation? }`; `topN` is sent as Voyage's `top_k`. `RERANKER_MODELS` lists the current reranker ids. Validation, sorting and the empty-documents short-circuit come from `RerankerModel.make`.
 
 ### Errors
 

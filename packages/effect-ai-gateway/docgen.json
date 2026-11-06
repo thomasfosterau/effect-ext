@@ -31,8 +31,8 @@
     "types": ["node"],
     "paths": {
       "@thomasfosterau/effect-ai-gateway": ["../../dist/index"],
-      "@thomasfosterau/effect-ai-ext": ["../../../effect-ai-ext/dist/index"],
-      "@thomasfosterau/effect-ai-ext/*": ["../../../effect-ai-ext/dist/*"]
+      "@thomasfosterau/effect-ext": ["../../../effect-ext/dist/index"],
+      "@thomasfosterau/effect-ext/*": ["../../../effect-ext/dist/*"]
     }
   }
 }

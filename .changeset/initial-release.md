@@ -1,8 +1,8 @@
 ---
-"@thomasfosterau/effect-utilities": minor
+"@thomasfosterau/effect-ext": minor
 ---
 
-Initial release of `@thomasfosterau/effect-utilities`: extensions to the Effect standard library, merging the unreleased `effect-ext` and `@thomasfosterau/effect-schema-ext` packages into one (14 modules). Peer: `effect` PEER_RANGE. Every module is its own entry point and a namespace on `.`.
+Initial release of `@thomasfosterau/effect-ext`: extensions to the Effect standard library, merging the unreleased `effect-ext` and `@thomasfosterau/effect-schema-ext` packages into one (14 modules). Peer: `effect` PEER_RANGE. Every module is its own entry point and a namespace on `.`.
 
 Binary data, Allocator-backed:
 

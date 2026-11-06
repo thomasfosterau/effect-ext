@@ -6,13 +6,15 @@
  * of one of the two factories below, which differ in how a package resolves
  * itself and its siblings during development:
  *
- * - `packageConfig` (the `effect-ai-*` family and `effect-evals`): the
- *   development `exports` point at `src/` and `publishConfig` rewrites them to
- *   `dist/` on publish, so a test or type check that imports a package by
- *   name, its own or a sibling's, resolves to `src/` with no alias and no
- *   build first. Only `docgen`, which runs its examples against `dist/`,
- *   carries build edges.
- * - `distExportsPackageConfig` (`effect-utilities`): `exports` point at
+ * - `packageConfig` (the `effect-ai-*` providers): the development `exports`
+ *   point at `src/` and `publishConfig` rewrites them to `dist/` on publish,
+ *   so a test or type check that imports a provider by name resolves to its
+ *   `src/` with no alias and no build first. `@thomasfosterau/effect-ext`,
+ *   whose `exports` point at `dist/`, is aliased to its `src/` for the tests
+ *   (`effectExtAlias`) and mapped there by each provider's tsconfig `paths`.
+ *   Only `docgen`, which runs its examples against `dist/`, carries build
+ *   edges.
+ * - `distExportsPackageConfig` (`effect-ext`): `exports` point at
  *   `dist/` in development too, so `tests/dist-consumer` and docgen consume
  *   the package exactly as a consumer does. Its tests import the package by
  *   name through an alias to `src/`, and a sibling is consumed through its
@@ -80,11 +82,15 @@ const testEnv = ["VITEST_MAX_WORKERS", "NODE_OPTIONS"];
 
 /**
  * The vitest settings both factories share. `include` is narrow on purpose:
- * `effect-evals`' `tests/eval-glob-separation.test.ts` pins this exact value
+ * effect-ext's `tests/evals/eval-glob-separation.test.ts` pins this exact value
  * so the unit suite can never start picking up `*.eval.ts` files, which may
  * need real provider credentials to run.
  */
-const testOptions = (floor: CoverageFloor, coverageExclude: ReadonlyArray<string>) => {
+const testOptions = (
+  floor: CoverageFloor,
+  coverageExclude: ReadonlyArray<string>,
+  globFloors: Readonly<Record<string, CoverageFloor>> = {},
+) => {
   // Read once, synchronously, from the environment (`Config`'s default
   // provider); unset leaves vitest's own default in place.
   const maxWorkers = Effect.runSync(Config.option(Config.Int("VITEST_MAX_WORKERS")));
@@ -104,7 +110,12 @@ const testOptions = (floor: CoverageFloor, coverageExclude: ReadonlyArray<string
       // `coverage` from the root config only, so this binds the per-package
       // `test:coverage` task; the root task applies the same floors per
       // package through glob thresholds (root `vite.config.ts`).
-      thresholds: { ...resolveCoverageThresholds(floor) },
+      // A glob floor binds the files it matches as well: effect-ext keeps the
+      // floors the AI abstractions and the evals toolkit arrived with.
+      thresholds: {
+        ...resolveCoverageThresholds(floor),
+        ...R.map(globFloors, (glob) => ({ ...resolveCoverageThresholds(glob) })),
+      },
     },
   };
   // `maxWorkers` is added only when the environment names one.
@@ -114,11 +125,11 @@ const testOptions = (floor: CoverageFloor, coverageExclude: ReadonlyArray<string
   });
 };
 
-/** What differs per `effect-ai-*` / `effect-evals` package. */
+/** What differs per `effect-ai-*` provider package. */
 export interface PackageConfigOptions {
   /**
    * `pack.entry`: output name (without extension) → source file. One entry per
-   * `publishConfig.exports` subpath (plus the `effect-evals` CLI), so the
+   * `publishConfig.exports` subpath, so the
    * built file names match what `publishConfig` points at.
    */
   readonly entry: Readonly<Record<string, string>>;
@@ -133,27 +144,32 @@ export interface PackageConfigOptions {
    * tests, so another package's tests can hide a drop.
    */
   readonly coverageFloor?: CoverageFloor;
-  /** Whether the package type-checks its tests through a `tsconfig.test.json`. Default true. */
-  readonly testTsconfig?: boolean;
 }
+
+/**
+ * Resolves `@thomasfosterau/effect-ext` and its top-level subpaths (the AI
+ * abstractions the providers implement) to its `src/` for the providers'
+ * tests: its `exports` point at `dist/`, which a unit run must not need.
+ */
+const effectExtSrc = new URL("./packages/effect-ext/src/", import.meta.url).pathname;
+const effectExtAlias = [
+  { find: /^@thomasfosterau\/effect-ext$/, replacement: `${effectExtSrc}index.ts` },
+  { find: /^@thomasfosterau\/effect-ext\/(\w+)$/, replacement: `${effectExtSrc}$1.ts` },
+];
 
 /** A package whose development `exports` point at `src/` (see the header). */
 export const packageConfig = ({
   entry,
   coverageExclude = [],
   coverageFloor = {},
-  testTsconfig = true,
 }: PackageConfigOptions) =>
   defineConfig({
     run: {
       tasks: {
         // `src` under the native, Effect-patched `tsc`, then the tests under
-        // `tsconfig.test.json`. `effect-evals` has no tsconfig.test.json: its
-        // `tsconfig.json` already covers its tests and configs.
+        // `tsconfig.test.json`.
         check: {
-          command: testTsconfig
-            ? "tsc -p tsconfig.json && tsc -p tsconfig.test.json"
-            : "tsc -p tsconfig.json",
+          command: "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
           cache: { input: cacheInputs, output: [] },
         },
         // The published artifact: one ESM bundle + declaration file per entry
@@ -178,7 +194,7 @@ export const packageConfig = ({
         // docgen.json maps those names onto `dist/` through
         // `examplesCompilerOptions.paths` (honoured by both the examples' `tsc`
         // and the `tsx` that runs them). Hence the build edges: the package's
-        // own and its workspace dependencies' (`@thomasfosterau/effect-ai-ext`).
+        // own and its workspace dependencies' (`@thomasfosterau/effect-ext`).
         docgen: {
           command: "docgen",
           dependsOn: ["build", { task: "build", from: "dependencies" }],
@@ -214,6 +230,7 @@ export const packageConfig = ({
         ],
       },
     },
+    resolve: { alias: effectExtAlias },
     test: testOptions(coverageFloor, coverageExclude),
   });
 
@@ -221,12 +238,23 @@ export const packageConfig = ({
 export interface DistExportsPackageConfigOptions {
   /** The package's `import.meta.url`, so paths resolve relative to it. */
   readonly url: string;
-  /** The published name (`@thomasfosterau/effect-utilities`), for the test alias. */
+  /** The published name (`@thomasfosterau/effect-ext`), for the test alias. */
   readonly name: string;
-  /** `pack.entry`: `index` → `src/index.ts`, every other key → `src/<key>.ts`. */
+  /**
+   * `pack.entry`: every key is `src/<key>.ts` built to `dist/<key>.js`, and
+   * the subpath the test alias resolves: `index` is the package name itself,
+   * `<dir>/index` is the `./<dir>` barrel, any other key is `./<key>`.
+   */
   readonly entries: ReadonlyArray<string>;
   /** The package's coverage ratchet (see `PackageConfigOptions.coverageFloor`). */
   readonly coverageFloor?: CoverageFloor;
+  /**
+   * Floors for parts of the package, by glob relative to it: each binds the
+   * files it matches on top of `coverageFloor`, which binds every file.
+   */
+  readonly coverageGlobFloors?: Readonly<Record<string, CoverageFloor>>;
+  /** Extra coverage exclusions (beyond declaration files). */
+  readonly coverageExclude?: ReadonlyArray<string>;
 }
 
 /**
@@ -244,12 +272,14 @@ export const distExportsPackageConfig = ({
   name,
   entries,
   coverageFloor = {},
+  coverageGlobFloors = {},
+  coverageExclude = [],
 }: DistExportsPackageConfigOptions) => {
   const srcDir = new URL("./src/", url).pathname;
-  const subpaths = entries.filter((entry) => entry !== "index");
-  const entry = R.fromEntries(
-    Arr.map(entries, (one) => [one, one === "index" ? "src/index.ts" : `src/${one}.ts`] as const),
-  );
+  const entry = R.fromEntries(Arr.map(entries, (one) => [one, `src/${one}.ts`] as const));
+  // `index` → the package name, `<dir>/index` → `<name>/<dir>`, `<key>` → `<name>/<key>`.
+  const specifier = (one: string) =>
+    one === "index" ? name : `${name}/${one.replace(/\/index$/, "")}`;
   return defineConfig({
     run: {
       tasks: {
@@ -300,25 +330,21 @@ export const distExportsPackageConfig = ({
       dts: true,
       outDir: "dist",
       clean: true,
+      // `node:*` builtins (the `effect-evals` CLI) are the runtime's own;
+      // naming them keeps the `neutral` platform from reporting them as
+      // unresolved imports.
+      deps: { neverBundle: [/^node:/] },
     },
     resolve: {
       // Tests import the package by name, exactly as a consumer would (and as
       // tsconfig.test.json's `paths` type-checks them), so the runner resolves
       // that name to `src/` rather than to the built `dist/` that `exports`
       // points at — a unit run never needs a build first.
-      alias: [
-        { find: new RegExp(`^${escapeRegExp(name)}$`), replacement: `${srcDir}index.ts` },
-        ...Arr.match(subpaths, {
-          onEmpty: () => [],
-          onNonEmpty: (values) => [
-            {
-              find: new RegExp(`^${escapeRegExp(name)}/(${values.map(escapeRegExp).join("|")})$`),
-              replacement: `${srcDir}$1.ts`,
-            },
-          ],
-        }),
-      ],
+      alias: Arr.map(entries, (one) => ({
+        find: new RegExp(`^${escapeRegExp(specifier(one))}$`),
+        replacement: `${srcDir}${one}.ts`,
+      })),
     },
-    test: testOptions(coverageFloor, []),
+    test: testOptions(coverageFloor, coverageExclude, coverageGlobFloors),
   });
 };

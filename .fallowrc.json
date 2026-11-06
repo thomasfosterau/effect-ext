@@ -1,17 +1,20 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "entry": [
-    "packages/effect-utilities/src/*.ts",
+    "packages/effect-ext/src/*.ts",
     "packages/*/tests/**/*.test.ts",
     "packages/*/tests/**/*.types.ts",
     "tests/dist-consumer/src/*.ts",
     "packages/*/src/index.ts",
-    "packages/effect-ai-ext/entries/*.ts",
-    "packages/effect-ai-ext/src/*Model.ts",
-    "packages/effect-evals/src/cli/main.ts",
-    "packages/effect-evals/src/cli/loader.mjs",
-    "packages/effect-evals/bin/effect-evals.js",
-    "packages/effect-evals/tests/fixtures/**",
+    "packages/effect-ext/src/evals/index.ts",
+    "packages/effect-ext/src/evals/*.ts",
+    "packages/effect-ext/src/evals/metrics/*.ts",
+    "packages/effect-ext/src/evals/metrics/rag/*.ts",
+    "packages/effect-ext/src/evals/scorers/{EmbeddingSimilarity,ExactMatch,JsonValidity,Levenshtein,SchemaMatch,ToolCallCorrectness}.ts",
+    "packages/effect-ext/src/evals/cli/main.ts",
+    "packages/effect-ext/src/evals/cli/loader.mjs",
+    "packages/effect-ext/bin/effect-evals.js",
+    "packages/effect-ext/tests/evals/fixtures/**",
     "**/vite.config.ts",
     "vite.package.ts",
     "scripts/check-dist.mjs",
@@ -53,16 +56,12 @@
   "boundaries": {
     "zones": [
       {
-        "name": "effect-utilities",
-        "patterns": ["packages/effect-utilities/**"]
+        "name": "effect-ext",
+        "patterns": ["packages/effect-ext/**"]
       },
       {
         "name": "dist-consumer",
         "patterns": ["tests/dist-consumer/**"]
-      },
-      {
-        "name": "ai-ext",
-        "patterns": ["packages/effect-ai-ext/**"]
       },
       {
         "name": "gateway",
@@ -83,28 +82,20 @@
       {
         "name": "elevenlabs",
         "patterns": ["packages/effect-ai-elevenlabs/**"]
-      },
-      {
-        "name": "evals",
-        "patterns": ["packages/effect-evals/**"]
       }
     ],
     "rules": [
       {
-        "from": "effect-utilities",
+        "from": "effect-ext",
         "allow": []
       },
       {
         "from": "dist-consumer",
-        "allow": ["effect-utilities"]
-      },
-      {
-        "from": "ai-ext",
-        "allow": []
+        "allow": ["effect-ext"]
       },
       {
         "from": "gateway",
-        "allow": ["ai-ext"]
+        "allow": ["effect-ext"]
       },
       {
         "from": "mistral",
@@ -112,23 +103,19 @@
       },
       {
         "from": "cohere",
-        "allow": ["ai-ext"]
+        "allow": ["effect-ext"]
       },
       {
         "from": "voyage",
-        "allow": ["ai-ext"]
+        "allow": ["effect-ext"]
       },
       {
         "from": "elevenlabs",
-        "allow": ["ai-ext"]
-      },
-      {
-        "from": "evals",
-        "allow": []
+        "allow": ["effect-ext"]
       }
     ]
   },
-  // `pipe` is the Effect `Pipeable` protocol. On effect-utilities' numeric
+  // `pipe` is the Effect `Pipeable` protocol. On effect-ext's numeric
   // `Value` (src/internal/numeric/value.ts), the base class of `Ratio` and
   // `Complex`, consumers call it through the public interfaces
   // (tests/numeric/Pipeable.test.ts), which fallow does not trace.
@@ -150,7 +137,7 @@
     "maxCrap": 30,
     "coverage": "coverage/coverage-final.json"
   },
-  // Each AI package's tests/helpers/effect.ts is the one shared harness shape,
+  // Each AI suite's tests/helpers/effect.ts is the one shared harness shape,
   // copied whole into every package so a suite can reach for any helper; a
   // package whose suite does not use one yet still carries it. The AI modules
   // export the same short names (`make`, `layer`, `Options`, `contramap`);
@@ -158,7 +145,11 @@
   // so the shared names are the API shape, not a duplicate.
   "ignoreExports": [
     {
-      "file": "packages/*/tests/helpers/effect.ts",
+      "file": "packages/effect-ai-*/tests/helpers/effect.ts",
+      "exports": ["runTestExit", "recordingTracer", "RecordedSpan", "RecordingTracer"]
+    },
+    {
+      "file": "packages/effect-ext/tests/{ai,evals}/helpers/effect.ts",
       "exports": ["runTestExit", "recordingTracer", "RecordedSpan", "RecordingTracer"]
     },
     {
@@ -166,14 +157,18 @@
       "exports": ["make", "layer", "Options", "contramap"]
     },
     {
-      "file": "packages/effect-evals/src/*.ts",
+      "file": "packages/effect-ext/src/{ClassifierModel,ImageModel,ModerationModel,RerankerModel,SpeechModel,TranscriptionModel,VoiceConversionModel}.ts",
       "exports": ["make", "layer", "Options", "contramap"]
     },
-    // effect-utilities' `Browser` / `BrowserTesting` modules (merged in from
+    {
+      "file": "packages/effect-ext/src/evals/**/*.ts",
+      "exports": ["make", "layer", "Options", "contramap"]
+    },
+    // effect-ext's `Browser` / `BrowserTesting` modules (merged in from
     // effect-web) share one service shape, re-exported as namespaces from
     // their subpath barrels (`Locks.layer`, `TestLocks.Control`).
     {
-      "file": "packages/effect-utilities/src/browser/*.ts",
+      "file": "packages/effect-ext/src/browser/*.ts",
       "exports": ["make", "layer", "changes", "requestPermission", "withLock", "watch"]
     },
     // `Css` re-exports each of its modules as a namespace, so `Color.parse`,
@@ -181,15 +176,15 @@
     // `internal/web/dom.ts`'s `watch` is the helper `IdleDetection.watch`
     // shares a name with, never imported side by side.
     {
-      "file": "packages/effect-utilities/src/css/*.ts",
+      "file": "packages/effect-ext/src/css/*.ts",
       "exports": ["parse", "serialize"]
     },
     {
-      "file": "packages/effect-utilities/src/internal/web/dom.ts",
+      "file": "packages/effect-ext/src/internal/web/dom.ts",
       "exports": ["watch"]
     },
     {
-      "file": "packages/effect-utilities/src/browser-testing/*.ts",
+      "file": "packages/effect-ext/src/browser-testing/*.ts",
       "exports": ["make", "layer", "Control", "Fixture", "Options"]
     }
   ]

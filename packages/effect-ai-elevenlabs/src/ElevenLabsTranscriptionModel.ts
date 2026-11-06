@@ -1,6 +1,6 @@
 /**
  * `ElevenLabsTranscriptionModel` — the ElevenLabs implementation of
- * `effect-ai-ext`'s `TranscriptionModel` service (speech-to-text) over Scribe.
+ * `effect-ext`'s `TranscriptionModel` service (speech-to-text) over Scribe.
  * It accepts audio as bytes or a stream, uploads it as `multipart/form-data`,
  * and maps the Scribe transcript into the neutral response: the full text,
  * per-word segment timestamps, and the detected language.
@@ -14,7 +14,7 @@
  * @copyright Thomas Foster
  */
 
-import { TranscriptionModel } from "@thomasfosterau/effect-ai-ext";
+import * as TranscriptionModel from "@thomasfosterau/effect-ext/TranscriptionModel";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

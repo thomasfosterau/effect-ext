@@ -1,5 +1,5 @@
 /**
- * `VoyageRerankerModel` — the Voyage AI implementation of effect-ai-ext's
+ * `VoyageRerankerModel` — the Voyage AI implementation of effect-ext's
  * `RerankerModel` service. It maps a query and candidate documents onto
  * Voyage's `/v1/rerank` request (via {@link VoyageClient}), then converts the
  * scored results back into a `RerankerModel.ProviderResponse`. The abstraction
@@ -13,7 +13,7 @@
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Predicate from "effect/Predicate";
-import * as RerankerModel from "@thomasfosterau/effect-ai-ext/RerankerModel";
+import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
 import { VoyageClient } from "./VoyageClient";
 import type * as Wire from "./internal/wire";
 

@@ -1,12 +1,12 @@
 /**
- * `CohereRerankerModel` — the Cohere implementation of effect-ai-ext's
+ * `CohereRerankerModel` — the Cohere implementation of effect-ext's
  * `RerankerModel` service over Cohere's `/v2/rerank` endpoint (via
  * {@link CohereClient}). It scores and reorders candidate documents against a
  * query.
  *
  * The pinned model (`rerank-v3.5`) lives here as the single source of truth.
  * The abstraction's `make` validates and normalises the provider results (see
- * `@thomasfosterau/effect-ai-ext/RerankerModel`), so this module only maps
+ * `@thomasfosterau/effect-ext/RerankerModel`), so this module only maps
  * Cohere's wire response into the provider-response contract.
  *
  * @module CohereRerankerModel
@@ -16,7 +16,7 @@
 
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import * as RerankerModel from "@thomasfosterau/effect-ai-ext/RerankerModel";
+import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
 import { CohereClient } from "./CohereClient";
 
 /** Cohere's reranker model. A single constant so rotation is one edit. */

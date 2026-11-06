@@ -12,9 +12,9 @@
  *   response decoding, exposed through `layer`, `model`, and `make`.
  * - {@link CohereEmbeddingModel} — the `EmbeddingModel` implementation over
  *   `embed-v4.0` (pinned model + output dimension).
- * - {@link CohereRerankerModel} — the effect-ai-ext `RerankerModel`
+ * - {@link CohereRerankerModel} — the effect-ext `RerankerModel`
  *   implementation over `rerank-v3.5`.
- * - {@link CohereClassifierModel} — the effect-ai-ext `ClassifierModel`
+ * - {@link CohereClassifierModel} — the effect-ext `ClassifierModel`
  *   implementation, backed by Cohere chat + structured output (Cohere's
  *   dedicated Classify surface is v1-legacy; see the module for the rationale).
  *

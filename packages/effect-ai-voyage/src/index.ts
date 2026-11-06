@@ -8,7 +8,7 @@
  *   lets a routing layer (the Cloudflare AI Gateway) repoint it for BYOK.
  * - {@link VoyageEmbeddingModel} — `effect/ai`'s `EmbeddingModel`,
  *   with the current model/dimension matrix exposed as constants.
- * - {@link VoyageRerankerModel} — `@thomasfosterau/effect-ai-ext`'s
+ * - {@link VoyageRerankerModel} — `@thomasfosterau/effect-ext`'s
  *   `RerankerModel`.
  *
  * @example

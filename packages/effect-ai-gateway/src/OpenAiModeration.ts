@@ -1,6 +1,6 @@
 /**
  * OpenAI `omni-moderation` as a provider-neutral `ModerationModel`
- * (`@thomasfosterau/effect-ai-ext`), routed through the Cloudflare AI
+ * (`@thomasfosterau/effect-ext`), routed through the Cloudflare AI
  * Gateway's universal endpoint. OpenAI has no `@effect/ai-*` package to
  * repoint, so — like `Cohere.ts` — this module is built directly on the two
  * gateway transports (`internal/transport.ts`): the Worker `AI` binding
@@ -74,7 +74,7 @@ import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 import { AiError, type Prompt } from "effect/ai";
 import { FetchHttpClient, HttpClient } from "effect/http";
-import { ModerationModel } from "@thomasfosterau/effect-ai-ext";
+import * as ModerationModel from "@thomasfosterau/effect-ext/ModerationModel";
 import type { GatewayBinding, GatewayProvider } from "./Binding";
 import { requestViaBinding, requestViaUrl, type GatewayCall } from "./internal/transport";
 import * as Url from "./Url";

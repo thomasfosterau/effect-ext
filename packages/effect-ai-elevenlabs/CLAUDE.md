@@ -1,10 +1,10 @@
 # @thomasfosterau/effect-ai-elevenlabs
 
-A first-party provider over the ElevenLabs API: `ElevenLabsClient` (text-to-speech, streaming text-to-speech, Scribe speech-to-text, speech-to-speech) and the `effect-ai-ext` `SpeechModel`, `TranscriptionModel` and `VoiceConversionModel` over it. Shaped like `effect-ai-mistral`.
+A first-party provider over the ElevenLabs API: `ElevenLabsClient` (text-to-speech, streaming text-to-speech, Scribe speech-to-text, speech-to-speech) and the `effect-ext` `SpeechModel`, `TranscriptionModel` and `VoiceConversionModel` over it. Shaped like `effect-ai-mistral`.
 
 ## Boundary
 
-Peer: `effect`. May import `@thomasfosterau/effect-ai-ext` (a `workspace:*` dependency) and nothing else from this workspace (`.fallowrc.json` zone `elevenlabs`).
+Peer: `effect`. May import `@thomasfosterau/effect-ext` (a `workspace:*` dependency) and nothing else from this workspace (`.fallowrc.json` zone `elevenlabs`).
 
 ## Invariants
 

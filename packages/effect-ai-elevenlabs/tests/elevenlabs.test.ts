@@ -1,6 +1,6 @@
 /**
  * Unit tests for the ElevenLabs Effect AI provider (`src/ElevenLabsClient.ts`
- * and the three `effect-ai-ext` model implementations).
+ * and the three `effect-ext` model implementations).
  *
  * The network is stubbed at `FetchHttpClient.Fetch` — the same technique the
  * mistral provider tests use. Each stub captures the outgoing request (URL,
@@ -20,11 +20,7 @@
  */
 
 import { assert, describe, expect, it } from "vite-plus/test";
-import {
-  SpeechModel,
-  TranscriptionModel,
-  VoiceConversionModel,
-} from "@thomasfosterau/effect-ai-ext";
+import { SpeechModel, TranscriptionModel, VoiceConversionModel } from "@thomasfosterau/effect-ext";
 import * as Config from "effect/Config";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

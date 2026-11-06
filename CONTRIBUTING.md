@@ -16,7 +16,7 @@ vp run check   # type gates
 
 ## Adding a module or a package
 
-A new `effect-utilities` module follows the checklist under Conventions in [AGENTS.md](AGENTS.md#conventions); a new AI provider or abstraction follows the patterns under [The AI packages](AGENTS.md#the-ai-packages).
+A new `effect-ext` module follows the checklist under Conventions in [AGENTS.md](AGENTS.md#conventions); a new AI provider or abstraction follows the patterns under [The AI packages](AGENTS.md#the-ai-packages).
 
 ## Branch model
 
@@ -43,7 +43,7 @@ The gates themselves, in order, are in [AGENTS.md § Verification](AGENTS.md#ver
 ```sh
 vp lint                                              # oxlint only
 vp fmt                                               # oxfmt, writing fixes
-vp run --filter ./packages/effect-utilities check    # one package's own type gate
+vp run --filter ./packages/effect-ext check    # one package's own type gate
 vp test run tests/Str.test.ts                        # single file (from inside the package)
 vp run -r test:coverage                              # the per-package coverage floors
 vp run check:dist                                    # built entries load and type-check; the effect-evals bin runs

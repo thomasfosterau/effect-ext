@@ -32,8 +32,8 @@ body:
     id: versions
     attributes:
       label: Versions
-      description: "`@thomasfosterau/effect-utilities` and `effect`."
-      placeholder: "effect-utilities 0.1.0, effect 4.0.6"
+      description: "`@thomasfosterau/effect-ext` and `effect`."
+      placeholder: "effect-ext 0.1.0, effect 4.0.6"
     validations:
       required: true
   - type: checkboxes

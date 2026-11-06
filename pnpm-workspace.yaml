@@ -1,6 +1,7 @@
 # pnpm workspace for the published packages under packages/* —
-# `@thomasfosterau/effect-utilities` and the `@thomasfosterau/effect-ai-*` /
-# `effect-evals` family (merged in from thomasfosterau/effect-ai-ext) — plus
+# `@thomasfosterau/effect-ext` (into which `@thomasfosterau/effect-ai-ext`
+# and `effect-evals` merged) and the `@thomasfosterau/effect-ai-*` providers
+# (merged in from thomasfosterau/effect-ai-ext) — plus
 # the dist-consumer declaration check under tests/*.
 #
 # The `catalog:` protocol pins versions that MUST be singletons across the
@@ -43,12 +44,12 @@ catalog:
   # launch. It moves with the Effect line, in Dependabot's `effect` group.
   "@effect/docgen": 4.0.6
   "@effect/language-service": ^0.87.5
-  # Optional peer of effect-utilities: only the `Browser` and
+  # Optional peer of effect-ext: only the `Browser` and
   # `BrowserTesting` modules import it (its `Permissions`, `Clipboard` and
   # `Geolocation` services). The Effect line: equal to `effect`, since its own
   # peer is `effect: ^<its version>`.
   "@effect/platform-browser": 4.0.6
-  # `effect-evals`' optional CLI peer. Equal to `effect`.
+  # effect-ext's optional peer for the `effect-evals` CLI. Equal to `effect`.
   "@effect/platform-node": 4.0.6
   # Transitive only (via @effect/platform-node's `^` range); pinned and
   # overridden so it cannot float ahead of `effect`. BUMP BY HAND with the rest
@@ -78,11 +79,11 @@ catalog:
   # `@oxlint/plugins`, so it is not tied to the toolchain set and Dependabot
   # proposes it on its own; an `effect` bump re-runs `vp check` against it.
   "@enfect/oxlint": 0.10.0
-  # Optional peer of effect-utilities: only the `Negotiate` module imports it
+  # Optional peer of effect-ext: only the `Negotiate` module imports it
   # (the JSON:API §5/§6 media-type rules are adopted from its `Middleware`,
   # never re-implemented here).
   "@thomasfosterau/effect-jsonapi": ^0.20.0
-  # Optional peer of effect-utilities: the `Robots` line grammar is an
+  # Optional peer of effect-ext: the `Robots` line grammar is an
   # effect-parse parser, decoded through its `ParserSchema` (effect-web#113).
   "@thomasfosterau/effect-parse": ^0.4.1
   "@types/node": ^26.6.6
@@ -93,7 +94,7 @@ catalog:
   # `catalogs.peers` below.
   effect: 4.0.6
   fallow: 3.39.0
-  # The property tests behind effect-utilities' numeric modules (merged in
+  # The property tests behind effect-ext's numeric modules (merged in
   # from thomasfosterau/effect-numeric): arithmetic laws checked against a
   # `bigint` reference. Test-only, never a dependency of `dist/`.
   fast-check: ^4.10.2
@@ -127,7 +128,7 @@ catalog:
 # scripts/release.sh). The floor is the oldest `effect` every package has been
 # type-checked, tested and had its examples run against: 4.0.0, the first
 # stable release (raised from rc.118 in #30). The AI packages'
-# `@effect/ai-anthropic` / `@effect/platform-node` peers and effect-utilities'
+# `@effect/ai-anthropic` / `@effect/platform-node` peers and effect-ext's
 # `@effect/platform-browser` share it. The range is a caret, `^4.0.0`, per the
 # owner's peer-range policy, decided per package: a package whose own
 # dependencies require a newer `effect` gets a named catalog of its own
@@ -142,7 +143,7 @@ catalog:
 # 4.20250312.0, the first whose `AiGateway` declares `getUrl()`. Re-verify
 # assignability at the floor before moving it.
 #
-# effect-utilities' three optional peers (merged in from
+# effect-ext's three optional peers (merged in from
 # thomasfosterau/effect-web) each serve only the modules that import them:
 # `@effect/platform-browser` (`Browser`, `BrowserTesting`; its 4.0.0 is the
 # first stable release, on the `effect` floor), `@thomasfosterau/effect-jsonapi`

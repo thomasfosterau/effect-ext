@@ -1,5 +1,5 @@
 /**
- * `CohereClassifierModel` — the Cohere implementation of effect-ai-ext's
+ * `CohereClassifierModel` — the Cohere implementation of effect-ext's
  * `ClassifierModel` service. It assigns labelled classes with confidence
  * scores to each input text.
  *
@@ -37,7 +37,7 @@
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as LanguageModel from "effect/ai/LanguageModel";
-import * as ClassifierModel from "@thomasfosterau/effect-ai-ext/ClassifierModel";
+import * as ClassifierModel from "@thomasfosterau/effect-ext/ClassifierModel";
 import { CohereClient } from "./CohereClient";
 import * as CohereLanguageModel from "./CohereLanguageModel";
 

@@ -16,7 +16,7 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 import * as Redacted from "effect/Redacted";
 import { AiError } from "effect/ai";
-import type { ModerationModel } from "@thomasfosterau/effect-ai-ext";
+import type { ModerationModel } from "@thomasfosterau/effect-ext";
 import {
   OPENAI_MODERATION_MODEL,
   makeOpenAiModerationModel,

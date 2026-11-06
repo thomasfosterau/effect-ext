@@ -1,0 +1,554 @@
+{
+  "$schema": "https://www.schemastore.org/package",
+  "name": "@thomasfosterau/effect-ext",
+  "version": "0.0.0",
+  "description": "Extensions to the Effect standard library: Allocator-backed binary data (layouts, buffer structs, vectors, struct-of-arrays, Rust-style UTF-8 strings), Schema helpers (the update tri-state, issue → RFC 6901 JSON Pointer, bounded codecs, ids, exact literal tuples, introspection, typed URLs), and web-platform building blocks (request/response policies, SSRF-safe fetch, content negotiation, service workers, browser APIs as services, robots.txt, sitemaps, RSS / Atom / JSON Feed, URI Templates, BCP 47 language tags, CSS parsing, WHATWG encodings and MIME types), Rust-style numeric types (fixed-width integers with checked, wrapping, saturating and overflowing arithmetic, clamped ranges, floats, rationals, complex numbers, num-traits type classes), parsers for time formats (RFC 3339, RFC 9557, ISO 8601 durations, POSIX TZ, cron, RRULE, IANA time zones, TZif), the provider-neutral AI service abstractions effect/ai lacks (reranker, classifier, text-to-speech, speech-to-text, image, moderation, voice conversion) and an LLM evaluation toolkit (goldens, scorers, G-Eval, RAG and retrieval-ranking metrics, a caching runner and the effect-evals CLI).",
+  "keywords": [
+    "ai",
+    "allocator",
+    "arraybuffer",
+    "atom",
+    "bcp47",
+    "bigint",
+    "browser",
+    "checked",
+    "classifier",
+    "complex",
+    "cron",
+    "css",
+    "datetime",
+    "duration",
+    "effect",
+    "effect-schema",
+    "encoding",
+    "evals",
+    "evaluation",
+    "g-eval",
+    "image-generation",
+    "integer",
+    "iso8601",
+    "json-feed",
+    "json-pointer",
+    "llm",
+    "llm-as-judge",
+    "mime",
+    "moderation",
+    "ndcg",
+    "numeric",
+    "pagination",
+    "rag",
+    "rational",
+    "reranker",
+    "retrieval",
+    "rfc3339",
+    "rfc5545",
+    "rfc6901",
+    "rfc9557",
+    "robots-txt",
+    "rrule",
+    "rss",
+    "saturating",
+    "schema",
+    "scorer",
+    "service-worker",
+    "sitemap",
+    "slug",
+    "struct-of-arrays",
+    "stt",
+    "timezone",
+    "tts",
+    "typescript",
+    "tzif",
+    "uri-template",
+    "url",
+    "utf8",
+    "uuid",
+    "web",
+    "wrapping"
+  ],
+  "homepage": "https://github.com/thomasfosterau/effect-ext#readme",
+  "bugs": {
+    "url": "https://github.com/thomasfosterau/effect-ext/issues"
+  },
+  "license": "MIT",
+  "author": "Thomas Foster <me@thomasfoster.au>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thomasfosterau/effect-ext.git",
+    "directory": "packages/effect-ext"
+  },
+  "bin": {
+    "effect-evals": "./bin/effect-evals.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "src/evals/cli/loader.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./Allocator": {
+      "types": "./dist/Allocator.d.ts",
+      "default": "./dist/Allocator.js"
+    },
+    "./ArithmeticError": {
+      "types": "./dist/ArithmeticError.d.ts",
+      "default": "./dist/ArithmeticError.js"
+    },
+    "./Ast": {
+      "types": "./dist/Ast.d.ts",
+      "default": "./dist/Ast.js"
+    },
+    "./AtomFeed": {
+      "types": "./dist/AtomFeed.d.ts",
+      "default": "./dist/AtomFeed.js"
+    },
+    "./Bounded": {
+      "types": "./dist/Bounded.d.ts",
+      "default": "./dist/Bounded.js"
+    },
+    "./Browser": {
+      "types": "./dist/Browser.d.ts",
+      "default": "./dist/Browser.js"
+    },
+    "./BrowserTesting": {
+      "types": "./dist/BrowserTesting.d.ts",
+      "default": "./dist/BrowserTesting.js"
+    },
+    "./BufferStruct": {
+      "types": "./dist/BufferStruct.d.ts",
+      "default": "./dist/BufferStruct.js"
+    },
+    "./Checked": {
+      "types": "./dist/Checked.d.ts",
+      "default": "./dist/Checked.js"
+    },
+    "./Clamped": {
+      "types": "./dist/Clamped.d.ts",
+      "default": "./dist/Clamped.js"
+    },
+    "./ClassifierModel": {
+      "types": "./dist/ClassifierModel.d.ts",
+      "default": "./dist/ClassifierModel.js"
+    },
+    "./Complex": {
+      "types": "./dist/Complex.d.ts",
+      "default": "./dist/Complex.js"
+    },
+    "./CronExpression": {
+      "types": "./dist/CronExpression.d.ts",
+      "default": "./dist/CronExpression.js"
+    },
+    "./Css": {
+      "types": "./dist/Css.d.ts",
+      "default": "./dist/Css.js"
+    },
+    "./Encoding": {
+      "types": "./dist/Encoding.d.ts",
+      "default": "./dist/Encoding.js"
+    },
+    "./EncodingBig5": {
+      "types": "./dist/EncodingBig5.d.ts",
+      "default": "./dist/EncodingBig5.js"
+    },
+    "./EncodingEucKr": {
+      "types": "./dist/EncodingEucKr.d.ts",
+      "default": "./dist/EncodingEucKr.js"
+    },
+    "./EncodingGb18030": {
+      "types": "./dist/EncodingGb18030.d.ts",
+      "default": "./dist/EncodingGb18030.js"
+    },
+    "./EncodingJapanese": {
+      "types": "./dist/EncodingJapanese.d.ts",
+      "default": "./dist/EncodingJapanese.js"
+    },
+    "./F32": {
+      "types": "./dist/F32.d.ts",
+      "default": "./dist/F32.js"
+    },
+    "./FixedInt": {
+      "types": "./dist/FixedInt.d.ts",
+      "default": "./dist/FixedInt.js"
+    },
+    "./Float": {
+      "types": "./dist/Float.d.ts",
+      "default": "./dist/Float.js"
+    },
+    "./I8": {
+      "types": "./dist/I8.d.ts",
+      "default": "./dist/I8.js"
+    },
+    "./I16": {
+      "types": "./dist/I16.d.ts",
+      "default": "./dist/I16.js"
+    },
+    "./I32": {
+      "types": "./dist/I32.d.ts",
+      "default": "./dist/I32.js"
+    },
+    "./I64": {
+      "types": "./dist/I64.d.ts",
+      "default": "./dist/I64.js"
+    },
+    "./I128": {
+      "types": "./dist/I128.d.ts",
+      "default": "./dist/I128.js"
+    },
+    "./IanaTimeZone": {
+      "types": "./dist/IanaTimeZone.d.ts",
+      "default": "./dist/IanaTimeZone.js"
+    },
+    "./Ids": {
+      "types": "./dist/Ids.d.ts",
+      "default": "./dist/Ids.js"
+    },
+    "./ImageModel": {
+      "types": "./dist/ImageModel.d.ts",
+      "default": "./dist/ImageModel.js"
+    },
+    "./Integer": {
+      "types": "./dist/Integer.d.ts",
+      "default": "./dist/Integer.js"
+    },
+    "./IsoDuration": {
+      "types": "./dist/IsoDuration.d.ts",
+      "default": "./dist/IsoDuration.js"
+    },
+    "./Issues": {
+      "types": "./dist/Issues.d.ts",
+      "default": "./dist/Issues.js"
+    },
+    "./JsonFeed": {
+      "types": "./dist/JsonFeed.d.ts",
+      "default": "./dist/JsonFeed.js"
+    },
+    "./Langtag": {
+      "types": "./dist/Langtag.d.ts",
+      "default": "./dist/Langtag.js"
+    },
+    "./LangtagRegistry": {
+      "types": "./dist/LangtagRegistry.d.ts",
+      "default": "./dist/LangtagRegistry.js"
+    },
+    "./Layout": {
+      "types": "./dist/Layout.d.ts",
+      "default": "./dist/Layout.js"
+    },
+    "./LiteralExact": {
+      "types": "./dist/LiteralExact.d.ts",
+      "default": "./dist/LiteralExact.js"
+    },
+    "./Mime": {
+      "types": "./dist/Mime.d.ts",
+      "default": "./dist/Mime.js"
+    },
+    "./ModerationModel": {
+      "types": "./dist/ModerationModel.d.ts",
+      "default": "./dist/ModerationModel.js"
+    },
+    "./Negotiate": {
+      "types": "./dist/Negotiate.d.ts",
+      "default": "./dist/Negotiate.js"
+    },
+    "./Net": {
+      "types": "./dist/Net.d.ts",
+      "default": "./dist/Net.js"
+    },
+    "./Num": {
+      "types": "./dist/Num.d.ts",
+      "default": "./dist/Num.js"
+    },
+    "./Observability": {
+      "types": "./dist/Observability.d.ts",
+      "default": "./dist/Observability.js"
+    },
+    "./Overflowing": {
+      "types": "./dist/Overflowing.d.ts",
+      "default": "./dist/Overflowing.js"
+    },
+    "./PosixTz": {
+      "types": "./dist/PosixTz.d.ts",
+      "default": "./dist/PosixTz.js"
+    },
+    "./Range": {
+      "types": "./dist/Range.d.ts",
+      "default": "./dist/Range.js"
+    },
+    "./Ratio": {
+      "types": "./dist/Ratio.d.ts",
+      "default": "./dist/Ratio.js"
+    },
+    "./RerankerModel": {
+      "types": "./dist/RerankerModel.d.ts",
+      "default": "./dist/RerankerModel.js"
+    },
+    "./Rfc3339": {
+      "types": "./dist/Rfc3339.d.ts",
+      "default": "./dist/Rfc3339.js"
+    },
+    "./Rfc9557": {
+      "types": "./dist/Rfc9557.d.ts",
+      "default": "./dist/Rfc9557.js"
+    },
+    "./Robots": {
+      "types": "./dist/Robots.d.ts",
+      "default": "./dist/Robots.js"
+    },
+    "./RRule": {
+      "types": "./dist/RRule.d.ts",
+      "default": "./dist/RRule.js"
+    },
+    "./RssFeed": {
+      "types": "./dist/RssFeed.d.ts",
+      "default": "./dist/RssFeed.js"
+    },
+    "./Saturating": {
+      "types": "./dist/Saturating.d.ts",
+      "default": "./dist/Saturating.js"
+    },
+    "./ServiceWorker": {
+      "types": "./dist/ServiceWorker.d.ts",
+      "default": "./dist/ServiceWorker.js"
+    },
+    "./Sitemap": {
+      "types": "./dist/Sitemap.d.ts",
+      "default": "./dist/Sitemap.js"
+    },
+    "./SpeechModel": {
+      "types": "./dist/SpeechModel.d.ts",
+      "default": "./dist/SpeechModel.js"
+    },
+    "./Str": {
+      "types": "./dist/Str.d.ts",
+      "default": "./dist/Str.js"
+    },
+    "./String": {
+      "types": "./dist/String.d.ts",
+      "default": "./dist/String.js"
+    },
+    "./StructOfArrays": {
+      "types": "./dist/StructOfArrays.d.ts",
+      "default": "./dist/StructOfArrays.js"
+    },
+    "./TranscriptionModel": {
+      "types": "./dist/TranscriptionModel.d.ts",
+      "default": "./dist/TranscriptionModel.js"
+    },
+    "./TriState": {
+      "types": "./dist/TriState.d.ts",
+      "default": "./dist/TriState.js"
+    },
+    "./Tzif": {
+      "types": "./dist/Tzif.d.ts",
+      "default": "./dist/Tzif.js"
+    },
+    "./U8": {
+      "types": "./dist/U8.d.ts",
+      "default": "./dist/U8.js"
+    },
+    "./U16": {
+      "types": "./dist/U16.d.ts",
+      "default": "./dist/U16.js"
+    },
+    "./U32": {
+      "types": "./dist/U32.d.ts",
+      "default": "./dist/U32.js"
+    },
+    "./U64": {
+      "types": "./dist/U64.d.ts",
+      "default": "./dist/U64.js"
+    },
+    "./U128": {
+      "types": "./dist/U128.d.ts",
+      "default": "./dist/U128.js"
+    },
+    "./UriTemplate": {
+      "types": "./dist/UriTemplate.d.ts",
+      "default": "./dist/UriTemplate.js"
+    },
+    "./Url": {
+      "types": "./dist/Url.d.ts",
+      "default": "./dist/Url.js"
+    },
+    "./Vec": {
+      "types": "./dist/Vec.d.ts",
+      "default": "./dist/Vec.js"
+    },
+    "./VoiceConversionModel": {
+      "types": "./dist/VoiceConversionModel.d.ts",
+      "default": "./dist/VoiceConversionModel.js"
+    },
+    "./Web": {
+      "types": "./dist/Web.d.ts",
+      "default": "./dist/Web.js"
+    },
+    "./Wrapping": {
+      "types": "./dist/Wrapping.d.ts",
+      "default": "./dist/Wrapping.js"
+    },
+    "./evals": {
+      "types": "./dist/evals/index.d.ts",
+      "default": "./dist/evals/index.js"
+    },
+    "./evals/Cache": {
+      "types": "./dist/evals/Cache.d.ts",
+      "default": "./dist/evals/Cache.js"
+    },
+    "./evals/Dataset": {
+      "types": "./dist/evals/Dataset.d.ts",
+      "default": "./dist/evals/Dataset.js"
+    },
+    "./evals/EvalCase": {
+      "types": "./dist/evals/EvalCase.d.ts",
+      "default": "./dist/evals/EvalCase.js"
+    },
+    "./evals/EvalFile": {
+      "types": "./dist/evals/EvalFile.d.ts",
+      "default": "./dist/evals/EvalFile.js"
+    },
+    "./evals/Golden": {
+      "types": "./dist/evals/Golden.d.ts",
+      "default": "./dist/evals/Golden.js"
+    },
+    "./evals/Metadata": {
+      "types": "./dist/evals/Metadata.d.ts",
+      "default": "./dist/evals/Metadata.js"
+    },
+    "./evals/Metric": {
+      "types": "./dist/evals/Metric.d.ts",
+      "default": "./dist/evals/Metric.js"
+    },
+    "./evals/Reporter": {
+      "types": "./dist/evals/Reporter.d.ts",
+      "default": "./dist/evals/Reporter.js"
+    },
+    "./evals/Result": {
+      "types": "./dist/evals/Result.d.ts",
+      "default": "./dist/evals/Result.js"
+    },
+    "./evals/Runner": {
+      "types": "./dist/evals/Runner.d.ts",
+      "default": "./dist/evals/Runner.js"
+    },
+    "./evals/Score": {
+      "types": "./dist/evals/Score.d.ts",
+      "default": "./dist/evals/Score.js"
+    },
+    "./evals/Scorer": {
+      "types": "./dist/evals/Scorer.d.ts",
+      "default": "./dist/evals/Scorer.js"
+    },
+    "./evals/Threshold": {
+      "types": "./dist/evals/Threshold.d.ts",
+      "default": "./dist/evals/Threshold.js"
+    },
+    "./evals/metrics/GEval": {
+      "types": "./dist/evals/metrics/GEval.d.ts",
+      "default": "./dist/evals/metrics/GEval.js"
+    },
+    "./evals/metrics/Ranking": {
+      "types": "./dist/evals/metrics/Ranking.d.ts",
+      "default": "./dist/evals/metrics/Ranking.js"
+    },
+    "./evals/metrics/rag/AnswerRelevancy": {
+      "types": "./dist/evals/metrics/rag/AnswerRelevancy.d.ts",
+      "default": "./dist/evals/metrics/rag/AnswerRelevancy.js"
+    },
+    "./evals/metrics/rag/ContextualPrecision": {
+      "types": "./dist/evals/metrics/rag/ContextualPrecision.d.ts",
+      "default": "./dist/evals/metrics/rag/ContextualPrecision.js"
+    },
+    "./evals/metrics/rag/ContextualRecall": {
+      "types": "./dist/evals/metrics/rag/ContextualRecall.d.ts",
+      "default": "./dist/evals/metrics/rag/ContextualRecall.js"
+    },
+    "./evals/metrics/rag/ContextualRelevancy": {
+      "types": "./dist/evals/metrics/rag/ContextualRelevancy.d.ts",
+      "default": "./dist/evals/metrics/rag/ContextualRelevancy.js"
+    },
+    "./evals/metrics/rag/ExtractThenClassify": {
+      "types": "./dist/evals/metrics/rag/ExtractThenClassify.d.ts",
+      "default": "./dist/evals/metrics/rag/ExtractThenClassify.js"
+    },
+    "./evals/metrics/rag/Faithfulness": {
+      "types": "./dist/evals/metrics/rag/Faithfulness.d.ts",
+      "default": "./dist/evals/metrics/rag/Faithfulness.js"
+    },
+    "./evals/metrics/rag/RagCase": {
+      "types": "./dist/evals/metrics/rag/RagCase.d.ts",
+      "default": "./dist/evals/metrics/rag/RagCase.js"
+    },
+    "./evals/scorers/EmbeddingSimilarity": {
+      "types": "./dist/evals/scorers/EmbeddingSimilarity.d.ts",
+      "default": "./dist/evals/scorers/EmbeddingSimilarity.js"
+    },
+    "./evals/scorers/ExactMatch": {
+      "types": "./dist/evals/scorers/ExactMatch.d.ts",
+      "default": "./dist/evals/scorers/ExactMatch.js"
+    },
+    "./evals/scorers/JsonValidity": {
+      "types": "./dist/evals/scorers/JsonValidity.d.ts",
+      "default": "./dist/evals/scorers/JsonValidity.js"
+    },
+    "./evals/scorers/Levenshtein": {
+      "types": "./dist/evals/scorers/Levenshtein.d.ts",
+      "default": "./dist/evals/scorers/Levenshtein.js"
+    },
+    "./evals/scorers/SchemaMatch": {
+      "types": "./dist/evals/scorers/SchemaMatch.d.ts",
+      "default": "./dist/evals/scorers/SchemaMatch.js"
+    },
+    "./evals/scorers/ToolCallCorrectness": {
+      "types": "./dist/evals/scorers/ToolCallCorrectness.d.ts",
+      "default": "./dist/evals/scorers/ToolCallCorrectness.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@effect/language-service": "catalog:",
+    "@effect/platform-browser": "catalog:",
+    "@effect/platform-node": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@thomasfosterau/effect-jsonapi": "catalog:",
+    "@thomasfosterau/effect-parse": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/coverage-istanbul": "catalog:",
+    "effect": "catalog:",
+    "fast-check": "catalog:"
+  },
+  "peerDependencies": {
+    "@effect/platform-browser": "catalog:peers",
+    "@effect/platform-node": "catalog:peers",
+    "@thomasfosterau/effect-jsonapi": "catalog:peers",
+    "@thomasfosterau/effect-parse": "catalog:peers",
+    "effect": "catalog:peers"
+  },
+  "peerDependenciesMeta": {
+    "@effect/platform-browser": {
+      "optional": true
+    },
+    "@effect/platform-node": {
+      "optional": true
+    },
+    "@thomasfosterau/effect-jsonapi": {
+      "optional": true
+    },
+    "@thomasfosterau/effect-parse": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}

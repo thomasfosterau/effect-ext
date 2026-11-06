@@ -4,7 +4,7 @@
  *
  * For every published package and every subpath its published exports
  * declare (`publishConfig.exports` where the development `exports` point at
- * `src/`, else `exports` itself, as in `effect-utilities`), imports the BUILT `dist/*.js` under real Node ESM (never the
+ * `src/`, else `exports` itself, as in `effect-ext`), imports the BUILT `dist/*.js` under real Node ESM (never the
  * `src` the vitest suites resolve) and asserts that every value export its
  * bundled `.d.ts` promises exists at runtime. This is the check that catches
  * a bundler folding an `export *` into an internal object — the gateway's

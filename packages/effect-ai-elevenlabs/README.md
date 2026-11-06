@@ -1,6 +1,6 @@
 # @thomasfosterau/effect-ai-elevenlabs
 
-An [Effect](https://effect.website) AI provider for **ElevenLabs** — the audio leg of the `@thomasfosterau/effect-ai-*` family. Effect ships no ElevenLabs package, so this implements [`@thomasfosterau/effect-ai-ext`](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ai-ext)'s audio abstractions directly against the ElevenLabs API.
+An [Effect](https://effect.website) AI provider for **ElevenLabs** — the audio leg of the `@thomasfosterau/effect-ai-*` family. Effect ships no ElevenLabs package, so this implements [`@thomasfosterau/effect-ext`](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ext)'s audio abstractions directly against the ElevenLabs API.
 
 - **`ElevenLabsClient`** — the low-level HTTP client (binary and chunked streaming audio, multipart uploads), every failure mapped to `AiError`. Its `apiUrl` override is the BYOK contract used by a routing layer (the gateway), and the key is sent as the `xi-api-key` header.
 - **`ElevenLabsSpeechModel`** — the `SpeechModel` (text-to-speech): a one-shot `generate` returning the full audio buffer, and a backpressured, interruption-safe `stream` of audio chunks.
@@ -10,17 +10,17 @@ An [Effect](https://effect.website) AI provider for **ElevenLabs** — the audio
 ## Install
 
 ```sh
-pnpm add @thomasfosterau/effect-ai-elevenlabs @thomasfosterau/effect-ai-ext effect
+pnpm add @thomasfosterau/effect-ai-elevenlabs @thomasfosterau/effect-ext effect
 ```
 
-`effect` (`^4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ai-ext` is a dependency, listed above because you import the service tags (`SpeechModel`, …) from it.
+`effect` (`^4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ext` is a dependency, listed above because you import the service tags (`SpeechModel`, …) from it.
 
 ## Usage
 
 ```ts
 import { Config, Effect, Layer, Stream } from "effect";
 import { FetchHttpClient } from "effect/http";
-import { SpeechModel } from "@thomasfosterau/effect-ai-ext";
+import * as SpeechModel from "@thomasfosterau/effect-ext/SpeechModel";
 import { ElevenLabsClient, ElevenLabsSpeechModel } from "@thomasfosterau/effect-ai-elevenlabs";
 
 const SpeechLayer = ElevenLabsSpeechModel.layer({

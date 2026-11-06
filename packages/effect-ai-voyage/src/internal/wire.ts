@@ -7,7 +7,7 @@
  * constructs them field-by-field and sends them as JSON. Only the response
  * bodies get Effect `Schema`s, because those are the untrusted inputs that
  * must be decoded and validated before the models convert them into Effect
- * AI / effect-ai-ext response shapes.
+ * AI / effect-ext response shapes.
  *
  * Optional response fields are modelled leniently (`Schema.optional` +
  * `Schema.NullOr`) so that a newly-added Voyage field never fails decoding of
