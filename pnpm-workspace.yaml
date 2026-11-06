@@ -40,7 +40,7 @@ catalog:
   # depends on `effect` itself (4.1.2 on `effect ^4.1.2`, for
   # `effect/process/CommandLine`), and the `effect` override below forces
   # the catalog `effect` onto it, so a docgen ahead of `effect` crashes on
-  # launch. Move it with the Effect line, not in its own Dependabot group.
+  # launch. It moves with the Effect line, in Dependabot's `effect` group.
   "@effect/docgen": 4.0.6
   "@effect/language-service": ^0.87.5
   # Optional peer of effect-utilities: only the `Browser` and
@@ -73,9 +73,10 @@ catalog:
   # The Effect oxlint rules (`effect/*`, the anti-slop set included), loaded
   # by `vite.config.ts` through `configs.recommended`. It replaces
   # `@mpsuesser/oxlint-plugin-effect`. 0.9.0 depends on `effect` 4.1.0 (exact)
-  # but runs on the workspace singleton (the `effect` override below), and it
-  # loads inside vite-plus's oxlint, so it moves in the `toolchain` group and
-  # an `effect` bump re-runs `vp check` against it too.
+  # but runs on the workspace singleton (the `effect` override below). It
+  # loads inside vite-plus's oxlint, but only through a `^` range on
+  # `@oxlint/plugins`, so it is not tied to the toolchain set and Dependabot
+  # proposes it on its own; an `effect` bump re-runs `vp check` against it.
   "@enfect/oxlint": 0.10.0
   # Optional peer of effect-utilities: only the `Negotiate` module imports it
   # (the JSON:API §5/§6 media-type rules are adopted from its `Middleware`,
