@@ -1,0 +1,49 @@
+name: Dependabot failures
+
+# Opens a `dependabot-failure` issue for every open Dependabot PR whose head
+# commit fails CI, keeps it current, and closes it once the PR passes
+# (completed), merges (completed) or closes unmerged (not planned). The logic
+# is .github/scripts/dependabot-failures.sh, which runs locally with
+# `--dry-run`.
+#
+# It runs on a schedule from the default branch, never on a Dependabot or PR
+# event, so it gets this repository's ordinary `GITHUB_TOKEN`, and it never
+# checks out or runs PR code: it reads check runs and statuses by SHA. A run
+# where nothing changed writes nothing.
+
+on:
+  schedule:
+    # Every 3 hours, at an odd minute to stay off the top-of-hour rush.
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: dependabot-failures
+  cancel-in-progress: false
+
+# No permissions by default; the one job grants what it reads and, besides
+# the Release job, is the only write in this repository's workflows, scoped
+# to issues.
+permissions: {}
+
+jobs:
+  dependabot-failures:
+    name: dependabot-failures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # check out the default branch for the script
+      issues: write # open, update, comment on and close tracking issues; create the label
+      pull-requests: read # list open PRs, read a closed one's merge state
+      checks: read # read check runs on a PR's head SHA
+      statuses: read # read commit statuses on a PR's head SHA
+    steps:
+      # Checks out the default branch only (a schedule never runs on a PR ref),
+      # for the script; no credentials are left in the working tree.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Sync tracking issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/dependabot-failures.sh
