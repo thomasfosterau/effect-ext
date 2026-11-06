@@ -103,6 +103,8 @@ Before you report work as done, run the gates below in order and quote each comm
 
 Steps 2–9 are CI's `ci` job, in its order, on Node 22 and 24 ([ci.yml](.github/workflows/ci.yml)). `CONTRIBUTING.md` and the PR template link here rather than restating the list.
 
+Every workflow defaults to `permissions: {}` and pins each action to a commit SHA. Besides CI and Release, `dependabot-failures.yml` runs every 3 hours (and on dispatch) from `trunk`, never on a PR or Dependabot event: it opens a `dependabot-failure` issue for each open Dependabot PR whose head commit fails a check, updates it when the SHA or the failing checks change, and closes it when the PR passes or merges (completed) or closes unmerged (not planned). Its job holds `contents: read`, `pull-requests: read`, `checks: read`, `statuses: read` and `issues: write`, the one write permission in any workflow other than Release's, scoped to issues; it checks out only the default branch and never runs PR code. The logic is `.github/scripts/dependabot-failures.sh`, which `--dry-run` runs locally and read-only (`--repo owner/name`).
+
 ## Branches and pull requests
 
 - Branch off `trunk`; PR against `trunk`; squash-merge with a conventional prefix (`feat:`, `fix:`, `docs:`, `chore:`). Rebase onto `origin/trunk` before opening or updating a PR; never merge `trunk` into your branch (GitHub's Update-branch button merges).
