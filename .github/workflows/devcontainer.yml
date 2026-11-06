@@ -64,7 +64,9 @@ jobs:
           check-latest: true
       # `up` fails when the image, a feature or `postCreateCommand` fails.
       - name: Build and start the container
-        run: pnpm dlx "$DEVCONTAINER_CLI" up --workspace-folder . --log-level info
+        run: |
+          set -o pipefail
+          pnpm dlx "$DEVCONTAINER_CLI" up --workspace-folder . --log-level info 2>&1 | tee "$RUNNER_TEMP/up.log"
       # A login shell, as a Codespaces terminal is: `~/.local/bin` (where the
       # hook links `vp` / `vpx`) is on PATH through the profile.
       - name: Assert the container is provisioned
@@ -73,7 +75,7 @@ jobs:
           echo "catalog vite-plus pin: $pin"
           run() { pnpm dlx "$DEVCONTAINER_CLI" exec --workspace-folder . bash -lc "$1"; }
           set -x
-          run 'id; echo "HOME=$HOME"; pwd; echo "PATH=$PATH"'
+          run 'id; echo "HOME=$HOME"; pwd; echo "PATH=$PATH"; env | grep -E "^(VP_|VITE_PLUS|PNPM|COREPACK)" || true; ls -ld . "$HOME/.vite-plus" "$HOME/.vite-plus/bin" "$HOME/.local/share/vite-plus" "$HOME/.local/bin"/* 2>&1; command -v -a vp node pnpm; cat /etc/os-release | head -3; ls -la /home'
           run "vp --version | tee /dev/stderr | grep -F 'v$pin'"
           run 'node --version'
           run 'test -d node_modules/.pnpm && test -x node_modules/.bin/vp'
