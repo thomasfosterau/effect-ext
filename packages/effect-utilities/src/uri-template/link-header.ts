@@ -170,7 +170,7 @@ const first = (parameters: ReadonlyArray<Parameter>, name: string): Option.Optio
     ([, value]) => value,
   );
 
-const SINGLE = new Set(["rel", "anchor", "type", "media", "title", "title*", "hreflang"]);
+const SINGLE = ["rel", "anchor", "type", "media", "title", "title*", "hreflang"];
 
 const linkOf = (target: string, rawParameters: string, base: string | URL | undefined): Link => {
   const parameters = Arr.map(
@@ -189,7 +189,7 @@ const linkOf = (target: string, rawParameters: string, base: string | URL | unde
       Arr.filter(parameters, ([name]) => name === "hreflang"),
       ([, value]) => value,
     ),
-    params: Arr.filter(parameters, ([name]) => !SINGLE.has(name)),
+    params: Arr.filter(parameters, ([name]) => !SINGLE.includes(name)),
   };
 };
 

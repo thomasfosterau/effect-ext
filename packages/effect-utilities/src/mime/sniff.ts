@@ -309,12 +309,12 @@ export interface SniffOptions {
 }
 
 /** The exact `Content-Type` values that set the check-for-apache-bug flag (§5.1). */
-const APACHE_BUG_TYPES: ReadonlyArray<string> = new Set([
+const APACHE_BUG_TYPES: ReadonlyArray<string> = [
   "text/plain",
   "text/plain; charset=ISO-8859-1",
   "text/plain; charset=iso-8859-1",
   "text/plain; charset=UTF-8",
-]);
+];
 
 const UNKNOWN_TYPES: ReadonlyArray<string> = ["unknown/unknown", "application/unknown", "*/*"];
 
@@ -423,7 +423,10 @@ export const sniff = (bytes: Uint8Array, options: SniffOptions = {}): MimeType =
         if (options.noSniff === true || isXml(mimeType) || essence(mimeType) === "text/html") {
           return mimeType;
         }
-        if (options.checkForApacheBug === true && APACHE_BUG_TYPES.has(options.supplied ?? "")) {
+        if (
+          options.checkForApacheBug === true &&
+          APACHE_BUG_TYPES.includes(options.supplied ?? "")
+        ) {
           return computed(textOrBinary(header));
         }
         const pattern =

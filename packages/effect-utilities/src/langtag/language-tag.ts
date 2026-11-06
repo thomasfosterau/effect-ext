@@ -256,7 +256,7 @@ export const script = (tag: LanguageTag): Option.Option<string> => subtags(tag).
 export const region = (tag: LanguageTag): Option.Option<string> => subtags(tag).region;
 
 /** Scripts written right to left (ISO 15924), lowercase. */
-const RTL_SCRIPTS: ReadonlyArray<string> = new Set([
+const RTL_SCRIPTS: ReadonlyArray<string> = [
   "adlm",
   "arab",
   "aran",
@@ -282,7 +282,7 @@ const RTL_SCRIPTS: ReadonlyArray<string> = new Set([
   "syrc",
   "thaa",
   "yezi",
-]);
+];
 
 /**
  * Languages whose default script is written right to left. A language
@@ -335,7 +335,7 @@ const RTL_LANGUAGES: ReadonlyArray<string> = [
 export const direction = (tag: LanguageTag): "ltr" | "rtl" => {
   const parts = subtags(tag);
   const rtl = Option.match(parts.script, {
-    onSome: (script) => RTL_SCRIPTS.has(script.toLowerCase()),
+    onSome: (script) => RTL_SCRIPTS.includes(script.toLowerCase()),
     onNone: () =>
       Option.match(parts.language, {
         onSome: (language) => RTL_LANGUAGES.includes(language),

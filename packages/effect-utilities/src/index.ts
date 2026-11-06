@@ -6,13 +6,22 @@
  * introspection, typed URLs) and web-platform building blocks (request /
  * response policies, fetch safety, negotiation, service workers, browser
  * services, robots.txt, sitemaps and feeds, URI Templates, language tags,
- * CSS, encodings, MIME types). Each module is also its own entry point
+ * CSS, encodings, MIME types), Rust-style numeric types (fixed-width
+ * integers with checked / wrapping / saturating / overflowing arithmetic,
+ * clamped ranges, floats, rationals, complex numbers, `num-traits` type
+ * classes) and parsers for time's string and binary formats (RFC 3339,
+ * RFC 9557, ISO 8601 durations, POSIX TZ, cron, RFC 5545 `RRULE`, IANA
+ * zone names, TZif). Each module is also its own entry point
  * (`@thomasfosterau/effect-utilities/Vec`, …); this barrel re-exports them as
- * namespaces, except the four modules that import an optional peer —
- * `Browser` and `BrowserTesting` (`@effect/platform-browser`), `Negotiate`
- * (`@thomasfosterau/effect-jsonapi`) and `Robots`
- * (`@thomasfosterau/effect-parse`) — which are subpaths only, so importing
- * the barrel never needs a peer the consumer did not install.
+ * namespaces (the fixed-width integer and `F32` modules as their one
+ * value: `I8`, …, `U128`, `F32`), except the modules that import an
+ * optional peer — `Browser` and `BrowserTesting`
+ * (`@effect/platform-browser`), `Negotiate`
+ * (`@thomasfosterau/effect-jsonapi`), and `Robots` and the time parsers
+ * `Rfc3339`, `Rfc9557`, `IsoDuration`, `PosixTz`, `CronExpression`,
+ * `RRule`, `IanaTimeZone` and `Tzif` (`@thomasfosterau/effect-parse`) —
+ * which are subpaths only, so importing the barrel never needs a peer the
+ * consumer did not install.
  *
  * @copyright Thomas Foster
  * @since 0.1.0
@@ -24,6 +33,13 @@
  * @since 0.1.0
  */
 export * as Allocator from "./Allocator.ts";
+
+/**
+ * Typed errors produced by fallible numeric operations.
+ *
+ * @since 0.1.0
+ */
+export * as ArithmeticError from "./ArithmeticError.ts";
 
 /**
  * Schema introspection by AST and behavioural decode probe.
@@ -52,6 +68,27 @@ export * as Bounded from "./Bounded.ts";
  * @since 0.1.0
  */
 export * as BufferStruct from "./BufferStruct.ts";
+
+/**
+ * Checked arithmetic (`Option`-returning) type class and instances.
+ *
+ * @since 0.1.0
+ */
+export * as Checked from "./Checked.ts";
+
+/**
+ * Clamped (range-bounded) numbers.
+ *
+ * @since 0.1.0
+ */
+export * as Clamped from "./Clamped.ts";
+
+/**
+ * Complex numbers over doubles.
+ *
+ * @since 0.1.0
+ */
+export * as Complex from "./Complex.ts";
 
 /**
  * CSS Syntax 3 parsing, CSS Color 4/5 colours, lengths, fonts, text and serialisation.
@@ -96,11 +133,74 @@ export * as EncodingGb18030 from "./EncodingGb18030.ts";
 export * as EncodingJapanese from "./EncodingJapanese.ts";
 
 /**
+ * Single precision floats, like Rust's `f32`.
+ *
+ * @since 0.1.0
+ */
+export { F32 } from "./F32.ts";
+
+/**
+ * Fixed-width integer factory and model.
+ *
+ * @since 0.1.0
+ */
+export * as FixedInt from "./FixedInt.ts";
+
+/**
+ * The `Float` type class, `F64`, total ordering, `NotNaN` and `Finite`.
+ *
+ * @since 0.1.0
+ */
+export * as Float from "./Float.ts";
+
+/**
+ * Signed 8-bit integers, like Rust's `i8`.
+ *
+ * @since 0.1.0
+ */
+export { I8 } from "./I8.ts";
+
+/**
+ * Signed 16-bit integers, like Rust's `i16`.
+ *
+ * @since 0.1.0
+ */
+export { I16 } from "./I16.ts";
+
+/**
+ * Signed 32-bit integers, like Rust's `i32`.
+ *
+ * @since 0.1.0
+ */
+export { I32 } from "./I32.ts";
+
+/**
+ * Signed 64-bit integers, like Rust's `i64`.
+ *
+ * @since 0.1.0
+ */
+export { I64 } from "./I64.ts";
+
+/**
+ * Signed 128-bit integers, like Rust's `i128`.
+ *
+ * @since 0.1.0
+ */
+export { I128 } from "./I128.ts";
+
+/**
  * UUID, branded-UUID ids and slugs.
  *
  * @since 0.1.0
  */
 export * as Ids from "./Ids.ts";
+
+/**
+ * Integer algorithms (`num-integer`).
+ *
+ * @since 0.1.0
+ */
+export * as Integer from "./Integer.ts";
 
 /**
  * Schema issue trees → RFC 6901 JSON Pointers.
@@ -159,6 +259,13 @@ export * as Mime from "./Mime.ts";
 export * as Net from "./Net.ts";
 
 /**
+ * Numeric type classes (`num-traits`).
+ *
+ * @since 0.1.0
+ */
+export * as Num from "./Num.ts";
+
+/**
  * Structured logging, span logging and request metrics on Effect's `Logger` and `Tracer`.
  *
  * @since 0.1.0
@@ -166,11 +273,39 @@ export * as Net from "./Net.ts";
 export * as Observability from "./Observability.ts";
 
 /**
+ * Overflowing arithmetic type class and instances.
+ *
+ * @since 0.1.0
+ */
+export * as Overflowing from "./Overflowing.ts";
+
+/**
+ * Numeric ranges (`num-iter`).
+ *
+ * @since 0.1.0
+ */
+export * as Range from "./Range.ts";
+
+/**
+ * Exact rational numbers.
+ *
+ * @since 0.1.0
+ */
+export * as Ratio from "./Ratio.ts";
+
+/**
  * An RSS 2.0 feed, rendered and served.
  *
  * @since 0.1.0
  */
 export * as RssFeed from "./RssFeed.ts";
+
+/**
+ * Saturating arithmetic type class and instances.
+ *
+ * @since 0.1.0
+ */
+export * as Saturating from "./Saturating.ts";
 
 /**
  * Service-worker caching strategies, precaching and event plumbing on Effect.
@@ -215,6 +350,41 @@ export * as StructOfArrays from "./StructOfArrays.ts";
 export * as TriState from "./TriState.ts";
 
 /**
+ * Unsigned 8-bit integers, like Rust's `u8`.
+ *
+ * @since 0.1.0
+ */
+export { U8 } from "./U8.ts";
+
+/**
+ * Unsigned 16-bit integers, like Rust's `u16`.
+ *
+ * @since 0.1.0
+ */
+export { U16 } from "./U16.ts";
+
+/**
+ * Unsigned 32-bit integers, like Rust's `u32`.
+ *
+ * @since 0.1.0
+ */
+export { U32 } from "./U32.ts";
+
+/**
+ * Unsigned 64-bit integers, like Rust's `u64`.
+ *
+ * @since 0.1.0
+ */
+export { U64 } from "./U64.ts";
+
+/**
+ * Unsigned 128-bit integers, like Rust's `u128`.
+ *
+ * @since 0.1.0
+ */
+export { U128 } from "./U128.ts";
+
+/**
  * URI Templates (RFC 6570), the `Link` header and `/.well-known/` URIs.
  *
  * @since 0.1.0
@@ -242,3 +412,10 @@ export * as Vec from "./Vec.ts";
  * @since 0.1.0
  */
 export * as Web from "./Web.ts";
+
+/**
+ * Wrapping arithmetic type class and instances.
+ *
+ * @since 0.1.0
+ */
+export * as Wrapping from "./Wrapping.ts";

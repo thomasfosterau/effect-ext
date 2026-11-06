@@ -108,7 +108,7 @@ const GENERIC_FAMILIES: ReadonlyArray<string> = [
 ];
 
 /** Keywords a family name made of identifiers may not start with (CSS Fonts 4 §2.1.1). */
-const RESERVED_FAMILY_KEYWORDS: ReadonlyArray<string> = new Set([
+const RESERVED_FAMILY_KEYWORDS: ReadonlyArray<string> = [
   ...GENERIC_FAMILIES,
   "initial",
   "inherit",
@@ -116,7 +116,7 @@ const RESERVED_FAMILY_KEYWORDS: ReadonlyArray<string> = new Set([
   "default",
   "revert",
   "revert-layer",
-]);
+];
 
 const ABSOLUTE_SIZES: ReadonlyArray<string> = [
   "xx-small",
@@ -172,7 +172,7 @@ const identFamily = (idents: Arr.NonEmptyReadonlyArray<string>): Option.Option<F
   if (idents.length === 1 && GENERIC_FAMILIES.includes(head)) {
     return Option.some({ _tag: "Generic", name: head });
   }
-  return RESERVED_FAMILY_KEYWORDS.has(head)
+  return RESERVED_FAMILY_KEYWORDS.includes(head)
     ? Option.none()
     : Option.some({ _tag: "Family", name: idents.join(" ") });
 };

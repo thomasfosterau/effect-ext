@@ -128,6 +128,22 @@
       }
     ]
   },
+  // `pipe` is the Effect `Pipeable` protocol. On effect-utilities' numeric
+  // `Value` (src/internal/numeric/value.ts), the base class of `Ratio` and
+  // `Complex`, consumers call it through the public interfaces
+  // (tests/numeric/Pipeable.test.ts), which fallow does not trace.
+  "usedClassMembers": ["pipe"],
+  "duplicates": {
+    // Reviewed clones, carried from thomasfosterau/effect-numeric (whose
+    // fingerprints changed with the reformat at the merge). A content change
+    // produces a new fingerprint and makes the group reportable again.
+    // - The per-type instance lists (`I8` … `U128`, one documented export
+    //   each) that `Saturating` / `Wrapping` and `Checked` / `Overflowing`
+    //   expose, mirroring Rust's per-type impls.
+    // - `FixedInt`'s `number` and `bigint` primitive tables, whose bitwise
+    //   operations read the same over two representations.
+    "ignoredClones": ["dup:b85a7ed1:2", "dup:d06606dc:2", "dup:bb9236f0:2"]
+  },
   "health": {
     "maxCyclomatic": 20,
     "maxCognitive": 15,

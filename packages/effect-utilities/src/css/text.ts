@@ -76,7 +76,7 @@ export type VerticalAlign =
   | { readonly _tag: "Keyword"; readonly keyword: string }
   | { readonly _tag: "Length"; readonly length: Length.Length };
 
-const VERTICAL_ALIGN: ReadonlyArray<string> = new Set([
+const VERTICAL_ALIGN: ReadonlyArray<string> = [
   "baseline",
   "sub",
   "super",
@@ -85,7 +85,7 @@ const VERTICAL_ALIGN: ReadonlyArray<string> = new Set([
   "middle",
   "top",
   "bottom",
-]);
+];
 
 /**
  * Parses `vertical-align`: `baseline`, `sub`, `super`, `text-top`,
@@ -105,7 +105,7 @@ export const parseVerticalAlign = (input: string | Values): Option.Option<Vertic
   Option.flatMap(single(input), (only) =>
     Option.orElse(
       Option.map(
-        Option.filter(keyword(only), (name) => VERTICAL_ALIGN.has(name)),
+        Option.filter(keyword(only), (name) => VERTICAL_ALIGN.includes(name)),
         (name): VerticalAlign => ({ _tag: "Keyword", keyword: name }),
       ),
       () => Option.map(Length.parse(only), (length): VerticalAlign => ({ _tag: "Length", length })),

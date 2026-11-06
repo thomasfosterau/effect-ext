@@ -10,7 +10,9 @@
  * came with a looser one: their relaxations are scoped to `aiPackages` in
  * `overrides` below, each with its reason, so `effect-utilities` keeps the
  * stricter set. The same holds for the effect-utilities modules merged in
- * from thomasfosterau/effect-web (`webModules`), scoped to their files.
+ * from thomasfosterau/effect-web (`webModules`), scoped to their files, and
+ * for the few allowances the modules from thomasfosterau/effect-numeric and
+ * thomasfosterau/effect-time arrived with, scoped to the files they name.
  *
  * @copyright Thomas Foster
  */
@@ -65,6 +67,9 @@ const webModules = [
   "packages/effect-utilities/src/internal/xml.ts",
   webTests,
 ];
+
+/** The tests that came from thomasfosterau/effect-time (see the header). */
+const timeTests = "packages/effect-utilities/tests/time/**";
 
 /** Every package name, for the root aggregates. */
 const packageNames = [
@@ -419,7 +424,14 @@ export default defineConfig({
           // (48, 41 and 19 sites), each a pay-down item in #31.
           "eslint/no-shadow": "warn",
           "unicorn/consistent-function-scoping": "warn",
-          "unicorn/prefer-set-has": "warn",
+          // Off, not warn: its fix (applied by the pre-commit `vp check
+          // --fix`) rewrites `const X: ReadonlyArray<T> = [...]` to
+          // `= new Set([...])` and `.includes` to `.has`, but leaves the
+          // annotation, which no longer type-checks, and the native `Set` it
+          // introduces is an `effect/avoid-native-object-helpers` error. That
+          // is how #32's wiring commit broke nine of these lookups. Whether
+          // they become `HashSet`s is #31's call.
+          "unicorn/prefer-set-has": "off",
         },
       },
       // `logStructured` is called from plain code and runs its effect with
@@ -458,6 +470,96 @@ export default defineConfig({
         rules: {
           "effect/effect-run-in-body": "off",
           "effecttsgo/strict-effect-provide": "off",
+        },
+      },
+      // ---- effect-utilities' numeric modules: the allowances they arrived with ----
+      // Merged in from thomasfosterau/effect-numeric, whose own lint config
+      // scoped these exact relaxations (its reasons, abridged). Everything
+      // else in those files meets the rule set above.
+      //
+      // The numeric kernels (Euclid, Newton's method, square-and-multiply,
+      // Miller–Rabin, continued fractions, the lazy range generators). Each
+      // iterates a scalar state until a numeric condition holds; there is no
+      // collection to map or fold and the iteration count is unknown up
+      // front, so an `Arr` combinator would first have to materialise one.
+      // Recursion is no alternative (no tail calls: inputs would be bounded by
+      // stack depth), and the generators must stay lazy, since a range may be
+      // unbounded. The public modules call these kernels, so a loop anywhere
+      // else is still an error.
+      {
+        files: ["packages/effect-utilities/src/internal/numeric/**"],
+        rules: {
+          "effect/imperative-loops": "off",
+        },
+      },
+      // `brandAs`, `unsafeBrand` and `unbranded` are the only brand
+      // assertions in the numeric modules (every other module calls them). A
+      // brand is a phantom type with no runtime data, so no type guard can
+      // narrow a `number` to `I8`; each caller states the invariant that makes
+      // its value a member. `brandAs` must step through `unknown` because
+      // TypeScript cannot relate a generic brand `A` to `Schema.brand`'s
+      // output, and `unsafeBrand`'s brand parameter appears only in its return
+      // type by design (the caller names the brand).
+      {
+        files: ["packages/effect-utilities/src/internal/numeric/brand.ts"],
+        rules: {
+          "effect/casting-awareness": "off",
+          "effect/avoid-any": "off",
+          "effect/no-chained-type-assertions": "off",
+          "typescript/no-unnecessary-type-parameters": "off",
+        },
+      },
+      // `Clamped.Options.name` is an optional member of a plain options bag,
+      // spelled `?: string | undefined` (the only spelling a caller can
+      // forward an optional of its own into under
+      // `exactOptionalPropertyTypes`); an `Option` there would make every
+      // caller wrap a string. Unifying option members is #17.
+      {
+        files: ["packages/effect-utilities/src/Clamped.ts"],
+        rules: {
+          "effect/prefer-option-over-null": "off",
+        },
+      },
+      // These schemas decode IEEE 754 values, NaN and ±Infinity included, by
+      // design: `Float` / `F32` model the whole domain (`NotNaN` / `Finite`
+      // are the refinements that narrow it), `Complex`'s `{ re, im }` carries
+      // such parts, and `Clamped`'s clamping decoder maps ±Infinity onto its
+      // bounds (its exact `schema` uses `Schema.Finite`).
+      {
+        files: ["packages/effect-utilities/src/{Float,F32,Complex,Clamped}.ts"],
+        rules: {
+          "effecttsgo/schema-number": "off",
+        },
+      },
+      // This suite tests the serialisation protocols consumers hit:
+      // `JSON.stringify` (each value object's `toJSON`) and Node's
+      // `util.inspect` (`NodeInspectSymbol`). Calling them is the assertion.
+      {
+        files: ["packages/effect-utilities/tests/numeric/Misc.test.ts"],
+        rules: {
+          "effect/avoid-direct-json": "off",
+          "effect/avoid-node-imports": "off",
+        },
+      },
+      // ---- effect-utilities' time modules: the allowances they arrived with ----
+      // effect-numeric's and effect-time's suites are plain vitest, without
+      // `@effect/vitest`: a test body runs the effect it asserts on
+      // (`Effect.runPromise`), which makes it the run boundary
+      // `effect-run-in-body` names. effect-time's suites assert in the
+      // `.then` of that promise, whose resolved value vitest discards, so the
+      // promise rules that want a return value there cannot apply (effect-time
+      // ran without the `promise` plugin for this reason).
+      {
+        files: [timeTests, "packages/effect-utilities/tests/numeric/**"],
+        rules: {
+          "effect/effect-run-in-body": "off",
+        },
+      },
+      {
+        files: [timeTests],
+        rules: {
+          "promise/always-return": "off",
+          "promise/no-callback-in-promise": "off",
         },
       },
       // ---- effect-utilities ----
