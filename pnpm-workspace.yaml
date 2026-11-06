@@ -92,6 +92,10 @@ catalog:
   # `catalogs.peers` below.
   effect: 4.0.6
   fallow: 3.39.0
+  # The property tests behind effect-utilities' numeric modules (merged in
+  # from thomasfosterau/effect-numeric): arithmetic laws checked against a
+  # `bigint` reference. Test-only, never a dependency of `dist/`.
+  fast-check: ^4.10.2
   # `@effect/docgen` runs each example under tsx.
   tsx: ^4.23.15
   # TypeScript 6/7 side-by-side: TS7 (the native Go compiler) ships no JS API

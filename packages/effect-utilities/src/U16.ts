@@ -5,7 +5,7 @@
  *
  * @example
  * ```ts
- * import { U16 } from "effect-numeric"
+ * import { U16 } from "@thomasfosterau/effect-utilities/U16"
  *
  * const a = U16.make(200)
  * const b = U16.make(100)
@@ -18,8 +18,8 @@
  *
  * @since 0.1.0
  */
-import type * as Brand from "effect/Brand"
-import * as FixedInt from "./FixedInt.ts"
+import type * as Brand from "effect/Brand";
+import * as FixedInt from "./FixedInt.ts";
 
 /**
  * A unsigned 16-bit integer.
@@ -27,7 +27,7 @@ import * as FixedInt from "./FixedInt.ts"
  * @category models
  * @since 0.1.0
  */
-export type U16 = number & Brand.Brand<"U16">
+export type U16 = number & Brand.Brand<"U16">;
 
 /**
  * Operations on {@link U16} values.
@@ -38,5 +38,5 @@ export type U16 = number & Brand.Brand<"U16">
 export const U16: FixedInt.FixedInt<U16, number> = /* @__PURE__ */ FixedInt.make<U16>({
   name: "U16",
   bits: 16,
-  signed: false
-})
+  signed: false,
+});

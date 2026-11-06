@@ -1,10 +1,12 @@
 # @thomasfosterau/effect-utilities
 
-Extensions to the [Effect](https://effect.website) standard library, in three families:
+Extensions to the [Effect](https://effect.website) standard library, in five families:
 
 - **Binary data** — an `Allocator` service, binary `Layout`s, `BufferStruct`s, `Vec`, `StructOfArrays`, and Rust-style UTF-8 `String` / `Str`.
 - **Schema** — URLs whose scheme, host, port, credentials and path are part of their type, the update tri-state reader, Schema issue → RFC 6901 JSON Pointer walk, bounded pagination and id-list codecs, branded UUID ids and slugs, exact literal-union tuples, and AST / decode-probe introspection. No JSON:API, Drizzle or application vocabulary: the prefixes, caps and reserved words an application needs are parameters, never defaults.
 - **Web platform** — framework-neutral request / response policies (security and cache headers, `Vary`, the cross-origin guard, client IP), an SSRF-guarded fetch, structured logging and span tracing, content negotiation, service-worker caching strategies, browser APIs as Effect services with in-memory test doubles, robots.txt, sitemaps, RSS / Atom / JSON Feed, URI Templates and `Link` headers, BCP 47 language tags, CSS parsing, the WHATWG Encoding Standard and MIME types. No SvelteKit, Alchemy or Cloudflare dependency. These modules were `@thomasfosterau/effect-web` and its sibling packages; see [Moving from effect-web](#moving-from-effect-web).
+- **Numeric** — Rust-style numeric types, modelled on Rust's primitive integers and the [`num`](https://github.com/rust-num/num) crates: fixed-width integers `I8` … `I128`, `U8` … `U128` (and any width you define) with strict, checked, wrapping, saturating and overflowing arithmetic, clamped ranges, floats with IEEE 754 total ordering, exact rationals, complex numbers and `num-traits` style type classes. These were `effect-numeric`; see [Numeric](#numeric).
+- **Time** — parsers and printers for the strings and files time travels in, producing Effect's own `DateTime`, `Duration` amounts and `Cron`: RFC 3339 and RFC 9557 date-times, ISO 8601 durations, POSIX TZ strings, cron expressions, RFC 5545 recurrence rules, IANA time zone names and TZif files. These were `@thomasfosterau/effect-time`; see [Time](#time).
 
 > **Status:** experimental. APIs may change between minor versions until 1.0.
 
@@ -14,7 +16,7 @@ Extensions to the [Effect](https://effect.website) standard library, in three fa
 pnpm add @thomasfosterau/effect-utilities effect
 ```
 
-Peer: `effect` `>=4.0.0`. Three optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `>=4.0.0` (`Browser`, `BrowserTesting`), `@thomasfosterau/effect-jsonapi` `>=0.16.1` (`Negotiate`) and `@thomasfosterau/effect-parse` `^0.4.1` (`Robots`). Those four modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. Node.js 22 or later (the binary-data modules use `ArrayBuffer.prototype.transfer`). ESM only, `"sideEffects": false`; every module is also its own entry point:
+Peer: `effect` `>=4.0.0`. Three optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `>=4.0.0` (`Browser`, `BrowserTesting`), `@thomasfosterau/effect-jsonapi` `>=0.16.1` (`Negotiate`) and `@thomasfosterau/effect-parse` `^0.4.1` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. Node.js 22 or later (the binary-data modules use `ArrayBuffer.prototype.transfer`). ESM only, `"sideEffects": false`; every module is also its own entry point:
 
 ```ts
 import { Vec, TriState } from "@thomasfosterau/effect-utilities";
@@ -57,6 +59,25 @@ import * as Vec from "@thomasfosterau/effect-utilities/Vec";
 | `Encoding` | The WHATWG Encoding Standard: labels, BOM sniffing, fatal decoding and encoding. |
 | `EncodingJapanese`, `EncodingGb18030`, `EncodingBig5`, `EncodingEucKr` | The opt-in CJK indexes for `Encoding`. |
 | `Mime` | MIME types, MIME sniffing and `data:` URLs. |
+| `I8`, `I16`, `I32`, `I64`, `I128`, `U8`, `U16`, `U32`, `U64`, `U128` | The standard fixed-width integers, like Rust's `i8` … `u128`, with strict, checked, wrapping, saturating and overflowing arithmetic. |
+| `FixedInt` | The `FixedInt` model and `make` / `makeBig` for integers of any width. |
+| `Wrapping`, `Saturating`, `Checked`, `Overflowing` | The arithmetic strategies as type classes, with an instance per standard integer type. |
+| `Clamped` | Numbers constrained to `[min, max]` at the type level, with saturating arithmetic, wrapping and rescaling. |
+| `Float`, `F32` | The `Float` type class, `F64`, IEEE 754 total ordering, the `NotNaN` / `Finite` refinements; single precision floats. |
+| `Ratio` | Exact rationals over `bigint`. |
+| `Complex` | Complex numbers over doubles. |
+| `Num` | `num-traits` style type classes, generic `sum` / `product` / `pow`, and instances. |
+| `Integer` | `num-integer` algorithms: `gcd`, `lcm`, floored division, roots, `binomial`, `modPow`, `isPrime`, … |
+| `Range` | `num-iter` ranges: `range`, `rangeInclusive`, `rangeStep`, `linspace`. |
+| `ArithmeticError` | The tagged errors of fallible numeric operations. |
+| `Rfc3339` | RFC 3339 date-times parsed to and printed from `DateTime`. Needs `@thomasfosterau/effect-parse`. |
+| `Rfc9557` | RFC 9557 (IXDTF) date-times with time zone and annotation suffixes. Needs `@thomasfosterau/effect-parse`. |
+| `IsoDuration` | ISO 8601 durations parsed to and printed from the amounts `DateTime.add` takes. Needs `@thomasfosterau/effect-parse`. |
+| `PosixTz` | POSIX TZ strings (`EST5EDT,M3.2.0,M11.1.0`). Needs `@thomasfosterau/effect-parse`. |
+| `CronExpression` | Cron expressions parsed to Effect's `Cron`, with errors that name the field and column. Needs `@thomasfosterau/effect-parse`. |
+| `RRule` | iCalendar recurrence rules (RFC 5545 `recur`). Needs `@thomasfosterau/effect-parse`. |
+| `IanaTimeZone` | IANA time zone names checked against the runtime's tz data. Needs `@thomasfosterau/effect-parse`. |
+| `Tzif` | Compiled TZif zone files (RFC 8536). Needs `@thomasfosterau/effect-parse`. |
 
 ## Allocator
 
@@ -1339,6 +1360,342 @@ DataUrl.process("data:,Hello%2C%20World").pipe(
 ### `DataUrl`
 
 `process(url)` is Fetch's `data:` URL processor: `Option<{ mimeType, body: Uint8Array }>`, percent-decoding the body or forgiving-base64-decoding it under `;base64`, with `text/plain;charset=US-ASCII` for a missing or malformed type. `forgivingBase64Decode` is exported on its own.
+
+## Numeric
+
+Numeric types modelled on Rust's primitive integers and its [`num`](https://github.com/rust-num/num) crates (merged in from thomasfosterau/effect-numeric, which was never published). Rust's documented semantics are the spec. Everything is Effect-native: values are `Brand`ed, failures are `Schema.TaggedError`s carried in `Result` / `Option` (lift them with `Effect.fromResult`), every type ships a `Schema`, `Order` and `Equivalence`, value objects implement `Equal` / `Hash`, and every binary operation is dual. The barrel re-exports each integer module and `F32` as its one value (`import { U8 } from "@thomasfosterau/effect-utilities"`) and the rest as namespaces; each is also its own subpath (`@thomasfosterau/effect-utilities/U8`, `@thomasfosterau/effect-utilities/Ratio`, …).
+
+### Fixed-width integers
+
+```ts
+import { Effect, Option, pipe } from "effect";
+import { I8 } from "@thomasfosterau/effect-utilities/I8";
+import { U8 } from "@thomasfosterau/effect-utilities/U8";
+import { U64 } from "@thomasfosterau/effect-utilities/U64";
+
+const a = U8.make(200); // U8 (throws OutOfRangeError if out of range)
+const b = U8.make(100);
+
+U8.add(a, b); // Result.fail(OverflowError) — strict
+U8.checkedAdd(a, b); // Option.none()
+U8.wrappingAdd(a, b); // 44
+U8.saturatingAdd(a, b); // 255
+U8.overflowingAdd(a, b); // [44, true]
+
+pipe(a, U8.saturatingSub(b)); // 100 — every binary op is dual
+
+U8.from(256); // Option.none() — Rust's TryFrom
+U8.wrappingFrom(-1); // 255 — Rust's `as` between integers
+U8.saturatingFrom(1e9); // 255 — Rust's `as` from a float
+
+I8.checkedDiv(I8.MIN, I8.make(-1)); // Option.none()
+I8.remEuclid(I8.make(-7), I8.make(3)); // Result.succeed(2)
+
+U64.wrappingMul(U64.MAX, U64.MAX); // 1n
+```
+
+Strict operations return a `Result`, which lifts straight into an `Effect` with typed, tagged errors:
+
+```ts
+const program = Effect.gen(function* () {
+  const total = yield* Effect.fromResult(U8.add(a, b));
+  return total;
+}).pipe(Effect.catchTag("OverflowError", (e) => Effect.succeed(U8.MAX)));
+```
+
+| Prefix        | On overflow / invalid input    | Returns                      |
+| ------------- | ------------------------------ | ---------------------------- |
+| _(none)_      | fails with a tagged error      | `Result<A, ArithmeticError>` |
+| `checked`     | returns `None`                 | `Option<A>`                  |
+| `wrapping`    | wraps modulo 2^bits            | `A`                          |
+| `saturating`  | clamps to `MIN` / `MAX`        | `A`                          |
+| `overflowing` | wraps and reports the overflow | `readonly [A, boolean]`      |
+
+Each module also provides `pow`, shifts, `divEuclid` / `remEuclid`, `abs`, `signum`, `isqrt`, `ilog2` / `ilog10` / `ilog`, `midpoint`, `absDiff`, `isPowerOfTwo`, `checkedNextPowerOfTwo`, bit operations (`countOnes`, `leadingZeros`, `trailingZeros`, `rotateLeft`, `reverseBits`, `swapBytes`, …), byte conversions (`toBeBytes`, `fromLeBytes`, …), `parse` / `toString` in any radix, ranges, `Order`, `Equivalence`, and two schemas:
+
+```ts
+import { Schema } from "effect";
+
+Schema.decodeSync(U8.schema)(42); // 42 as U8
+Schema.decodeSync(U64.schemaFromString)("18446744073709551615"); // U64.MAX
+```
+
+Types of up to 32 bits are represented by `number`, wider types by `bigint`.
+
+#### Custom widths
+
+```ts
+import type { Brand } from "effect";
+import * as FixedInt from "@thomasfosterau/effect-utilities/FixedInt";
+
+type U4 = number & Brand.Brand<"U4">;
+const U4 = FixedInt.make<U4>({ name: "U4", bits: 4, signed: false });
+
+type I256 = bigint & Brand.Brand<"I256">;
+const I256 = FixedInt.makeBig<I256>({ name: "I256", bits: 256, signed: true });
+```
+
+### Wrapping, Saturating, Checked, Overflowing
+
+Rust's `Wrapping<T>` and `Saturating<T>` change what `+` means for a type. Here they are type class instances you pick once and then use everywhere — including in generic algorithms:
+
+```ts
+import * as Checked from "@thomasfosterau/effect-utilities/Checked";
+import { I8 } from "@thomasfosterau/effect-utilities/I8";
+import { I64 } from "@thomasfosterau/effect-utilities/I64";
+import * as Integer from "@thomasfosterau/effect-utilities/Integer";
+import * as Num from "@thomasfosterau/effect-utilities/Num";
+import * as Overflowing from "@thomasfosterau/effect-utilities/Overflowing";
+import * as Saturating from "@thomasfosterau/effect-utilities/Saturating";
+import { U8 } from "@thomasfosterau/effect-utilities/U8";
+import * as Wrapping from "@thomasfosterau/effect-utilities/Wrapping";
+
+const W = Wrapping.U8; // Integral<U8> & Signed<U8> & Bounded<U8>
+W.add(U8.make(250), U8.make(10)); // 4
+Num.sum(Wrapping.U8)([U8.make(200), U8.make(100)]); // 44
+
+Saturating.I8.mul(I8.make(-100), I8.make(2)); // -128
+Checked.U8.sum([U8.make(100), U8.make(200)]); // Option.none()
+Overflowing.U8.add(U8.MAX, U8.one); // [0, true]
+
+Integer.gcd(Wrapping.I64)(I64.make(-12n), I64.make(18n)); // 6n
+```
+
+### Clamped types
+
+```ts
+import * as Clamped from "@thomasfosterau/effect-utilities/Clamped";
+
+const Volume = Clamped.int({ min: 0, max: 11 });
+type Volume = Clamped.ValueOf<typeof Volume>; // ClampedInt<0, 11>
+
+Volume.make(42); // 11 — clamps
+Volume.from(42); // Option.none() — validates
+Volume.add(Volume.make(10), 5); // 11 — saturating arithmetic
+
+const Hue = Clamped.make({ min: 0, max: 360 });
+Hue.wrap(370); // 10
+Hue.rescale(Clamped.Percentage)(Hue.make(90)); // 25
+
+Clamped.UnitInterval.make(1.5); // 1
+```
+
+Bounds are tracked in the type, so a `Clamped<0, 1>` can't be passed where a `Clamped<0, 100>` is expected. Each clamped type has a strict `schema` and a lenient `schemaClamping`.
+
+### Floats
+
+```ts
+import { Array } from "effect";
+import { F32 } from "@thomasfosterau/effect-utilities/F32";
+import * as Float from "@thomasfosterau/effect-utilities/Float";
+
+Array.sort([3, NaN, -0, 0, -1], Float.F64.Order); // [-1, -0, 0, 3, NaN] — IEEE totalOrder
+Float.F64.roundTiesEven(2.5); // 2
+Float.F64.nextUp(1); // 1.0000000000000002
+
+F32.add(F32.from(0.1), F32.from(0.2)); // single precision arithmetic
+
+Float.Finite.mul(Float.Finite(1e300), Float.Finite(1e300)); // Option.none()
+Float.NotNaN.option(NaN); // Option.none()
+```
+
+### Ratio and Complex
+
+```ts
+import { Equal, pipe } from "effect";
+import * as Complex from "@thomasfosterau/effect-utilities/Complex";
+import * as Ratio from "@thomasfosterau/effect-utilities/Ratio";
+
+const third = Ratio.make(1, 3);
+pipe(third, Ratio.add(Ratio.make(1, 6)), Ratio.toString); // "1/2"
+Equal.equals(Ratio.make(2, 4), Ratio.make(1, 2)); // true
+Ratio.approximate(Math.PI, 1000n); // Option.some(355/113)
+Ratio.fromNumber(0.1); // Option.some(3602879701896397/36028797018963968), the double's exact value
+Ratio.toFixed(Ratio.make(2, 3), 4); // "0.6667"
+
+const z = Complex.make(3, 4);
+Complex.abs(z); // 5
+Complex.toString(Complex.mul(z, Complex.i)); // "-4+3i"
+```
+
+### Type classes and generic code
+
+| Type class                   | Rust equivalent                       |
+| ---------------------------- | ------------------------------------- |
+| `Zero`, `One`, `Bounded`     | `num_traits::{Zero, One, Bounded}`    |
+| `Num`, `OrderedNum`          | `num_traits::Num`                     |
+| `Signed`                     | `num_traits::Signed`                  |
+| `Integral`                   | `num_integer::Integer`                |
+| `Fractional`                 | field operations                      |
+| `Float.Float`                | `num_traits::Float`                   |
+| `Checked.CheckedOps`         | `CheckedAdd`, `CheckedMul`, …         |
+| `Wrapping.WrappingOps`       | `WrappingAdd`, `WrappingMul`, …       |
+| `Saturating.SaturatingOps`   | `SaturatingAdd`, `SaturatingMul`, …   |
+| `Overflowing.OverflowingOps` | `OverflowingAdd`, `OverflowingMul`, … |
+
+Instances: `Num.number`, `Num.bigint`, `Wrapping.*`, `Saturating.*`, `Float.F64`, `F32`, `Ratio.Field`, `Complex.Field`. Every `FixedInt` module implements the `*Ops` type classes directly.
+
+```ts
+import * as Integer from "@thomasfosterau/effect-utilities/Integer";
+import * as Num from "@thomasfosterau/effect-utilities/Num";
+import * as Range from "@thomasfosterau/effect-utilities/Range";
+import * as Ratio from "@thomasfosterau/effect-utilities/Ratio";
+
+const mean =
+  <A>(N: Num.Fractional<A>, fromCount: (n: number) => A) =>
+  (xs: ReadonlyArray<A>) =>
+    N.div(Num.sum(N)(xs), fromCount(xs.length));
+
+mean(Ratio.Field, Ratio.fromInteger)([Ratio.make(1), Ratio.make(2)]); // 3/2
+
+Integer.extendedGcd(Num.bigint)(240n, 46n); // { gcd: 2n, x: -9n, y: 47n }
+Integer.divFloor(Num.bigint)(-7n, 2n); // -4n
+Integer.isPrime(2n ** 61n - 1n); // true
+Integer.modPow(4n, 13n, 497n); // 445n
+
+Array.from(Range.rangeStep(Num.bigint)(10n, 0n, -3n)); // [10n, 7n, 4n, 1n]
+```
+
+Type class instances are total: where an operation is undefined (integer division by zero), instances throw a `DivisionByZeroError`, mirroring a Rust panic. Use the `Result` / `Option` returning functions on the concrete modules to handle those cases as values.
+
+## Time
+
+Parsers and printers for the strings and files time travels in (merged in from thomasfosterau/effect-time, which was never published). Each produces and consumes Effect's own values (`DateTime`, the amounts `DateTime.add` takes, `Cron`) and comes as a parser to compose, an effectful decoder, a printer and a `Schema`, with errors that point at the offending field. They are built on [`@thomasfosterau/effect-parse`](https://www.npmjs.com/package/@thomasfosterau/effect-parse), an optional peer, so these eight modules are subpaths only.
+
+effect-time also re-exported `effect/Clock` and `effect/DateTime` unchanged; those re-exports are not carried, because Effect already provides them: import `Clock` and `DateTime` from `effect`, as the examples below do.
+
+### `Rfc3339`
+
+```ts
+import { Effect, Schema } from "effect";
+import * as DateTime from "effect/DateTime";
+import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339";
+
+// An effect that fails with effect-parse's ParseError.
+const program = Effect.map(Rfc3339.parse("2026-10-22T09:30:00+10:00"), DateTime.formatIso);
+// "2026-10-21T23:30:00.000Z"
+
+// A Schema<DateTime, string>; a failure's issue carries the ParseError message.
+const Event = Schema.Struct({ at: Rfc3339.FromString });
+```
+
+The grammar is RFC 3339's `date-time`. The separator may be `T`, `t` or a space, and the offset `Z`, `z` or `±hh:mm`. It checks the calendar (`2026-02-29` fails) and the clock ranges, and the error names the field that is out of range:
+
+```text
+Parse error at line 1, column 9:
+1 | 2026-02-30T00:00:00Z
+  |         ^
+while parsing RFC 3339 date-time
+expected day of month (01-28), found "3"
+```
+
+`Z` and `-00:00` (UTC, local offset unknown) give a `DateTime.Utc`. Any other offset gives a `DateTime.Zoned` in that fixed offset, so `Rfc3339.format` prints it back unchanged. Fractional seconds are truncated to milliseconds. A leap second (`:60`) is rejected because `DateTime` cannot hold it. `Rfc3339.parser` is the effect-parse `Parser`, for embedding a timestamp in a larger grammar.
+
+### `Rfc9557`
+
+```ts
+import { Effect } from "effect";
+import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339";
+import * as Rfc9557 from "@thomasfosterau/effect-utilities/Rfc9557";
+
+const program = Effect.map(
+  Rfc9557.parse("2026-10-22T00:00:00Z[Australia/Sydney][u-ca=gregory]"),
+  (ixdtf) => Rfc3339.format(Rfc9557.toDateTime(ixdtf)),
+);
+// "2026-10-22T11:00:00.000+11:00"
+```
+
+The grammar is RFC 9557's `date-time-ext`: an RFC 3339 date-time (read by `Rfc3339.parser`), then at most one time zone suffix (`[Europe/Paris]`, `[+05:30]`), then any number of annotations (`[u-ca=hebrew]`, `[_x-key=a-b]`). A suffix starting with `!` is critical. The result is an `Ixdtf`: the instant as the written offset fixes it, the time zone suffix (`Option`) and the annotations, as written. `Rfc9557.toDateTime` views the instant in the suffixed time zone when `DateTime` knows it.
+
+Following RFC 9557 §3.4, a critical time zone that `DateTime` does not know, or whose offset at the instant differs from a numeric written offset, fails the parse; an elective one is kept as written. Critical annotations are reported with `critical: true` and never acted on: an application must reject the critical keys it does not understand itself. `Rfc9557.format` prints an `Ixdtf` back, and `Rfc9557.FromString` is the `Schema` from the string.
+
+### `PosixTz`
+
+```ts
+import { Effect, Option } from "effect";
+import * as PosixTz from "@thomasfosterau/effect-utilities/PosixTz";
+
+const program = Effect.map(PosixTz.parse("AEST-10AEDT,M10.1.0,M4.1.0/3"), (tz) => ({
+  standard: tz.std.utcOffset, // 36000: ten hours east of UTC
+  daylight: Option.map(tz.dst, (dst) => dst.utcOffset), // Option.some(39600)
+}));
+```
+
+The grammar is POSIX.1-2017 §8.3's `std offset [dst [offset] [,start[/time],end[/time]]]`, the `TZ` environment variable format and the footer of a TZif file. A designation is three or more letters (`AEST`) or three or more letters, digits, `+` and `-` in angle brackets (`<+1030>`). POSIX writes offsets positive _west_ of Greenwich (`EST5`); a parsed `Designation` stores `utcOffset` in seconds positive _east_, as ISO 8601 and `DateTime` do. A daylight designation without an offset is one hour ahead of standard time. Rule dates are `Jn` (1–365, never counting February 29), `n` (0–365) or `Mm.w.d` (week 5 is the last), each with an optional `/time` from -167 to 167 hours (the RFC 8536 extension), defaulting to 02:00. A string with a daylight designation but no rule (`EST5EDT`) gives `rule: Option.none()`, since POSIX leaves that rule to the implementation, and the implementation-defined `:name` form is not read. `PosixTz.format` prints a `PosixTz` back, leaving out the defaults, and `PosixTz.FromString` is the `Schema` from the string.
+
+### `CronExpression`
+
+```ts
+import { Cron, DateTime, Effect } from "effect";
+import * as CronExpression from "@thomasfosterau/effect-utilities/CronExpression";
+
+const nextRun = Effect.map(
+  CronExpression.parseIn("0 9 * * MON-FRI", DateTime.zoneMakeNamedUnsafe("Australia/Sydney")),
+  (cron) => Cron.next(cron, DateTime.makeUnsafe("2026-10-24T00:00:00Z")),
+);
+// 2026-10-25T22:00:00.000Z, 9:00 on Monday in Sydney
+```
+
+The result is Effect's own `Cron`, so `Cron.next`, `Cron.match` and `Cron.sequence` work on it, and for a valid expression it equals what `Cron.parse` gives. What this module adds is the error: a value out of range, a range that runs backwards, a zero step or a wrong field count fails at its column and names the field, as an effect-parse `ParseError`. The grammar is Vixie cron's: five fields (minute, hour, day of month, month, day of week) or six with a leading second, each a comma-separated list of `*`, `n` or `a-b` with an optional `/step`, month and weekday names in any case, Sunday as 0 or 7, and the macros `@yearly`, `@annually`, `@monthly`, `@weekly`, `@daily`, `@midnight` and `@hourly`. When both day fields are restricted a time matches either, unless one starts with `*`. Quartz's `?`, `L`, `W` and `#` are not read. `CronExpression.parseIn` and `CronExpression.parserIn` take a time zone, `CronExpression.format` prints with `Cron.format`, and `CronExpression.FromString` is the `Schema` from the string.
+
+### `RRule`
+
+```ts
+import { Effect } from "effect";
+import * as RRule from "@thomasfosterau/effect-utilities/RRule";
+
+const program = Effect.map(RRule.parse("FREQ=MONTHLY;BYDAY=-1FR;COUNT=6"), (rule) => rule.byDay);
+// [{ ordinal: Option.some(-1), weekday: "FR" }]: the last Friday of each month
+```
+
+The grammar is RFC 5545 §3.3.10's `recur`, the value of an `RRULE` property (the text after `RRULE:`): `NAME=value` parts separated by `;`, in any order and any case, each at most once, `FREQ` required. A parsed `RRule` has `freq`, `until` and `count` (`Option`s), `interval` (default 1), the `BY…` lists (empty when absent), and `weekStart` (`WKST`, default `"MO"`). `UNTIL` is kept as written, a date or a date-time with or without `Z`, because a floating time has no instant until the rule's start gives it a zone. Every value is range-checked, and RFC 5545's cross-part restrictions fail the parse: `UNTIL` with `COUNT`, `BYDAY` ordinals outside `MONTHLY` and `YEARLY`, `BYMONTHDAY` with `WEEKLY`, `BYYEARDAY` with `DAILY`, `WEEKLY` or `MONTHLY`, `BYWEEKNO` outside `YEARLY`, and `BYSETPOS` alone. RFC 7529's `RSCALE` and `SKIP` are not read, and the rule is parsed, not expanded into occurrences. `RRule.format` prints a rule back in RFC 5545's part order, and `RRule.FromString` is the `Schema` from the string.
+
+### `IanaTimeZone`
+
+```ts
+import { DateTime, Effect } from "effect";
+import * as IanaTimeZone from "@thomasfosterau/effect-utilities/IanaTimeZone";
+
+const program = Effect.map(IanaTimeZone.parse("Asia/Tokyo"), (zone) =>
+  DateTime.setZone(DateTime.makeUnsafe("2026-10-22T00:00:00Z"), zone),
+);
+
+IanaTimeZone.isKnown("Mars/Olympus_Mons"); // false
+```
+
+A name is read with the tz database's naming rules (`/`-separated components of 1–14 letters, digits, `.`, `_`, `-` and `+`) and then checked against the time zones the JavaScript runtime knows. Nothing is bundled: the answer comes from the runtime's ICU build, through `Intl.DateTimeFormat`, so it depends on that runtime and its tz data version. Aliases (`US/Eastern`), `UTC`, `Etc/GMT±n` and any letter case are accepted, and the result is the runtime's `DateTime.TimeZone.Named`, whose `id` is the runtime's canonical spelling. That spelling can differ between runtimes (`Asia/Kolkata` or `Asia/Calcutta`). `IanaTimeZone.supported()` is `Intl.supportedValuesOf("timeZone")`, the runtime's list of canonical names, for offering a choice. It is not the set of valid names, because V8 leaves `UTC`, `Etc/GMT±n` and every alias out of it. `IanaTimeZone.FromString` is the `Schema` from the name; it encodes the canonical `id`.
+
+### `Tzif`
+
+```ts
+import { Effect, Option } from "effect";
+import * as PosixTz from "@thomasfosterau/effect-utilities/PosixTz";
+import * as Tzif from "@thomasfosterau/effect-utilities/Tzif";
+
+// `bytes` holds the contents of /usr/share/zoneinfo/Australia/Sydney.
+const program = (bytes: Uint8Array) =>
+  Effect.map(Tzif.parse(bytes), (tzif) => Option.map(tzif.footer, PosixTz.format));
+// Option.some("AEST-10AEDT,M10.1.0,M4.1.0/3")
+```
+
+`Tzif.parser` is an effect-parse binary parser over a `Uint8Array`, reading RFC 8536's TZif format, versions 1 to 4. For version 2 and later it reads the 64-bit data block and the footer, and skips the 32-bit block. A `Tzif` holds the transitions (a time in seconds since the epoch and an index into the local time types), the local time types (UTC offset in seconds east, DST flag, designation, and the standard/wall and UT/local indicators), the leap second records, and the footer parsed with `PosixTz.parser` (`Option.none()` when it is empty or the file is version 1). The parser enforces RFC 8536's structural requirements: the counts, ascending transition times, indices in range, 0/1 flags and a valid footer. A violation fails at its byte offset. Reading files is left to the caller, so the module works the same in a browser, a Worker or Node.
+
+### `IsoDuration`
+
+```ts
+import { Effect, Option } from "effect";
+import * as DateTime from "effect/DateTime";
+import * as IsoDuration from "@thomasfosterau/effect-utilities/IsoDuration";
+
+const later = Effect.map(IsoDuration.parse("P1DT12H"), (duration) =>
+  DateTime.add(DateTime.makeUnsafe("2026-10-22T00:00:00Z"), duration),
+);
+
+IsoDuration.format({ days: 1, milliseconds: 1500 }); // Option.some("P1DT1.5S")
+IsoDuration.format({ days: 1, hours: -1 }); // Option.none(): mixed signs
+```
+
+A parsed duration is every amount `DateTime.add` takes (`years` through `milliseconds`), unnormalised: `PT90M` is 90 minutes. The grammar is `PnW`, or `PnYnMnDTnHnMnS` with any amounts left out (at least one, and at least one after a `T`). It also accepts a leading sign, a `.` or `,` fraction on the seconds (truncated to milliseconds) and lower-case letters. `IsoDuration.FromString` is the `Schema` from the string.
 
 ## License
 

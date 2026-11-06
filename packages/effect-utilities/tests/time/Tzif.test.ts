@@ -4,9 +4,14 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { Array as Arr, Effect, Option, Order, Result } from "effect";
+import * as Arr from "effect/Array";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import * as Order from "effect/Order";
+import * as Result from "effect/Result";
 import { Parser } from "@thomasfosterau/effect-parse";
-import { PosixTz, Tzif } from "@thomasfosterau/effect-time";
+import * as PosixTz from "@thomasfosterau/effect-utilities/PosixTz";
+import * as Tzif from "@thomasfosterau/effect-utilities/Tzif";
 import * as Zoneinfo from "./fixtures/zoneinfo.ts";
 
 const parseSync = (input: Uint8Array): Tzif.Tzif => Parser.parseSync(Tzif.parser, input);

@@ -1,58 +1,75 @@
-import { describe, expect, it } from "vite-plus/test"
-import * as Arr from "effect/Array"
-import * as Eq from "effect/Equal"
-import * as HashSet from "effect/HashSet"
-import * as Option from "effect/Option"
-import { pipe } from "effect/Function"
-import * as Result from "effect/Result"
-import * as Schema from "effect/Schema"
-import * as fc from "fast-check"
-import { Float, Ratio } from "../src/index.ts"
-import { getSome, getSuccess } from "./helpers.ts"
+import { describe, expect, it } from "vite-plus/test";
+import * as Arr from "effect/Array";
+import * as Eq from "effect/Equal";
+import * as HashSet from "effect/HashSet";
+import * as Option from "effect/Option";
+import { pipe } from "effect/Function";
+import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
+import * as fc from "fast-check";
+import * as Float from "@thomasfosterau/effect-utilities/Float";
+import * as Ratio from "@thomasfosterau/effect-utilities/Ratio";
+import { getFailure, getSome, getSuccess } from "./helpers.ts";
 
 const arbRatio = fc
-  .tuple(fc.bigInt({ min: -(10n ** 12n), max: 10n ** 12n }), fc.bigInt({ min: 1n, max: 10n ** 12n }))
-  .map(([n, d]) => Ratio.make(n, d))
+  .tuple(
+    fc.bigInt({ min: -(10n ** 12n), max: 10n ** 12n }),
+    fc.bigInt({ min: 1n, max: 10n ** 12n }),
+  )
+  .map(([n, d]) => Ratio.make(n, d));
 
 describe("Ratio", () => {
   it("normalises", () => {
-    const r = Ratio.make(6, -8)
-    expect([r.numer, r.denom]).toEqual([-3n, 4n])
-    expect(Ratio.toString(Ratio.make(4, 2))).toBe("2")
-    expect(Ratio.make(0, -5)).toBe(Ratio.zero)
-    expect(() => Ratio.make(1, 0)).toThrow(/by zero/)
-    expect(() => Ratio.make(1.5)).toThrow(RangeError)
-    expect(Result.isFailure(Ratio.fromFraction(1n, 0n))).toBe(true)
-  })
+    const r = Ratio.make(6, -8);
+    expect([r.numer, r.denom]).toEqual([-3n, 4n]);
+    expect(Ratio.toString(Ratio.make(4, 2))).toBe("2");
+    expect(Ratio.make(0, -5)).toBe(Ratio.zero);
+    expect(() => Ratio.make(1, 0)).toThrow(/by zero/);
+    expect(() => Ratio.make(1.5)).toThrow(RangeError);
+    expect(Result.isFailure(Ratio.fromFraction(1n, 0n))).toBe(true);
+  });
   it("structural equality and hashing", () => {
-    expect(Eq.equals(Ratio.make(1, 2), Ratio.make(2, 4))).toBe(true)
-    expect(HashSet.size(HashSet.make(Ratio.make(1, 2), Ratio.make(3, 6), Ratio.make(1, 3)))).toBe(2)
-  })
+    expect(Eq.equals(Ratio.make(1, 2), Ratio.make(2, 4))).toBe(true);
+    expect(HashSet.size(HashSet.make(Ratio.make(1, 2), Ratio.make(3, 6), Ratio.make(1, 3)))).toBe(
+      2,
+    );
+  });
   it("field laws", () => {
     fc.assert(
       fc.property(arbRatio, arbRatio, arbRatio, (a, b, c) => {
-        expect(Ratio.Equivalence(Ratio.add(Ratio.add(a, b), c), Ratio.add(a, Ratio.add(b, c)))).toBe(true)
-        expect(Ratio.Equivalence(Ratio.mul(a, Ratio.add(b, c)), Ratio.add(Ratio.mul(a, b), Ratio.mul(a, c)))).toBe(true)
-        expect(Ratio.Equivalence(Ratio.sub(Ratio.add(a, b), b), a)).toBe(true)
-        expect(Ratio.isZero(b) || Ratio.Equivalence(Ratio.mul(getSuccess(Ratio.div(a, b)), b), a)).toBe(true)
-        expect(Ratio.Order(a, b)).toBe(Math.sign(Ratio.toNumber(a) - Ratio.toNumber(b)) || Ratio.Order(a, b))
-      })
-    )
-  })
+        expect(
+          Ratio.Equivalence(Ratio.add(Ratio.add(a, b), c), Ratio.add(a, Ratio.add(b, c))),
+        ).toBe(true);
+        expect(
+          Ratio.Equivalence(
+            Ratio.mul(a, Ratio.add(b, c)),
+            Ratio.add(Ratio.mul(a, b), Ratio.mul(a, c)),
+          ),
+        ).toBe(true);
+        expect(Ratio.Equivalence(Ratio.sub(Ratio.add(a, b), b), a)).toBe(true);
+        expect(
+          Ratio.isZero(b) || Ratio.Equivalence(Ratio.mul(getSuccess(Ratio.div(a, b)), b), a),
+        ).toBe(true);
+        expect(Ratio.Order(a, b)).toBe(
+          Math.sign(Ratio.toNumber(a) - Ratio.toNumber(b)) || Ratio.Order(a, b),
+        );
+      }),
+    );
+  });
   it("arithmetic", () => {
-    const a = Ratio.make(1, 3)
-    const b = Ratio.make(1, 6)
-    expect(Ratio.toString(Ratio.add(a, b))).toBe("1/2")
-    expect(pipe(a, Ratio.mul(b), Ratio.toString)).toBe("1/18")
-    expect(Ratio.checkedDiv(a, Ratio.zero)).toEqual(Option.none())
-    expect(Result.isFailure(Ratio.recip(Ratio.zero))).toBe(true)
-    expect(Ratio.toString(getSuccess(Ratio.pow(Ratio.make(2, 3), -2)))).toBe("9/4")
-    expect(Result.isFailure(Ratio.pow(Ratio.zero, -1))).toBe(true)
-    expect(Ratio.toString(Ratio.mediant(Ratio.make(1, 2), Ratio.make(2, 3)))).toBe("3/5")
-    expect(() => Ratio.Field.div(a, Ratio.zero)).toThrow(/by zero/)
-    expect(Ratio.sign(Ratio.make(-1, 2))).toBe(-1)
-    expect(Ratio.toString(Ratio.abs(Ratio.make(-1, 2)))).toBe("1/2")
-  })
+    const a = Ratio.make(1, 3);
+    const b = Ratio.make(1, 6);
+    expect(Ratio.toString(Ratio.add(a, b))).toBe("1/2");
+    expect(pipe(a, Ratio.mul(b), Ratio.toString)).toBe("1/18");
+    expect(Ratio.checkedDiv(a, Ratio.zero)).toEqual(Option.none());
+    expect(Result.isFailure(Ratio.recip(Ratio.zero))).toBe(true);
+    expect(Ratio.toString(getSuccess(Ratio.pow(Ratio.make(2, 3), -2)))).toBe("9/4");
+    expect(Result.isFailure(Ratio.pow(Ratio.zero, -1))).toBe(true);
+    expect(Ratio.toString(Ratio.mediant(Ratio.make(1, 2), Ratio.make(2, 3)))).toBe("3/5");
+    expect(() => Ratio.Field.div(a, Ratio.zero)).toThrow(/by zero/);
+    expect(Ratio.sign(Ratio.make(-1, 2))).toBe(-1);
+    expect(Ratio.toString(Ratio.abs(Ratio.make(-1, 2)))).toBe("1/2");
+  });
   it("rounding", () => {
     const cases: ReadonlyArray<[number, number, bigint, bigint, bigint, bigint]> = [
       // n, d, floor, ceil, trunc, round
@@ -60,63 +77,207 @@ describe("Ratio", () => {
       [-7, 2, -4n, -3n, -3n, -4n],
       [5, 3, 1n, 2n, 1n, 2n],
       [-5, 3, -2n, -1n, -1n, -2n],
-      [4, 1, 4n, 4n, 4n, 4n]
-    ]
+      [4, 1, 4n, 4n, 4n, 4n],
+    ];
     expect(
       Arr.map(cases, ([n, d]) => {
-        const r = Ratio.make(n, d)
-        return [Ratio.floor(r), Ratio.ceil(r), Ratio.trunc(r), Ratio.round(r)]
-      })
-    ).toEqual(Arr.map(cases, ([, , fl, ce, tr, ro]) => [fl, ce, tr, ro]))
-    expect(Ratio.toString(Ratio.fract(Ratio.make(-7, 2)))).toBe("-1/2")
-    expect(Ratio.toFixed(Ratio.make(2, 3), 4)).toBe("0.6667")
-    expect(Ratio.toFixed(Ratio.make(-1, 8), 2)).toBe("-0.13")
-    expect(Ratio.toFixed(Ratio.make(5, 2), 0)).toBe("3")
-  })
+        const r = Ratio.make(n, d);
+        return [Ratio.floor(r), Ratio.ceil(r), Ratio.trunc(r), Ratio.round(r)];
+      }),
+    ).toEqual(Arr.map(cases, ([, , fl, ce, tr, ro]) => [fl, ce, tr, ro]));
+    expect(Ratio.toString(Ratio.fract(Ratio.make(-7, 2)))).toBe("-1/2");
+    expect(Ratio.toFixed(Ratio.make(2, 3), 4)).toBe("0.6667");
+    expect(Ratio.toFixed(Ratio.make(-1, 8), 2)).toBe("-0.13");
+    expect(Ratio.toFixed(Ratio.make(5, 2), 0)).toBe("3");
+  });
   it("conversions", () => {
-    expect(Ratio.toString(getSome(Ratio.fromNumber(0.375)))).toBe("3/8")
-    expect(Ratio.toString(getSome(Ratio.fromNumber(0.1)))).toBe("3602879701896397/36028797018963968")
-    expect(Ratio.fromNumber(Number.NaN)).toEqual(Option.none())
-    expect(Ratio.toNumber(getSome(Ratio.fromNumber(Number.MIN_VALUE)))).toBe(Number.MIN_VALUE)
+    expect(Ratio.toString(getSome(Ratio.fromNumber(0.375)))).toBe("3/8");
+    expect(Ratio.toString(getSome(Ratio.fromNumber(0.1)))).toBe(
+      "3602879701896397/36028797018963968",
+    );
+    expect(Ratio.fromNumber(Number.NaN)).toEqual(Option.none());
+    expect(Ratio.toNumber(getSome(Ratio.fromNumber(Number.MIN_VALUE)))).toBe(Number.MIN_VALUE);
     fc.assert(
       fc.property(fc.double({ noNaN: true, noDefaultInfinity: true }), (x) => {
-        expect(Ratio.toNumber(getSome(Ratio.fromNumber(x)))).toBe(x + 0)
-      })
-    )
-    expect(Option.map(Ratio.approximate(Math.PI, 1000n), Ratio.toString)).toEqual(Option.some("355/113"))
-    expect(Option.map(Ratio.approximate(0.333333, 100n), Ratio.toString)).toEqual(Option.some("1/3"))
-    expect(Ratio.toNumber(Ratio.make(10n ** 400n + 1n, 10n ** 399n))).toBe(10)
-    expect(Ratio.toNumber(Ratio.make(10n ** 400n))).toBe(Number.POSITIVE_INFINITY)
-    expect(Ratio.toNumber(Ratio.make(-1n, 10n ** 400n))).toBe(-0)
+        expect(Ratio.toNumber(getSome(Ratio.fromNumber(x)))).toBe(x + 0);
+      }),
+    );
+    expect(Option.map(Ratio.approximate(Math.PI, 1000n), Ratio.toString)).toEqual(
+      Option.some("355/113"),
+    );
+    expect(Option.map(Ratio.approximate(0.333333, 100n), Ratio.toString)).toEqual(
+      Option.some("1/3"),
+    );
+    expect(Ratio.toNumber(Ratio.make(10n ** 400n + 1n, 10n ** 399n))).toBe(10);
+    expect(Ratio.toNumber(Ratio.make(10n ** 400n))).toBe(Number.POSITIVE_INFINITY);
+    expect(Ratio.toNumber(Ratio.make(-1n, 10n ** 400n))).toBe(-0);
     // exact halfway between two doubles rounds to even
-    expect(Ratio.toNumber(Ratio.make(2n ** 60n + 2n ** 7n))).toBe(2 ** 60)
-    expect(Ratio.toNumber(Ratio.make(2n ** 60n + 3n * 2n ** 7n))).toBe(2 ** 60 + 2 ** 9)
+    expect(Ratio.toNumber(Ratio.make(2n ** 60n + 2n ** 7n))).toBe(2 ** 60);
+    expect(Ratio.toNumber(Ratio.make(2n ** 60n + 3n * 2n ** 7n))).toBe(2 ** 60 + 2 ** 9);
     fc.assert(
-      fc.property(fc.bigInt({ min: 1n, max: 10n ** 30n }), fc.bigInt({ min: 1n, max: 10n ** 30n }), (n, d) => {
-        // compare against a correctly rounded reference using exact float decomposition
-        const x = Ratio.toNumber(Ratio.make(n, d))
-        const r = Ratio.make(n, d)
-        const lo = getSome(Ratio.fromNumber(Float.F64.nextDown(x)))
-        const hi = getSome(Ratio.fromNumber(Float.F64.nextUp(x)))
-        const xr = getSome(Ratio.fromNumber(x))
-        const dist = (q: Ratio.Ratio) => Ratio.abs(Ratio.sub(q, r))
-        expect(Ratio.Order(dist(xr), dist(lo))).toBeLessThanOrEqual(0)
-        expect(Ratio.Order(dist(xr), dist(hi))).toBeLessThanOrEqual(0)
-      })
-    )
-  })
+      fc.property(
+        fc.bigInt({ min: 1n, max: 10n ** 30n }),
+        fc.bigInt({ min: 1n, max: 10n ** 30n }),
+        (n, d) => {
+          // compare against a correctly rounded reference using exact float decomposition
+          const x = Ratio.toNumber(Ratio.make(n, d));
+          const r = Ratio.make(n, d);
+          const lo = getSome(Ratio.fromNumber(Float.F64.nextDown(x)));
+          const hi = getSome(Ratio.fromNumber(Float.F64.nextUp(x)));
+          const xr = getSome(Ratio.fromNumber(x));
+          const dist = (q: Ratio.Ratio) => Ratio.abs(Ratio.sub(q, r));
+          expect(Ratio.Order(dist(xr), dist(lo))).toBeLessThanOrEqual(0);
+          expect(Ratio.Order(dist(xr), dist(hi))).toBeLessThanOrEqual(0);
+        },
+      ),
+    );
+  });
   it("parse and schemas", () => {
-    expect(Option.map(Ratio.parse("3/-6"), Ratio.toString)).toEqual(Option.some("-1/2"))
-    expect(Option.map(Ratio.parse("-1.25e1"), Ratio.toString)).toEqual(Option.some("-25/2"))
-    expect(Option.map(Ratio.parse(".5"), Ratio.toString)).toEqual(Option.some("1/2"))
-    expect(Option.map(Ratio.parse("42"), Ratio.toString)).toEqual(Option.some("42"))
-    expect(Ratio.parse("1/0")).toEqual(Option.none())
-    expect(Ratio.parse("abc")).toEqual(Option.none())
-    expect(Ratio.parse(".")).toEqual(Option.none())
-    const decoded = Schema.decodeSync(Ratio.schemaFromString)("2/4")
-    expect(Ratio.toString(decoded)).toBe("1/2")
-    expect(Schema.encodeSync(Ratio.schemaFromString)(Ratio.make(3, 4))).toBe("3/4")
-    expect(Result.isFailure(Schema.decodeResult(Ratio.schemaFromString)("x"))).toBe(true)
-    expect(String(Ratio.make(1, 2))).toBe("1/2")
-  })
-})
+    expect(Option.map(Ratio.parse("3/-6"), Ratio.toString)).toEqual(Option.some("-1/2"));
+    expect(Option.map(Ratio.parse("-1.25e1"), Ratio.toString)).toEqual(Option.some("-25/2"));
+    expect(Option.map(Ratio.parse(".5"), Ratio.toString)).toEqual(Option.some("1/2"));
+    expect(Option.map(Ratio.parse("42"), Ratio.toString)).toEqual(Option.some("42"));
+    expect(Ratio.parse("1/0")).toEqual(Option.none());
+    expect(Ratio.parse("abc")).toEqual(Option.none());
+    expect(Ratio.parse(".")).toEqual(Option.none());
+    const decoded = Schema.decodeSync(Ratio.schemaFromString)("2/4");
+    expect(Ratio.toString(decoded)).toBe("1/2");
+    expect(Schema.encodeSync(Ratio.schemaFromString)(Ratio.make(3, 4))).toBe("3/4");
+    expect(Result.isFailure(Schema.decodeResult(Ratio.schemaFromString)("x"))).toBe(true);
+    expect(String(Ratio.make(1, 2))).toBe("1/2");
+  });
+});
+
+const str = (r: Ratio.Ratio) => Ratio.toString(r);
+
+describe("Ratio: remaining operations", () => {
+  it("limitDenominator finds the closest fraction (brute-force reference)", () => {
+    fc.assert(
+      fc.property(arbRatio, fc.bigInt({ min: 1n, max: 40n }), (r, max) => {
+        const best = Ratio.limitDenominator(r, max);
+        expect(best.denom <= max).toBe(true);
+        const dist = (q: Ratio.Ratio) => Ratio.abs(Ratio.sub(q, r));
+        // Every fraction p/q with q <= max is at least as far away; p = floor or ceil of r * q.
+        const candidates = Arr.flatMap(
+          Array.from({ length: Number(max) }, (_, i) => BigInt(i + 1)),
+          (q) => {
+            const scaled = Ratio.mul(r, Ratio.make(q));
+            return [Ratio.make(Ratio.floor(scaled), q), Ratio.make(Ratio.ceil(scaled), q)];
+          },
+        );
+        const closest = Arr.reduce(candidates, best, (acc, c) =>
+          Ratio.Order(dist(c), dist(acc)) < 0 ? c : acc,
+        );
+        expect(Ratio.Order(dist(best), dist(closest))).toBe(0);
+      }),
+      { numRuns: 300 },
+    );
+    // Python: Fraction('3.141592653589793').limit_denominator(10) == Fraction(22, 7).
+    const pi = getSome(Ratio.parse("3.141592653589793"));
+    expect(str(Ratio.limitDenominator(pi, 10n))).toBe("22/7");
+    expect(str(Ratio.limitDenominator(100n)(pi))).toBe("311/99");
+    // Python: Fraction(1, 3).limit_denominator(2) == Fraction(1, 2) (|1/2 - 1/3| < |0 - 1/3|).
+    expect(str(Ratio.limitDenominator(Ratio.make(1, 3), 2n))).toBe("1/2");
+    // A ratio that already fits is returned unchanged.
+    const r = Ratio.make(3, 7);
+    expect(Ratio.limitDenominator(r, 7n)).toBe(r);
+    expect(() => Ratio.limitDenominator(r, 0n)).toThrow(/at least 1/);
+  });
+
+  it("approximate defaults to a 1e6 denominator bound", () => {
+    expect(Option.map(Ratio.approximate(0.5), str)).toEqual(Option.some("1/2"));
+    expect(Option.map(Ratio.approximate(Math.PI), str)).toEqual(Option.some("3126535/995207"));
+    expect(Ratio.approximate(Number.POSITIVE_INFINITY)).toEqual(Option.none());
+    expect(Option.map(Ratio.approximate(-0.75, 4n), str)).toEqual(Option.some("-3/4"));
+  });
+
+  it("parse rejects exponents beyond the safe range", () => {
+    expect(Ratio.parse("1e99999999999999999999")).toEqual(Option.none());
+    expect(Option.map(Ratio.parse("  1.5E+2 "), str)).toEqual(Option.some("150"));
+    expect(Option.map(Ratio.parse("+0.0"), str)).toEqual(Option.some("0"));
+    expect(Option.map(Ratio.parse("-12e-3"), str)).toEqual(Option.some("-3/250"));
+    expect(Option.map(Ratio.parse("5."), str)).toEqual(Option.some("5"));
+    expect(Ratio.parse("1/x")).toEqual(Option.none());
+    expect(Ratio.parse("e5")).toEqual(Option.none());
+  });
+
+  it("negate, sign, pow and isInteger", () => {
+    fc.assert(
+      fc.property(arbRatio, (r) => {
+        const n = Ratio.negate(r);
+        expect(Ratio.isZero(Ratio.add(r, n))).toBe(true);
+        expect(Ratio.sign(n)).toBe(-Ratio.sign(r) + 0);
+        expect(Ratio.sign(r)).toBe(r.numer > 0n ? 1 : r.numer < 0n ? -1 : 0);
+        expect(Ratio.isInteger(r)).toBe(r.denom === 1n);
+      }),
+    );
+    expect(Ratio.negate(Ratio.zero)).toBe(Ratio.zero);
+    expect(str(Ratio.negate(Ratio.make(-2, 3)))).toBe("2/3");
+    expect([
+      Ratio.sign(Ratio.make(1, 2)),
+      Ratio.sign(Ratio.zero),
+      Ratio.sign(Ratio.make(-1, 2)),
+    ]).toEqual([1, 0, -1]);
+    expect(str(getSuccess(Ratio.pow(Ratio.make(-2, 3), 3)))).toBe("-8/27");
+    expect(str(getSuccess(Ratio.pow(Ratio.make(-2, 3), -3)))).toBe("-27/8");
+    expect(str(getSuccess(Ratio.pow(Ratio.zero, 0)))).toBe("1");
+    expect(getFailure(Ratio.pow(Ratio.zero, -2))._tag).toBe("DivisionByZeroError");
+    expect(() => Ratio.pow(Ratio.one, 0.5)).toThrow(/safe integer/);
+    expect(Ratio.isInteger(Ratio.make(4, 2))).toBe(true);
+    expect(Ratio.isInteger(Ratio.make(1, 2))).toBe(false);
+  });
+
+  it("toFixed rejects a bad digit count; rounds half away from zero", () => {
+    expect(() => Ratio.toFixed(Ratio.one, -1)).toThrow(/digits must be >= 0/);
+    expect(() => Ratio.toFixed(Ratio.one, 1.5)).toThrow(RangeError);
+    expect(Ratio.toFixed(Ratio.make(-5, 2), 0)).toBe("-3");
+    expect(Ratio.toFixed(Ratio.make(1, 200), 2)).toBe("0.01");
+    expect(Ratio.toFixed(2)(Ratio.make(1, 3))).toBe("0.33");
+  });
+
+  it("min, max and clamp", () => {
+    fc.assert(
+      fc.property(arbRatio, arbRatio, arbRatio, (a, b, c) => {
+        const lt = Ratio.Order(a, b) < 0;
+        expect(Ratio.min(a, b)).toBe(lt ? a : Ratio.Order(a, b) === 0 ? a : b);
+        expect(Ratio.max(a, b)).toBe(lt ? b : a);
+        const [lo, hi] = lt ? [a, b] : [b, a];
+        const clamped = Ratio.clamp(c, lo, hi);
+        expect(Ratio.Order(lo, clamped) <= 0 && Ratio.Order(clamped, hi) <= 0).toBe(true);
+        expect(clamped).toBe(Ratio.Order(c, lo) < 0 ? lo : Ratio.Order(hi, c) < 0 ? hi : c);
+      }),
+    );
+    const half = Ratio.make(1, 2);
+    const third = Ratio.make(1, 3);
+    expect(Ratio.min(half, third)).toBe(third);
+    expect(Ratio.min(third, half)).toBe(third);
+    expect(Ratio.max(half)(third)).toBe(half);
+    expect(Ratio.max(half, third)).toBe(half);
+    expect(Ratio.clamp(Ratio.zero, third, half)).toBe(third);
+    expect(Ratio.clamp(Ratio.one, third, half)).toBe(half);
+    const mid = Ratio.make(2, 5);
+    expect(Ratio.clamp(mid, third, half)).toBe(mid);
+  });
+
+  it("the Field instance", () => {
+    const F = Ratio.Field;
+    expect(F.isOne(Ratio.make(2, 2))).toBe(true);
+    expect(F.isOne(Ratio.make(1, 2))).toBe(false);
+    expect(F.isOne(Ratio.make(2))).toBe(false);
+    expect(F.isZero(Ratio.zero)).toBe(true);
+    expect(str(F.recip(Ratio.make(-2, 3)))).toBe("-3/2");
+    expect(() => F.recip(Ratio.zero)).toThrow(/by zero/);
+    expect(str(F.div(Ratio.make(1, 2), Ratio.make(3, 4)))).toBe("2/3");
+    expect(str(F.signum(Ratio.make(-7, 3)))).toBe("-1");
+    expect(str(F.signum(Ratio.zero))).toBe("0");
+    expect(str(F.signum(Ratio.make(7, 3)))).toBe("1");
+    expect(str(F.negate(Ratio.make(1, 2)))).toBe("-1/2");
+  });
+
+  it("guards and schema", () => {
+    expect(Ratio.isRatio(Ratio.one)).toBe(true);
+    expect(Ratio.isRatio({ numer: 1n, denom: 1n })).toBe(false);
+    expect(Schema.is(Ratio.schema)(Ratio.make(1, 2))).toBe(true);
+    expect(str(Ratio.fromInteger(-4))).toBe("-4");
+  });
+});

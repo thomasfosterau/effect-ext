@@ -5,7 +5,7 @@
  *
  * @example
  * ```ts
- * import { U8 } from "effect-numeric"
+ * import { U8 } from "@thomasfosterau/effect-utilities/U8"
  *
  * const a = U8.make(200)
  * const b = U8.make(100)
@@ -18,8 +18,8 @@
  *
  * @since 0.1.0
  */
-import type * as Brand from "effect/Brand"
-import * as FixedInt from "./FixedInt.ts"
+import type * as Brand from "effect/Brand";
+import * as FixedInt from "./FixedInt.ts";
 
 /**
  * A unsigned 8-bit integer.
@@ -27,7 +27,7 @@ import * as FixedInt from "./FixedInt.ts"
  * @category models
  * @since 0.1.0
  */
-export type U8 = number & Brand.Brand<"U8">
+export type U8 = number & Brand.Brand<"U8">;
 
 /**
  * Operations on {@link U8} values.
@@ -38,5 +38,5 @@ export type U8 = number & Brand.Brand<"U8">
 export const U8: FixedInt.FixedInt<U8, number> = /* @__PURE__ */ FixedInt.make<U8>({
   name: "U8",
   bits: 8,
-  signed: false
-})
+  signed: false,
+});

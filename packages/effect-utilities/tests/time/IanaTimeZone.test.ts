@@ -4,9 +4,13 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { DateTime, Effect, Option, Result, Schema } from "effect";
+import * as DateTime from "effect/DateTime";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
 import { Parser } from "@thomasfosterau/effect-parse";
-import { IanaTimeZone } from "@thomasfosterau/effect-time";
+import * as IanaTimeZone from "@thomasfosterau/effect-utilities/IanaTimeZone";
 
 // An unexpected success gives "", which no expectation below contains.
 const failure = (input: string): string =>

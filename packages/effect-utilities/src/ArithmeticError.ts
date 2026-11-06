@@ -7,10 +7,10 @@
  *
  * @since 0.1.0
  */
-import * as Schema from "effect/Schema"
+import * as Schema from "effect/Schema";
 
 /** Quotes a string exactly as `JSON.stringify` does, for {@link ParseError}'s message. */
-const quote = Schema.encodeSync(Schema.fromJsonString(Schema.String))
+const quote = Schema.encodeSync(Schema.fromJsonString(Schema.String));
 
 /**
  * The result of an operation does not fit in the target type.
@@ -18,18 +18,18 @@ const quote = Schema.encodeSync(Schema.fromJsonString(Schema.String))
  * @category errors
  * @since 0.1.0
  */
-export class OverflowError extends Schema.TaggedError<OverflowError, { readonly brand: unique symbol }>()(
-  "OverflowError",
-  {
-    /** Name of the operation that overflowed, e.g. `"add"`. */
-    operation: Schema.String,
-    /** Name of the numeric type, e.g. `"U8"`. */
-    type: Schema.String
-  }
-) {
+export class OverflowError extends Schema.TaggedError<
+  OverflowError,
+  { readonly brand: unique symbol }
+>()("OverflowError", {
+  /** Name of the operation that overflowed, e.g. `"add"`. */
+  operation: Schema.String,
+  /** Name of the numeric type, e.g. `"U8"`. */
+  type: Schema.String,
+}) {
   /** `"<type>: attempt to <operation> with overflow"`. */
   override get message(): string {
-    return `${this.type}: attempt to ${this.operation} with overflow`
+    return `${this.type}: attempt to ${this.operation} with overflow`;
   }
 }
 
@@ -39,18 +39,18 @@ export class OverflowError extends Schema.TaggedError<OverflowError, { readonly 
  * @category errors
  * @since 0.1.0
  */
-export class DivisionByZeroError extends Schema.TaggedError<DivisionByZeroError, { readonly brand: unique symbol }>()(
-  "DivisionByZeroError",
-  {
-    /** Name of the operation, e.g. `"div"`. */
-    operation: Schema.String,
-    /** Name of the numeric type, e.g. `"U8"`. */
-    type: Schema.String
-  }
-) {
+export class DivisionByZeroError extends Schema.TaggedError<
+  DivisionByZeroError,
+  { readonly brand: unique symbol }
+>()("DivisionByZeroError", {
+  /** Name of the operation, e.g. `"div"`. */
+  operation: Schema.String,
+  /** Name of the numeric type, e.g. `"U8"`. */
+  type: Schema.String,
+}) {
   /** `"<type>: attempt to <operation> by zero"`. */
   override get message(): string {
-    return `${this.type}: attempt to ${this.operation} by zero`
+    return `${this.type}: attempt to ${this.operation} by zero`;
   }
 }
 
@@ -62,22 +62,22 @@ export class DivisionByZeroError extends Schema.TaggedError<DivisionByZeroError,
  * @category errors
  * @since 0.1.0
  */
-export class OutOfRangeError extends Schema.TaggedError<OutOfRangeError, { readonly brand: unique symbol }>()(
-  "OutOfRangeError",
-  {
-    /** Name of the target type, e.g. `"U8"`. */
-    type: Schema.String,
-    /** The rejected input. */
-    value: Schema.Unknown,
-    /** The smallest value of the target type. */
-    min: Schema.Unknown,
-    /** The largest value of the target type. */
-    max: Schema.Unknown
-  }
-) {
+export class OutOfRangeError extends Schema.TaggedError<
+  OutOfRangeError,
+  { readonly brand: unique symbol }
+>()("OutOfRangeError", {
+  /** Name of the target type, e.g. `"U8"`. */
+  type: Schema.String,
+  /** The rejected input. */
+  value: Schema.Unknown,
+  /** The smallest value of the target type. */
+  min: Schema.Unknown,
+  /** The largest value of the target type. */
+  max: Schema.Unknown,
+}) {
   /** `"<type>: <value> is not a valid value in range [<min>, <max>]"`. */
   override get message(): string {
-    return `${this.type}: ${String(this.value)} is not a valid value in range [${String(this.min)}, ${String(this.max)}]`
+    return `${this.type}: ${String(this.value)} is not a valid value in range [${String(this.min)}, ${String(this.max)}]`;
   }
 }
 
@@ -88,17 +88,20 @@ export class OutOfRangeError extends Schema.TaggedError<OutOfRangeError, { reado
  * @category errors
  * @since 0.1.0
  */
-export class DomainError extends Schema.TaggedError<DomainError, { readonly brand: unique symbol }>()("DomainError", {
+export class DomainError extends Schema.TaggedError<
+  DomainError,
+  { readonly brand: unique symbol }
+>()("DomainError", {
   /** Name of the operation, e.g. `"isqrt"`. */
   operation: Schema.String,
   /** Name of the numeric type, e.g. `"I8"`. */
   type: Schema.String,
   /** Why the argument is outside the domain. */
-  reason: Schema.String
+  reason: Schema.String,
 }) {
   /** `"<type>: <operation>: <reason>"`. */
   override get message(): string {
-    return `${this.type}: ${this.operation}: ${this.reason}`
+    return `${this.type}: ${this.operation}: ${this.reason}`;
   }
 }
 
@@ -108,15 +111,18 @@ export class DomainError extends Schema.TaggedError<DomainError, { readonly bran
  * @category errors
  * @since 0.1.0
  */
-export class ParseError extends Schema.TaggedError<ParseError, { readonly brand: unique symbol }>()("ParseError", {
-  /** Name of the target type, e.g. `"U8"`. */
-  type: Schema.String,
-  /** The string that failed to parse. */
-  input: Schema.String
-}) {
+export class ParseError extends Schema.TaggedError<ParseError, { readonly brand: unique symbol }>()(
+  "ParseError",
+  {
+    /** Name of the target type, e.g. `"U8"`. */
+    type: Schema.String,
+    /** The string that failed to parse. */
+    input: Schema.String,
+  },
+) {
   /** `"<type>: cannot parse <input as a JSON string literal>"`. */
   override get message(): string {
-    return `${this.type}: cannot parse ${quote(this.input)}`
+    return `${this.type}: cannot parse ${quote(this.input)}`;
   }
 }
 
@@ -126,7 +132,7 @@ export class ParseError extends Schema.TaggedError<ParseError, { readonly brand:
  * @category models
  * @since 0.1.0
  */
-export type ArithmeticError = OverflowError | DivisionByZeroError | DomainError
+export type ArithmeticError = OverflowError | DivisionByZeroError | DomainError;
 
 /**
  * Returns `true` if the value is one of the errors defined in this module.
@@ -134,9 +140,11 @@ export type ArithmeticError = OverflowError | DivisionByZeroError | DomainError
  * @category guards
  * @since 0.1.0
  */
-export const isArithmeticError = (u: unknown): u is ArithmeticError | OutOfRangeError | ParseError =>
+export const isArithmeticError = (
+  u: unknown,
+): u is ArithmeticError | OutOfRangeError | ParseError =>
   u instanceof OverflowError ||
   u instanceof DivisionByZeroError ||
   u instanceof DomainError ||
   u instanceof OutOfRangeError ||
-  u instanceof ParseError
+  u instanceof ParseError;

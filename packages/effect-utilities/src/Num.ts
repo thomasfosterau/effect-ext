@@ -16,14 +16,14 @@
  *
  * @since 0.1.0
  */
-import * as Arr from "effect/Array"
-import type * as Equivalence from "effect/Equivalence"
-import * as EqvMod from "effect/Equivalence"
-import { dual } from "effect/Function"
-import type * as Option from "effect/Option"
-import * as Order from "effect/Order"
-import { DivisionByZeroError } from "./ArithmeticError.ts"
-import { powBySquaring } from "./internal/iterate.ts"
+import * as Arr from "effect/Array";
+import type * as Equivalence from "effect/Equivalence";
+import * as EqvMod from "effect/Equivalence";
+import { dual } from "effect/Function";
+import type * as Option from "effect/Option";
+import * as Order from "effect/Order";
+import { DivisionByZeroError } from "./ArithmeticError.ts";
+import { powBySquaring } from "./internal/numeric/iterate.ts";
 
 /**
  * A dual binary operator taking a `Self` and a `That` and returning `Out`.
@@ -32,8 +32,8 @@ import { powBySquaring } from "./internal/iterate.ts"
  * @since 0.1.0
  */
 export interface Operator<Self, That = Self, Out = Self> {
-  (that: That): (self: Self) => Out
-  (self: Self, that: That): Out
+  (that: That): (self: Self) => Out;
+  (self: Self, that: That): Out;
 }
 
 /**
@@ -42,7 +42,9 @@ export interface Operator<Self, That = Self, Out = Self> {
  * @category constructors
  * @since 0.1.0
  */
-export const operator = <Self, That, Out>(f: (self: Self, that: That) => Out): Operator<Self, That, Out> => dual(2, f)
+export const operator = <Self, That, Out>(
+  f: (self: Self, that: That) => Out,
+): Operator<Self, That, Out> => dual(2, f);
 
 /**
  * Types with an additive identity.
@@ -51,8 +53,8 @@ export const operator = <Self, That, Out>(f: (self: Self, that: That) => Out): O
  * @since 0.1.0
  */
 export interface Zero<A> {
-  readonly zero: A
-  readonly isZero: (self: A) => boolean
+  readonly zero: A;
+  readonly isZero: (self: A) => boolean;
 }
 
 /**
@@ -62,8 +64,8 @@ export interface Zero<A> {
  * @since 0.1.0
  */
 export interface One<A> {
-  readonly one: A
-  readonly isOne: (self: A) => boolean
+  readonly one: A;
+  readonly isOne: (self: A) => boolean;
 }
 
 /**
@@ -73,8 +75,8 @@ export interface One<A> {
  * @since 0.1.0
  */
 export interface Bounded<A> {
-  readonly minValue: A
-  readonly maxValue: A
+  readonly minValue: A;
+  readonly maxValue: A;
 }
 
 /**
@@ -85,10 +87,10 @@ export interface Bounded<A> {
  * @since 0.1.0
  */
 export interface Num<A> extends Zero<A>, One<A> {
-  readonly Equivalence: Equivalence.Equivalence<A>
-  readonly add: Operator<A>
-  readonly sub: Operator<A>
-  readonly mul: Operator<A>
+  readonly Equivalence: Equivalence.Equivalence<A>;
+  readonly add: Operator<A>;
+  readonly sub: Operator<A>;
+  readonly mul: Operator<A>;
 }
 
 /**
@@ -98,7 +100,7 @@ export interface Num<A> extends Zero<A>, One<A> {
  * @since 0.1.0
  */
 export interface OrderedNum<A> extends Num<A> {
-  readonly Order: Order.Order<A>
+  readonly Order: Order.Order<A>;
 }
 
 /**
@@ -108,10 +110,10 @@ export interface OrderedNum<A> extends Num<A> {
  * @since 0.1.0
  */
 export interface Signed<A> extends Num<A> {
-  readonly negate: (self: A) => A
-  readonly abs: (self: A) => A
+  readonly negate: (self: A) => A;
+  readonly abs: (self: A) => A;
   /** `-1`, `0` or `1` (or the type's equivalent) depending on the sign. */
-  readonly signum: (self: A) => A
+  readonly signum: (self: A) => A;
 }
 
 /**
@@ -124,8 +126,8 @@ export interface Signed<A> extends Num<A> {
  * @since 0.1.0
  */
 export interface Integral<A> extends OrderedNum<A> {
-  readonly div: Operator<A>
-  readonly rem: Operator<A>
+  readonly div: Operator<A>;
+  readonly rem: Operator<A>;
 }
 
 /**
@@ -136,8 +138,8 @@ export interface Integral<A> extends OrderedNum<A> {
  * @since 0.1.0
  */
 export interface Fractional<A> extends Num<A> {
-  readonly div: Operator<A>
-  readonly recip: (self: A) => A
+  readonly div: Operator<A>;
+  readonly recip: (self: A) => A;
 }
 
 /**
@@ -148,7 +150,7 @@ export interface Fractional<A> extends Num<A> {
  */
 export interface FromPrimitive<A> {
   /** Converts if the value is exactly representable. */
-  readonly from: (value: number | bigint) => Option.Option<A>
+  readonly from: (value: number | bigint) => Option.Option<A>;
 }
 
 /**
@@ -158,7 +160,7 @@ export interface FromPrimitive<A> {
  * @since 0.1.0
  */
 export interface ToPrimitive<A> {
-  readonly toNumber: (self: A) => number
+  readonly toNumber: (self: A) => number;
 }
 
 // -----------------------------------------------------------------------------
@@ -170,7 +172,7 @@ export interface ToPrimitive<A> {
  *
  * @example
  * ```ts
- * import { Num } from "effect-numeric"
+ * import * as Num from "@thomasfosterau/effect-utilities/Num"
  *
  * Num.sum(Num.number)([1, 2, 3]) // 6
  * ```
@@ -181,7 +183,7 @@ export interface ToPrimitive<A> {
 export const sum =
   <A>(N: Num<A>) =>
   (values: Iterable<A>): A =>
-    Arr.reduce(values, N.zero, (acc, a) => N.add(acc, a))
+    Arr.reduce(values, N.zero, (acc, a) => N.add(acc, a));
 
 /**
  * Multiplies all values in an iterable, starting from `one`.
@@ -192,7 +194,7 @@ export const sum =
 export const product =
   <A>(N: Num<A>) =>
   (values: Iterable<A>): A =>
-    Arr.reduce(values, N.one, (acc, a) => N.mul(acc, a))
+    Arr.reduce(values, N.one, (acc, a) => N.mul(acc, a));
 
 /**
  * Raises `self` to a non-negative integer power using exponentiation by
@@ -204,10 +206,10 @@ export const product =
 export const pow = <A>(N: Num<A>): Operator<A, number, A> =>
   operator((self: A, exp: number): A => {
     if (!Number.isSafeInteger(exp) || exp < 0) {
-      throw new RangeError(`pow: exponent must be a non-negative safe integer, got ${exp}`)
+      throw new RangeError(`pow: exponent must be a non-negative safe integer, got ${exp}`);
     }
-    return powBySquaring(N.one, (x: A, y: A) => N.mul(x, y), self, exp)
-  })
+    return powBySquaring(N.one, (x: A, y: A) => N.mul(x, y), self, exp);
+  });
 
 /**
  * Squares a value.
@@ -218,7 +220,7 @@ export const pow = <A>(N: Num<A>): Operator<A, number, A> =>
 export const square =
   <A>(N: Num<A>) =>
   (self: A): A =>
-    N.mul(self, self)
+    N.mul(self, self);
 
 /**
  * Computes `self * a + b`.
@@ -229,7 +231,7 @@ export const square =
 export const mulAdd =
   <A>(N: Num<A>) =>
   (self: A, a: A, b: A): A =>
-    N.add(N.mul(self, a), b)
+    N.add(N.mul(self, a), b);
 
 /**
  * @category predicates
@@ -238,7 +240,7 @@ export const mulAdd =
 export const isPositive =
   <A>(N: OrderedNum<A>) =>
   (self: A): boolean =>
-    N.Order(self, N.zero) > 0
+    N.Order(self, N.zero) > 0;
 
 /**
  * @category predicates
@@ -247,7 +249,7 @@ export const isPositive =
 export const isNegative =
   <A>(N: OrderedNum<A>) =>
   (self: A): boolean =>
-    N.Order(self, N.zero) < 0
+    N.Order(self, N.zero) < 0;
 
 /**
  * Restricts a value to the closed range of a {@link Bounded} type with an order.
@@ -258,7 +260,7 @@ export const isNegative =
 export const clamp =
   <A>(O: Order.Order<A>, minimum: NoInfer<A>, maximum: NoInfer<A>) =>
   (self: A): A =>
-    Order.clamp(O)(self, { minimum, maximum })
+    Order.clamp(O)(self, { minimum, maximum });
 
 // -----------------------------------------------------------------------------
 // instances
@@ -288,8 +290,8 @@ export const number: OrderedNum<number> & Signed<number> & Fractional<number> & 
   recip: (self) => 1 / self,
   negate: (self) => -self,
   abs: Math.abs,
-  signum: (self) => (Number.isNaN(self) ? Number.NaN : self > 0 ? 1 : self < 0 ? -1 : self)
-}
+  signum: (self) => (Number.isNaN(self) ? Number.NaN : self > 0 ? 1 : self < 0 ? -1 : self),
+};
 
 /**
  * Instance for arbitrary precision `bigint` integers (Rust's `num-bigint`).
@@ -310,14 +312,15 @@ export const bigint: Integral<bigint> & Signed<bigint> = {
   sub: operator((a: bigint, b: bigint) => a - b),
   mul: operator((a: bigint, b: bigint) => a * b),
   div: operator((a: bigint, b: bigint) => {
-    if (b === 0n) throw new DivisionByZeroError({ operation: "divide", type: "bigint" })
-    return a / b
+    if (b === 0n) throw new DivisionByZeroError({ operation: "divide", type: "bigint" });
+    return a / b;
   }),
   rem: operator((a: bigint, b: bigint) => {
-    if (b === 0n) throw new DivisionByZeroError({ operation: "calculate the remainder", type: "bigint" })
-    return a % b
+    if (b === 0n)
+      throw new DivisionByZeroError({ operation: "calculate the remainder", type: "bigint" });
+    return a % b;
   }),
   negate: (self) => -self,
   abs: (self) => (self < 0n ? -self : self),
-  signum: (self) => (self > 0n ? 1n : self < 0n ? -1n : 0n)
-}
+  signum: (self) => (self > 0n ? 1n : self < 0n ? -1n : 0n),
+};

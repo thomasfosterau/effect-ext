@@ -5,7 +5,7 @@
  *
  * @example
  * ```ts
- * import { U32 } from "effect-numeric"
+ * import { U32 } from "@thomasfosterau/effect-utilities/U32"
  *
  * const a = U32.make(200)
  * const b = U32.make(100)
@@ -18,8 +18,8 @@
  *
  * @since 0.1.0
  */
-import type * as Brand from "effect/Brand"
-import * as FixedInt from "./FixedInt.ts"
+import type * as Brand from "effect/Brand";
+import * as FixedInt from "./FixedInt.ts";
 
 /**
  * A unsigned 32-bit integer.
@@ -27,7 +27,7 @@ import * as FixedInt from "./FixedInt.ts"
  * @category models
  * @since 0.1.0
  */
-export type U32 = number & Brand.Brand<"U32">
+export type U32 = number & Brand.Brand<"U32">;
 
 /**
  * Operations on {@link U32} values.
@@ -38,5 +38,5 @@ export type U32 = number & Brand.Brand<"U32">
 export const U32: FixedInt.FixedInt<U32, number> = /* @__PURE__ */ FixedInt.make<U32>({
   name: "U32",
   bits: 32,
-  signed: false
-})
+  signed: false,
+});

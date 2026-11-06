@@ -4,9 +4,12 @@
  */
 
 import { assert, describe, expect, it } from "vite-plus/test";
-import { Effect, Result, Schema } from "effect";
+import * as Effect from "effect/Effect";
+import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
 import { Parser } from "@thomasfosterau/effect-parse";
-import { DateTime, Rfc3339 } from "@thomasfosterau/effect-time";
+import * as DateTime from "effect/DateTime";
+import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339";
 
 const parse = (input: string) => Parser.parse(Rfc3339.parser, input);
 

@@ -12,7 +12,7 @@ import * as Token from "@thomasfosterau/effect-parse/Token";
 import * as DateTime from "effect/DateTime";
 import type * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import { daysInMonth } from "./internal/calendar.ts";
+import { daysInMonth } from "./internal/time/calendar.ts";
 
 const MINUTE_MILLIS = 60_000;
 
@@ -89,7 +89,8 @@ const timeOffset: Parser.Parser<Option.Option<number>> = Parser.alt(
  * @example
  * ```ts
  * import { Parser, Token } from "@thomasfosterau/effect-parse"
- * import { DateTime, Rfc3339 } from "@thomasfosterau/effect-time"
+ * import * as DateTime from "effect/DateTime"
+ * import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339"
  *
  * const logLine = Parser.separatedPair(Rfc3339.parser, Token.literal(" "), Token.rest)
  *
@@ -128,7 +129,8 @@ export const parser: Parser.Parser<DateTime.DateTime> = Parser.gen(function* () 
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import { DateTime, Rfc3339 } from "@thomasfosterau/effect-time"
+ * import * as DateTime from "effect/DateTime"
+ * import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339"
  *
  * const program = Effect.gen(function*() {
  *   const dt = yield* Rfc3339.parse("2026-10-22T09:30:00+10:00")
@@ -155,7 +157,8 @@ export const parse = (input: string): Effect.Effect<DateTime.DateTime, ParseErro
  *
  * @example
  * ```ts
- * import { DateTime, Rfc3339 } from "@thomasfosterau/effect-time"
+ * import * as DateTime from "effect/DateTime"
+ * import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339"
  *
  * const dt = DateTime.makeZonedUnsafe("2026-10-22T00:00:00Z", { timeZone: "Australia/Sydney" })
  *
@@ -175,7 +178,8 @@ export const format: (self: DateTime.DateTime) => string = DateTime.formatIsoOff
  * @example
  * ```ts
  * import { Schema } from "effect"
- * import { DateTime, Rfc3339 } from "@thomasfosterau/effect-time"
+ * import * as DateTime from "effect/DateTime"
+ * import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339"
  *
  * const Event = Schema.Struct({ at: Rfc3339.FromString })
  *

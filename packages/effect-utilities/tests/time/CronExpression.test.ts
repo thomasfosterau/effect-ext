@@ -5,9 +5,14 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { Cron, DateTime, Effect, Equal, Result, Schema } from "effect";
+import * as Cron from "effect/Cron";
+import * as DateTime from "effect/DateTime";
+import * as Effect from "effect/Effect";
+import * as Eq from "effect/Equal";
+import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
 import { Parser } from "@thomasfosterau/effect-parse";
-import { CronExpression } from "@thomasfosterau/effect-time";
+import * as CronExpression from "@thomasfosterau/effect-utilities/CronExpression";
 
 const parseSync = (input: string): Cron.Cron => Parser.parseSync(CronExpression.parser, input);
 
@@ -40,7 +45,7 @@ describe("CronExpression.parser", () => {
     "*/10 * * * * *",
     "0\t0\t*  *  *",
   ])("agrees with Cron.parse on %s", (input) => {
-    expect(Equal.equals(parseSync(input), Cron.parseUnsafe(input))).toBe(true);
+    expect(Eq.equals(parseSync(input), Cron.parseUnsafe(input))).toBe(true);
   });
 
   it("matches either day field when both are restricted, both when one starts with *", () => {
@@ -64,7 +69,7 @@ describe("CronExpression.parser", () => {
       ["@hourly", "0 * * * *"],
     ] as const;
     expand.forEach(([macro, fields]) => {
-      expect(Equal.equals(parseSync(macro), Cron.parseUnsafe(fields))).toBe(true);
+      expect(Eq.equals(parseSync(macro), Cron.parseUnsafe(fields))).toBe(true);
     });
   });
 
@@ -117,7 +122,7 @@ describe("CronExpression.format", () => {
 describe("CronExpression.FromString", () => {
   it("decodes and encodes", () => {
     const cron = Schema.decodeSync(CronExpression.FromString)("0 3 * * SUN");
-    expect(Equal.equals(cron, Cron.parseUnsafe("0 3 * * 0"))).toBe(true);
+    expect(Eq.equals(cron, Cron.parseUnsafe("0 3 * * 0"))).toBe(true);
     expect(Schema.encodeSync(CronExpression.FromString)(cron)).toBe("0 3 * * 0");
   });
 

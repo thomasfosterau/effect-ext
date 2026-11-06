@@ -53,7 +53,7 @@ const name = Parser.taken(
  *
  * @example
  * ```ts
- * import { IanaTimeZone } from "@thomasfosterau/effect-time"
+ * import * as IanaTimeZone from "@thomasfosterau/effect-utilities/IanaTimeZone"
  *
  * console.log(IanaTimeZone.supported().includes("Europe/Paris")) // true
  * ```
@@ -75,7 +75,7 @@ export const supported = (): ReadonlyArray<string> => Intl.supportedValuesOf("ti
  * @example
  * ```ts
  * import { Option } from "effect"
- * import { IanaTimeZone } from "@thomasfosterau/effect-time"
+ * import * as IanaTimeZone from "@thomasfosterau/effect-utilities/IanaTimeZone"
  *
  * console.log(Option.map(IanaTimeZone.known("US/Eastern"), (zone) => zone.id)) // Option.some("America/New_York")
  * ```
@@ -91,7 +91,7 @@ export const known = (zoneName: string): Option.Option<DateTime.TimeZone.Named> 
  *
  * @example
  * ```ts
- * import { IanaTimeZone } from "@thomasfosterau/effect-time"
+ * import * as IanaTimeZone from "@thomasfosterau/effect-utilities/IanaTimeZone"
  *
  * console.log(IanaTimeZone.isKnown("Australia/Sydney"), IanaTimeZone.isKnown("Mars/Olympus_Mons")) // true false
  * ```
@@ -115,7 +115,7 @@ export const isKnown = (zoneName: string): boolean => Option.isSome(known(zoneNa
  * @example
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
- * import { IanaTimeZone } from "@thomasfosterau/effect-time"
+ * import * as IanaTimeZone from "@thomasfosterau/effect-utilities/IanaTimeZone"
  *
  * console.log(Parser.parseSync(IanaTimeZone.parser, "Europe/Paris").id) // "Europe/Paris"
  * ```
@@ -144,7 +144,7 @@ export const parser: Parser.Parser<DateTime.TimeZone.Named> = name.pipe(
  * @example
  * ```ts
  * import { DateTime, Effect } from "effect"
- * import { IanaTimeZone } from "@thomasfosterau/effect-time"
+ * import * as IanaTimeZone from "@thomasfosterau/effect-utilities/IanaTimeZone"
  *
  * const program = Effect.map(IanaTimeZone.parse("Asia/Tokyo"), (zone) =>
  *   DateTime.formatIsoZoned(DateTime.setZone(DateTime.makeUnsafe("2026-10-22T00:00:00Z"), zone))
@@ -171,7 +171,7 @@ export const parse = (
  * @example
  * ```ts
  * import { Schema } from "effect"
- * import { IanaTimeZone } from "@thomasfosterau/effect-time"
+ * import * as IanaTimeZone from "@thomasfosterau/effect-utilities/IanaTimeZone"
  *
  * const User = Schema.Struct({ timeZone: IanaTimeZone.FromString })
  *

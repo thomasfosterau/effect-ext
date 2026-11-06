@@ -280,7 +280,7 @@ const footer: Parser.Parser<Option.Option<PosixTz.PosixTz>, never, never, Uint8A
  * @example
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
- * import { Tzif } from "@thomasfosterau/effect-time"
+ * import * as Tzif from "@thomasfosterau/effect-utilities/Tzif"
  *
  * // A version 1 file with one local time type, UTC, and no transitions
  * const utc = new Uint8Array([
@@ -326,7 +326,7 @@ export const parser: Parser.Parser<Tzif, never, never, Uint8Array> = Parser.gen(
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import { Tzif } from "@thomasfosterau/effect-time"
+ * import * as Tzif from "@thomasfosterau/effect-utilities/Tzif"
  *
  * Effect.runPromise(Effect.flip(Tzif.parse(new Uint8Array([0x50, 0x4b])))).then((error) =>
  *   console.log(error._tag) // "ParseError"

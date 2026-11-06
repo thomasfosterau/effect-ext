@@ -5,7 +5,7 @@
  *
  * @example
  * ```ts
- * import { U128 } from "effect-numeric"
+ * import { U128 } from "@thomasfosterau/effect-utilities/U128"
  *
  * const a = U128.make(200n)
  * const b = U128.make(100n)
@@ -18,8 +18,8 @@
  *
  * @since 0.1.0
  */
-import type * as Brand from "effect/Brand"
-import * as FixedInt from "./FixedInt.ts"
+import type * as Brand from "effect/Brand";
+import * as FixedInt from "./FixedInt.ts";
 
 /**
  * A unsigned 128-bit integer.
@@ -27,7 +27,7 @@ import * as FixedInt from "./FixedInt.ts"
  * @category models
  * @since 0.1.0
  */
-export type U128 = bigint & Brand.Brand<"U128">
+export type U128 = bigint & Brand.Brand<"U128">;
 
 /**
  * Operations on {@link U128} values.
@@ -38,5 +38,5 @@ export type U128 = bigint & Brand.Brand<"U128">
 export const U128: FixedInt.FixedInt<U128, bigint> = /* @__PURE__ */ FixedInt.makeBig<U128>({
   name: "U128",
   bits: 128,
-  signed: false
-})
+  signed: false,
+});

@@ -15,13 +15,13 @@ import * as Cron from "effect/Cron";
 import type * as DateTime from "effect/DateTime";
 import type * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 
 interface FieldKind {
   readonly name: string;
   readonly min: number;
   readonly max: number;
-  readonly aliases: Record.ReadonlyRecord<string, number>;
+  readonly aliases: R.ReadonlyRecord<string, number>;
 }
 
 const second: FieldKind = { name: "second", min: 0, max: 59, aliases: {} };
@@ -62,7 +62,7 @@ const blanks = Token.takeWhile(isBlank, { min: 1 });
 
 // One value of a field: a number in range, or a name (case-insensitive).
 const value = (kind: FieldKind): Parser.Parser<number> => {
-  const names = Record.keys(kind.aliases);
+  const names = R.keys(kind.aliases);
   const label = Arr.isReadonlyArrayEmpty(names)
     ? `${kind.name} (${kind.min}-${kind.max})`
     : `${kind.name} (${kind.min}-${kind.max} or ${Arr.join(names, ", ")})`;
@@ -72,7 +72,7 @@ const value = (kind: FieldKind): Parser.Parser<number> => {
       Parser.filter((n) => n >= kind.min && n <= kind.max),
     ),
     Token.takeWhile(isAlpha, { min: 1 }).pipe(
-      Parser.filterMap((name) => Record.get(kind.aliases, name.toLowerCase())),
+      Parser.filterMap((name) => R.get(kind.aliases, name.toLowerCase())),
     ),
   ).pipe(Parser.expected(label));
 };
@@ -149,7 +149,7 @@ const field = (kind: FieldKind): Parser.Parser<Field> =>
     })),
   );
 
-const macros: Record.ReadonlyRecord<string, string> = {
+const macros: R.ReadonlyRecord<string, string> = {
   yearly: "0 0 1 1 *",
   annually: "0 0 1 1 *",
   monthly: "0 0 1 * *",
@@ -221,7 +221,7 @@ const macro = Parser.preceded(
   Token.literal("@"),
   Parser.cut(
     Token.takeWhile(isAlpha, { min: 1 }).pipe(
-      Parser.filterMap((name) => Record.get(macros, name.toLowerCase())),
+      Parser.filterMap((name) => R.get(macros, name.toLowerCase())),
       Parser.expected("@yearly, @annually, @monthly, @weekly, @daily, @midnight or @hourly"),
     ),
   ),
@@ -243,7 +243,7 @@ const cronParser = (timeZone: Option.Option<DateTime.TimeZone>): Parser.Parser<C
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
  * import { Cron, DateTime } from "effect"
- * import { CronExpression } from "@thomasfosterau/effect-time"
+ * import * as CronExpression from "@thomasfosterau/effect-utilities/CronExpression"
  *
  * const sydney = DateTime.zoneMakeNamedUnsafe("Australia/Sydney")
  * const cron = Parser.parseSync(CronExpression.parserIn(sydney), "0 9 * * MON-FRI")
@@ -285,7 +285,7 @@ export const parserIn = (timeZone: DateTime.TimeZone): Parser.Parser<Cron.Cron> 
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
  * import { Cron } from "effect"
- * import { CronExpression } from "@thomasfosterau/effect-time"
+ * import * as CronExpression from "@thomasfosterau/effect-utilities/CronExpression"
  *
  * const cron = Parser.parseSync(CronExpression.parser, "0,30 9-17 * * mon-fri")
  *
@@ -309,7 +309,7 @@ export const parser: Parser.Parser<Cron.Cron> = cronParser(Option.none());
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import { CronExpression } from "@thomasfosterau/effect-time"
+ * import * as CronExpression from "@thomasfosterau/effect-utilities/CronExpression"
  *
  * Effect.runPromise(Effect.flip(CronExpression.parse("0 25 * * *"))).then((error) =>
  *   console.log(error.message.includes("hour (0-23)")) // true
@@ -330,7 +330,7 @@ export const parse = (input: string): Effect.Effect<Cron.Cron, ParseError.ParseE
  * @example
  * ```ts
  * import { Cron, DateTime, Effect } from "effect"
- * import { CronExpression } from "@thomasfosterau/effect-time"
+ * import * as CronExpression from "@thomasfosterau/effect-utilities/CronExpression"
  *
  * const sydney = DateTime.zoneMakeNamedUnsafe("Australia/Sydney")
  *
@@ -355,7 +355,7 @@ export const parseIn = (
  * @example
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
- * import { CronExpression } from "@thomasfosterau/effect-time"
+ * import * as CronExpression from "@thomasfosterau/effect-utilities/CronExpression"
  *
  * console.log(CronExpression.format(Parser.parseSync(CronExpression.parser, "@weekly"))) // "0 0 * * 0"
  * ```
@@ -373,7 +373,7 @@ export const format = (cron: Cron.Cron): string => Cron.format(cron);
  * @example
  * ```ts
  * import { Schema } from "effect"
- * import { CronExpression } from "@thomasfosterau/effect-time"
+ * import * as CronExpression from "@thomasfosterau/effect-utilities/CronExpression"
  *
  * const Job = Schema.Struct({ schedule: CronExpression.FromString })
  *

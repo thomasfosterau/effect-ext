@@ -247,7 +247,7 @@ const rule: Parser.Parser<Rule> = Parser.preceded(
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
  * import { Option } from "effect"
- * import { PosixTz } from "@thomasfosterau/effect-time"
+ * import * as PosixTz from "@thomasfosterau/effect-utilities/PosixTz"
  *
  * const tz = Parser.parseSync(PosixTz.parser, "AEST-10AEDT,M10.1.0,M4.1.0/3")
  *
@@ -285,7 +285,7 @@ export const parser: Parser.Parser<PosixTz> = Parser.gen(function* () {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import { PosixTz } from "@thomasfosterau/effect-time"
+ * import * as PosixTz from "@thomasfosterau/effect-utilities/PosixTz"
  *
  * Effect.runPromise(PosixTz.parse("JST-9")).then((tz) =>
  *   console.log(tz.std) // { name: 'JST', utcOffset: 32400 }
@@ -337,7 +337,7 @@ const printTransition = (t: Transition): string =>
  * @example
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
- * import { PosixTz } from "@thomasfosterau/effect-time"
+ * import * as PosixTz from "@thomasfosterau/effect-utilities/PosixTz"
  *
  * const tz = Parser.parseSync(PosixTz.parser, "<+0530>-05:30")
  *
@@ -370,7 +370,7 @@ export const format = (self: PosixTz): string => {
  * @example
  * ```ts
  * import { Schema } from "effect"
- * import { PosixTz } from "@thomasfosterau/effect-time"
+ * import * as PosixTz from "@thomasfosterau/effect-utilities/PosixTz"
  *
  * const Config = Schema.Struct({ tz: PosixTz.FromString })
  *

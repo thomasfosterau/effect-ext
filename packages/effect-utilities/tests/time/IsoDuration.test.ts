@@ -4,9 +4,13 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { Effect, Option, Result, Schema } from "effect";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
 import { Parser } from "@thomasfosterau/effect-parse";
-import { DateTime, IsoDuration } from "@thomasfosterau/effect-time";
+import * as DateTime from "effect/DateTime";
+import * as IsoDuration from "@thomasfosterau/effect-utilities/IsoDuration";
 
 const parse = (input: string) => Parser.parse(IsoDuration.parser, input);
 

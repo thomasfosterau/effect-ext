@@ -190,7 +190,7 @@ const timeZoneFor = (dateTime: DateTime.DateTime): Parser.Parser<Option.Option<T
  * @example
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
- * import { Rfc9557 } from "@thomasfosterau/effect-time"
+ * import * as Rfc9557 from "@thomasfosterau/effect-utilities/Rfc9557"
  *
  * const ixdtf = Parser.parseSync(Rfc9557.parser, "2026-10-22T09:30:00+11:00[Australia/Sydney][u-ca=gregory]")
  *
@@ -217,7 +217,7 @@ export const parser: Parser.Parser<Ixdtf> = Parser.gen(function* () {
  * @example
  * ```ts
  * import { Effect, Option } from "effect"
- * import { Rfc9557 } from "@thomasfosterau/effect-time"
+ * import * as Rfc9557 from "@thomasfosterau/effect-utilities/Rfc9557"
  *
  * const program = Effect.map(Rfc9557.parse("2026-10-22T09:30:00Z[!Europe/Paris]"), (ixdtf) =>
  *   Option.match(ixdtf.timeZone, { onNone: () => "none", onSome: (tz) => `${tz.name} (critical: ${tz.critical})` })
@@ -240,7 +240,8 @@ export const parse = (input: string): Effect.Effect<Ixdtf, ParseError.ParseError
  * @example
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
- * import { Rfc3339, Rfc9557 } from "@thomasfosterau/effect-time"
+ * import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339"
+ * import * as Rfc9557 from "@thomasfosterau/effect-utilities/Rfc9557"
  *
  * const ixdtf = Parser.parseSync(Rfc9557.parser, "2026-10-22T00:00:00Z[Australia/Sydney]")
  *
@@ -271,7 +272,7 @@ const printSuffix = (critical: boolean, body: string): string => `[${critical ? 
  * @example
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
- * import { Rfc9557 } from "@thomasfosterau/effect-time"
+ * import * as Rfc9557 from "@thomasfosterau/effect-utilities/Rfc9557"
  *
  * const ixdtf = Parser.parseSync(Rfc9557.parser, "2026-10-22T09:30:00Z[Europe/Paris][!u-ca=iso8601]")
  *
@@ -302,7 +303,7 @@ export const format = (self: Ixdtf): string =>
  * @example
  * ```ts
  * import { Schema } from "effect"
- * import { Rfc9557 } from "@thomasfosterau/effect-time"
+ * import * as Rfc9557 from "@thomasfosterau/effect-utilities/Rfc9557"
  *
  * const Meeting = Schema.Struct({ at: Rfc9557.FromString })
  *

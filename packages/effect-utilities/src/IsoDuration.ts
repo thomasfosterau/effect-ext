@@ -27,7 +27,8 @@ import * as SchemaTransformation from "effect/SchemaTransformation";
  *
  * @example
  * ```ts
- * import { DateTime, IsoDuration } from "@thomasfosterau/effect-time"
+ * import * as DateTime from "effect/DateTime"
+ * import * as IsoDuration from "@thomasfosterau/effect-utilities/IsoDuration"
  *
  * const duration: IsoDuration.IsoDuration = { ...IsoDuration.zero, months: 1 }
  *
@@ -46,7 +47,7 @@ export type IsoDuration = DateTime.DateTime.PartsForMath;
  * @example
  * ```ts
  * import { Option } from "effect"
- * import { IsoDuration } from "@thomasfosterau/effect-time"
+ * import * as IsoDuration from "@thomasfosterau/effect-utilities/IsoDuration"
  *
  * console.log(Option.getOrThrow(IsoDuration.format(IsoDuration.zero))) // "PT0S"
  * ```
@@ -159,7 +160,7 @@ const negate = (d: IsoDuration): IsoDuration => ({
  * @example
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
- * import { IsoDuration } from "@thomasfosterau/effect-time"
+ * import * as IsoDuration from "@thomasfosterau/effect-utilities/IsoDuration"
  *
  * console.log(Parser.parseSync(IsoDuration.parser, "PT1H30M").minutes) // 30
  * ```
@@ -188,7 +189,8 @@ export const parser: Parser.Parser<IsoDuration> = Parser.seq(
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import { DateTime, IsoDuration } from "@thomasfosterau/effect-time"
+ * import * as DateTime from "effect/DateTime"
+ * import * as IsoDuration from "@thomasfosterau/effect-utilities/IsoDuration"
  *
  * const program = Effect.gen(function*() {
  *   const duration = yield* IsoDuration.parse("P1DT12H")
@@ -256,7 +258,7 @@ const printUnsigned = (d: IsoDuration): string => {
  * @example
  * ```ts
  * import { Option } from "effect"
- * import { IsoDuration } from "@thomasfosterau/effect-time"
+ * import * as IsoDuration from "@thomasfosterau/effect-utilities/IsoDuration"
  *
  * console.log(Option.getOrThrow(IsoDuration.format({ days: 1, milliseconds: 1500 }))) // "P1DT1.5S"
  * console.log(Option.isNone(IsoDuration.format({ days: 1, hours: -1 }))) // true
@@ -294,7 +296,7 @@ const Amounts = Schema.Struct({
  * @example
  * ```ts
  * import { Schema } from "effect"
- * import { IsoDuration } from "@thomasfosterau/effect-time"
+ * import * as IsoDuration from "@thomasfosterau/effect-utilities/IsoDuration"
  *
  * const Job = Schema.Struct({ timeout: IsoDuration.FromString })
  *
@@ -336,7 +338,7 @@ export const FromString: Schema.decodeTo<typeof Amounts, Schema.String> = Schema
  *
  * @example
  * ```ts
- * import { IsoDuration } from "@thomasfosterau/effect-time"
+ * import * as IsoDuration from "@thomasfosterau/effect-utilities/IsoDuration"
  *
  * const timeout: IsoDuration.FromString = { ...IsoDuration.zero, seconds: 30 }
  *

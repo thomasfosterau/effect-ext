@@ -39,6 +39,12 @@ import { Langtag, Mime, Sitemap, UriTemplate, Web } from "@thomasfosterau/effect
 import * as Robots from "@thomasfosterau/effect-utilities/Robots";
 import * as Browser from "@thomasfosterau/effect-utilities/Browser";
 import * as Negotiate from "@thomasfosterau/effect-utilities/Negotiate";
+import { Ratio, U8, U64 } from "@thomasfosterau/effect-utilities";
+import { I8 } from "@thomasfosterau/effect-utilities/I8";
+import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339";
+import * as CronExpression from "@thomasfosterau/effect-utilities/CronExpression";
+import type * as Cron from "effect/Cron";
+import type * as DateTime from "effect/DateTime";
 
 type Assert<T extends true> = T;
 type Equals<A, B> =
@@ -59,6 +65,13 @@ export const rawAsPerson: PersonId = raw;
 type LanguageTag = Langtag.LanguageTag.LanguageTag;
 // @ts-expect-error -- the LanguageTag brand survives declaration emit
 export const rawAsTag: LanguageTag = raw;
+
+// ── Numeric (merged in from effect-numeric) ────────────────────────────
+declare const rawNumber: number;
+// @ts-expect-error -- the U8 brand survives declaration emit
+export const rawAsU8: U8 = rawNumber;
+// @ts-expect-error -- a U8 is not an I8 after emit
+export const u8AsI8: I8 = U8.make(1);
 
 // ── TriState ───────────────────────────────────────────────────────────
 const summary = TriState.clearable(Ids.Slug);
@@ -192,4 +205,13 @@ export type Checks = [
   Assert<Not<IsAny<typeof Robots.isAllowed>>>,
   Assert<Not<IsAny<typeof Browser.Locks.withLock>>>,
   Assert<Not<IsAny<typeof Negotiate.negotiateRepresentation>>>,
+  // The modules merged in from effect-numeric and effect-time
+  Assert<Not<IsAny<U8>>>,
+  Assert<Equals<ReturnType<typeof U8.make>, U8>>,
+  Assert<Equals<ReturnType<typeof U64.make>, U64>>,
+  Assert<Not<Equals<U64, bigint>>>,
+  Assert<Equals<ReturnType<typeof U8.checkedAdd>, Option.Option<U8>>>,
+  Assert<Equals<ReturnType<typeof Ratio.make>, Ratio.Ratio>>,
+  Assert<Equals<Effect.Success<ReturnType<typeof Rfc3339.parse>>, DateTime.DateTime>>,
+  Assert<Equals<Effect.Success<ReturnType<typeof CronExpression.parse>>, Cron.Cron>>,
 ];

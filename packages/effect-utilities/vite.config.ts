@@ -1,13 +1,13 @@
 import { type CoverageFloor, distExportsPackageConfig } from "../../vite.package.ts";
 
-// Coverage ratchet: the measured % (in the comments) when effect-web's
-// modules were merged in, rounded down to the integer. Raise a metric as
-// coverage rises; never lower one.
+// Coverage ratchet: the measured % (in the comments) when effect-numeric's
+// and effect-time's modules were merged in, rounded down to the integer.
+// Raise a metric as coverage rises; never lower one.
 export const coverageFloor: CoverageFloor = {
-  lines: 98, // 98.43
-  branches: 92, // 92.28
-  functions: 97, // 97.12
-  statements: 97, // 97.57
+  lines: 98, // 98.75
+  branches: 93, // 93.61
+  functions: 97, // 97.75
+  statements: 98, // 98.03
 };
 
 export default distExportsPackageConfig({
@@ -17,19 +17,35 @@ export default distExportsPackageConfig({
   entries: [
     "index",
     "Allocator",
+    "ArithmeticError",
     "Ast",
     "AtomFeed",
     "Bounded",
     "Browser",
     "BrowserTesting",
     "BufferStruct",
+    "Checked",
+    "Clamped",
+    "Complex",
+    "CronExpression",
     "Css",
     "Encoding",
     "EncodingBig5",
     "EncodingEucKr",
     "EncodingGb18030",
     "EncodingJapanese",
+    "F32",
+    "FixedInt",
+    "Float",
+    "I8",
+    "I16",
+    "I32",
+    "I64",
+    "I128",
+    "IanaTimeZone",
     "Ids",
+    "Integer",
+    "IsoDuration",
     "Issues",
     "JsonFeed",
     "Langtag",
@@ -39,18 +55,34 @@ export default distExportsPackageConfig({
     "Mime",
     "Negotiate",
     "Net",
+    "Num",
     "Observability",
+    "Overflowing",
+    "PosixTz",
+    "Range",
+    "Ratio",
+    "Rfc3339",
+    "Rfc9557",
     "Robots",
+    "RRule",
     "RssFeed",
+    "Saturating",
     "ServiceWorker",
     "Sitemap",
     "Str",
     "String",
     "StructOfArrays",
     "TriState",
+    "Tzif",
+    "U8",
+    "U16",
+    "U32",
+    "U64",
+    "U128",
     "UriTemplate",
     "Url",
     "Vec",
     "Web",
+    "Wrapping",
   ],
 });

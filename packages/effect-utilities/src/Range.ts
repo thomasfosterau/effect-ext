@@ -6,7 +6,9 @@
  *
  * @example
  * ```ts
- * import { Num, Range, Ratio } from "effect-numeric"
+ * import * as Num from "@thomasfosterau/effect-utilities/Num"
+ * import * as Range from "@thomasfosterau/effect-utilities/Range"
+ * import * as Ratio from "@thomasfosterau/effect-utilities/Ratio"
  *
  * Array.from(Range.range(Num.number)(0, 3))                 // [0, 1, 2]
  * Array.from(Range.rangeStep(Num.bigint)(10n, 0n, -3n))     // [10n, 7n, 4n, 1n]
@@ -15,8 +17,8 @@
  *
  * @since 0.1.0
  */
-import { evenlySpaced, iterateWhile } from "./internal/iterate.ts"
-import type { OrderedNum } from "./Num.ts"
+import { evenlySpaced, iterateWhile } from "./internal/numeric/iterate.ts";
+import type { OrderedNum } from "./Num.ts";
 
 /**
  * Values `start, start + 1, …` strictly below `end`.
@@ -29,9 +31,9 @@ export const range = <A>(N: OrderedNum<A>) =>
     yield* iterateWhile(
       start,
       (x) => N.Order(x, end) < 0,
-      (x) => N.add(x, N.one)
-    )
-  }
+      (x) => N.add(x, N.one),
+    );
+  };
 
 /**
  * Values `start, start + 1, …` up to and including `end`.
@@ -44,9 +46,9 @@ export const rangeInclusive = <A>(N: OrderedNum<A>) =>
     yield* iterateWhile(
       start,
       (x) => N.Order(x, end) <= 0,
-      (x) => N.add(x, N.one)
-    )
-  }
+      (x) => N.add(x, N.one),
+    );
+  };
 
 /**
  * Values `start, start + step, …` strictly before `end`. A negative step
@@ -57,14 +59,14 @@ export const rangeInclusive = <A>(N: OrderedNum<A>) =>
  */
 export const rangeStep = <A>(N: OrderedNum<A>) =>
   function* (start: A, end: A, step: A): IterableIterator<A> {
-    const dir = N.Order(step, N.zero)
-    if (dir === 0) throw new RangeError("Range.rangeStep: step must not be zero")
+    const dir = N.Order(step, N.zero);
+    if (dir === 0) throw new RangeError("Range.rangeStep: step must not be zero");
     yield* iterateWhile(
       start,
       (x) => N.Order(x, end) === -dir,
-      (x) => N.add(x, step)
-    )
-  }
+      (x) => N.add(x, step),
+    );
+  };
 
 /**
  * Values `start, start + step, …` up to and including `end`. A negative step
@@ -75,14 +77,14 @@ export const rangeStep = <A>(N: OrderedNum<A>) =>
  */
 export const rangeStepInclusive = <A>(N: OrderedNum<A>) =>
   function* (start: A, end: A, step: A): IterableIterator<A> {
-    const dir = N.Order(step, N.zero)
-    if (dir === 0) throw new RangeError("Range.rangeStepInclusive: step must not be zero")
+    const dir = N.Order(step, N.zero);
+    if (dir === 0) throw new RangeError("Range.rangeStepInclusive: step must not be zero");
     yield* iterateWhile(
       start,
       (x) => N.Order(x, end) !== dir,
-      (x) => N.add(x, step)
-    )
-  }
+      (x) => N.add(x, step),
+    );
+  };
 
 /**
  * `count` evenly spaced values from `start` to `end` inclusive (NumPy's
@@ -93,10 +95,11 @@ export const rangeStepInclusive = <A>(N: OrderedNum<A>) =>
  * @since 0.1.0
  */
 export function* linspace(start: number, end: number, count: number): IterableIterator<number> {
-  if (!Number.isSafeInteger(count) || count < 0) throw new RangeError("Range.linspace: count must be >= 0")
+  if (!Number.isSafeInteger(count) || count < 0)
+    throw new RangeError("Range.linspace: count must be >= 0");
   if (count === 1) {
-    yield start
-    return
+    yield start;
+    return;
   }
-  yield* evenlySpaced(start, end, count)
+  yield* evenlySpaced(start, end, count);
 }

@@ -5,7 +5,8 @@
  *
  * @example
  * ```ts
- * import { I8, Saturating } from "effect-numeric"
+ * import { I8 } from "@thomasfosterau/effect-utilities/I8"
+ * import * as Saturating from "@thomasfosterau/effect-utilities/Saturating"
  *
  * const S = Saturating.I8
  * S.add(I8.make(100), I8.make(100)) // 127
@@ -14,19 +15,19 @@
  *
  * @since 0.1.0
  */
-import * as Arr from "effect/Array"
-import type * as FixedInt from "./FixedInt.ts"
-import * as I8_ from "./I8.ts"
-import * as I16_ from "./I16.ts"
-import * as I32_ from "./I32.ts"
-import * as I64_ from "./I64.ts"
-import * as I128_ from "./I128.ts"
-import type { Bounded, Integral, Operator, Signed } from "./Num.ts"
-import * as U8_ from "./U8.ts"
-import * as U16_ from "./U16.ts"
-import * as U32_ from "./U32.ts"
-import * as U64_ from "./U64.ts"
-import * as U128_ from "./U128.ts"
+import * as Arr from "effect/Array";
+import type * as FixedInt from "./FixedInt.ts";
+import * as I8_ from "./I8.ts";
+import * as I16_ from "./I16.ts";
+import * as I32_ from "./I32.ts";
+import * as I64_ from "./I64.ts";
+import * as I128_ from "./I128.ts";
+import type { Bounded, Integral, Operator, Signed } from "./Num.ts";
+import * as U8_ from "./U8.ts";
+import * as U16_ from "./U16.ts";
+import * as U32_ from "./U32.ts";
+import * as U64_ from "./U64.ts";
+import * as U128_ from "./U128.ts";
 
 /**
  * Type class for saturating arithmetic.
@@ -37,11 +38,11 @@ import * as U128_ from "./U128.ts"
  * @since 0.1.0
  */
 export interface SaturatingOps<A> {
-  readonly saturatingAdd: Operator<A>
-  readonly saturatingSub: Operator<A>
-  readonly saturatingMul: Operator<A>
-  readonly saturatingDiv: Operator<A>
-  readonly saturatingPow: Operator<A, number, A>
+  readonly saturatingAdd: Operator<A>;
+  readonly saturatingSub: Operator<A>;
+  readonly saturatingMul: Operator<A>;
+  readonly saturatingDiv: Operator<A>;
+  readonly saturatingPow: Operator<A, number, A>;
 }
 
 /**
@@ -54,9 +55,9 @@ export interface SaturatingOps<A> {
  * @since 0.1.0
  */
 export interface SaturatingInt<A> extends Integral<A>, Signed<A>, Bounded<A> {
-  readonly pow: Operator<A, number, A>
+  readonly pow: Operator<A, number, A>;
   /** Converts any integer (or truncates any float) into the type by clamping. */
-  readonly from: (value: number | bigint) => A
+  readonly from: (value: number | bigint) => A;
 }
 
 /**
@@ -68,7 +69,9 @@ export interface SaturatingInt<A> extends Integral<A>, Signed<A>, Bounded<A> {
  * @category constructors
  * @since 0.1.0
  */
-export const make = <A extends number | bigint>(T: FixedInt.FixedInt<A, any>): SaturatingInt<A> => ({
+export const make = <A extends number | bigint>(
+  T: FixedInt.FixedInt<A, any>,
+): SaturatingInt<A> => ({
   zero: T.zero,
   one: T.one,
   minValue: T.MIN,
@@ -86,8 +89,8 @@ export const make = <A extends number | bigint>(T: FixedInt.FixedInt<A, any>): S
   abs: T.saturatingAbs,
   signum: T.signum,
   pow: T.saturatingPow,
-  from: T.saturatingFrom
-})
+  from: T.saturatingFrom,
+});
 
 /**
  * Sums an iterable with saturating addition.
@@ -98,7 +101,7 @@ export const make = <A extends number | bigint>(T: FixedInt.FixedInt<A, any>): S
 export const sum =
   <A>(T: SaturatingOps<A> & { readonly zero: A }) =>
   (values: Iterable<A>): A =>
-    Arr.reduce(values, T.zero, (acc, a) => T.saturatingAdd(acc, a))
+    Arr.reduce(values, T.zero, (acc, a) => T.saturatingAdd(acc, a));
 
 /**
  * Saturating arithmetic for `I8` (Rust's `Saturating<i8>`).
@@ -106,7 +109,7 @@ export const sum =
  * @category instances
  * @since 0.1.0
  */
-export const I8: SaturatingInt<I8_.I8> = /* @__PURE__ */ make(I8_.I8)
+export const I8: SaturatingInt<I8_.I8> = /* @__PURE__ */ make(I8_.I8);
 
 /**
  * Saturating arithmetic for `I16` (Rust's `Saturating<i16>`).
@@ -114,7 +117,7 @@ export const I8: SaturatingInt<I8_.I8> = /* @__PURE__ */ make(I8_.I8)
  * @category instances
  * @since 0.1.0
  */
-export const I16: SaturatingInt<I16_.I16> = /* @__PURE__ */ make(I16_.I16)
+export const I16: SaturatingInt<I16_.I16> = /* @__PURE__ */ make(I16_.I16);
 
 /**
  * Saturating arithmetic for `I32` (Rust's `Saturating<i32>`).
@@ -122,7 +125,7 @@ export const I16: SaturatingInt<I16_.I16> = /* @__PURE__ */ make(I16_.I16)
  * @category instances
  * @since 0.1.0
  */
-export const I32: SaturatingInt<I32_.I32> = /* @__PURE__ */ make(I32_.I32)
+export const I32: SaturatingInt<I32_.I32> = /* @__PURE__ */ make(I32_.I32);
 
 /**
  * Saturating arithmetic for `I64` (Rust's `Saturating<i64>`).
@@ -130,7 +133,7 @@ export const I32: SaturatingInt<I32_.I32> = /* @__PURE__ */ make(I32_.I32)
  * @category instances
  * @since 0.1.0
  */
-export const I64: SaturatingInt<I64_.I64> = /* @__PURE__ */ make(I64_.I64)
+export const I64: SaturatingInt<I64_.I64> = /* @__PURE__ */ make(I64_.I64);
 
 /**
  * Saturating arithmetic for `I128` (Rust's `Saturating<i128>`).
@@ -138,7 +141,7 @@ export const I64: SaturatingInt<I64_.I64> = /* @__PURE__ */ make(I64_.I64)
  * @category instances
  * @since 0.1.0
  */
-export const I128: SaturatingInt<I128_.I128> = /* @__PURE__ */ make(I128_.I128)
+export const I128: SaturatingInt<I128_.I128> = /* @__PURE__ */ make(I128_.I128);
 
 /**
  * Saturating arithmetic for `U8` (Rust's `Saturating<u8>`).
@@ -146,7 +149,7 @@ export const I128: SaturatingInt<I128_.I128> = /* @__PURE__ */ make(I128_.I128)
  * @category instances
  * @since 0.1.0
  */
-export const U8: SaturatingInt<U8_.U8> = /* @__PURE__ */ make(U8_.U8)
+export const U8: SaturatingInt<U8_.U8> = /* @__PURE__ */ make(U8_.U8);
 
 /**
  * Saturating arithmetic for `U16` (Rust's `Saturating<u16>`).
@@ -154,7 +157,7 @@ export const U8: SaturatingInt<U8_.U8> = /* @__PURE__ */ make(U8_.U8)
  * @category instances
  * @since 0.1.0
  */
-export const U16: SaturatingInt<U16_.U16> = /* @__PURE__ */ make(U16_.U16)
+export const U16: SaturatingInt<U16_.U16> = /* @__PURE__ */ make(U16_.U16);
 
 /**
  * Saturating arithmetic for `U32` (Rust's `Saturating<u32>`).
@@ -162,7 +165,7 @@ export const U16: SaturatingInt<U16_.U16> = /* @__PURE__ */ make(U16_.U16)
  * @category instances
  * @since 0.1.0
  */
-export const U32: SaturatingInt<U32_.U32> = /* @__PURE__ */ make(U32_.U32)
+export const U32: SaturatingInt<U32_.U32> = /* @__PURE__ */ make(U32_.U32);
 
 /**
  * Saturating arithmetic for `U64` (Rust's `Saturating<u64>`).
@@ -170,7 +173,7 @@ export const U32: SaturatingInt<U32_.U32> = /* @__PURE__ */ make(U32_.U32)
  * @category instances
  * @since 0.1.0
  */
-export const U64: SaturatingInt<U64_.U64> = /* @__PURE__ */ make(U64_.U64)
+export const U64: SaturatingInt<U64_.U64> = /* @__PURE__ */ make(U64_.U64);
 
 /**
  * Saturating arithmetic for `U128` (Rust's `Saturating<u128>`).
@@ -178,4 +181,4 @@ export const U64: SaturatingInt<U64_.U64> = /* @__PURE__ */ make(U64_.U64)
  * @category instances
  * @since 0.1.0
  */
-export const U128: SaturatingInt<U128_.U128> = /* @__PURE__ */ make(U128_.U128)
+export const U128: SaturatingInt<U128_.U128> = /* @__PURE__ */ make(U128_.U128);

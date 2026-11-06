@@ -5,9 +5,12 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { Effect, Option, Result, Schema } from "effect";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
 import { Parser } from "@thomasfosterau/effect-parse";
-import { RRule } from "@thomasfosterau/effect-time";
+import * as RRule from "@thomasfosterau/effect-utilities/RRule";
 
 const parseSync = (input: string): RRule.RRule => Parser.parseSync(RRule.parser, input);
 

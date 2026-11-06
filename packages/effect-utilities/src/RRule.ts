@@ -13,8 +13,8 @@ import * as Token from "@thomasfosterau/effect-parse/Token";
 import * as Arr from "effect/Array";
 import type * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
-import { daysInMonth } from "./internal/calendar.ts";
+import * as R from "effect/Record";
+import { daysInMonth } from "./internal/time/calendar.ts";
 
 /**
  * How often a rule repeats (`FREQ`).
@@ -213,7 +213,7 @@ const field =
   <K extends keyof Fragment>(key: K) =>
   (value: NonNullable<Fragment[K]>): Fragment => ({ [key]: value });
 
-const fragmentParsers: Record.ReadonlyRecord<string, Parser.Parser<Fragment>> = {
+const fragmentParsers: R.ReadonlyRecord<string, Parser.Parser<Fragment>> = {
   FREQ: frequency.pipe(Parser.map(field("freq"))),
   UNTIL: until.pipe(Parser.map(field("until"))),
   COUNT: positive("count (1 or more)").pipe(Parser.map(field("count"))),
@@ -232,12 +232,12 @@ const fragmentParsers: Record.ReadonlyRecord<string, Parser.Parser<Fragment>> = 
   WKST: weekday.pipe(Parser.map(field("weekStart"))),
 };
 
-const partNames = Record.keys(fragmentParsers);
+const partNames = R.keys(fragmentParsers);
 
 // A part name and the parser for its value.
 const partName = Token.takeWhile(isAlpha, { min: 1 }).pipe(
   Parser.filterMap((w) =>
-    Option.map(Record.get(fragmentParsers, w.toUpperCase()), (value) => ({
+    Option.map(R.get(fragmentParsers, w.toUpperCase()), (value) => ({
       name: w.toUpperCase(),
       value,
     })),
@@ -337,7 +337,7 @@ const empty: ReadonlyArray<never> = [];
  * @example
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
- * import { RRule } from "@thomasfosterau/effect-time"
+ * import * as RRule from "@thomasfosterau/effect-utilities/RRule"
  *
  * const rule = Parser.parseSync(RRule.parser, "FREQ=MONTHLY;BYDAY=-1FR;COUNT=6")
  *
@@ -385,7 +385,7 @@ export const parser: Parser.Parser<RRule> = Parser.gen(function* () {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import { RRule } from "@thomasfosterau/effect-time"
+ * import * as RRule from "@thomasfosterau/effect-utilities/RRule"
  *
  * Effect.runPromise(RRule.parse("FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10")).then((rule) =>
  *   console.log(rule.byDay.map((d) => d.weekday)) // [ 'MO', 'WE', 'FR' ]
@@ -421,7 +421,7 @@ const printList = (name: string, values: ReadonlyArray<string | number>): Readon
  * @example
  * ```ts
  * import { Parser } from "@thomasfosterau/effect-parse"
- * import { RRule } from "@thomasfosterau/effect-time"
+ * import * as RRule from "@thomasfosterau/effect-utilities/RRule"
  *
  * const rule = Parser.parseSync(RRule.parser, "count=3;byday=+1mo;freq=monthly;interval=1")
  *
@@ -466,7 +466,7 @@ export const format = (self: RRule): string =>
  * @example
  * ```ts
  * import { Schema } from "effect"
- * import { RRule } from "@thomasfosterau/effect-time"
+ * import * as RRule from "@thomasfosterau/effect-utilities/RRule"
  *
  * const Event = Schema.Struct({ rrule: RRule.FromString })
  *

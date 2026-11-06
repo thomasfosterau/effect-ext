@@ -4,7 +4,7 @@
  * domain.
  */
 
-import { Schema } from "effect";
+import * as Schema from "effect/Schema";
 
 const decode = Schema.decodeSync(Schema.Uint8ArrayFromBase64);
 

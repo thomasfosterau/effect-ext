@@ -5,9 +5,12 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { Effect, Option, Result, Schema } from "effect";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
 import { Parser } from "@thomasfosterau/effect-parse";
-import { PosixTz } from "@thomasfosterau/effect-time";
+import * as PosixTz from "@thomasfosterau/effect-utilities/PosixTz";
 
 const parseSync = (input: string): PosixTz.PosixTz => Parser.parseSync(PosixTz.parser, input);
 

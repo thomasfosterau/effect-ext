@@ -4,9 +4,14 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { Effect, Option, Result, Schema } from "effect";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
 import { Parser } from "@thomasfosterau/effect-parse";
-import { DateTime, Rfc3339, Rfc9557 } from "@thomasfosterau/effect-time";
+import * as DateTime from "effect/DateTime";
+import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339";
+import * as Rfc9557 from "@thomasfosterau/effect-utilities/Rfc9557";
 
 const parse = (input: string) => Parser.parse(Rfc9557.parser, input);
 

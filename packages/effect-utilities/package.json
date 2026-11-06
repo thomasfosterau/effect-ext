@@ -2,35 +2,53 @@
   "$schema": "https://www.schemastore.org/package",
   "name": "@thomasfosterau/effect-utilities",
   "version": "0.0.0",
-  "description": "Extensions to the Effect standard library: Allocator-backed binary data (layouts, buffer structs, vectors, struct-of-arrays, Rust-style UTF-8 strings), Schema helpers (the update tri-state, issue → RFC 6901 JSON Pointer, bounded codecs, ids, exact literal tuples, introspection, typed URLs), and web-platform building blocks (request/response policies, SSRF-safe fetch, content negotiation, service workers, browser APIs as services, robots.txt, sitemaps, RSS / Atom / JSON Feed, URI Templates, BCP 47 language tags, CSS parsing, WHATWG encodings and MIME types).",
+  "description": "Extensions to the Effect standard library: Allocator-backed binary data (layouts, buffer structs, vectors, struct-of-arrays, Rust-style UTF-8 strings), Schema helpers (the update tri-state, issue → RFC 6901 JSON Pointer, bounded codecs, ids, exact literal tuples, introspection, typed URLs), and web-platform building blocks (request/response policies, SSRF-safe fetch, content negotiation, service workers, browser APIs as services, robots.txt, sitemaps, RSS / Atom / JSON Feed, URI Templates, BCP 47 language tags, CSS parsing, WHATWG encodings and MIME types), Rust-style numeric types (fixed-width integers with checked, wrapping, saturating and overflowing arithmetic, clamped ranges, floats, rationals, complex numbers, num-traits type classes) and parsers for time formats (RFC 3339, RFC 9557, ISO 8601 durations, POSIX TZ, cron, RRULE, IANA time zones, TZif).",
   "keywords": [
     "allocator",
     "arraybuffer",
     "atom",
     "bcp47",
+    "bigint",
     "browser",
+    "checked",
+    "complex",
+    "cron",
     "css",
+    "datetime",
+    "duration",
     "effect",
     "effect-schema",
     "encoding",
+    "integer",
+    "iso8601",
     "json-feed",
     "json-pointer",
     "mime",
+    "numeric",
     "pagination",
+    "rational",
+    "rfc3339",
+    "rfc5545",
     "rfc6901",
+    "rfc9557",
     "robots-txt",
+    "rrule",
     "rss",
+    "saturating",
     "schema",
     "service-worker",
     "sitemap",
     "slug",
     "struct-of-arrays",
+    "timezone",
     "typescript",
+    "tzif",
     "uri-template",
     "url",
     "utf8",
     "uuid",
-    "web"
+    "web",
+    "wrapping"
   ],
   "homepage": "https://github.com/thomasfosterau/effect-ext#readme",
   "bugs": {
@@ -60,6 +78,10 @@
       "types": "./dist/Allocator.d.ts",
       "default": "./dist/Allocator.js"
     },
+    "./ArithmeticError": {
+      "types": "./dist/ArithmeticError.d.ts",
+      "default": "./dist/ArithmeticError.js"
+    },
     "./Ast": {
       "types": "./dist/Ast.d.ts",
       "default": "./dist/Ast.js"
@@ -83,6 +105,22 @@
     "./BufferStruct": {
       "types": "./dist/BufferStruct.d.ts",
       "default": "./dist/BufferStruct.js"
+    },
+    "./Checked": {
+      "types": "./dist/Checked.d.ts",
+      "default": "./dist/Checked.js"
+    },
+    "./Clamped": {
+      "types": "./dist/Clamped.d.ts",
+      "default": "./dist/Clamped.js"
+    },
+    "./Complex": {
+      "types": "./dist/Complex.d.ts",
+      "default": "./dist/Complex.js"
+    },
+    "./CronExpression": {
+      "types": "./dist/CronExpression.d.ts",
+      "default": "./dist/CronExpression.js"
     },
     "./Css": {
       "types": "./dist/Css.d.ts",
@@ -108,9 +146,53 @@
       "types": "./dist/EncodingJapanese.d.ts",
       "default": "./dist/EncodingJapanese.js"
     },
+    "./F32": {
+      "types": "./dist/F32.d.ts",
+      "default": "./dist/F32.js"
+    },
+    "./FixedInt": {
+      "types": "./dist/FixedInt.d.ts",
+      "default": "./dist/FixedInt.js"
+    },
+    "./Float": {
+      "types": "./dist/Float.d.ts",
+      "default": "./dist/Float.js"
+    },
+    "./I8": {
+      "types": "./dist/I8.d.ts",
+      "default": "./dist/I8.js"
+    },
+    "./I16": {
+      "types": "./dist/I16.d.ts",
+      "default": "./dist/I16.js"
+    },
+    "./I32": {
+      "types": "./dist/I32.d.ts",
+      "default": "./dist/I32.js"
+    },
+    "./I64": {
+      "types": "./dist/I64.d.ts",
+      "default": "./dist/I64.js"
+    },
+    "./I128": {
+      "types": "./dist/I128.d.ts",
+      "default": "./dist/I128.js"
+    },
+    "./IanaTimeZone": {
+      "types": "./dist/IanaTimeZone.d.ts",
+      "default": "./dist/IanaTimeZone.js"
+    },
     "./Ids": {
       "types": "./dist/Ids.d.ts",
       "default": "./dist/Ids.js"
+    },
+    "./Integer": {
+      "types": "./dist/Integer.d.ts",
+      "default": "./dist/Integer.js"
+    },
+    "./IsoDuration": {
+      "types": "./dist/IsoDuration.d.ts",
+      "default": "./dist/IsoDuration.js"
     },
     "./Issues": {
       "types": "./dist/Issues.d.ts",
@@ -148,17 +230,53 @@
       "types": "./dist/Net.d.ts",
       "default": "./dist/Net.js"
     },
+    "./Num": {
+      "types": "./dist/Num.d.ts",
+      "default": "./dist/Num.js"
+    },
     "./Observability": {
       "types": "./dist/Observability.d.ts",
       "default": "./dist/Observability.js"
+    },
+    "./Overflowing": {
+      "types": "./dist/Overflowing.d.ts",
+      "default": "./dist/Overflowing.js"
+    },
+    "./PosixTz": {
+      "types": "./dist/PosixTz.d.ts",
+      "default": "./dist/PosixTz.js"
+    },
+    "./Range": {
+      "types": "./dist/Range.d.ts",
+      "default": "./dist/Range.js"
+    },
+    "./Ratio": {
+      "types": "./dist/Ratio.d.ts",
+      "default": "./dist/Ratio.js"
+    },
+    "./Rfc3339": {
+      "types": "./dist/Rfc3339.d.ts",
+      "default": "./dist/Rfc3339.js"
+    },
+    "./Rfc9557": {
+      "types": "./dist/Rfc9557.d.ts",
+      "default": "./dist/Rfc9557.js"
     },
     "./Robots": {
       "types": "./dist/Robots.d.ts",
       "default": "./dist/Robots.js"
     },
+    "./RRule": {
+      "types": "./dist/RRule.d.ts",
+      "default": "./dist/RRule.js"
+    },
     "./RssFeed": {
       "types": "./dist/RssFeed.d.ts",
       "default": "./dist/RssFeed.js"
+    },
+    "./Saturating": {
+      "types": "./dist/Saturating.d.ts",
+      "default": "./dist/Saturating.js"
     },
     "./ServiceWorker": {
       "types": "./dist/ServiceWorker.d.ts",
@@ -184,6 +302,30 @@
       "types": "./dist/TriState.d.ts",
       "default": "./dist/TriState.js"
     },
+    "./Tzif": {
+      "types": "./dist/Tzif.d.ts",
+      "default": "./dist/Tzif.js"
+    },
+    "./U8": {
+      "types": "./dist/U8.d.ts",
+      "default": "./dist/U8.js"
+    },
+    "./U16": {
+      "types": "./dist/U16.d.ts",
+      "default": "./dist/U16.js"
+    },
+    "./U32": {
+      "types": "./dist/U32.d.ts",
+      "default": "./dist/U32.js"
+    },
+    "./U64": {
+      "types": "./dist/U64.d.ts",
+      "default": "./dist/U64.js"
+    },
+    "./U128": {
+      "types": "./dist/U128.d.ts",
+      "default": "./dist/U128.js"
+    },
     "./UriTemplate": {
       "types": "./dist/UriTemplate.d.ts",
       "default": "./dist/UriTemplate.js"
@@ -199,6 +341,10 @@
     "./Web": {
       "types": "./dist/Web.d.ts",
       "default": "./dist/Web.js"
+    },
+    "./Wrapping": {
+      "types": "./dist/Wrapping.d.ts",
+      "default": "./dist/Wrapping.js"
     }
   },
   "publishConfig": {
@@ -212,7 +358,8 @@
     "@thomasfosterau/effect-parse": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "fast-check": "catalog:"
   },
   "peerDependencies": {
     "@effect/platform-browser": "catalog:peers",
