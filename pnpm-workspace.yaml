@@ -32,7 +32,7 @@ catalog:
   # is what its binding-compatibility test checks a real `Ai` against.
   "@cloudflare/workers-types": ^5.20261029.1
   # The Effect line (see the header): equal to `effect` below.
-  "@effect/ai-anthropic": 4.0.6
+  "@effect/ai-anthropic": 4.1.2
   # Compiles AND executes every JSDoc `@example` in packages/*/src (the
   # `docgen` task). Its `typescript` peer (`^5`) resolves to the TS6 alias
   # below, which pnpm tolerates via `peerDependencyRules`; the JS API it uses
@@ -40,13 +40,13 @@ catalog:
   "@effect/docgen": ^4.0.6
   "@effect/language-service": ^0.87.5
   # `effect-evals`' optional CLI peer. Equal to `effect`.
-  "@effect/platform-node": 4.0.6
+  "@effect/platform-node": 4.1.2
   # Transitive only (via @effect/platform-node's `^` range); pinned and
   # overridden so it cannot float ahead of `effect`. BUMP BY HAND with the rest
   # of the Effect line: no manifest names it, so Dependabot's `effect` group
   # never proposes it, and nothing flags a stale pin — the `effect` override
   # rewrites its peer spec too, so `pnpm peers check` stays silent.
-  "@effect/platform-node-shared": 4.0.6
+  "@effect/platform-node-shared": 4.1.2
   # Effect Language Service as a native (TypeScript-Go) binary — the TS7 side
   # of the 6/7 split. `effect-tsgo patch` overwrites the native `tsc` binary
   # with an Effect-patched build matched by gitHead, so this pins in lockstep
@@ -60,7 +60,7 @@ catalog:
   "@effect/tsgo": 0.63.0
   # Lockstep with `effect`: @effect/vitest is released on the same version
   # line. The `it.effect` runner the Allocator / Vec / String tests use.
-  "@effect/vitest": 4.0.6
+  "@effect/vitest": 4.1.2
   # The Effect oxlint rules (`effect/*`, the anti-slop set included), loaded
   # by `vite.config.ts` through `configs.recommended`. It replaces
   # `@mpsuesser/oxlint-plugin-effect`. 0.9.0 depends on `effect` 4.1.0 (exact)
@@ -74,7 +74,7 @@ catalog:
   # Exact, like `@effect/vitest`: the dev pin is what every gate ran on, and
   # Dependabot's `effect` group moves both together. The published range is
   # `catalogs.peers` below.
-  effect: 4.0.6
+  effect: 4.1.2
   fallow: 3.37.0
   # `@effect/docgen` runs each example under tsx.
   tsx: ^4.23.15
