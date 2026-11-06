@@ -1,4 +1,16 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // `@thomasfosterau/effect-ext`'s `exports` point at its built `dist/`;
+    // these map it to its `src/` instead, as the providers' tests are aliased
+    // (vite.package.ts), so neither the type gate nor the type-aware lint
+    // needs a build first. Relative to this file; TypeScript 7 removed
+    // `baseUrl`. `vp run check:dist` checks the provider's declarations
+    // against effect-ext's emitted ones.
+    "paths": {
+      "@thomasfosterau/effect-ext": ["../effect-ext/src/index.ts"],
+      "@thomasfosterau/effect-ext/*": ["../effect-ext/src/*.ts"]
+    }
+  },
   "include": ["src"]
 }

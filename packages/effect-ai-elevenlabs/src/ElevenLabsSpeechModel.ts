@@ -1,5 +1,5 @@
 /**
- * `ElevenLabsSpeechModel` — the ElevenLabs implementation of `effect-ai-ext`'s
+ * `ElevenLabsSpeechModel` — the ElevenLabs implementation of `effect-ext`'s
  * `SpeechModel` service (text-to-speech). It exposes both surfaces the
  * abstraction defines: `generate`, returning the full audio buffer, and
  * `stream`, emitting audio byte chunks as they arrive from ElevenLabs'
@@ -22,7 +22,7 @@
  * @copyright Thomas Foster
  */
 
-import { SpeechModel } from "@thomasfosterau/effect-ai-ext";
+import * as SpeechModel from "@thomasfosterau/effect-ext/SpeechModel";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as EffectRecord from "effect/Record";

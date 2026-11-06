@@ -1,10 +1,10 @@
 # @thomasfosterau/effect-ai-voyage
 
-A first-party provider over Voyage AI: `VoyageClient` (`/v1/embeddings`, `/v1/rerank`), `VoyageEmbeddingModel` (an `effect/ai` `EmbeddingModel`) and `VoyageRerankerModel` (an `effect-ai-ext` `RerankerModel`). Shaped like `effect-ai-mistral`.
+A first-party provider over Voyage AI: `VoyageClient` (`/v1/embeddings`, `/v1/rerank`), `VoyageEmbeddingModel` (an `effect/ai` `EmbeddingModel`) and `VoyageRerankerModel` (an `effect-ext` `RerankerModel`). Shaped like `effect-ai-mistral`.
 
 ## Boundary
 
-Peer: `effect`. May import `@thomasfosterau/effect-ai-ext` (a `workspace:*` dependency) and nothing else from this workspace (`.fallowrc.json` zone `voyage`).
+Peer: `effect`. May import `@thomasfosterau/effect-ext` (a `workspace:*` dependency) and nothing else from this workspace (`.fallowrc.json` zone `voyage`).
 
 ## Invariants
 

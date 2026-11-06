@@ -15,7 +15,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Config from "effect/Config";
 import * as EffectRecord from "effect/Record";
-import * as RerankerModelExt from "@thomasfosterau/effect-ai-ext/RerankerModel";
+import * as RerankerModelExt from "@thomasfosterau/effect-ext/RerankerModel";
 
 const EXPORTS = [
   "anthropicLanguageModelLayer",

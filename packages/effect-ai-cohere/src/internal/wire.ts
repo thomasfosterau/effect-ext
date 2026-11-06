@@ -7,7 +7,7 @@
  * constructs them field-by-field and sends them as JSON. Only the response
  * and streaming-event bodies get Effect `Schema`s, because those are the
  * untrusted inputs that must be decoded and validated before the models
- * convert them into Effect AI / effect-ai-ext response shapes.
+ * convert them into Effect AI / effect-ext response shapes.
  *
  * Optional response fields are modelled leniently (`Schema.optional` +
  * `Schema.NullOr`, and `finish_reason` left as a free `string`) so that a

@@ -1,10 +1,10 @@
 # @thomasfosterau/effect-ai-cohere
 
-A first-party provider over Cohere's v2 API: `CohereClient` (`/v2/chat` with SSE, `/v2/embed`, `/v2/rerank`), `CohereLanguageModel` and `CohereEmbeddingModel` (`effect/ai` services), and `CohereRerankerModel` and `CohereClassifierModel` (`effect-ai-ext` services). Shaped like `effect-ai-mistral`.
+A first-party provider over Cohere's v2 API: `CohereClient` (`/v2/chat` with SSE, `/v2/embed`, `/v2/rerank`), `CohereLanguageModel` and `CohereEmbeddingModel` (`effect/ai` services), and `CohereRerankerModel` and `CohereClassifierModel` (`effect-ext` services). Shaped like `effect-ai-mistral`.
 
 ## Boundary
 
-Peer: `effect`. May import `@thomasfosterau/effect-ai-ext` (a `workspace:*` dependency) and nothing else from this workspace (`.fallowrc.json` zone `cohere`).
+Peer: `effect`. May import `@thomasfosterau/effect-ext` (a `workspace:*` dependency) and nothing else from this workspace (`.fallowrc.json` zone `cohere`).
 
 ## Invariants
 

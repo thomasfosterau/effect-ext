@@ -19,7 +19,7 @@ import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
 import { AiError } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
-import type { ModerationModel } from "@thomasfosterau/effect-ai-ext";
+import type { ModerationModel } from "@thomasfosterau/effect-ext";
 import {
   OPENAI_MODERATION_MODEL,
   makeOpenAiModerationModelFromUrl,

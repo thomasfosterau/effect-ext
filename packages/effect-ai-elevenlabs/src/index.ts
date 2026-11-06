@@ -1,7 +1,7 @@
 /**
  * A custom Effect AI provider for ElevenLabs — the audio leg of the
  * `@thomasfosterau/effect-ai-*` family. Effect ships no ElevenLabs package, so
- * this package implements `effect-ai-ext`'s audio abstractions directly against
+ * this package implements `effect-ext`'s audio abstractions directly against
  * the ElevenLabs API:
  *
  * - {@link ElevenLabsClient} — the low-level HTTP client (binary and streaming
@@ -17,7 +17,7 @@
  * ```ts
  * import { Effect, Layer, Redacted } from "effect"
  * import { FetchHttpClient } from "effect/http"
- * import { SpeechModel } from "@thomasfosterau/effect-ai-ext"
+ * import { SpeechModel } from "@thomasfosterau/effect-ext"
  * import { ElevenLabsClient, ElevenLabsSpeechModel } from "@thomasfosterau/effect-ai-elevenlabs"
  *
  * const SpeechLayer = ElevenLabsSpeechModel.layer({

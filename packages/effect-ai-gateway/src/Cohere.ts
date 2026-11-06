@@ -27,7 +27,7 @@ import * as Schema from "effect/Schema";
 import type { AiError } from "effect/ai";
 import { EmbeddingModel } from "effect/ai";
 import { FetchHttpClient, HttpClient } from "effect/http";
-import * as RerankerModel from "@thomasfosterau/effect-ai-ext/RerankerModel";
+import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
 import type { GatewayBinding, GatewayProvider } from "./Binding";
 import { requestViaBinding, requestViaUrl } from "./internal/transport";
 import * as Url from "./Url";

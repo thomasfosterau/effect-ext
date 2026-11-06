@@ -1,0 +1,9 @@
+{
+  // tsgolint (type-aware `vp lint`) resolves each file's NEAREST
+  // `tsconfig.json` and never loads `tsconfig.test.json`. Without this file
+  // the tests fell under ../tsconfig.json (`src` only), so its `paths` to
+  // effect-ext's `src/` did not apply and every effect-ext import was typed
+  // from the unbuilt `dist/`. `include` and `paths` stay relative to
+  // ../tsconfig.test.json.
+  "extends": "../tsconfig.test.json"
+}

@@ -4,7 +4,7 @@ The routing layer: repoints other providers' clients at a Cloudflare AI Gateway 
 
 ## Boundary
 
-Peers: `effect`, `@effect/ai-anthropic`, and `@cloudflare/workers-types` (optional, types only). May import `@thomasfosterau/effect-ai-ext` and nothing else from this workspace (`.fallowrc.json` zone `gateway`). The barrel is flat (`export *` of each module) and re-exports no `RerankerModel` name; consumers import it from `@thomasfosterau/effect-ai-ext/RerankerModel` (#97).
+Peers: `effect`, `@effect/ai-anthropic`, and `@cloudflare/workers-types` (optional, types only). May import `@thomasfosterau/effect-ext` and nothing else from this workspace (`.fallowrc.json` zone `gateway`). The barrel is flat (`export *` of each module) and re-exports no `RerankerModel` name; consumers import it from `@thomasfosterau/effect-ext/RerankerModel` (#97).
 
 ## Invariants
 

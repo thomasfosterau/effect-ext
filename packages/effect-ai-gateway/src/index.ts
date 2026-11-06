@@ -7,7 +7,7 @@
  *
  * The barrel re-exports no `RerankerModel` name: the reranker abstraction
  * that `makeCohereReranker` implements lives in
- * `@thomasfosterau/effect-ai-ext/RerankerModel`, so import it from there. The
+ * `@thomasfosterau/effect-ext/RerankerModel`, so import it from there. The
  * gateway's deprecated re-export of it was removed in 0.5.0 (#97).
  *
  * @module effect-ai-gateway

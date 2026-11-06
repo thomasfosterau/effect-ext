@@ -1,6 +1,6 @@
 # @thomasfosterau/effect-ai-cohere
 
-A first-party [Effect](https://effect.website) AI provider for **Cohere**. Effect ships no `@effect/ai-cohere` package, so this implements each capability directly against Cohere's v2 API: `LanguageModel` and `EmbeddingModel` from `effect/ai`, and `RerankerModel` and `ClassifierModel` from [`@thomasfosterau/effect-ai-ext`](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ai-ext).
+A first-party [Effect](https://effect.website) AI provider for **Cohere**. Effect ships no `@effect/ai-cohere` package, so this implements each capability directly against Cohere's v2 API: `LanguageModel` and `EmbeddingModel` from `effect/ai`, and `RerankerModel` and `ClassifierModel` from [`@thomasfosterau/effect-ext`](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ext).
 
 ## Install
 
@@ -8,7 +8,7 @@ A first-party [Effect](https://effect.website) AI provider for **Cohere**. Effec
 pnpm add @thomasfosterau/effect-ai-cohere effect
 ```
 
-`effect` (`^4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ai-ext` is a dependency; add it yourself to import the `RerankerModel` / `ClassifierModel` tags.
+`effect` (`^4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ext` is a dependency; add it yourself to import the `RerankerModel` / `ClassifierModel` tags.
 
 ## Usage
 
@@ -38,7 +38,7 @@ const program = LanguageModel.generateText({ prompt: "Explain Effect in one line
 import { Config, Effect, Layer } from "effect";
 import { EmbeddingModel } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
-import { RerankerModel } from "@thomasfosterau/effect-ai-ext";
+import { RerankerModel } from "@thomasfosterau/effect-ext";
 import {
   CohereClassifierModel,
   CohereClient,

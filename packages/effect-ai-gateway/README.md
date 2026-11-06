@@ -3,8 +3,8 @@
 Route [Effect](https://effect.website) AI providers through a **Cloudflare AI Gateway** Worker binding, BYOK (bring-your-own-key). Provider keys are configured once on the gateway (Cloudflare dashboard) and never live in application code or env vars: this package reads no provider API key (the one it accepts is `OpenAiModeration`'s optional `apiKey`, below). The gateway is a routing layer, not a provider: the Anthropic route repoints the upstream `@effect/ai-anthropic` client rather than reimplementing it.
 
 - **`Anthropic`** — repoints `@effect/ai-anthropic`'s client at the gateway's Anthropic route. Drop-in for `AnthropicLanguageModel.layer` + `AnthropicClient.layer`.
-- **`Cohere`** — `EmbeddingModel` (`embed-v4.0`) and `RerankerModel` (`rerank-v3.5`) built directly on the gateway's universal `run()` endpoint. The `RerankerModel` abstraction itself comes from `@thomasfosterau/effect-ai-ext/RerankerModel`; the gateway re-exports none of its names (its deprecated re-export was removed in 0.5.0), so import `RerankerModel`, `make`, `RerankResponse` and the rest from there.
-- **`OpenAiModeration`** — `ModerationModel` (from `@thomasfosterau/effect-ai-ext`) backed by OpenAI `omni-moderation-latest` through the same universal endpoint. BYOK by default; an application that holds its own OpenAI key passes it as `apiKey` (a `Redacted`) and it is sent as the bearer token. Screens text and images: a batch of strings is one request; a multimodal input (`effect/ai` text and image file parts) is one request per input, its image sent as an `image_url` (a base64 `data:` URI unless it is already a URL). The provider's `flagged` verdict arrives as `ModerationResult.isFlagged`, its per-category booleans as `ModerationResult.flags`, and the dated snapshot that served the call as `ModerationResponse.modelId`. An optional `onCall` hook observes each HTTP call's status, duration and error for a cost / latency ledger.
+- **`Cohere`** — `EmbeddingModel` (`embed-v4.0`) and `RerankerModel` (`rerank-v3.5`) built directly on the gateway's universal `run()` endpoint. The `RerankerModel` abstraction itself comes from `@thomasfosterau/effect-ext/RerankerModel`; the gateway re-exports none of its names (its deprecated re-export was removed in 0.5.0), so import `RerankerModel`, `make`, `RerankResponse` and the rest from there.
+- **`OpenAiModeration`** — `ModerationModel` (from `@thomasfosterau/effect-ext`) backed by OpenAI `omni-moderation-latest` through the same universal endpoint. BYOK by default; an application that holds its own OpenAI key passes it as `apiKey` (a `Redacted`) and it is sent as the bearer token. Screens text and images: a batch of strings is one request; a multimodal input (`effect/ai` text and image file parts) is one request per input, its image sent as an `image_url` (a base64 `data:` URI unless it is already a URL). The provider's `flagged` verdict arrives as `ModerationResult.isFlagged`, its per-category booleans as `ModerationResult.flags`, and the dated snapshot that served the call as `ModerationResponse.modelId`. An optional `onCall` hook observes each HTTP call's status, duration and error for a cost / latency ledger.
 - **`Binding` / `Url`** — the Worker-binding and public-HTTPS transports.
 
 Every provider comes in a binding-based (`make…`) and a binding-free (`make…FromUrl`, config-resolved: `CF_ACCOUNT_ID`, `CF_AIG_GATEWAY_ID`, `CF_AIG_TOKEN`) variant, so callers with no Worker `AI` binding — a local CLI, a plain Node process, CI, an offline evaluation harness — can route through the gateway's public HTTPS endpoint too. All three variables are required: a missing or empty one fails layer construction with a `ConfigError`, and there is no default gateway id.
@@ -24,7 +24,7 @@ Both transports share one request body and one lenient response decode per provi
 pnpm add @thomasfosterau/effect-ai-gateway effect @effect/ai-anthropic
 ```
 
-`effect` and `@effect/ai-anthropic` (both `^4.0.0`) are peer dependencies (`effect` must be a single copy across your app). `@thomasfosterau/effect-ai-ext` is a dependency; add it yourself to import the `RerankerModel` / `ModerationModel` tags.
+`effect` and `@effect/ai-anthropic` (both `^4.0.0`) are peer dependencies (`effect` must be a single copy across your app). `@thomasfosterau/effect-ext` is a dependency; add it yourself to import the `RerankerModel` / `ModerationModel` tags.
 
 The gateway's published types need nothing from `@cloudflare/workers-types`: it types the Worker's `AI` binding with its own structural slice, `WorkersAiBinding` (`gateway(id)` → `{ getUrl, run }`), and provider slugs as `GatewayProvider`. So a project that type-checks with `skipLibCheck: false` and never installs `@cloudflare/workers-types` (a plain Node process using the `…FromUrl` variants, say) still type-checks the gateway. `@cloudflare/workers-types` stays an optional peer (`>=4.20250312.0`) for your own Worker's typing: a Worker's `env.AI`, typed `Ai` by that package, is assignable to `WorkersAiBinding`, so you pass it unchanged. The floor is the first release whose `AiGateway` declares `getUrl()`; an older release's `env.AI` is not assignable, so upgrade it.
 
@@ -33,7 +33,7 @@ The gateway's published types need nothing from `@cloudflare/workers-types`: it 
 ```ts
 import { Effect, Layer } from "effect";
 import { LanguageModel } from "effect/ai";
-import { ModerationModel } from "@thomasfosterau/effect-ai-ext";
+import { ModerationModel } from "@thomasfosterau/effect-ext";
 import {
   anthropicLanguageModelLayer,
   makeCohereRerankerFromUrl,

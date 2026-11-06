@@ -1,6 +1,6 @@
 /**
  * `ElevenLabsVoiceConversionModel` — the ElevenLabs implementation of
- * `effect-ai-ext`'s `VoiceConversionModel` service (speech-to-speech). It
+ * `effect-ext`'s `VoiceConversionModel` service (speech-to-speech). It
  * accepts source audio as bytes or a stream, uploads it as
  * `multipart/form-data` to `/v1/speech-to-speech/{voice_id}`, and returns the
  * re-voiced audio buffer.
@@ -13,7 +13,7 @@
  * @copyright Thomas Foster
  */
 
-import { VoiceConversionModel } from "@thomasfosterau/effect-ai-ext";
+import * as VoiceConversionModel from "@thomasfosterau/effect-ext/VoiceConversionModel";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";

@@ -36,7 +36,7 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { AiError, EmbeddingModel, LanguageModel, Tool, Toolkit } from "effect/ai";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/http";
-import { ClassifierModel, RerankerModel } from "@thomasfosterau/effect-ai-ext";
+import { ClassifierModel, RerankerModel } from "@thomasfosterau/effect-ext";
 import {
   CohereClient,
   CohereClassifierModel,
