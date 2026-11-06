@@ -12,11 +12,26 @@ The version step (`pnpm run version`) runs `changeset version`, then `vp fmt`, t
 
 `scripts/release.sh` packs each package with `pnpm pack` (which rewrites `catalog:`/`workspace:` specifiers) and publishes the tarball with an exact-pinned npm CLI via trusted publishing (OIDC); nothing requests provenance explicitly: the repository and the package are public, so trusted publishing attaches it. A package already published at its current version is skipped, so a partial run can be re-run. `changeset tag` then emits the `New tag:` lines the Changesets action uses to push the tags and create the GitHub releases. Why each setting is what it is: [SECURITY.md](./SECURITY.md#supply-chain-hardening).
 
+## First publish of a new package
+
+npm trusted publishing can only be configured for a package name that already exists on npm, so CI cannot publish a name the first time. The owner publishes a `0.0.0` placeholder for it first (no code, just a `package.json` and a one-line README) and binds the trusted publisher to it; the Changesets release from CI then publishes `0.1.0` with provenance.
+
+For the names that had not been published yet across the library repositories, [`scripts/npm-bootstrap.sh`](./scripts/npm-bootstrap.sh) does this in one run (its header says how to run it from a Codespace); it can be deleted once it has run. For a single package added later, do it by hand from a machine logged in to npm (`npm login --auth-type=web`), with npm 11.15 or later:
+
+```sh
+# in an empty directory holding a package.json: name, "version": "0.0.0", description, license,
+# repository (with "directory" for a workspace package), "publishConfig": { "access": "public" }
+npm publish --access public --provenance=false
+npm trust github <name> --file release.yml --repository thomasfosterau/<repo> --environment release --allow-publish
+```
+
+`--provenance=false` because a local publish has no OIDC identity to attest. Check the binding with `npm trust list <name>`.
+
 ## Maintainer setup (one-time)
 
 The `@thomasfosterau/effect-ai-*` packages and `@thomasfosterau/effect-evals` are already on npm, published from `thomasfosterau/effect-ai-ext` before it was merged here; their trusted publisher still names that repository and must be repointed (step 3) before the next release, or their publish fails auth while the others go through. Their changelogs continue in each package's `CHANGELOG.md`. Their version tags (`@thomasfosterau/effect-ai-ext@0.5.1`, …) live in effect-ai-ext: push them here before the first release (`git fetch <effect-ai-ext> 'refs/tags/*:refs/tags/*' && git push origin --tags`; the commits they name are in this history), or `changeset tag` will tag each AI package's current, already-published version again and the Release workflow will create a GitHub release for it.
 
-`@thomasfosterau/effect-utilities` has not been published yet. npm's trusted-publisher binding is configured per package on npmjs.com, which needs the package to exist — so the first release is a one-off owner action (a manual `npm publish` of the `pnpm pack` tarball from a machine with an npm session, or a classic token used once and then revoked), after which the following steps make the automated flow work end-to-end:
+`@thomasfosterau/effect-utilities` has not been published yet. npm's trusted-publisher binding is configured per package on npmjs.com, which needs the package to exist — so the first release is a one-off owner action (a `0.0.0` placeholder, see [First publish of a new package](#first-publish-of-a-new-package)), after which the following steps make the automated flow work end-to-end:
 
 0. **Rename the default branch to `trunk`** (#8). On GitHub it is still `main`, while CI, Release, Changesets and the fallow gate all target `trunk`; until the rename, no workflow runs. **Settings → General → Default branch** (GitHub retargets open PRs).
 1. **Allow Actions to open the Version Packages PR.** In the repo: **Settings → Actions → General → Workflow permissions** → enable **"Allow GitHub Actions to create and approve pull requests"**. Without this the built-in `GITHUB_TOKEN` is forbidden from opening pull requests and the workflow fails at the PR-creation step — even though the job already grants `pull-requests: write`.
