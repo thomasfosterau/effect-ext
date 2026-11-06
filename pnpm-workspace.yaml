@@ -62,7 +62,7 @@ catalog:
   # `pnpm install` itself in the `prepare` script. Read the `components`
   # table in node_modules/@effect/tsgo/dist/effect-tsgo.cjs before bumping
   # any of the three.
-  "@effect/tsgo": 0.63.0
+  "@effect/tsgo": 0.67.1
   # Lockstep with `effect`: @effect/vitest is released on the same version
   # line. The `it.effect` runner the Allocator / Vec / String tests use.
   "@effect/vitest": 4.0.6
@@ -72,7 +72,7 @@ catalog:
   # but runs on the workspace singleton (the `effect` override below), and it
   # loads inside vite-plus's oxlint, so it moves in the `toolchain` group and
   # an `effect` bump re-runs `vp check` against it too.
-  "@enfect/oxlint": 0.9.0
+  "@enfect/oxlint": 0.10.0
   # Optional peer of effect-utilities: only the `Negotiate` module imports it
   # (the JSON:API §5/§6 media-type rules are adopted from its `Middleware`,
   # never re-implemented here).
@@ -82,7 +82,7 @@ catalog:
   "@thomasfosterau/effect-parse": ^0.4.1
   "@types/node": ^26.6.6
   # Must match `vitest` below (its peer is the exact vitest version).
-  "@vitest/coverage-istanbul": 5.0.5
+  "@vitest/coverage-istanbul": 5.1.0
   # Exact, like `@effect/vitest`: the dev pin is what every gate ran on, and
   # Dependabot's `effect` group moves both together. The published range is
   # `catalogs.peers` below.
@@ -105,9 +105,9 @@ catalog:
   # core package, and `vitest` must match vite-plus's exact pin
   # (1.4.0 -> 5.0.5, `vp toolchain vitest`) because the `vitest@*` override
   # forces every semver resolution to the catalog singleton.
-  vite-plus: 1.4.0
+  vite-plus: 1.5.0
   vite: npm:@voidzero-dev/vite-plus-core@1.4.0
-  vitest: 5.0.5
+  vitest: 5.1.0
 
 # Peer ranges the PUBLISHED packages declare. Kept as a named catalog so the
 # strict catalog mode still governs them while they stay ranges (an exact
