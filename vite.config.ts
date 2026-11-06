@@ -9,7 +9,8 @@
  * family and `effect-evals` (merged in from thomasfosterau/effect-ai-ext)
  * came with a looser one: their relaxations are scoped to `aiPackages` in
  * `overrides` below, each with its reason, so `effect-utilities` keeps the
- * stricter set.
+ * stricter set. The same holds for the effect-utilities modules merged in
+ * from thomasfosterau/effect-web (`webModules`), scoped to their files.
  *
  * @copyright Thomas Foster
  */
@@ -47,6 +48,23 @@ const coverageFloors = {
 
 /** The packages that came from thomasfosterau/effect-ai-ext (see the header). */
 const aiPackages = ["packages/effect-ai-*/**", "packages/effect-evals/**"];
+
+/**
+ * The effect-utilities modules that came from thomasfosterau/effect-web (see
+ * the header): their subpath files, the directories behind them and their
+ * tests.
+ */
+const webDirs =
+  "{browser,browser-testing,css,encoding,json-feed,langtag,mime,observability,uri-template,web}";
+const webTests =
+  "packages/effect-utilities/tests/{atom-feed,css,encoding,json-feed,langtag,mime,robots,rss-feed,sitemap,uri-template,web}/**";
+const webModules = [
+  "packages/effect-utilities/src/{AtomFeed,Browser,BrowserTesting,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,ServiceWorker,Sitemap,UriTemplate,Web}.ts",
+  `packages/effect-utilities/src/${webDirs}/**`,
+  `packages/effect-utilities/src/internal/${webDirs}/**`,
+  "packages/effect-utilities/src/internal/xml.ts",
+  webTests,
+];
 
 /** Every package name, for the root aggregates. */
 const packageNames = [
@@ -355,6 +373,91 @@ export default defineConfig({
           "effect/use-clock-service": "warn",
           "effect/avoid-process-env": "warn",
           "effect/require-effect-concurrency": "warn",
+        },
+      },
+      // ---- effect-utilities' web modules: the rule set they arrived with ----
+      // Merged in from thomasfosterau/effect-web, whose own lint config these
+      // lines carry over unchanged (its reasons, abridged). Unifying them
+      // with the rest of effect-utilities (`Option` members, the `P` / `R`
+      // aliases, no assertions) is #31; delete each line as it reaches zero.
+      {
+        files: webModules,
+        rules: {
+          // Full-name Effect imports (`import * as Predicate`), the convention
+          // effect-web shares with its consumers; the rule has no options.
+          "effect/prefer-namespace-imports": "off",
+          // Fires on `?: T | undefined`, the only optional-member spelling
+          // a caller can forward an optional of its own into under
+          // `exactOptionalPropertyTypes`.
+          "effect/prefer-option-over-null": "warn",
+          // Narrowings the Fetch / DOM types structurally require; each
+          // assertion carries a `SAFETY:` comment.
+          "effect/casting-awareness": "warn",
+          // `unknown` is the honest type of a caught failure handed to a log
+          // line (`describeError`) and of a structured log event's fields.
+          "effect/no-unknown-parameters": "warn",
+          "effect/no-unsafe-dictionary-type": "warn",
+          // The `effect/http*` modules are marked unstable throughout
+          // Effect 4; the feeds, sitemap and request policies are built on them.
+          "effecttsgo/unstable-api-usage": "off",
+          // Immutable updates in `map` / `reduce`; the fix is mutation.
+          "oxc/no-map-spread": "off",
+          "oxc/no-accumulating-spread": "warn",
+          // `BroadcastChannel.postMessage` takes no `targetOrigin`.
+          "unicorn/require-post-message-target-origin": "off",
+          // The in-memory Web Locks double mirrors the platform's promise
+          // plumbing: its `then` callbacks return nothing on purpose.
+          "promise/always-return": "off",
+          "promise/no-callback-in-promise": "off",
+          // A thrown decode error's text is Effect's rendering, not a contract.
+          "vitest/require-to-throw-message": "off",
+          // Misreads an exhaustive `switch` over a union as a missing return.
+          "typescript/consistent-return": "off",
+          // `describeError`'s documented last resort stringifies an object.
+          "typescript/no-base-to-string": "warn",
+          // effect-web's adoption allowances for the `suspicious` category
+          // (48, 41 and 19 sites), each a pay-down item in #31.
+          "eslint/no-shadow": "warn",
+          "unicorn/consistent-function-scoping": "warn",
+          "unicorn/prefer-set-has": "warn",
+        },
+      },
+      // `logStructured` is called from plain code and runs its effect with
+      // `Effect.runSync`: it IS the entry point, where providing the JSON
+      // logger belongs.
+      {
+        files: ["packages/effect-utilities/src/Observability.ts"],
+        rules: {
+          "effecttsgo/strict-effect-provide": "off",
+        },
+      },
+      // `fetchListener`'s route table is a heterogeneous tuple of
+      // `Route<unknown, any>`: a matched handler's failure is `unknown` (a
+      // rejection is what `respondWith` turns into a network error).
+      {
+        files: ["packages/effect-utilities/src/ServiceWorker.ts"],
+        rules: {
+          "effecttsgo/any-unknown-in-error-context": "off",
+        },
+      },
+      // The web-platform-tests `mimesniff/` resources are binary files read
+      // synchronously from disk at module load; `FileSystem` would need
+      // `@effect/platform-node` for one test file.
+      {
+        files: ["packages/effect-utilities/tests/mime/wpt-sniffing.test.ts"],
+        rules: {
+          "effect/use-filesystem-service": "off",
+          "effect/avoid-sync-fs": "off",
+        },
+      },
+      // effect-web's suites run each case's program with `Effect.runPromise`
+      // / `runSync` and provide its layers there, rather than through
+      // `@effect/vitest`'s `it.effect` and `layer(...)`.
+      {
+        files: [webTests],
+        rules: {
+          "effect/effect-run-in-body": "off",
+          "effecttsgo/strict-effect-provide": "off",
         },
       },
       // ---- effect-utilities ----

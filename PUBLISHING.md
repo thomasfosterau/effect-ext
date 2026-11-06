@@ -30,3 +30,15 @@ The `@thomasfosterau/effect-ai-*` packages and `@thomasfosterau/effect-evals` ar
    Then remove any classic automation token for the package.
 
 4. **Protect `trunk`.** Require pull requests and passing CI before merge, and disallow direct pushes, so a release can only be triggered by merging the reviewed "Version Packages" PR.
+
+## Retiring the effect-web packages (one-time)
+
+The web modules came from `thomasfosterau/effect-web`, three of whose packages are on npm: `@thomasfosterau/effect-web`, `@thomasfosterau/effect-robots` and `@thomasfosterau/effect-sitemap` (0.1.0 each). Its other eight (`effect-rss-feed`, `effect-atom-feed`, `effect-json-feed`, `effect-uri-template`, `effect-langtag`, `effect-css`, `effect-encoding`, `effect-mime`) were never published. Once `@thomasfosterau/effect-utilities` is released with the web modules, the owner deprecates the three, from a machine with an npm session (`npm deprecate` needs one; nothing in CI can do it):
+
+```sh
+npm deprecate @thomasfosterau/effect-web "Moved to @thomasfosterau/effect-utilities (Web, Net, Observability, Negotiate, ServiceWorker, Browser, BrowserTesting)"
+npm deprecate @thomasfosterau/effect-robots "Moved to @thomasfosterau/effect-utilities/Robots"
+npm deprecate @thomasfosterau/effect-sitemap "Moved to @thomasfosterau/effect-utilities/Sitemap"
+```
+
+Then remove those packages' trusted-publisher bindings on npmjs.com, and archive `thomasfosterau/effect-web` once its open issues have been transferred here.
