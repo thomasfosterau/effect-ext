@@ -76,12 +76,15 @@ jobs:
           OWNERSHIP: ${{ matrix.ownership }}
         run: |
           set -o pipefail
-          extra=()
+          cli=(pnpm dlx "$DEVCONTAINER_CLI")
           if [ "$OWNERSHIP" = uid-1000 ]; then
+            # The CLI itself writes .devcontainer/devcontainer-lock.json, so
+            # it runs as root once the runner user no longer owns the tree.
             sudo chown -R 1000:1000 .
-            extra=(--update-remote-user-uid-default off)
+            cli=(sudo env "PATH=$PATH" "${cli[@]}")
           fi
-          pnpm dlx "$DEVCONTAINER_CLI" up --workspace-folder . --log-level info "${extra[@]}" 2>&1 | tee "$RUNNER_TEMP/up.log"
+          "${cli[@]}" up --workspace-folder . --log-level info --update-remote-user-uid-default off 2>&1 \
+            | tee "$RUNNER_TEMP/up.log"
       # The hook logs and continues on every failure; any such line fails here.
       - name: Assert the hook reported no failure
         run: |
