@@ -13,7 +13,7 @@ An [Effect](https://effect.website) AI provider for **ElevenLabs** — the audio
 pnpm add @thomasfosterau/effect-ai-elevenlabs @thomasfosterau/effect-ai-ext effect
 ```
 
-`effect` (`>=4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ai-ext` is a dependency, listed above because you import the service tags (`SpeechModel`, …) from it.
+`effect` (`^4.0.0`) is a peer dependency: it must be a single copy across your app. `@thomasfosterau/effect-ai-ext` is a dependency, listed above because you import the service tags (`SpeechModel`, …) from it.
 
 ## Usage
 

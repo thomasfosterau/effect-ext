@@ -16,7 +16,7 @@ Extensions to the [Effect](https://effect.website) standard library, in five fam
 pnpm add @thomasfosterau/effect-utilities effect
 ```
 
-Peer: `effect` `>=4.0.0`. Three optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `>=4.0.0` (`Browser`, `BrowserTesting`), `@thomasfosterau/effect-jsonapi` `>=0.16.1` (`Negotiate`) and `@thomasfosterau/effect-parse` `^0.4.1` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. Node.js 22 or later (the binary-data modules use `ArrayBuffer.prototype.transfer`). ESM only, `"sideEffects": false`; every module is also its own entry point:
+Peer: `effect` `^4.0.0`. Three optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `^4.0.0` (`Browser`, `BrowserTesting`), `@thomasfosterau/effect-jsonapi` `>=0.16.1` (`Negotiate`) and `@thomasfosterau/effect-parse` `^0.4.1` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. Node.js 22 or later (the binary-data modules use `ArrayBuffer.prototype.transfer`). ESM only, `"sideEffects": false`; every module is also its own entry point:
 
 ```ts
 import { Vec, TriState } from "@thomasfosterau/effect-utilities";
@@ -331,7 +331,7 @@ Each `@thomasfosterau/effect-web` entry point, and each of its sibling packages,
 | `@thomasfosterau/effect-encoding/{japanese,gb18030,big5,euc-kr}` | `@thomasfosterau/effect-utilities/Encoding{Japanese,Gb18030,Big5,EucKr}` |
 | `@thomasfosterau/effect-mime` | `@thomasfosterau/effect-utilities/Mime` |
 
-Two things change beyond the path: the `effect` peer floor is `>=4.0.0` (effect-web's was `>=4.0.0-rc.118`), and each service's `Context` key moved with it (`@thomasfosterau/effect-web/browser/Locks` is now `@thomasfosterau/effect-utilities/Browser/Locks`), so a layer built from the old package does not satisfy a service from the new one. Move every import at once.
+Two things change beyond the path: the `effect` peer range is `^4.0.0` (effect-web's was `>=4.0.0-rc.118`), and each service's `Context` key moved with it (`@thomasfosterau/effect-web/browser/Locks` is now `@thomasfosterau/effect-utilities/Browser/Locks`), so a layer built from the old package does not satisfy a service from the new one. Move every import at once.
 
 ## Web, Net, Observability, Negotiate, ServiceWorker, Browser, BrowserTesting
 

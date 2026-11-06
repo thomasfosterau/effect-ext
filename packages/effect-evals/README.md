@@ -8,7 +8,7 @@ Effect-native LLM evaluation: goldens, scorers, thresholds, and a runner with tr
 pnpm add @thomasfosterau/effect-evals effect
 ```
 
-Requires Node `>=22.18`: the CLI loads `*.eval.ts` files with Node's type stripping, on by default from 22.18.0, and its resolution hook uses `module.registerHooks()` (22.15+). `effect` (`>=4.0.0`) is a peer dependency. The package also ships an `effect-evals` CLI for discovering and running `*.eval.ts` suites — see [CLI](#cli) below. The CLI additionally needs the **optional** peer `@effect/platform-node` (`>=4.0.0`): install it at the same version as `effect`, and pin `@effect/platform-node-shared` to that version too (a direct dependency or an `overrides` entry). Upstream's `^` range otherwise floats it to the newest rc, whose own `effect` peer rejects an older `effect`.
+Requires Node `>=22.18`: the CLI loads `*.eval.ts` files with Node's type stripping, on by default from 22.18.0, and its resolution hook uses `module.registerHooks()` (22.15+). `effect` (`^4.0.0`) is a peer dependency. The package also ships an `effect-evals` CLI for discovering and running `*.eval.ts` suites — see [CLI](#cli) below. The CLI additionally needs the **optional** peer `@effect/platform-node` (`^4.0.0`): install it at the same version as `effect`, and pin `@effect/platform-node-shared` to that version too (a direct dependency or an `overrides` entry). Upstream's `^` range otherwise floats it to the newest rc, whose own `effect` peer rejects an older `effect`.
 
 ```sh
 pnpm add @effect/platform-node@<your effect version> @effect/platform-node-shared@<your effect version>

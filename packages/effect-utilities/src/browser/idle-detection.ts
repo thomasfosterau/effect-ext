@@ -204,7 +204,12 @@ export const make = (IdleDetector: IdleDetectorLike | undefined): IdleDetection[
             catch: (cause) => idleError(reasonOf(cause, REJECTION_REASONS, "Failed"), cause),
           });
           onChange();
-        }),
+        }).pipe(
+          // Fail the stream through its queue: effect 4.0.0 (the peer floor)
+          // forks the registration and drops its failure, so a rejected
+          // `start` would leave the stream waiting forever.
+          Effect.catch((error) => Queue.fail(queue, error)),
+        ),
       { bufferSize: 16, strategy: "sliding" },
     ).pipe(Stream.changesWith(sameState));
   };
