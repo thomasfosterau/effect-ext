@@ -6,12 +6,15 @@
     "packages/*/tests/**/*.types.ts",
     "tests/dist-consumer/src/*.ts",
     "packages/*/src/index.ts",
-    "packages/effect-ai-ext/entries/*.ts",
-    "packages/effect-ai-ext/src/*Model.ts",
-    "packages/effect-evals/src/cli/main.ts",
-    "packages/effect-evals/src/cli/loader.mjs",
-    "packages/effect-evals/bin/effect-evals.js",
-    "packages/effect-evals/tests/fixtures/**",
+    "packages/effect-ext/src/evals/index.ts",
+    "packages/effect-ext/src/evals/*.ts",
+    "packages/effect-ext/src/evals/metrics/*.ts",
+    "packages/effect-ext/src/evals/metrics/rag/*.ts",
+    "packages/effect-ext/src/evals/scorers/{EmbeddingSimilarity,ExactMatch,JsonValidity,Levenshtein,SchemaMatch,ToolCallCorrectness}.ts",
+    "packages/effect-ext/src/evals/cli/main.ts",
+    "packages/effect-ext/src/evals/cli/loader.mjs",
+    "packages/effect-ext/bin/effect-evals.js",
+    "packages/effect-ext/tests/evals/fixtures/**",
     "**/vite.config.ts",
     "vite.package.ts",
     "scripts/check-dist.mjs",
@@ -61,10 +64,6 @@
         "patterns": ["tests/dist-consumer/**"]
       },
       {
-        "name": "ai-ext",
-        "patterns": ["packages/effect-ai-ext/**"]
-      },
-      {
         "name": "gateway",
         "patterns": ["packages/effect-ai-gateway/**"]
       },
@@ -83,10 +82,6 @@
       {
         "name": "elevenlabs",
         "patterns": ["packages/effect-ai-elevenlabs/**"]
-      },
-      {
-        "name": "evals",
-        "patterns": ["packages/effect-evals/**"]
       }
     ],
     "rules": [
@@ -99,12 +94,8 @@
         "allow": ["effect-ext"]
       },
       {
-        "from": "ai-ext",
-        "allow": []
-      },
-      {
         "from": "gateway",
-        "allow": ["ai-ext"]
+        "allow": ["effect-ext"]
       },
       {
         "from": "mistral",
@@ -112,19 +103,15 @@
       },
       {
         "from": "cohere",
-        "allow": ["ai-ext"]
+        "allow": ["effect-ext"]
       },
       {
         "from": "voyage",
-        "allow": ["ai-ext"]
+        "allow": ["effect-ext"]
       },
       {
         "from": "elevenlabs",
-        "allow": ["ai-ext"]
-      },
-      {
-        "from": "evals",
-        "allow": []
+        "allow": ["effect-ext"]
       }
     ]
   },
@@ -150,7 +137,7 @@
     "maxCrap": 30,
     "coverage": "coverage/coverage-final.json"
   },
-  // Each AI package's tests/helpers/effect.ts is the one shared harness shape,
+  // Each AI suite's tests/helpers/effect.ts is the one shared harness shape,
   // copied whole into every package so a suite can reach for any helper; a
   // package whose suite does not use one yet still carries it. The AI modules
   // export the same short names (`make`, `layer`, `Options`, `contramap`);
@@ -158,7 +145,11 @@
   // so the shared names are the API shape, not a duplicate.
   "ignoreExports": [
     {
-      "file": "packages/*/tests/helpers/effect.ts",
+      "file": "packages/effect-ai-*/tests/helpers/effect.ts",
+      "exports": ["runTestExit", "recordingTracer", "RecordedSpan", "RecordingTracer"]
+    },
+    {
+      "file": "packages/effect-ext/tests/{ai,evals}/helpers/effect.ts",
       "exports": ["runTestExit", "recordingTracer", "RecordedSpan", "RecordingTracer"]
     },
     {
@@ -166,7 +157,11 @@
       "exports": ["make", "layer", "Options", "contramap"]
     },
     {
-      "file": "packages/effect-evals/src/*.ts",
+      "file": "packages/effect-ext/src/{ClassifierModel,ImageModel,ModerationModel,RerankerModel,SpeechModel,TranscriptionModel,VoiceConversionModel}.ts",
+      "exports": ["make", "layer", "Options", "contramap"]
+    },
+    {
+      "file": "packages/effect-ext/src/evals/**/*.ts",
       "exports": ["make", "layer", "Options", "contramap"]
     },
     // effect-ext's `Browser` / `BrowserTesting` modules (merged in from

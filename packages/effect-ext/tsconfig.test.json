@@ -10,6 +10,7 @@
     // Relative to this file; TypeScript 7 removed `baseUrl`.
     "paths": {
       "@thomasfosterau/effect-ext": ["./src/index.ts"],
+      "@thomasfosterau/effect-ext/evals": ["./src/evals/index.ts"],
       "@thomasfosterau/effect-ext/*": ["./src/*.ts"]
     }
   },

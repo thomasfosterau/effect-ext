@@ -11,7 +11,12 @@
  * clamped ranges, floats, rationals, complex numbers, `num-traits` type
  * classes) and parsers for time's string and binary formats (RFC 3339,
  * RFC 9557, ISO 8601 durations, POSIX TZ, cron, RFC 5545 `RRULE`, IANA
- * zone names, TZif). Each module is also its own entry point
+ * zone names, TZif), and the provider-neutral AI service abstractions
+ * `effect/ai` lacks (`RerankerModel`, `ClassifierModel`, `SpeechModel`,
+ * `TranscriptionModel`, `ImageModel`, `ModerationModel`,
+ * `VoiceConversionModel`). The LLM evaluation toolkit is its own barrel,
+ * `@thomasfosterau/effect-ext/evals`, and not re-exported here. Each module
+ * is also its own entry point
  * (`@thomasfosterau/effect-ext/Vec`, …); this barrel re-exports them as
  * namespaces (the fixed-width integer and `F32` modules as their one
  * value: `I8`, …, `U128`, `F32`), except the modules that import an
@@ -82,6 +87,13 @@ export * as Checked from "./Checked.ts";
  * @since 0.1.0
  */
 export * as Clamped from "./Clamped.ts";
+
+/**
+ * The provider-neutral classifier service: labelled classes with confidences, and `fromLanguageModel` to back it with any `LanguageModel`.
+ *
+ * @since 0.1.0
+ */
+export * as ClassifierModel from "./ClassifierModel.ts";
 
 /**
  * Complex numbers over doubles.
@@ -196,6 +208,13 @@ export { I128 } from "./I128.ts";
 export * as Ids from "./Ids.ts";
 
 /**
+ * The provider-neutral image-generation service.
+ *
+ * @since 0.1.0
+ */
+export * as ImageModel from "./ImageModel.ts";
+
+/**
  * Integer algorithms (`num-integer`).
  *
  * @since 0.1.0
@@ -252,6 +271,13 @@ export * as LiteralExact from "./LiteralExact.ts";
 export * as Mime from "./Mime.ts";
 
 /**
+ * The provider-neutral moderation service: content scored against policy categories, and `fromLanguageModel` to back it with any `LanguageModel`.
+ *
+ * @since 0.1.0
+ */
+export * as ModerationModel from "./ModerationModel.ts";
+
+/**
  * The SSRF host block list and a redirect-revalidating fetch.
  *
  * @since 0.1.0
@@ -294,6 +320,13 @@ export * as Range from "./Range.ts";
 export * as Ratio from "./Ratio.ts";
 
 /**
+ * The provider-neutral reranker service: documents reordered by relevance to a query.
+ *
+ * @since 0.1.0
+ */
+export * as RerankerModel from "./RerankerModel.ts";
+
+/**
  * An RSS 2.0 feed, rendered and served.
  *
  * @since 0.1.0
@@ -322,6 +355,13 @@ export * as ServiceWorker from "./ServiceWorker.ts";
 export * as Sitemap from "./Sitemap.ts";
 
 /**
+ * The provider-neutral text-to-speech service (one-shot and streaming).
+ *
+ * @since 0.1.0
+ */
+export * as SpeechModel from "./SpeechModel.ts";
+
+/**
  * An immutable UTF-8 string slice, like Rust's `str`.
  *
  * @since 0.1.0
@@ -341,6 +381,13 @@ export * as String from "./String.ts";
  * @since 0.1.0
  */
 export * as StructOfArrays from "./StructOfArrays.ts";
+
+/**
+ * The provider-neutral speech-to-text service, with optional segments.
+ *
+ * @since 0.1.0
+ */
+export * as TranscriptionModel from "./TranscriptionModel.ts";
 
 /**
  * The update tri-state: field schemas and readers.
@@ -405,6 +452,13 @@ export * as Url from "./Url.ts";
  * @since 0.1.0
  */
 export * as Vec from "./Vec.ts";
+
+/**
+ * The provider-neutral voice-conversion service: audio re-voiced into a target voice.
+ *
+ * @since 0.1.0
+ */
+export * as VoiceConversionModel from "./VoiceConversionModel.ts";
 
 /**
  * Framework-neutral request / response policies: headers, cache control, cross-origin, client IP, sessions.

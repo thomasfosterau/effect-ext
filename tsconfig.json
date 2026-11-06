@@ -3,13 +3,11 @@
   "files": [],
   "references": [
     { "path": "packages/effect-ext" },
-    { "path": "packages/effect-ai-ext" },
     { "path": "packages/effect-ai-gateway" },
     { "path": "packages/effect-ai-mistral" },
     { "path": "packages/effect-ai-cohere" },
     { "path": "packages/effect-ai-voyage" },
     { "path": "packages/effect-ai-elevenlabs" },
-    { "path": "packages/effect-evals" },
     { "path": "tests/dist-consumer" }
   ]
 }

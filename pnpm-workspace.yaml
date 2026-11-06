@@ -1,6 +1,7 @@
 # pnpm workspace for the published packages under packages/* —
-# `@thomasfosterau/effect-ext` and the `@thomasfosterau/effect-ai-*` /
-# `effect-evals` family (merged in from thomasfosterau/effect-ai-ext) — plus
+# `@thomasfosterau/effect-ext` (into which `@thomasfosterau/effect-ai-ext`
+# and `effect-evals` merged) and the `@thomasfosterau/effect-ai-*` providers
+# (merged in from thomasfosterau/effect-ai-ext) — plus
 # the dist-consumer declaration check under tests/*.
 #
 # The `catalog:` protocol pins versions that MUST be singletons across the
@@ -48,7 +49,7 @@ catalog:
   # `Geolocation` services). The Effect line: equal to `effect`, since its own
   # peer is `effect: ^<its version>`.
   "@effect/platform-browser": 4.0.6
-  # `effect-evals`' optional CLI peer. Equal to `effect`.
+  # effect-ext's optional peer for the `effect-evals` CLI. Equal to `effect`.
   "@effect/platform-node": 4.0.6
   # Transitive only (via @effect/platform-node's `^` range); pinned and
   # overridden so it cannot float ahead of `effect`. BUMP BY HAND with the rest

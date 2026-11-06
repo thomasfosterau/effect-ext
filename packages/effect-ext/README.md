@@ -1,12 +1,14 @@
 # @thomasfosterau/effect-ext
 
-Extensions to the [Effect](https://effect.website) standard library, in five families:
+Extensions to the [Effect](https://effect.website) standard library and to its AI module, in seven families:
 
 - **Binary data** — an `Allocator` service, binary `Layout`s, `BufferStruct`s, `Vec`, `StructOfArrays`, and Rust-style UTF-8 `String` / `Str`.
 - **Schema** — URLs whose scheme, host, port, credentials and path are part of their type, the update tri-state reader, Schema issue → RFC 6901 JSON Pointer walk, bounded pagination and id-list codecs, branded UUID ids and slugs, exact literal-union tuples, and AST / decode-probe introspection. No JSON:API, Drizzle or application vocabulary: the prefixes, caps and reserved words an application needs are parameters, never defaults.
 - **Web platform** — framework-neutral request / response policies (security and cache headers, `Vary`, the cross-origin guard, client IP), an SSRF-guarded fetch, structured logging and span tracing, content negotiation, service-worker caching strategies, browser APIs as Effect services with in-memory test doubles, robots.txt, sitemaps, RSS / Atom / JSON Feed, URI Templates and `Link` headers, BCP 47 language tags, CSS parsing, the WHATWG Encoding Standard and MIME types. No SvelteKit, Alchemy or Cloudflare dependency. These modules were `@thomasfosterau/effect-web` and its sibling packages; see [Moving from effect-web](#moving-from-effect-web).
 - **Numeric** — Rust-style numeric types, modelled on Rust's primitive integers and the [`num`](https://github.com/rust-num/num) crates: fixed-width integers `I8` … `I128`, `U8` … `U128` (and any width you define) with strict, checked, wrapping, saturating and overflowing arithmetic, clamped ranges, floats with IEEE 754 total ordering, exact rationals, complex numbers and `num-traits` style type classes. These were `effect-numeric`; see [Numeric](#numeric).
 - **Time** — parsers and printers for the strings and files time travels in, producing Effect's own `DateTime`, `Duration` amounts and `Cron`: RFC 3339 and RFC 9557 date-times, ISO 8601 durations, POSIX TZ strings, cron expressions, RFC 5545 recurrence rules, IANA time zone names and TZif files. These were `@thomasfosterau/effect-time`; see [Time](#time).
+- **AI service abstractions** — the provider-neutral services `effect/ai` lacks (reranking, classification, text-to-speech, speech-to-text, image generation, moderation, voice conversion), each shaped like `effect/ai`'s own `EmbeddingModel`. These were `@thomasfosterau/effect-ai-ext`; see [AI service abstractions](#ai-service-abstractions).
+- **Evals** — an Effect-native LLM evaluation toolkit: goldens, scorers, thresholds, G-Eval, RAG and retrieval-ranking metrics, a caching runner, reporters and the `effect-evals` CLI, under `./evals`. These were `@thomasfosterau/effect-evals`; see [Evals](#evals).
 
 > **Status:** experimental. APIs may change between minor versions until 1.0.
 
@@ -16,7 +18,7 @@ Extensions to the [Effect](https://effect.website) standard library, in five fam
 pnpm add @thomasfosterau/effect-ext effect
 ```
 
-Peer: `effect` `^4.0.0`. Three optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `^4.0.0` (`Browser`, `BrowserTesting`), `@thomasfosterau/effect-jsonapi` `>=0.16.1` (`Negotiate`) and `@thomasfosterau/effect-parse` `^0.4.1` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. Node.js 22 or later (the binary-data modules use `ArrayBuffer.prototype.transfer`). ESM only, `"sideEffects": false`; every module is also its own entry point:
+Peer: `effect` `^4.0.0`. Three optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `^4.0.0` (`Browser`, `BrowserTesting`), `@thomasfosterau/effect-jsonapi` `>=0.16.1` (`Negotiate`) and `@thomasfosterau/effect-parse` `^0.4.1` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. A fourth optional peer, `@effect/platform-node` `^4.0.0`, is needed only by the `effect-evals` CLI (see [CLI](#cli)). Node.js 22.18 or later (the binary-data modules use `ArrayBuffer.prototype.transfer`; the CLI type-strips `*.eval.ts` files, on by default from 22.18). ESM only, `"sideEffects": false`; every module is also its own entry point:
 
 ```ts
 import { Vec, TriState } from "@thomasfosterau/effect-ext";
@@ -78,6 +80,8 @@ import * as Vec from "@thomasfosterau/effect-ext/Vec";
 | `RRule` | iCalendar recurrence rules (RFC 5545 `recur`). Needs `@thomasfosterau/effect-parse`. |
 | `IanaTimeZone` | IANA time zone names checked against the runtime's tz data. Needs `@thomasfosterau/effect-parse`. |
 | `Tzif` | Compiled TZif zone files (RFC 8536). Needs `@thomasfosterau/effect-parse`. |
+| `RerankerModel`, `ClassifierModel`, `SpeechModel`, `TranscriptionModel`, `ImageModel`, `ModerationModel`, `VoiceConversionModel` | The provider-neutral AI service abstractions `effect/ai` lacks. |
+| `evals` and `evals/<Module>` | The LLM evaluation toolkit: `./evals` is its barrel, and each of its modules is also `./evals/<Module>` (`./evals/Runner`, `./evals/metrics/Ranking`, `./evals/scorers/ExactMatch`, …). Not on the root barrel. |
 
 ## Allocator
 
@@ -1696,6 +1700,418 @@ IsoDuration.format({ days: 1, hours: -1 }); // Option.none(): mixed signs
 ```
 
 A parsed duration is every amount `DateTime.add` takes (`years` through `milliseconds`), unnormalised: `PT90M` is 90 minutes. The grammar is `PnW`, or `PnYnMnDTnHnMnS` with any amounts left out (at least one, and at least one after a `T`). It also accepts a leading sign, a `.` or `,` fraction on the seconds (truncated to milliseconds) and lower-case letters. `IsoDuration.FromString` is the `Schema` from the string.
+
+## AI service abstractions
+
+These modules were `@thomasfosterau/effect-ai-ext` (0.5.1, now deprecated): the move is an import change, `@thomasfosterau/effect-ai-ext/<Module>` → `@thomasfosterau/effect-ext/<Module>`. Each service's `Context` key moves with it (`@thomasfosterau/effect-ai-ext/RerankerModel` becomes `@thomasfosterau/effect-ext/RerankerModel`), so a layer built against the old package does not provide the new service.
+
+Provider-neutral AI service **abstractions** that upstream Effect (`effect/ai`) does not yet ship. `effect/ai` gives you `LanguageModel`, `EmbeddingModel`, `Tokenizer`, `Tool`/`Toolkit`, `Chat`, `Prompt`/`Response`, `Model`, `AiError`, and `Telemetry` — and nothing for reranking, classification, speech, transcription, image generation, moderation, or voice conversion.
+
+These modules fill that gap in upstream's own idiom. Every module is written **as if it could merge into `effect/ai` itself** — the same shape as `EmbeddingModel`:
+
+- a `Context.Service` tag (`@thomasfosterau/effect-ext/<Module>`),
+- `Schema.Class` response/usage models,
+- caller `Options` vs normalised `ProviderOptions`/`ProviderResponse` contracts,
+- a `Service` interface whose operations fail only through `AiError`,
+- a `make(...)` constructor that **validates** provider results before handing them back, wrapping each operation in `Effect.withSpan`.
+
+No provider code, no HTTP — abstractions only. First-party provider packages (Cohere, Voyage, ElevenLabs, …) implement these services the same way `effect-ai-mistral` implements `LanguageModel`.
+
+### Not a superset of `effect/ai`
+
+`@thomasfosterau/effect-ai-ext`'s barrel re-exported every upstream `effect/ai` module beside the abstractions. The `@thomasfosterau/effect-ext` barrel does not: import upstream modules (`LanguageModel`, `EmbeddingModel`, `AiError`, …) from `effect/ai`, and the abstractions from here.
+
+### Modules
+
+Each module is also available as a per-module subpath (mirroring how `effect` itself ships), e.g. `@thomasfosterau/effect-ext/RerankerModel`, and a namespace on the root barrel. Every module exports the same set of names: the service tag (`RerankerModel.RerankerModel`, …), its `Service` interface, the caller options, the normalised `ProviderOptions` / `ProviderResponse` a provider implements, the `Schema.Class` response and usage models, and `make`.
+
+| Module | Operation(s) | Caller options | Response | `make` validates |
+| --- | --- | --- | --- | --- |
+| `RerankerModel` | `rerank` | `RerankOptions`: `query`, `documents`, `topN?` | `RerankResponse`: `results` (`RerankedDocument`: `index`, `relevanceScore`), sorted by descending score; `usage.inputTokens` | every `index` names an input document, indices are unique, count ≤ `topN` (or the document count); no documents → empty response, provider not called |
+| `ClassifierModel` | `classify` | `ClassifyOptions`: `inputs`, `labels?`, `multiLabel?`, `examples?` (`ClassifyExample`: `text`, `label`) | `ClassifyResponse`: one `Classification` (`classes`: `ClassScore` `label` / `score`) per input; `usage.inputTokens` | one classification per input, finite scores, labels within `labels` when given; no inputs → empty response |
+| `SpeechModel` | `generate`, `stream` | `SpeechOptions`: `text`, `voice?`, `format?`, `sampleRate?` | `SpeechResponse`: `audio` (`Uint8Array`), `mediaType`, `usage.inputCharacters`; `stream` yields `Uint8Array` chunks | non-empty audio (`generate`); `stream` passes through, traced |
+| `TranscriptionModel` | `transcribe` | `TranscriptionOptions`: `audio` (`Uint8Array` or `Stream<Uint8Array>`), `mediaType?`, `language?` | `TranscriptionResponse`: `text`, `segments?` (`TranscriptionSegment`: `text`, `start`, `end`), `language?`, `usage.durationSeconds` | segment timestamps finite with `end >= start` |
+| `ImageModel` | `generate` | `ImageOptions`: `prompt`, `size?`, `format?`, `count?` | `ImageResponse`: `images` (`ImagePart`: `data` as bytes or base64 string, `mediaType`), `usage.inputTokens` | at least one image, at most `count` |
+| `ModerationModel` | `moderate` | `ModerationOptions`: `inputs` (each a string, or an array of `effect/ai` `Prompt.UserMessagePartEncoded` text / file parts screened as one input) | `ModerationResponse`: one `ModerationResult` (`isFlagged`, `categories`: category → score, `flags?`: the provider's category → fired) per input; `modelId?` (the model that served the call); `usage.inputTokens` | one result per input, scores finite in `[0, 1]`; no inputs → empty response; an empty part list → `InvalidUserInputError` |
+| `VoiceConversionModel` | `convert` | `VoiceConversionOptions`: `audio` (`Uint8Array` or `Stream<Uint8Array>`), `targetVoice`, `format?` | `VoiceConversionResponse`: `audio`, `mediaType`, `usage.durationSeconds` | non-empty audio |
+
+A result that fails validation fails the call with an `AiError` whose reason is `InvalidOutputError`. Every operation is wrapped in `Effect.withSpan("<Module>.<operation>")`.
+
+`ClassifierModel` and `ModerationModel` additionally export `fromLanguageModel`, an `Effect<Service, never, LanguageModel>` that backs the abstraction with **any** `LanguageModel` via structured-output prompting (`LanguageModel.generateObject`), running the model's output back through the same `make` validation path.
+
+Were they to merge upstream, each module would become `effect/ai/<Module>`, the sibling of `EmbeddingModel`.
+
+### Example
+
+```ts
+import { Effect } from "effect";
+import { RerankerModel } from "@thomasfosterau/effect-ext";
+
+// Consumers depend on the tag; a provider layer supplies it.
+const program = Effect.gen(function* () {
+  const reranker = yield* RerankerModel.RerankerModel;
+  const response = yield* reranker.rerank({
+    query: "best editor",
+    documents: ["vim", "emacs", "nano"],
+    topN: 2,
+  });
+  return response.results; // sorted by descending relevanceScore
+});
+```
+
+Implementing the service in a provider: `make` takes the provider hook and returns the validated service.
+
+```ts
+import { Effect, Layer } from "effect";
+import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
+
+const KeywordReranker = Layer.effect(
+  RerankerModel.RerankerModel,
+  RerankerModel.make({
+    rerank: ({ query, documents }) =>
+      Effect.succeed({
+        results: documents.map((document, index) => ({
+          index,
+          relevanceScore: document.includes(query) ? 1 : 0,
+        })),
+        usage: { inputTokens: undefined },
+      }),
+  }),
+);
+```
+
+Backing a classifier with a language model:
+
+```ts
+import { Effect, Layer } from "effect";
+import { LanguageModel } from "effect/ai";
+import { ClassifierModel } from "@thomasfosterau/effect-ext";
+
+declare const SomeLanguageModelLayer: Layer.Layer<LanguageModel.LanguageModel>;
+
+const ClassifierLayer = Layer.effect(
+  ClassifierModel.ClassifierModel,
+  ClassifierModel.fromLanguageModel,
+).pipe(Layer.provide(SomeLanguageModelLayer));
+```
+
+### `RerankerModel` moved
+
+`RerankerModel` previously lived in `@thomasfosterau/effect-ai-gateway` — a reranker abstraction never belonged in a routing package. It lives here now: import it from `@thomasfosterau/effect-ext/RerankerModel` (it was `@thomasfosterau/effect-ai-ext/RerankerModel` until the two packages merged). The gateway kept a deprecated re-export through 0.4.x and removed it in 0.5.0, so `@thomasfosterau/effect-ai-gateway` no longer exports any `RerankerModel` name; its Cohere reranker (`makeCohereReranker`) returns this module's `Service`.
+
+## Evals
+
+These modules were `@thomasfosterau/effect-evals` (0.5.1, now deprecated). Its barrel is now `@thomasfosterau/effect-ext/evals` (`import { Runner, Ranking } from "@thomasfosterau/effect-ext/evals"`), each module is also its own subpath (`@thomasfosterau/effect-ext/evals/Runner`, `…/evals/metrics/Ranking`, `…/evals/scorers/ExactMatch`), and the `effect-evals` bin ships with `@thomasfosterau/effect-ext`. They sit under `./evals` rather than at the top level because several of their names (`Result`, `Cache`, `Metric`, `Score`, `Runner`) are generic, and three are Effect's own module names: a root-barrel `Result` beside `effect`'s would invite the wrong import.
+
+Effect-native LLM evaluation: goldens, scorers, thresholds, and a runner with trials, bounded concurrency, retry, and caching — expressed as plain Effect values instead of a bolted-on async framework. The core (the `./evals` barrel and its modules) depends on `effect` only.
+
+#### Requirements
+
+Requires Node `>=22.18`: the CLI loads `*.eval.ts` files with Node's type stripping, on by default from 22.18.0, and its resolution hook uses `module.registerHooks()` (22.15+). `effect` (`^4.0.0`) is a peer dependency. The package also ships the `effect-evals` CLI for discovering and running `*.eval.ts` suites — see [CLI](#cli) below. The CLI additionally needs the **optional** peer `@effect/platform-node` (`^4.0.0`): install it at the same version as `effect`, and pin `@effect/platform-node-shared` to that version too (a direct dependency or an `overrides` entry). Upstream's `^` range otherwise floats it to the newest rc, whose own `effect` peer rejects an older `effect`.
+
+```sh
+pnpm add @effect/platform-node@<your effect version> @effect/platform-node-shared@<your effect version>
+```
+
+### Core model
+
+- **`Golden` / `ConversationalGolden`** — the static, hand-authored description of one case: an input, an optional expected output, and whatever context a scorer needs to judge a run.
+- **`EvalCase`** — a golden enriched with the actuals a run produced (`output`, `retrievedContext`, `toolCalls`, `usage`). Scorers read an `EvalCase`, never a bare `Golden` (DeepEval's golden/test-case split).
+- **`Score`** — a scorer's `0..1` verdict, plus an optional `reason` and free-form `metadata`.
+- **`Scorer`** — a named, Effect-returning function from an `EvalCase` to a `Score`. Judge/embedding dependencies live in `R`; failures are typed in `E`. `Scorer.contramap(scorer, from)` adapts a scorer built for one case shape to a differently-shaped case, reusing its name/`E`/`R` unchanged — exactly the variance `Scorer`'s `Case` type parameter is already declared with (`in Case`).
+- **`Threshold` / `Metric`** — the pass/fail policy (`minScore` / `maxScore` / `strict`) and the `{ name, scorer, threshold }` unit a runner executes. `Metric.contramap(metric, from)` is `Scorer.contramap`'s counterpart for a metric (scorer + threshold together) — reuse a package metric like `GEval.gEval` or `EmbeddingSimilarity.embeddingSimilarity` against a case shape it wasn't written for.
+- **`Dataset`** — a named, effectfully-produced source of goldens.
+
+### Runner
+
+`Runner.runSuite` is the Effect program every execution surface sits on:
+
+```ts
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+import { NodeFileSystem } from "@effect/platform-node";
+import {
+  Cache,
+  Dataset,
+  Metric,
+  Reporter,
+  Runner,
+  Scorer,
+  Threshold,
+} from "@thomasfosterau/effect-ext/evals";
+
+// The system under test: any Effect from a golden's input to an output.
+declare const translate: (source: string) => Effect.Effect<string>;
+
+const suite = Runner.makeSuite({
+  name: "translation-quality",
+  dataset: Dataset.fromArray("greetings", [{ input: "Bonjour", expected: "Hello" }]),
+  task: Runner.makeTask({
+    id: "translate@v1",
+    run: (golden: { readonly input: string; readonly expected: string }) => translate(golden.input),
+  }),
+  metrics: [
+    Metric.makeMetric({
+      name: "exact-match",
+      scorer: Scorer.makeScorer({
+        name: "exact-match",
+        evaluate: (evalCase: {
+          readonly golden: { readonly expected: string };
+          readonly output: string;
+        }) => Effect.succeed({ score: evalCase.golden.expected === evalCase.output ? 1 : 0 }),
+      }),
+      threshold: Threshold.strict,
+    }),
+  ],
+});
+
+// `Reporter.json` writes through `FileSystem`; `Cache.layerMemory` keeps the cache in memory.
+const program = Runner.runSuite(suite, {
+  trials: 3,
+  reporters: [Reporter.terminal, Reporter.json("./results.json")],
+}).pipe(Effect.provide(Layer.mergeAll(Cache.layerMemory, NodeFileSystem.layer)));
+```
+
+- **Heterogeneous `metrics`.** `makeSuite`'s `metrics` array can freely mix metrics with different `E`/`R` — a G-Eval judge (`GEvalError`/`LanguageModel`) alongside an `embeddingSimilarity` metric (`AiError`/`EmbeddingModel`), say — with no explicit array type annotation at the call site: the `metrics` array literal is inferred as a literal tuple (a `const` type parameter) and `MetricE`/`MetricR` are unioned across its elements, rather than fixed from the first one.
+- **Concurrency** is bounded independently at the case level (`caseConcurrency`, default `5`) and the metric level (`metricConcurrency`, default `5`) via `Effect.forEach({ concurrency })`.
+- **Trials**: each case runs `trials` times (default `1`) end to end — task and every metric. A metric's aggregate reports `mean`/`variance`/`stddev`/`min`/`max` across its trials, with every per-trial score kept so flakiness is visible; pass/fail applies the metric's `Threshold` to the mean.
+- **Retries**: the task and each metric evaluation are retried independently (`taskRetrySchedule` / `metricRetrySchedule`, default a jittered exponential backoff capped at 3 attempts) — but only when the failure is an `AiError` (`effect/ai`) with `isRetryable`. Any other failure, or a non-retryable `AiError`, surfaces immediately as a typed trial error.
+- **Errors vs failing scores**: a metric whose Effect fails is recorded as `Errored`, distinct from a `Scored` result that simply misses its threshold. `ignoreErrors` (default `false`) controls whether an error excludes that trial from the metric's aggregate (and doesn't affect pass/fail) or forces the metric — and the case — to fail. This mirrors DeepEval's `ignore_errors`.
+- **Caching** (`evals/Cache`) is content-hash keyed (a full SHA-256 digest, via `crypto.subtle`) on the golden, the task's `id`, the metric name, `judgeModelId`, and the trial number, stored behind `effect`'s own `KeyValueStore` (`effect/persistence`). A cache hit skips both the task call and the metric's judge call for that trial. `Cache.layerMemory` is a zero-dependency in-memory store (tests, or runs with no persistence); `Cache.layerFileSystem(directory)` persists under a directory (default `Cache.defaultDirectory`, `.effect-evals/cache/`, gitignored) and requires `FileSystem`/`Path` in scope — provided by the caller (the CLI provides them), never bundled into the core. `bypassCache: true` skips cache reads and writes entirely. Invalidation is **manual, by identifier** — a task's `run` closure and a metric's `scorer`/`threshold` aren't hashed (they're code, not data), so bump `task.id` (e.g. `"translate@v1"` → `"translate@v2"`) or a metric's name/`judgeModelId` after changing its behavior, the same convention a cache-busting query string uses.
+
+### Reporters
+
+`Reporter` is a named sink for a completed `Result.SuiteResult`; a reporter never fails the run — `terminal` and `json` both catch their own errors and log a warning instead.
+
+- **`Reporter.terminal`** — a plain-text table to stdout: one row per case per metric (`pass/fail`, mean/spread, the last reason).
+- **`Reporter.json(path)`** — the full result model as JSON, written via `effect`'s `FileSystem` service (so it's testable with `FileSystem.layerNoop`, no real disk needed).
+
+#### JSON schema
+
+```json
+{
+  "suite": "string",
+  "passed": true,
+  "durationMillis": 1234,
+  "cases": [
+    {
+      "golden": "<the golden, as-is>",
+      "trials": 3,
+      "passed": true,
+      "taskOutputs": [
+        { "trial": 1, "output": "<the task's output>", "durationMillis": 412, "cached": false }
+      ],
+      "taskFailures": [{ "trial": 2, "error": "<the task's typed error>" }],
+      "metrics": [
+        {
+          "metric": "exact-match",
+          "passed": true,
+          "errorCount": 0,
+          "summary": { "mean": 0.8, "variance": 0.01, "stddev": 0.1, "min": 0.7, "max": 0.9 },
+          "trials": [
+            {
+              "_tag": "Scored",
+              "trial": 1,
+              "cached": false,
+              "score": { "score": 0.8, "reason": "..." }
+            },
+            {
+              "_tag": "Errored",
+              "trial": 2,
+              "cached": false,
+              "error": "<the metric's typed error>"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+`summary` is `null` when every trial for that metric errored (no scores to summarize). `taskOutputs` holds, per trial whose task produced an output, that output and the task's wall-clock duration (retries included); a trial served from the cache is `cached: true` with a `durationMillis` of `0`, so leave it out of a latency figure. `taskFailures` is empty unless the task itself failed for some trial, in which case that trial contributes to no metric's `trials` array at all (there was no output to score).
+
+### Retrieval ranking metrics
+
+`Ranking` scores a **ranked list of document handles** against a **graded relevance map** — nDCG@k, recall@k, MRR@k and precision@k — as deterministic, judge-free scorers. Grades are positive numbers (`1`–`3` by convention: `3` is the answer, `2` would satisfy, `1` is better than nothing); a handle absent from the map is non-relevant. nDCG uses exponential gain (`2^grade − 1`) and normalises against the case's own relevant set, so a case with two relevant documents and `k = 20` can still score 1; precision divides by `k`, not by how many rows came back; MRR and recall are bounded by the page. Every scorer re-applies `k` itself, and its name carries the cutoff (`ndcg@10`, never `ndcg`) because `ndcg@10` and `ndcg@20` are different measurements.
+
+```ts
+import { Ranking, Threshold } from "@thomasfosterau/effect-ext/evals";
+
+// The pure functions, over { ranked, relevant, k }:
+Ranking.ndcg({ ranked: ["b", "a"], relevant: { a: 3, b: 1 }, k: 5 }); // 0.7098…
+Ranking.scoreCase({ ranked: ["b", "a"], relevant: { a: 3, b: 1 }, k: 10 }); // { "ndcg@10": …, "recall@10": …, "mrr@10": …, "precision@10": … }
+
+// As Scorers / Metrics over a RankingCase ({ golden: { relevant }, output: ranked }):
+Ranking.ndcgAtK(10); // Scorer named "ndcg@10"
+Ranking.metricsAtK(10, { thresholds: { ndcg: Threshold.minScore(0.8) } }); // all four, one gated
+```
+
+#### `Runner.runRetrievalSuite`
+
+The retrieval counterpart of `runSuite`: a dataset of `RetrievalGolden`s (`{ query, relevant, name? }`, or a richer golden extending it), a one-method `RetrievalPort` the consumer supplies, and a cutoff `k`. The port is the seam — the thing being measured (a search operation, a reranker chain) lives in the consumer, the suite hands it each query, the page size and the case's golden, and reads back handles best-first. That is also what makes an offline mode the same code path as a credentialed one: a unit suite hands in an in-memory port over fixed orderings, an operator hands in one closing over a live search, and the runner cannot tell.
+
+```ts
+import * as Effect from "effect/Effect";
+import { Cache, Dataset, Reporter, Runner, Threshold } from "@thomasfosterau/effect-ext/evals";
+
+// The consumer's search operation, returning document handles best first.
+declare const search: (options: {
+  readonly query: string;
+  readonly limit: number;
+  readonly locale: string | undefined;
+}) => Effect.Effect<ReadonlyArray<{ readonly id: string }>, Error>;
+
+// A golden may carry per-case narrowing; the port receives the whole golden.
+interface SearchGolden extends Runner.RetrievalGolden {
+  readonly locale?: string | undefined;
+}
+
+const port: Runner.RetrievalPort<Error, never, SearchGolden> = {
+  id: "search@rerank-v3.5", // the configuration under test; part of the cache key
+  retrieve: (query, { limit, golden }) =>
+    search({ query, limit, locale: golden.locale }).pipe(
+      Effect.map((rows) => rows.map((row) => row.id)),
+    ),
+};
+
+const program = Runner.runRetrievalSuite(
+  {
+    name: "search-ranking-smoke",
+    dataset: Dataset.fromArray<SearchGolden>("search-ranking-smoke", [
+      {
+        name: "interruption",
+        query: "how do I interrupt a fiber",
+        relevant: { "doc:interruption": 3, "doc:fibers": 1 },
+      },
+    ]),
+    port,
+    k: 20,
+    metrics: { thresholds: { ndcg: Threshold.minScore(0.8) } }, // optional; all four metrics, never failing, by default
+  },
+  { reporters: [Reporter.terminal] },
+).pipe(Effect.provide(Cache.layerMemory));
+
+// result.aggregate.metrics["ndcg@20"] — { mean, cases } across the queries that scored
+// result.cases[0]?.metrics — the ordinary per-case, per-metric result model
+// result.cases[0]?.taskOutputs[0] — { output: the ranked page, durationMillis, cached }
+```
+
+- **Built on `runSuite`**, so trials, retry on retryable `AiError`s, caching (keyed on the port's `id` and `k` — bump `id` when the port's behaviour changes) and reporters all apply, and the result is the ordinary `Result.SuiteResult` plus `aggregate: Result.aggregate(result)` — per-metric means across the queries that scored, with `totalCases` / `successfulCases` / `failedCases`.
+- **A failed query is not a zero.** A retrieval failure lands in that case's `taskFailures`, is excluded from every mean, and is counted in `aggregate.failedCases`; a suite in which every query failed has an empty `aggregate.metrics` and `passed: false`, never a page of noughts.
+- **Sequential by default** (`caseConcurrency: 1`): a retrieval suite usually runs against a live search plane, and measuring it under a load pattern no user produces makes any latency the port records meaningless. Pass `caseConcurrency` to change it.
+- **Over-returning ports are truncated** to `k` before scoring, and every metric re-applies `k` — a retrieval that returns more than it was asked for cannot inflate recall.
+- **Per-case narrowing reaches the port.** `retrieve` receives the case's golden beside its query, so a type filter or locale on the golden needs no lookup keyed on the query string; the cache key hashes the whole golden, so two cases that share a query but differ in narrowing never share a cached page.
+- **Each case keeps its ranked page and latency.** `taskOutputs` holds, per trial, the page the port returned (truncated to `k`), how long the retrieval took, and whether it came from the cache.
+- **What stays with the consumer:** dataset validation and content digests (which runs are comparable), persistence, and the run-to-run diff. `Result.aggregate` and `Result.SuiteResult` are plain values a consumer can persist or diff as it likes.
+
+### G-Eval judge metric
+
+`GEval.gEval` builds a `Metric` that scores a case against an arbitrary natural-language criterion using an LLM judge (DeepEval's G-Eval), covering anything from translation quality to a bespoke house style — without writing a new metric per criterion. `GEval.gEvalConversational` is the multi-turn variant: the judge reads the full rendered turn history and scores the exchange holistically.
+
+```ts
+import * as Effect from "effect/Effect";
+import type * as Layer from "effect/Layer";
+import * as Schema from "effect/Schema";
+import { LanguageModel } from "effect/ai";
+import { EvalCase, GEval, Golden, Metric, Threshold } from "@thomasfosterau/effect-ext/evals";
+
+const TranslationGolden = Golden.Golden(Schema.String, Schema.String);
+const TranslationCase = EvalCase.EvalCase(TranslationGolden, Schema.String);
+
+const translationQuality = GEval.gEval<typeof TranslationCase.Type>({
+  name: "translation-quality",
+  criteria: "Is this a faithful, fluent translation of the source?",
+  evaluationParams: ["input", "output"],
+  threshold: Threshold.minScore(0.7),
+});
+
+// The judge LanguageModel is provided the same way any other service is —
+// Effect.provide at the call site, swappable per metric or per environment.
+declare const judgeLayer: Layer.Layer<LanguageModel.LanguageModel>;
+const evalCase: typeof TranslationCase.Type = {
+  golden: { input: "Bonjour", expected: "Hello" },
+  output: "Hello",
+};
+
+const program = Metric.evaluate(translationQuality, evalCase).pipe(Effect.provide(judgeLayer));
+```
+
+`gEval` accepts `criteria` **or** `evaluationSteps`, never both:
+
+- `criteria` — a natural-language description; the judge derives its own evaluation steps per run (convenient) and reports them back, so the steps actually used still land in `Score.metadata.evaluationSteps` even though they weren't authored ahead of time.
+- `evaluationSteps` — an explicit, ordered list you write yourself. No derivation call: the judge is told exactly what to check.
+
+`evaluationParams` names which fields of the case the judge is shown (`"input" | "output" | "expected" | "context" | "retrievedContext"`); asking for a field a given case doesn't have fails with the typed `GEval.MissingEvaluationParamError` rather than throwing or silently skipping it. `GEval.gEvalConversational` takes the same `criteria`/`evaluationSteps` shape over `"scenario" | "expectedOutcome" | "context"` (the turn history itself is always shown).
+
+An optional `rubric` (`GEval.makeRubric`) constrains the judge to non-overlapping score bands on whatever scale you write them in (DeepEval's convention is `0..10`); `gEval` clamps the judge's raw score to the rubric's range and normalises it to `Score`'s `0..1`. An overlapping or malformed rubric (or a definition with both or neither of `criteria` and `evaluationSteps`) throws a `GEval.InvalidGEvalDefinitionError` immediately at construction — it's a mistake in the metric definition, not a per-case condition.
+
+`template` overrides the judge's system/user prompt wording (see `GEval.defaultTemplate`) without forking the metric.
+
+#### Determinism levers
+
+An LLM judge is inherently noisy; DeepEval and this package both lean on the same three levers rather than log-prob weighting (`generateObject` doesn't expose token log-probabilities, so that avenue is closed regardless):
+
+1. **Explicit `evaluationSteps`.** Skips the criteria-to-steps derivation call, so every run judges against literally the same instructions instead of a fresh (and possibly inconsistent) derivation each time.
+2. **A `rubric`.** Non-overlapping bands with descriptions narrow the judge's scoring range to discrete, justified buckets instead of an unconstrained continuous guess.
+3. **Trials.** Running a metric several times per case and aggregating (mean/variance, flakiness surfacing) is the runner's job (above), not this metric — `gEval` and `gEvalConversational` score a single run; the runner is what repeats that run and aggregates the results.
+
+Combine all three for the most reproducible signal: explicit steps and a rubric pin down _what_ is being judged, and trials reveal _how consistently_ the judge applies them.
+
+### CLI
+
+The `effect-evals` bin discovers and runs `*.eval.ts` suites standalone — no test framework involved. It's the surface CI invokes. An `*.eval.ts` file default-exports the `EvalFile` contract ([`EvalFile`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/EvalFile.ts)) — the plain `{ suites, layer, options? }` object — which the CLI dynamically `import()`s. Credential gating applies: a file whose `layer` fails to build with a `Config.ConfigError` is skipped, not failed, so an eval file referencing a real provider is safe to leave in the tree in a credential-less checkout.
+
+```sh
+# Anywhere in a workspace that has @thomasfosterau/effect-ext installed:
+pnpm effect-evals run                                    # default glob: **/evals/**/*.eval.ts
+pnpm effect-evals run packages/my-pkg/evals                # explicit glob(s)
+pnpm effect-evals run --trials 3 --filter translation     # flags before positional globs
+pnpm effect-evals run --reporter terminal                 # terminal only (default: both terminal and json)
+pnpm effect-evals run --force --out ./tmp/results.json    # bypass the cache, write elsewhere
+pnpm effect-evals --help                                  # full flag reference
+```
+
+| Flag | Effect |
+| --- | --- |
+| `[globs...]` (positional) | Glob patterns to match `*.eval.ts` files. Default: `**/evals/**/*.eval.ts` from cwd. |
+| `--trials <n>` | Overrides every matched suite's `trials` (and the eval file's own `options.trials`). |
+| `--concurrency <n>` | Overrides both `caseConcurrency` and `metricConcurrency`. |
+| `--force` | Bypasses the result cache for this run. |
+| `--reporter json\|terminal` | Repeatable. Which reporter(s) to produce; both run when omitted. |
+| `--filter <substring>` | Only runs suites whose name contains this substring. |
+| `--out <path>` | Where the JSON reporter writes its combined report. Default `.effect-evals/results.json`. |
+
+**Exit code** is non-zero iff any _executed_ suite misses its threshold — a suite skipped for missing credentials never fails the run, but is listed in both the terminal output (a `SKIP` line) and the JSON report's `skipped` array.
+
+**Loading strategy.** Eval files are plain TypeScript, loaded via Node's own dynamic `import()` (type stripping is on by default from Node 22.18; eval files must be erasable-syntax-only) plus this package's own extensionless-import resolution hook ([`src/evals/cli/loader.mjs`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/cli/loader.mjs), installed in-thread with `module.registerHooks()`) — never tsx and never `NODE_OPTIONS`, because the Node flags must be literal argv on the one `node` hop. `bin/effect-evals.js` is a small, flagless launcher that re-execs `node` with those flags as literal argv pointed at the built CLI, `dist/evals/cli/main.js` (Node refuses to type-strip under `node_modules`, so only your own `*.eval.ts` files are type-stripped, never the package) — the only hop, so no intermediate launcher can drop them.
+
+### What's in the box
+
+| Module | Purpose |
+| --- | --- |
+| [`Golden`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Golden.ts) | `Golden` / `ConversationalGolden` — the static case shape. |
+| [`EvalCase`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/EvalCase.ts) | `EvalCase` — a golden enriched with run actuals; `ToolCall` / `Usage`. |
+| [`Score`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Score.ts) | `Score` — a scorer's `0..1` verdict + reason + metadata. |
+| [`Scorer`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Scorer.ts) | `Scorer`, `makeScorer`, `contramap`. |
+| [`Threshold`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Threshold.ts) | `minScore` / `maxScore` / `strict`, `passes`, `describe`. |
+| [`Metric`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Metric.ts) | `Metric`, `makeMetric`, `evaluate`, `contramap`; `MetricResult`. |
+| [`Dataset`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Dataset.ts) | `Dataset`, `makeDataset`, `fromArray`. |
+| [`EvalFile`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/EvalFile.ts) | The `*.eval.ts` contract shared by every execution surface: `EvalFile`, `AnySuite`. |
+| [`Runner`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Runner.ts) | `Suite`, `makeSuite`, `TaskDefinition`, `makeTask`, `runSuite`, `RunnerOptions`; `RetrievalPort`, `RetrievalGolden`, `RetrievalSuite`, `runRetrievalSuite`; `isConfigError` (the credential-gating test). |
+| [`Result`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Result.ts) | The typed suite → case → trial → metric result model; `summarize`, `aggregate`, `lastReason`, `formatSpread`. |
+| [`Cache`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Cache.ts) | `layerMemory` / `layerFileSystem`, `hashKey`. |
+| [`Reporter`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Reporter.ts) | `Reporter`, `makeReporter`, `terminal`, `json`, `formatTerminalTable`. |
+| [`Ranking`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/Ranking.ts) | `ndcg` / `recall` / `mrr` / `precision`, `scoreCase`, `metricKey`; `ndcgAtK` / `recallAtK` / `mrrAtK` / `precisionAtK` (or `scorerAtK`) as scorers, `metricAtK` / `metricsAtK`. |
+| [`GEval`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/GEval.ts) | `gEval`, `gEvalConversational`, `makeRubric`, `defaultTemplate`, `judge`, `renderValue` / `renderTurns`; `MissingEvaluationParamError`, `InvalidGEvalDefinitionError`. |
+| [`RagCase`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/RagCase.ts) | `RagCase` — the case shape the RAG metrics read (`input`, `output`, `expected`, `retrievedContext`); `require…` field lookups, `renderContext`. |
+| [`ExtractThenClassify`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ExtractThenClassify.ts) | The extract → classify → ratio judge primitive the RAG metrics share: `extractStatements`, `classifyStatements`, `extractThenClassifyRatio`, `summarizeVerdicts`, `ratioScore`; `VerdictCountMismatchError`. |
+| [`Faithfulness`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/Faithfulness.ts) / [`AnswerRelevancy`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/AnswerRelevancy.ts) / [`ContextualPrecision`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ContextualPrecision.ts) / [`ContextualRecall`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ContextualRecall.ts) / [`ContextualRelevancy`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ContextualRelevancy.ts) | Judge-based RAG metrics over `RagCase`: `faithfulness`, `answerRelevancy`, `contextualPrecision` (and its `weightedCumulativePrecision`), `contextualRecall`, `contextualRelevancy`. |
+| [`ExactMatch`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/ExactMatch.ts) / [`Levenshtein`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/Levenshtein.ts) / [`JsonValidity`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/JsonValidity.ts) / [`SchemaMatch`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/SchemaMatch.ts) | Deterministic scorers: `exactMatch` / `normalizedMatch`, `levenshtein` / `levenshteinSimilarity`, `jsonValidity`, `schemaMatch` / `schemaMatchValue`. |
+| [`ToolCallCorrectness`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/ToolCallCorrectness.ts) | `toolCallCorrectness` — a case's actual tool calls against its golden's `expectedTools`. |
+| [`EmbeddingSimilarity`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/EmbeddingSimilarity.ts) | `embeddingSimilarity` — cosine similarity of `output` and `expected` through the ambient `EmbeddingModel`. |
+| [`Metadata`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Metadata.ts) | `Metadata` — the free-form record a golden, scorer or score carries. |
+| [`cli`](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ext/src/evals/cli) | The `effect-evals` bin — see [CLI](#cli) above. |
 
 ## License
 
