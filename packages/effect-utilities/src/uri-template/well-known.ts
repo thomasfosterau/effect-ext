@@ -80,7 +80,7 @@ const parseUrl = (url: string | URL): URL | null => (URL.canParse(url) ? new URL
 
 /** RFC 3986 `segment-nz`: one or more `pchar`s. */
 const SEGMENT_NZ = /^(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|%[0-9A-Fa-f]{2})+$/u;
-const SCHEMES = new Set(["http:", "https:", "ws:", "wss:"]);
+const SCHEMES = ["http:", "https:", "ws:", "wss:"];
 
 /**
  * Whether `suffix` may follow `/.well-known/`: a non-empty path segment
@@ -126,7 +126,7 @@ export const url = (origin: string | URL, suffix: string): Result.Result<URL, We
     );
   }
   const parsed = parseUrl(origin);
-  return parsed === null || !SCHEMES.has(parsed.protocol)
+  return parsed === null || !SCHEMES.includes(parsed.protocol)
     ? Result.fail(
         new WellKnownError({
           reason: "InvalidOrigin",

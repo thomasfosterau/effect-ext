@@ -18,7 +18,11 @@
 #   A toolchain PR whose `@effect/tsgo` does not yet support the new oxlint
 #   goes red: fix it by hand on the PR (see the catalog comments in
 #   pnpm-workspace.yaml) rather than merging part of the set.
-# - `docgen`: `@effect/docgen` runs every example under `tsx`.
+# - `docgen`: `@effect/docgen` runs every example under `tsx`. It depends on
+#   `effect` itself, and the `effect` override forces the catalog pin onto
+#   it, so a docgen that needs a newer `effect` than the catalog's (4.1.x
+#   needs `effect ^4.1.2`) crashes on launch: hold that PR until the
+#   `effect` group reaches its floor.
 # - `effect`: the Effect 4 release line is a lockstep-versioned singleton
 #   set. Only the dev pin moves: the published peer floor
 #   (`catalogs.peers.effect`, a `>=` range) is a tested claim that Dependabot

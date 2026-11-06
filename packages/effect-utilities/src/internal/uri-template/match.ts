@@ -157,7 +157,7 @@ const isQuery = (part: Part): part is Expression =>
 
 // ---- refusals ----
 
-const EXPLODABLE: ReadonlyArray<Operator> = new Set(["/", ".", "?", "&"]);
+const EXPLODABLE: ReadonlyArray<Operator> = ["/", ".", "?", "&"];
 const NAMED: ReadonlyArray<Operator> = [";", "?", "&"];
 
 /** The refusal for one expression on its own, if any. */
@@ -168,7 +168,7 @@ const refuseExpression = (expression: Expression): Option.Option<Refusal> => {
   }
   if (
     Arr.some(expression.variables, (spec) => spec.explode) &&
-    !EXPLODABLE.has(expression.operator)
+    !EXPLODABLE.includes(expression.operator)
   ) {
     return refuse(`explode under "${expression.operator}" cannot tell a list from a record`);
   }

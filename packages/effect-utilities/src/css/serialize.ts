@@ -130,10 +130,10 @@ const urlCodePoint = (codePoint: number): string => {
   if (codePoint === 0) return "\uFFFD";
   if (isControl(codePoint) || codePoint === 0x20) return escapeCodePoint(codePoint);
   const char = String.fromCodePoint(codePoint);
-  return URL_SPECIAL.has(char) ? `\\${char}` : char;
+  return URL_SPECIAL.includes(char) ? `\\${char}` : char;
 };
 
-const URL_SPECIAL: ReadonlyArray<string> = new Set(['"', "'", "(", ")", "\\"]);
+const URL_SPECIAL: ReadonlyArray<string> = ['"', "'", "(", ")", "\\"];
 
 /** A dimension's unit, its `e` escaped where it would read as an exponent. */
 const unit = (value: string): string => {
@@ -297,19 +297,13 @@ const IDENT_LIKE: ReadonlyArray<Edge> = ["ident", "function", "url"];
 const NUMERIC: ReadonlyArray<Edge> = ["number", "percentage", "dimension"];
 
 /** What may not follow each token without a comment between (CSS Syntax 3 §9, the table). */
-const AFTER_IDENT: ReadonlyArray<Edge> = new Set([
-  ...IDENT_LIKE,
-  "delim:-",
-  ...NUMERIC,
-  "cdc",
-  "(",
-]);
+const AFTER_IDENT: ReadonlyArray<Edge> = [...IDENT_LIKE, "delim:-", ...NUMERIC, "cdc", "("];
 const AFTER_KEYWORD: ReadonlyArray<Edge> = [...IDENT_LIKE, "delim:-", ...NUMERIC, "cdc"];
 
 const needsComment = (previous: Edge, next: Edge): boolean => {
   switch (previous) {
     case "ident":
-      return AFTER_IDENT.has(next);
+      return AFTER_IDENT.includes(next);
     case "at-keyword":
     case "hash":
     case "dimension":

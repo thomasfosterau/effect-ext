@@ -36,8 +36,12 @@ catalog:
   # Compiles AND executes every JSDoc `@example` in packages/*/src (the
   # `docgen` task). Its `typescript` peer (`^5`) resolves to the TS6 alias
   # below, which pnpm tolerates via `peerDependencyRules`; the JS API it uses
-  # is unchanged in 6.
-  "@effect/docgen": ^4.1.2
+  # is unchanged in 6. Exact, and no newer than the Effect line: docgen
+  # depends on `effect` itself (4.1.2 on `effect ^4.1.2`, for
+  # `effect/process/CommandLine`), and the `effect` override below forces
+  # the catalog `effect` onto it, so a docgen ahead of `effect` crashes on
+  # launch. Move it with the Effect line, not in its own Dependabot group.
+  "@effect/docgen": 4.0.6
   "@effect/language-service": ^0.87.5
   # Optional peer of effect-utilities: only the `Browser` and
   # `BrowserTesting` modules import it (its `Permissions`, `Clipboard` and

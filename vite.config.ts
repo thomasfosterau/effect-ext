@@ -419,7 +419,14 @@ export default defineConfig({
           // (48, 41 and 19 sites), each a pay-down item in #31.
           "eslint/no-shadow": "warn",
           "unicorn/consistent-function-scoping": "warn",
-          "unicorn/prefer-set-has": "warn",
+          // Off, not warn: its fix (applied by the pre-commit `vp check
+          // --fix`) rewrites `const X: ReadonlyArray<T> = [...]` to
+          // `= new Set([...])` and `.includes` to `.has`, but leaves the
+          // annotation, which no longer type-checks, and the native `Set` it
+          // introduces is an `effect/avoid-native-object-helpers` error. That
+          // is how #32's wiring commit broke nine of these lookups. Whether
+          // they become `HashSet`s is #31's call.
+          "unicorn/prefer-set-has": "off",
         },
       },
       // `logStructured` is called from plain code and runs its effect with
