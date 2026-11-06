@@ -2,35 +2,43 @@
 # npm-bootstrap.sh: one-off npm trusted-publishing bootstrap for the thomasfosterau package family.
 #
 # This is a one-off for the first publish of the @thomasfosterau/* names that are not on npm yet,
-# across all the library repositories (components, effect-auth, effect-bib, effect-connect,
-# effect-document, effect-drizzle-ext, effect-ext, effect-ical, effect-rdf, effect-richtext,
-# effect-xml, legation, prosekit-utilities, pulpit), not only this one. It lives in effect-ext
+# and for binding (or checking) the trusted publisher of every published name, across all the
+# library repositories (components, effect-auth, effect-bib, effect-connect, effect-document,
+# effect-drizzle-ext, effect-ext, effect-forms, effect-ical, effect-jsonapi, effect-parse,
+# effect-rdf, effect-richtext, effect-svelte, effect-wikimedia, effect-xml, legation,
+# prosekit-utilities, pulpit, rust-wasm-packages), not only this one. It lives in effect-ext
 # because the owner runs it once from an effect-ext Codespace:
 #   npm install -g npm@latest          # then open a new terminal
 #   npm login --auth-type=web          # then check that `npm whoami` prints the owner
 #   bash scripts/npm-bootstrap.sh --dry-run
 #   bash scripts/npm-bootstrap.sh
 # Once it has run, this file can be deleted. A package added later is bootstrapped by hand, as
-# PUBLISHING.md's "First publish of a new package" section explains.
+# PUBLISHING.md's "First publish of a new package" section explains. The list below is every
+# non-private package on those repositories' trunks; a package renamed before the run means
+# editing its row and running the script again.
 #
 # What it does
 #   1. For every package name below marked "new" that does not exist on npm yet, it publishes a
 #      placeholder at 0.0.0 (description, license, repository + directory, a one-line README, nothing
 #      else). npm trusted publishing (OIDC) can only be configured for a name that already exists.
 #      Changesets' first real release from CI is then 0.1.0.
-#   2. For every package, it makes sure there is exactly one trusted publisher on npm:
+#   2. For every "new" package and every "keep" package (already published from the repository that
+#      holds it now), it makes sure there is exactly one trusted publisher on npm:
 #      GitHub Actions, repository thomasfosterau/<repo>, workflow file release.yml, environment
-#      release, permission "publish". An existing matching entry is left alone.
+#      release, permission "publish". An existing matching entry is left alone; a "keep" package
+#      missing from npm fails, since it is expected to be published already.
 #   3. For the four packages marked "move" (the effect-ai providers), whose trust
 #      still names the deleted thomasfosterau/effect-ai-ext repository, it checks that the old entry
 #      exists, revokes it, and creates the entry for thomasfosterau/effect-ext.
-#   4. For the three packages marked "revoke" (@thomasfosterau/effect-ai-ext and -evals, merged into
-#      @thomasfosterau/effect-ext, and @thomasfosterau/effect-ai-gateway, renamed
-#      @thomasfosterau/effect-ai-cloudflare, which is "new" above), it revokes the trust entry that still names
-#      thomasfosterau/effect-ai-ext and creates none, so nothing can publish them again. A package
-#      with no such entry left is skipped; an entry for any other repository fails it, to fix by hand.
-#   5. It deprecates the six superseded published packages (@thomasfosterau/effect-web, -robots,
-#      -sitemap, -effect-ai-ext, -effect-evals and -effect-ai-gateway) across all their versions,
+#   4. For the six packages marked "revoke", published names that no longer exist on any trunk
+#      (@thomasfosterau/effect-ai-ext and -evals, merged into @thomasfosterau/effect-ext;
+#      @thomasfosterau/effect-ai-gateway, renamed @thomasfosterau/effect-ai-cloudflare, which is
+#      "new" above; @thomasfosterau/effect-web, -robots and -sitemap, folded into
+#      @thomasfosterau/effect-ext), it revokes the trust entry that still names their old repository
+#      (thomasfosterau/effect-ai-ext or thomasfosterau/effect-web) and creates none, so nothing can
+#      publish them again. A package with no such entry left is skipped; an entry for any other
+#      repository fails it, to fix by hand.
+#   5. It deprecates those six superseded packages across all their versions,
 #      pointing at the matching @thomasfosterau/effect-ext subpaths (its README: "Moving from
 #      effect-web", "AI service abstractions", "Evals") or, for the gateway, at
 #      @thomasfosterau/effect-ai-cloudflare. A package whose `npm view <name> deprecated` already
@@ -74,7 +82,8 @@
 #   --only <name>   limit the run to one package (exact npm name).
 #   --skip-placeholders  skip the 0.0.0 placeholder publishes (a missing name is then reported as
 #                   skipped, since it cannot take a trust entry yet).
-#   --skip-trust    skip every trust check, creation, move and revoke.
+#   --skip-trust    skip every trust check, creation, move and revoke (so the "keep", "move" and
+#                   "revoke" packages are skipped entirely).
 #   --skip-deprecate  skip the deprecations (effect-web, -robots, -sitemap, effect-ai-ext, -evals,
 #                   effect-ai-gateway).
 #                   Combine them to rerun one phase on its own, e.g. --skip-placeholders
@@ -86,80 +95,69 @@ set -o pipefail
 
 REGISTRY="https://registry.npmjs.org/"
 MIN_NPM="11.15.0"
-OLD_AI_REPO="thomasfosterau/effect-ai-ext"
 
-# action|name|repo|directory ("." = repo root)|workflow|environment|license
-#   new  = placeholder (if missing) + trust
-#   move = trust move from OLD_AI_REPO to repo
-#   revoke = a package merged into or renamed to another and deprecated below: its OLD_AI_REPO
-#            trust entry is revoked and none is created (repo/directory name where it went, for
-#            the log only)
+# action|name|repo|directory ("." = repo root)|workflow|environment|license|from
+#   new    = placeholder (if missing) + trust for repo
+#   keep   = already published from repo: trust for repo (checked, created if absent)
+#   move   = trust move from thomasfosterau/<from> to repo
+#   revoke = a published package that no longer exists, merged into or renamed to another and
+#            deprecated below: its trust entry for thomasfosterau/<from> is revoked and none is
+#            created (repo/directory name where it went, for the log only)
 PACKAGES='
-new|@thomasfosterau/charts|components|packages/charts|release.yml|release|MIT
-new|@thomasfosterau/effect-auth|effect-auth|packages/effect-auth|release.yml|release|MIT
-new|@thomasfosterau/effect-auth-alchemy|effect-auth|packages/alchemy|release.yml|release|MIT
-new|@thomasfosterau/effect-auth-argon2|effect-auth|packages/argon2|release.yml|release|MIT
-new|@thomasfosterau/effect-auth-client|effect-auth|packages/client|release.yml|release|MIT
-new|@thomasfosterau/effect-auth-drizzle|effect-auth|packages/drizzle|release.yml|release|MIT
-new|@thomasfosterau/effect-auth-resend|effect-auth|packages/resend|release.yml|release|MIT
-new|@thomasfosterau/effect-auth-saml|effect-auth|packages/saml|release.yml|release|MIT
-new|@thomasfosterau/effect-auth-sql|effect-auth|packages/sql|release.yml|release|MIT
-new|@thomasfosterau/effect-auth-svelte|effect-auth|packages/svelte|release.yml|release|MIT
-new|@thomasfosterau/effect-auth-sveltekit|effect-auth|packages/sveltekit|release.yml|release|MIT
-new|@thomasfosterau/effect-auth-twilio|effect-auth|packages/twilio|release.yml|release|MIT
-new|@thomasfosterau/biblio|effect-bib|packages/biblio|release.yml|release|MIT
-new|@thomasfosterau/effect-connect|effect-connect|packages/core|release.yml|release|MIT
-new|@thomasfosterau/effect-connect-alchemy|effect-connect|packages/alchemy|release.yml|release|MIT
-new|@thomasfosterau/effect-connect-resend|effect-connect|packages/resend|release.yml|release|MIT
-new|@thomasfosterau/effect-connect-sendgrid|effect-connect|packages/sendgrid|release.yml|release|MIT
-new|@thomasfosterau/effect-connect-twilio|effect-connect|packages/twilio|release.yml|release|MIT
-new|@thomasfosterau/effect-document|effect-document|packages/core|release.yml|release|MIT
-new|@thomasfosterau/effect-csv|effect-document|packages/csv|release.yml|release|MIT
-new|@thomasfosterau/effect-iwork|effect-document|packages/iwork|release.yml|release|MIT
-new|@thomasfosterau/effect-ooxml|effect-document|packages/ooxml|release.yml|release|MIT
-new|@thomasfosterau/effect-pdf|effect-document|packages/pdf|release.yml|release|MIT
-new|@thomasfosterau/effect-rtf|effect-document|packages/rtf|release.yml|release|MIT
-new|@thomasfosterau/effect-drizzle-ext|effect-drizzle-ext|packages/core|release.yml|release|MIT
-new|@thomasfosterau/effect-drizzle-ext-pg|effect-drizzle-ext|packages/pg|release.yml|release|MIT
-new|@thomasfosterau/effect-ext|effect-ext|packages/effect-ext|release.yml|release|MIT
-new|@thomasfosterau/effect-ai-cloudflare|effect-ext|packages/effect-ai-cloudflare|release.yml|release|MIT
-move|@thomasfosterau/effect-ai-mistral|effect-ext|packages/effect-ai-mistral|release.yml|release|MIT
-move|@thomasfosterau/effect-ai-cohere|effect-ext|packages/effect-ai-cohere|release.yml|release|MIT
-move|@thomasfosterau/effect-ai-voyage|effect-ext|packages/effect-ai-voyage|release.yml|release|MIT
-move|@thomasfosterau/effect-ai-elevenlabs|effect-ext|packages/effect-ai-elevenlabs|release.yml|release|MIT
-revoke|@thomasfosterau/effect-ai-ext|effect-ext|packages/effect-ext|release.yml|release|MIT
-revoke|@thomasfosterau/effect-evals|effect-ext|packages/effect-ext|release.yml|release|MIT
-revoke|@thomasfosterau/effect-ai-gateway|effect-ext|packages/effect-ai-cloudflare|release.yml|release|MIT
-new|@thomasfosterau/effect-ical|effect-ical|.|release.yml|release|MIT
-new|@thomasfosterau/effect-rdf|effect-rdf|packages/core|release.yml|release|MIT
-new|@thomasfosterau/effect-csvw|effect-rdf|packages/csvw|release.yml|release|MIT
-new|@thomasfosterau/effect-jsonld|effect-rdf|packages/jsonld|release.yml|release|MIT
-new|@thomasfosterau/effect-n3|effect-rdf|packages/n3|release.yml|release|MIT
-new|@thomasfosterau/effect-ntriples|effect-rdf|packages/ntriples|release.yml|release|MIT
-new|@thomasfosterau/effect-rdfjson|effect-rdf|packages/rdfjson|release.yml|release|MIT
-new|@thomasfosterau/effect-rdfxml|effect-rdf|packages/rdfxml|release.yml|release|MIT
-new|@thomasfosterau/effect-shacl|effect-rdf|packages/shacl|release.yml|release|MIT
-new|@thomasfosterau/effect-shacl-sparql|effect-rdf|packages/shacl-sparql|release.yml|release|MIT
-new|@thomasfosterau/effect-shex|effect-rdf|packages/shex|release.yml|release|MIT
-new|@thomasfosterau/effect-sparql|effect-rdf|packages/sparql|release.yml|release|MIT
-new|@thomasfosterau/effect-sparql-ai|effect-rdf|packages/sparql-ai|release.yml|release|MIT
-new|@thomasfosterau/effect-sparql-sql|effect-rdf|packages/sparql-sql|release.yml|release|MIT
-new|@thomasfosterau/effect-turtle|effect-rdf|packages/turtle|release.yml|release|MIT
-new|@thomasfosterau/effect-xmp|effect-rdf|packages/xmp|release.yml|release|MIT
-new|@thomasfosterau/effect-richtext|effect-richtext|.|release.yml|release|MIT
-new|@thomasfosterau/effect-xml|effect-xml|.|release.yml|release|MIT
-new|@thomasfosterau/legation|legation|packages/effect|release.yml|release|MIT
-new|@thomasfosterau/legation-browser|legation|packages/browser|release.yml|release|MIT
-new|@thomasfosterau/legation-cloudflare|legation|packages/cloudflare|release.yml|release|MIT
-new|@thomasfosterau/legation-devtools|legation|packages/devtools|release.yml|release|MIT
-new|@thomasfosterau/legation-jsonapi|legation|packages/jsonapi|release.yml|release|MIT
-new|@thomasfosterau/legation-node|legation|packages/node|release.yml|release|MIT
-new|@thomasfosterau/legation-sql|legation|packages/sql|release.yml|release|MIT
-new|@thomasfosterau/legation-svelte|legation|packages/svelte|release.yml|release|MIT
-new|@thomasfosterau/prosekit-utilities|prosekit-utilities|packages/prosekit-utilities|release.yml|release|MIT
-new|@thomasfosterau/prosekit-svelte|prosekit-utilities|packages/prosekit-svelte|release.yml|release|MIT
-new|@thomasfosterau/prosekit-flowchart|prosekit-utilities|packages/prosekit-flowchart|release.yml|release|MIT
-new|@thomasfosterau/pulpit|pulpit|packages/pulpit|release.yml|release|MIT
+new|@thomasfosterau/charts|components|packages/charts|release.yml|release|MIT|
+keep|@thomasfosterau/components|components|packages/components|release.yml|release|MIT|
+keep|@thomasfosterau/components-mapbox|components|packages/mapbox|release.yml|release|MIT|
+new|@thomasfosterau/effect-auth|effect-auth|packages/effect-auth|release.yml|release|MIT|
+new|@thomasfosterau/effect-auth-alchemy-cloudflare|effect-auth|packages/alchemy-cloudflare|release.yml|release|MIT|
+new|@thomasfosterau/effect-auth-alchemy-postgres|effect-auth|packages/alchemy-postgres|release.yml|release|MIT|
+new|@thomasfosterau/effect-auth-argon2|effect-auth|packages/argon2|release.yml|release|MIT|
+new|@thomasfosterau/effect-auth-drizzle|effect-auth|packages/drizzle|release.yml|release|MIT|
+new|@thomasfosterau/effect-auth-resend|effect-auth|packages/resend|release.yml|release|MIT|
+new|@thomasfosterau/effect-auth-svelte|effect-auth|packages/svelte|release.yml|release|MIT|
+new|@thomasfosterau/effect-auth-sveltekit|effect-auth|packages/sveltekit|release.yml|release|MIT|
+new|@thomasfosterau/effect-auth-twilio|effect-auth|packages/twilio|release.yml|release|MIT|
+new|@thomasfosterau/effect-bib|effect-bib|packages/effect-bib|release.yml|release|MIT|
+new|@thomasfosterau/effect-connect|effect-connect|packages/core|release.yml|release|MIT|
+new|@thomasfosterau/effect-connect-alchemy-cloudflare|effect-connect|packages/alchemy-cloudflare|release.yml|release|MIT|
+new|@thomasfosterau/effect-connect-resend|effect-connect|packages/resend|release.yml|release|MIT|
+new|@thomasfosterau/effect-document|effect-document|packages/core|release.yml|release|MIT|
+new|@thomasfosterau/effect-drizzle-ext|effect-drizzle-ext|packages/core|release.yml|release|MIT|
+new|@thomasfosterau/effect-drizzle-ext-pg|effect-drizzle-ext|packages/pg|release.yml|release|MIT|
+new|@thomasfosterau/effect-ext|effect-ext|packages/effect-ext|release.yml|release|MIT|
+new|@thomasfosterau/effect-ai-cloudflare|effect-ext|packages/effect-ai-cloudflare|release.yml|release|MIT|
+move|@thomasfosterau/effect-ai-mistral|effect-ext|packages/effect-ai-mistral|release.yml|release|MIT|effect-ai-ext
+move|@thomasfosterau/effect-ai-cohere|effect-ext|packages/effect-ai-cohere|release.yml|release|MIT|effect-ai-ext
+move|@thomasfosterau/effect-ai-voyage|effect-ext|packages/effect-ai-voyage|release.yml|release|MIT|effect-ai-ext
+move|@thomasfosterau/effect-ai-elevenlabs|effect-ext|packages/effect-ai-elevenlabs|release.yml|release|MIT|effect-ai-ext
+revoke|@thomasfosterau/effect-ai-ext|effect-ext|packages/effect-ext|release.yml|release|MIT|effect-ai-ext
+revoke|@thomasfosterau/effect-evals|effect-ext|packages/effect-ext|release.yml|release|MIT|effect-ai-ext
+revoke|@thomasfosterau/effect-ai-gateway|effect-ext|packages/effect-ai-cloudflare|release.yml|release|MIT|effect-ai-ext
+revoke|@thomasfosterau/effect-web|effect-ext|packages/effect-ext|release.yml|release|MIT|effect-web
+revoke|@thomasfosterau/effect-robots|effect-ext|packages/effect-ext|release.yml|release|MIT|effect-web
+revoke|@thomasfosterau/effect-sitemap|effect-ext|packages/effect-ext|release.yml|release|MIT|effect-web
+keep|@thomasfosterau/effect-forms|effect-forms|packages/forms|release.yml|release|MIT|
+keep|@thomasfosterau/effect-forms-svelte|effect-forms|packages/svelte|release.yml|release|MIT|
+new|@thomasfosterau/effect-ical|effect-ical|.|release.yml|release|MIT|
+keep|@thomasfosterau/effect-jsonapi|effect-jsonapi|.|release.yml|release|MIT|
+keep|@thomasfosterau/effect-parse|effect-parse|.|release.yml|release|MIT|
+new|@thomasfosterau/effect-rdf|effect-rdf|packages/core|release.yml|release|MIT|
+new|@thomasfosterau/effect-sparql-node|effect-rdf|packages/sparql-node|release.yml|release|MIT|
+new|@thomasfosterau/effect-richtext|effect-richtext|.|release.yml|release|MIT|
+keep|@thomasfosterau/effect-svelte|effect-svelte|packages/svelte|release.yml|release|MIT|
+keep|@thomasfosterau/effect-sveltekit|effect-svelte|packages/sveltekit|release.yml|release|MIT|
+keep|@thomasfosterau/effect-wikimedia|effect-wikimedia|.|release.yml|release|MIT|
+new|@thomasfosterau/effect-xml|effect-xml|.|release.yml|release|MIT|
+new|@thomasfosterau/legation|legation|packages/effect|release.yml|release|MIT|
+new|@thomasfosterau/legation-alchemy-cloudflare|legation|packages/alchemy-cloudflare|release.yml|release|MIT|
+new|@thomasfosterau/legation-browser|legation|packages/browser|release.yml|release|MIT|
+new|@thomasfosterau/legation-devtools|legation|packages/devtools|release.yml|release|MIT|
+new|@thomasfosterau/legation-jsonapi|legation|packages/jsonapi|release.yml|release|MIT|
+new|@thomasfosterau/legation-svelte|legation|packages/svelte|release.yml|release|MIT|
+new|@thomasfosterau/prosekit-utilities|prosekit-utilities|packages/prosekit-utilities|release.yml|release|MIT|
+new|@thomasfosterau/prosekit-svelte|prosekit-utilities|packages/prosekit-svelte|release.yml|release|MIT|
+new|@thomasfosterau/prosekit-flowchart|prosekit-utilities|packages/prosekit-flowchart|release.yml|release|MIT|
+new|@thomasfosterau/pulpit|pulpit|packages/pulpit|release.yml|release|MIT|
+keep|@thomasfosterau/argon2|rust-wasm-packages|packages/argon2|release.yml|release|MIT|
 '
 
 # name|deprecation message (all versions)
@@ -322,14 +320,16 @@ trust_create() { # <name> <repo> <workflow> <env>
   mutate - trust github "$1" --file "$3" --repository "thomasfosterau/$2" --environment "$4" --allow-publish --yes
 }
 
-# ensure_trust <name> <repo> <workflow> <env> <move:0|1> <fresh:0|1>; sets MSG.
+# ensure_trust <name> <repo> <workflow> <env> <old repo, "" unless a move> <fresh:0|1>; sets MSG.
+# For a move, an entry for the old repository is revoked before the new one is created.
 ensure_trust() {
-  local name="$1" repo="$2" wf="$3" envname="$4" move="$5" fresh="$6"
+  local name="$1" repo="$2" wf="$3" envname="$4" old="$5" fresh="$6" move=0
   local target="thomasfosterau/$repo" entries="" tries=0 id r f e
+  [ -n "$old" ] && move=1
   if [ "$DRY_RUN" = 1 ]; then
     show npm trust list "$name" --json
     if [ "$move" = 1 ]; then
-      echo "    # if an entry for $OLD_AI_REPO exists:"
+      echo "    # if an entry for $old exists:"
       echo "    \$ npm trust revoke $name --id <id from the list>"
     fi
     trust_create "$name" "$repo" "$wf" "$envname"
@@ -347,39 +347,40 @@ ensure_trust() {
       fi
     done <<< "$entries"
     while IFS=$'\t' read -r id r f e; do
-      if [ "$move" = 1 ] && [ "$r" = "$OLD_AI_REPO" ]; then
-        npmc trust revoke "$name" --id "$id" || { MSG="revoke of old $OLD_AI_REPO entry $id failed"; return 1; }
+      if [ "$move" = 1 ] && [ "$r" = "$old" ]; then
+        npmc trust revoke "$name" --id "$id" || { MSG="revoke of old $old entry $id failed"; return 1; }
         sleep 2
       else
         MSG="existing trust entry $id ($r $f env=$e) is not the expected one; fix by hand"; return 1
       fi
     done <<< "$entries"
   elif [ "$move" = 1 ]; then
-    echo "    note: no $OLD_AI_REPO entry found for $name; creating the new one" >&2
+    echo "    note: no $old entry found for $name; creating the new one" >&2
   fi
   trust_create "$name" "$repo" "$wf" "$envname" >/dev/null || { MSG="npm trust github failed"; return 1; }
   sleep 2
   MSG="trust: set github $target $wf env=$envname"
-  if [ "$move" = 1 ]; then MSG="$MSG (moved from $OLD_AI_REPO)"; fi
+  if [ "$move" = 1 ]; then MSG="$MSG (moved from $old)"; fi
   return 0
 }
 
-# revoke_old_trust <name>: revokes every trust entry naming OLD_AI_REPO and creates none; sets MSG.
+# revoke_old_trust <name> <old repo>: revokes every trust entry naming the old repository and
+# creates none; sets MSG.
 # Returns 0 when it revoked (or would, under --dry-run), 3 when no such entry is left (idempotent
 # skip), 1 on a failure or when an entry for another repository remains.
 revoke_old_trust() {
-  local name="$1" entries="" id r f e revoked=0 other=""
+  local name="$1" old="$2" entries="" id r f e revoked=0 other=""
   if [ "$DRY_RUN" = 1 ]; then
     show npm trust list "$name" --json
-    echo "    # for each entry for $OLD_AI_REPO:"
+    echo "    # for each entry for $old:"
     echo "    \$ npm trust revoke $name --id <id from the list>"
-    MSG="trust: would revoke its $OLD_AI_REPO entry and create none"; return 0
+    MSG="trust: would revoke its $old entry and create none"; return 0
   fi
   entries="$(trust_entries "$name")" || { MSG="trust list failed"; return 1; }
   if [ -n "$entries" ]; then
     while IFS=$'\t' read -r id r f e; do
-      if [ "$r" = "$OLD_AI_REPO" ]; then
-        npmc trust revoke "$name" --id "$id" || { MSG="revoke of $OLD_AI_REPO entry $id failed"; return 1; }
+      if [ "$r" = "$old" ]; then
+        npmc trust revoke "$name" --id "$id" || { MSG="revoke of $old entry $id failed"; return 1; }
         revoked=$((revoked + 1))
         sleep 2
       else
@@ -390,8 +391,8 @@ revoke_old_trust() {
   if [ -n "$other" ]; then
     MSG="unexpected trust entries remain:$other; fix by hand"; return 1
   fi
-  if [ "$revoked" = 0 ]; then MSG="trust: no $OLD_AI_REPO entry left, nothing to revoke"; return 3; fi
-  MSG="trust: revoked $revoked $OLD_AI_REPO entr$([ "$revoked" = 1 ] && echo y || echo ies), created none"
+  if [ "$revoked" = 0 ]; then MSG="trust: no $old entry left, nothing to revoke"; return 3; fi
+  MSG="trust: revoked $revoked $old entr$([ "$revoked" = 1 ] && echo y || echo ies), created none"
   return 0
 }
 
@@ -407,12 +408,13 @@ record() { # <status> <name> <message>
   esac
 }
 
-while IFS='|' read -r action name repo dir wf envname license; do
+while IFS='|' read -r action name repo dir wf envname license from; do
   [ -n "$action" ] || continue
   if [ -n "$ONLY" ] && [ "$name" != "$ONLY" ]; then continue; fi
   MATCHED=$((MATCHED + 1))
-  # A move and a revoke are trust-only.
-  [ "$SKIP_TRUST" = 1 ] && { [ "$action" = move ] || [ "$action" = revoke ]; } && continue
+  # A keep, a move and a revoke are trust-only.
+  [ "$SKIP_TRUST" = 1 ] && [ "$action" != new ] && continue
+  old=""; [ -n "$from" ] && old="thomasfosterau/$from"
   echo "--- $name ($repo/${dir})"
   fresh=0; pub_msg=""; changed=0
   exists_on_npm "$name"; state=$?
@@ -436,7 +438,7 @@ while IFS='|' read -r action name repo dir wf envname license; do
     record FAIL "$name" "expected to exist on npm"; continue
   fi
   if [ "$action" = revoke ]; then
-    revoke_old_trust "$name"; rc=$?
+    revoke_old_trust "$name" "$old"; rc=$?
     case "$rc" in
       0) status=ok; [ "$DRY_RUN" = 1 ] && status=dry; record "$status" "$name" "superseded by $repo/$dir; $MSG" ;;
       3) record skip "$name" "superseded by $repo/$dir; $MSG" ;;
@@ -448,7 +450,7 @@ while IFS='|' read -r action name repo dir wf envname license; do
     status=skip; [ "$changed" = 1 ] && status=ok; [ "$changed" = 1 ] && [ "$DRY_RUN" = 1 ] && status=dry
     record "$status" "$name" "$pub_msg; trust phase skipped (--skip-trust)"; continue
   fi
-  if ensure_trust "$name" "$repo" "$wf" "$envname" "$([ "$action" = move ] && echo 1 || echo 0)" "$fresh"; then
+  if ensure_trust "$name" "$repo" "$wf" "$envname" "$([ "$action" = move ] && echo "$old")" "$fresh"; then
     status=ok; [ "$DRY_RUN" = 1 ] && status=dry
     case "$MSG" in "trust: already"*) [ "$changed" = 0 ] && status=skip ;; esac
     record "$status" "$name" "${pub_msg:+$pub_msg; }$MSG"
