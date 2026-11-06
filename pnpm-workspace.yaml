@@ -96,7 +96,9 @@ catalog:
   # from thomasfosterau/effect-numeric): arithmetic laws checked against a
   # `bigint` reference. Test-only, never a dependency of `dist/`.
   fast-check: ^4.10.2
-  # `@effect/docgen` runs each example under tsx.
+  # Only because `@effect/docgen` requires it as a peer and spawns the `tsx`
+  # binary itself to run each example. Nothing else uses it: scripts run with
+  # `vpx <file>.ts`.
   tsx: ^4.23.15
   # TypeScript 6/7 side-by-side: TS7 (the native Go compiler) ships no JS API
   # until 7.1, so JS-API consumers (@effect/language-service, @effect/docgen)

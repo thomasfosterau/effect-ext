@@ -168,26 +168,41 @@ else
 fi
 # --- End target checkout (effect-schema-ext#44) ---
 
-# A real installed Git hook keeps its caller's PATH and does not add
-# node_modules/.bin, so a project-local install is invisible to `command -v`.
-# The arms below cover the layouts a project-local install can take, in the
-# order they are cheapest to probe.
-if command -v fallow >/dev/null 2>&1; then
-  RUNNER=(fallow)
-  BIN_DESC="$(command -v fallow)"
+# --- Trusted checkouts and the vp runner: local deviation from the generated script ---
+# Everything below runs code from the checkout it audits: fallow from its
+# node_modules, and `vp run test:coverage`, which loads its vite.config.ts.
+# Only this project and its `.claude/worktrees/*` checkouts are trusted for
+# that; a commit to any other tree (a scratch clone, a third-party checkout)
+# is not this gate's to audit, so it says so and runs nothing there rather
+# than execute what that tree carries. Inside a trusted checkout fallow runs
+# through Vite+ (`vp exec fallow`), which resolves the checkout's own pinned
+# copy; the project's copy is the fallback where `vp` is not on PATH.
+# The generated yarn / `npx --no-install` arms stay dropped: this workspace is
+# pnpm, and the family standard allows no yarn or npx invocation.
+# `fallow hooks install --target agent --agent claude` overwrites this script
+# without asking, so re-apply this block after regenerating.
+GATE_PROJECT="${CLAUDE_PROJECT_DIR:-}"
+GATE_PROJECT="${GATE_PROJECT%/}"
+case "$PWD" in
+  "$GATE_PROJECT" | "$GATE_PROJECT"/.claude/worktrees/*) ;;
+  *)
+    if [ -n "$GATE_PROJECT" ]; then
+      echo "fallow-gate: $PWD is not this project or one of its worktrees; not running its tooling, skipping audit." >&2
+      exit 0
+    fi
+    ;;
+esac
+if command -v vp >/dev/null 2>&1 && [ -x ./node_modules/.bin/fallow ]; then
+  RUNNER=(vp exec fallow)
+  BIN_DESC="vp exec fallow ($PWD/node_modules/.bin/fallow)"
 elif [ -x ./node_modules/.bin/fallow ]; then
   RUNNER=(./node_modules/.bin/fallow)
   BIN_DESC="./node_modules/.bin/fallow"
 else
-  # Local deviation from the generated script: the generated yarn and
-  # `npx --no-install` arms are dropped. This workspace is pnpm with a hoisted
-  # node_modules, so a project-local fallow is always in node_modules/.bin, and
-  # the family standard allows no yarn or npx invocation.
-  # `fallow hooks install --target agent --agent claude` overwrites this script
-  # without asking, so re-apply this after regenerating.
-  echo "fallow-gate: fallow binary not found (tried PATH and node_modules/.bin), skipping audit." >&2
+  echo "fallow-gate: fallow not installed in $PWD (run \`vp install\`), skipping audit." >&2
   exit 0
 fi
+# --- End trusted checkouts and the vp runner ---
 
 VERSION_RAW="$("${RUNNER[@]}" --version 2>/dev/null || true)"
 # Local deviation from the generated script (effect-schema-ext#57): keep only
