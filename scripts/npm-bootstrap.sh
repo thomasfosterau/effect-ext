@@ -103,8 +103,6 @@ MIN_NPM="11.15.0"
 #   revoke = a published package that no longer exists, merged into or renamed to another and
 #            deprecated below: its trust entry for thomasfosterau/<from> is revoked and none is
 #            created (repo/directory name where it went, for the log only)
-# Pending owner decision: @thomasfosterau/effect-auth-alchemy-cloudflare may be renamed
-# @thomasfosterau/effect-auth-d1; if it is, change its row before running.
 PACKAGES='
 new|@thomasfosterau/charts|components|packages/charts|release.yml|release|MIT|
 keep|@thomasfosterau/components|components|packages/components|release.yml|release|MIT|
