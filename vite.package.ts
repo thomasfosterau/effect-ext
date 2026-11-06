@@ -12,7 +12,7 @@
  *   name, its own or a sibling's, resolves to `src/` with no alias and no
  *   build first. Only `docgen`, which runs its examples against `dist/`,
  *   carries build edges.
- * - `distExportsPackageConfig` (`effect-utilities`): `exports` point at
+ * - `distExportsPackageConfig` (`effect-ext`): `exports` point at
  *   `dist/` in development too, so `tests/dist-consumer` and docgen consume
  *   the package exactly as a consumer does. Its tests import the package by
  *   name through an alias to `src/`, and a sibling is consumed through its
@@ -221,7 +221,7 @@ export const packageConfig = ({
 export interface DistExportsPackageConfigOptions {
   /** The package's `import.meta.url`, so paths resolve relative to it. */
   readonly url: string;
-  /** The published name (`@thomasfosterau/effect-utilities`), for the test alias. */
+  /** The published name (`@thomasfosterau/effect-ext`), for the test alias. */
   readonly name: string;
   /** `pack.entry`: `index` → `src/index.ts`, every other key → `src/<key>.ts`. */
   readonly entries: ReadonlyArray<string>;

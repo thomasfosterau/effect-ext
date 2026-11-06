@@ -1,5 +1,5 @@
 /**
- * Generates `packages/effect-utilities/src/internal/langtag/registry-data.ts` from the IANA
+ * Generates `packages/effect-ext/src/internal/langtag/registry-data.ts` from the IANA
  * Language Subtag Registry (RFC 5646 §3): the subtags registered for each
  * position, the `Preferred-Value` mappings and the `Suppress-Script`
  * values, as space-delimited string literals (pure declarations, so the
@@ -14,7 +14,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const IANA = "https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry";
-const OUTPUT = "packages/effect-utilities/src/internal/langtag/registry-data.ts";
+const OUTPUT = "packages/effect-ext/src/internal/langtag/registry-data.ts";
 
 const args = process.argv.slice(2);
 const sourceFlag = args.indexOf("--source");

@@ -1,7 +1,7 @@
 /**
  * @copyright Thomas Foster
  *
- * A consumer of the EMITTED declarations (`packages/effect-utilities/dist`),
+ * A consumer of the EMITTED declarations (`packages/effect-ext/dist`),
  * resolved through the package's `exports` exactly as an npm install would.
  * Every `Equals<…>` assertion fails if a declaration degrades on emit — a
  * brand that emits as `string`, a codec whose `Type` emits as `unknown`, a
@@ -31,18 +31,18 @@ import {
   TriState,
   Url,
   Vec,
-} from "@thomasfosterau/effect-utilities";
-import * as VecEntry from "@thomasfosterau/effect-utilities/Vec";
-import * as TriStateEntry from "@thomasfosterau/effect-utilities/TriState";
-import * as BoundedEntry from "@thomasfosterau/effect-utilities/Bounded";
-import { Langtag, Mime, Sitemap, UriTemplate, Web } from "@thomasfosterau/effect-utilities";
-import * as Robots from "@thomasfosterau/effect-utilities/Robots";
-import * as Browser from "@thomasfosterau/effect-utilities/Browser";
-import * as Negotiate from "@thomasfosterau/effect-utilities/Negotiate";
-import { Ratio, U8, U64 } from "@thomasfosterau/effect-utilities";
-import { I8 } from "@thomasfosterau/effect-utilities/I8";
-import * as Rfc3339 from "@thomasfosterau/effect-utilities/Rfc3339";
-import * as CronExpression from "@thomasfosterau/effect-utilities/CronExpression";
+} from "@thomasfosterau/effect-ext";
+import * as VecEntry from "@thomasfosterau/effect-ext/Vec";
+import * as TriStateEntry from "@thomasfosterau/effect-ext/TriState";
+import * as BoundedEntry from "@thomasfosterau/effect-ext/Bounded";
+import { Langtag, Mime, Sitemap, UriTemplate, Web } from "@thomasfosterau/effect-ext";
+import * as Robots from "@thomasfosterau/effect-ext/Robots";
+import * as Browser from "@thomasfosterau/effect-ext/Browser";
+import * as Negotiate from "@thomasfosterau/effect-ext/Negotiate";
+import { Ratio, U8, U64 } from "@thomasfosterau/effect-ext";
+import { I8 } from "@thomasfosterau/effect-ext/I8";
+import * as Rfc3339 from "@thomasfosterau/effect-ext/Rfc3339";
+import * as CronExpression from "@thomasfosterau/effect-ext/CronExpression";
 import type * as Cron from "effect/Cron";
 import type * as DateTime from "effect/DateTime";
 

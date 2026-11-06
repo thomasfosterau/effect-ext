@@ -1,5 +1,5 @@
 ---
-"@thomasfosterau/effect-utilities": patch
+"@thomasfosterau/effect-ext": patch
 "@thomasfosterau/effect-ai-ext": patch
 "@thomasfosterau/effect-ai-gateway": patch
 "@thomasfosterau/effect-ai-mistral": patch

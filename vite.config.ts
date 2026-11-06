@@ -8,8 +8,8 @@
  * The lint config is one rule set for the whole workspace. The `effect-ai-*`
  * family and `effect-evals` (merged in from thomasfosterau/effect-ai-ext)
  * came with a looser one: their relaxations are scoped to `aiPackages` in
- * `overrides` below, each with its reason, so `effect-utilities` keeps the
- * stricter set. The same holds for the effect-utilities modules merged in
+ * `overrides` below, each with its reason, so `effect-ext` keeps the
+ * stricter set. The same holds for the effect-ext modules merged in
  * from thomasfosterau/effect-web (`webModules`), scoped to their files, and
  * for the few allowances the modules from thomasfosterau/effect-numeric and
  * thomasfosterau/effect-time arrived with, scoped to the files they name.
@@ -28,7 +28,7 @@ import { coverageFloor as gatewayFloor } from "./packages/effect-ai-gateway/vite
 import { coverageFloor as mistralFloor } from "./packages/effect-ai-mistral/vite.config.ts";
 import { coverageFloor as voyageFloor } from "./packages/effect-ai-voyage/vite.config.ts";
 import { coverageFloor as evalsFloor } from "./packages/effect-evals/vite.config.ts";
-import { coverageFloor as utilitiesFloor } from "./packages/effect-utilities/vite.config.ts";
+import { coverageFloor as utilitiesFloor } from "./packages/effect-ext/vite.config.ts";
 
 /**
  * Each package's coverage ratchet, keyed by its directory. The floors live
@@ -45,31 +45,31 @@ const coverageFloors = {
   "effect-ai-mistral": mistralFloor,
   "effect-ai-voyage": voyageFloor,
   "effect-evals": evalsFloor,
-  "effect-utilities": utilitiesFloor,
+  "effect-ext": utilitiesFloor,
 } satisfies Readonly<Record<string, CoverageFloor>>;
 
 /** The packages that came from thomasfosterau/effect-ai-ext (see the header). */
 const aiPackages = ["packages/effect-ai-*/**", "packages/effect-evals/**"];
 
 /**
- * The effect-utilities modules that came from thomasfosterau/effect-web (see
+ * The effect-ext modules that came from thomasfosterau/effect-web (see
  * the header): their subpath files, the directories behind them and their
  * tests.
  */
 const webDirs =
   "{browser,browser-testing,css,encoding,json-feed,langtag,mime,observability,uri-template,web}";
 const webTests =
-  "packages/effect-utilities/tests/{atom-feed,css,encoding,json-feed,langtag,mime,robots,rss-feed,sitemap,uri-template,web}/**";
+  "packages/effect-ext/tests/{atom-feed,css,encoding,json-feed,langtag,mime,robots,rss-feed,sitemap,uri-template,web}/**";
 const webModules = [
-  "packages/effect-utilities/src/{AtomFeed,Browser,BrowserTesting,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,ServiceWorker,Sitemap,UriTemplate,Web}.ts",
-  `packages/effect-utilities/src/${webDirs}/**`,
-  `packages/effect-utilities/src/internal/${webDirs}/**`,
-  "packages/effect-utilities/src/internal/xml.ts",
+  "packages/effect-ext/src/{AtomFeed,Browser,BrowserTesting,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,ServiceWorker,Sitemap,UriTemplate,Web}.ts",
+  `packages/effect-ext/src/${webDirs}/**`,
+  `packages/effect-ext/src/internal/${webDirs}/**`,
+  "packages/effect-ext/src/internal/xml.ts",
   webTests,
 ];
 
 /** The tests that came from thomasfosterau/effect-time (see the header). */
-const timeTests = "packages/effect-utilities/tests/time/**";
+const timeTests = "packages/effect-ext/tests/time/**";
 
 /** Every package name, for the root aggregates. */
 const packageNames = [
@@ -80,7 +80,7 @@ const packageNames = [
   "@thomasfosterau/effect-ai-mistral",
   "@thomasfosterau/effect-ai-voyage",
   "@thomasfosterau/effect-evals",
-  "@thomasfosterau/effect-utilities",
+  "@thomasfosterau/effect-ext",
 ];
 
 export default defineConfig({
@@ -131,7 +131,7 @@ export default defineConfig({
             "The `Buffer` global is typed `any` wherever @cloudflare/workers-types is loaded. Use Uint8Array / TextEncoder / DataView.",
         },
       ],
-      // docgen's own tags: every `effect-utilities` export carries `@since`
+      // docgen's own tags: every `effect-ext` export carries `@since`
       // and `@category` (AGENTS.md), and module headers `@module` /
       // `@copyright`. The AI packages use `@category` only.
       "jsdoc/check-tag-names": [
@@ -380,10 +380,10 @@ export default defineConfig({
           "effect/require-effect-concurrency": "warn",
         },
       },
-      // ---- effect-utilities' web modules: the rule set they arrived with ----
+      // ---- effect-ext's web modules: the rule set they arrived with ----
       // Merged in from thomasfosterau/effect-web, whose own lint config these
       // lines carry over unchanged (its reasons, abridged). Unifying them
-      // with the rest of effect-utilities (`Option` members, the `P` / `R`
+      // with the rest of effect-ext (`Option` members, the `P` / `R`
       // aliases, no assertions) is #31; delete each line as it reaches zero.
       {
         files: webModules,
@@ -438,7 +438,7 @@ export default defineConfig({
       // `Effect.runSync`: it IS the entry point, where providing the JSON
       // logger belongs.
       {
-        files: ["packages/effect-utilities/src/Observability.ts"],
+        files: ["packages/effect-ext/src/Observability.ts"],
         rules: {
           "effecttsgo/strict-effect-provide": "off",
         },
@@ -447,7 +447,7 @@ export default defineConfig({
       // `Route<unknown, any>`: a matched handler's failure is `unknown` (a
       // rejection is what `respondWith` turns into a network error).
       {
-        files: ["packages/effect-utilities/src/ServiceWorker.ts"],
+        files: ["packages/effect-ext/src/ServiceWorker.ts"],
         rules: {
           "effecttsgo/any-unknown-in-error-context": "off",
         },
@@ -456,7 +456,7 @@ export default defineConfig({
       // synchronously from disk at module load; `FileSystem` would need
       // `@effect/platform-node` for one test file.
       {
-        files: ["packages/effect-utilities/tests/mime/wpt-sniffing.test.ts"],
+        files: ["packages/effect-ext/tests/mime/wpt-sniffing.test.ts"],
         rules: {
           "effect/use-filesystem-service": "off",
           "effect/avoid-sync-fs": "off",
@@ -472,7 +472,7 @@ export default defineConfig({
           "effecttsgo/strict-effect-provide": "off",
         },
       },
-      // ---- effect-utilities' numeric modules: the allowances they arrived with ----
+      // ---- effect-ext's numeric modules: the allowances they arrived with ----
       // Merged in from thomasfosterau/effect-numeric, whose own lint config
       // scoped these exact relaxations (its reasons, abridged). Everything
       // else in those files meets the rule set above.
@@ -487,7 +487,7 @@ export default defineConfig({
       // unbounded. The public modules call these kernels, so a loop anywhere
       // else is still an error.
       {
-        files: ["packages/effect-utilities/src/internal/numeric/**"],
+        files: ["packages/effect-ext/src/internal/numeric/**"],
         rules: {
           "effect/imperative-loops": "off",
         },
@@ -501,7 +501,7 @@ export default defineConfig({
       // output, and `unsafeBrand`'s brand parameter appears only in its return
       // type by design (the caller names the brand).
       {
-        files: ["packages/effect-utilities/src/internal/numeric/brand.ts"],
+        files: ["packages/effect-ext/src/internal/numeric/brand.ts"],
         rules: {
           "effect/casting-awareness": "off",
           "effect/avoid-any": "off",
@@ -515,7 +515,7 @@ export default defineConfig({
       // `exactOptionalPropertyTypes`); an `Option` there would make every
       // caller wrap a string. Unifying option members is #17.
       {
-        files: ["packages/effect-utilities/src/Clamped.ts"],
+        files: ["packages/effect-ext/src/Clamped.ts"],
         rules: {
           "effect/prefer-option-over-null": "off",
         },
@@ -526,7 +526,7 @@ export default defineConfig({
       // such parts, and `Clamped`'s clamping decoder maps ±Infinity onto its
       // bounds (its exact `schema` uses `Schema.Finite`).
       {
-        files: ["packages/effect-utilities/src/{Float,F32,Complex,Clamped}.ts"],
+        files: ["packages/effect-ext/src/{Float,F32,Complex,Clamped}.ts"],
         rules: {
           "effecttsgo/schema-number": "off",
         },
@@ -535,13 +535,13 @@ export default defineConfig({
       // `JSON.stringify` (each value object's `toJSON`) and Node's
       // `util.inspect` (`NodeInspectSymbol`). Calling them is the assertion.
       {
-        files: ["packages/effect-utilities/tests/numeric/Misc.test.ts"],
+        files: ["packages/effect-ext/tests/numeric/Misc.test.ts"],
         rules: {
           "effect/avoid-direct-json": "off",
           "effect/avoid-node-imports": "off",
         },
       },
-      // ---- effect-utilities' time modules: the allowances they arrived with ----
+      // ---- effect-ext's time modules: the allowances they arrived with ----
       // effect-numeric's and effect-time's suites are plain vitest, without
       // `@effect/vitest`: a test body runs the effect it asserts on
       // (`Effect.runPromise`), which makes it the run boundary
@@ -550,7 +550,7 @@ export default defineConfig({
       // promise rules that want a return value there cannot apply (effect-time
       // ran without the `promise` plugin for this reason).
       {
-        files: [timeTests, "packages/effect-utilities/tests/numeric/**"],
+        files: [timeTests, "packages/effect-ext/tests/numeric/**"],
         rules: {
           "effect/effect-run-in-body": "off",
         },
@@ -562,7 +562,7 @@ export default defineConfig({
           "promise/no-callback-in-promise": "off",
         },
       },
-      // ---- effect-utilities ----
+      // ---- effect-ext ----
       // `@effect/vitest` is Effect's own test runner, released in lockstep
       // with `effect` and pinned exactly beside it in the catalog, so an
       // "unstable" break arrives in the `effect` Dependabot PR and fails
@@ -577,7 +577,7 @@ export default defineConfig({
       // and a thunk keeps module evaluation free of top-level calls, which
       // `"sideEffects": false` claims of `dist/` (a constant would be one).
       {
-        files: ["packages/effect-utilities/src/String.ts"],
+        files: ["packages/effect-ext/src/String.ts"],
         rules: {
           "effecttsgo/lazy-effect": "off",
         },
@@ -587,7 +587,7 @@ export default defineConfig({
       // integer"), so its fields are `Schema.Number` on purpose: `Finite`
       // would fail to construct the very error that reports them.
       {
-        files: ["packages/effect-utilities/src/Allocator.ts"],
+        files: ["packages/effect-ext/src/Allocator.ts"],
         rules: {
           "effecttsgo/schema-number": "off",
         },
@@ -667,7 +667,7 @@ export default defineConfig({
         command: "echo 'check: every type gate green'",
         dependsOn: [
           ...packageNames.map((name) => `${name}#check`),
-          "@effect-utilities/dist-consumer#check",
+          "@effect-ext/dist-consumer#check",
         ],
         cache: false,
       },

@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/Effect-TS/language-service/refs/heads/main/schema.json",
   "files": [],
   "references": [
-    { "path": "packages/effect-utilities" },
+    { "path": "packages/effect-ext" },
     { "path": "packages/effect-ai-ext" },
     { "path": "packages/effect-ai-gateway" },
     { "path": "packages/effect-ai-mistral" },

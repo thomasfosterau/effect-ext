@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "entry": [
-    "packages/effect-utilities/src/*.ts",
+    "packages/effect-ext/src/*.ts",
     "packages/*/tests/**/*.test.ts",
     "packages/*/tests/**/*.types.ts",
     "tests/dist-consumer/src/*.ts",
@@ -53,8 +53,8 @@
   "boundaries": {
     "zones": [
       {
-        "name": "effect-utilities",
-        "patterns": ["packages/effect-utilities/**"]
+        "name": "effect-ext",
+        "patterns": ["packages/effect-ext/**"]
       },
       {
         "name": "dist-consumer",
@@ -91,12 +91,12 @@
     ],
     "rules": [
       {
-        "from": "effect-utilities",
+        "from": "effect-ext",
         "allow": []
       },
       {
         "from": "dist-consumer",
-        "allow": ["effect-utilities"]
+        "allow": ["effect-ext"]
       },
       {
         "from": "ai-ext",
@@ -128,7 +128,7 @@
       }
     ]
   },
-  // `pipe` is the Effect `Pipeable` protocol. On effect-utilities' numeric
+  // `pipe` is the Effect `Pipeable` protocol. On effect-ext's numeric
   // `Value` (src/internal/numeric/value.ts), the base class of `Ratio` and
   // `Complex`, consumers call it through the public interfaces
   // (tests/numeric/Pipeable.test.ts), which fallow does not trace.
@@ -169,11 +169,11 @@
       "file": "packages/effect-evals/src/*.ts",
       "exports": ["make", "layer", "Options", "contramap"]
     },
-    // effect-utilities' `Browser` / `BrowserTesting` modules (merged in from
+    // effect-ext's `Browser` / `BrowserTesting` modules (merged in from
     // effect-web) share one service shape, re-exported as namespaces from
     // their subpath barrels (`Locks.layer`, `TestLocks.Control`).
     {
-      "file": "packages/effect-utilities/src/browser/*.ts",
+      "file": "packages/effect-ext/src/browser/*.ts",
       "exports": ["make", "layer", "changes", "requestPermission", "withLock", "watch"]
     },
     // `Css` re-exports each of its modules as a namespace, so `Color.parse`,
@@ -181,15 +181,15 @@
     // `internal/web/dom.ts`'s `watch` is the helper `IdleDetection.watch`
     // shares a name with, never imported side by side.
     {
-      "file": "packages/effect-utilities/src/css/*.ts",
+      "file": "packages/effect-ext/src/css/*.ts",
       "exports": ["parse", "serialize"]
     },
     {
-      "file": "packages/effect-utilities/src/internal/web/dom.ts",
+      "file": "packages/effect-ext/src/internal/web/dom.ts",
       "exports": ["watch"]
     },
     {
-      "file": "packages/effect-utilities/src/browser-testing/*.ts",
+      "file": "packages/effect-ext/src/browser-testing/*.ts",
       "exports": ["make", "layer", "Control", "Fixture", "Options"]
     }
   ]
