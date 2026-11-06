@@ -104,15 +104,20 @@ link_tool() {
 # suite-collector state, and every describe() in the worktree throws
 # `Cannot read properties of undefined (reading 'config')` (gardeneria #1663).
 #
-# So each shim walks up from $PWD for the nearest project-local copy and
-# re-execs that, falling back to the primary checkout's when none is found
-# above cwd. The marker is a prefix of the one the earlier vp-only shim
-# carried, so a shim from either version is recognised and regenerated.
+# So the `vp` shim walks up from $PWD for the nearest project-local copy and
+# re-execs that, falling back to the primary checkout's when none is found.
+# It only accepts a checkout that is $PROJECT_DIR itself or one of its
+# `.claude/worktrees/*`: a walk that trusted any directory above cwd would run
+# whatever `node_modules/.bin` a cloned third-party tree carries. `fallow` and
+# `tsx` need no walk at all, so their shims exec $PROJECT_DIR's copy directly.
+# The marker is a prefix of the one the earlier vp-only shim carried, so a
+# shim from either version is recognised and regenerated.
 SHIM_MARKER="# generated-by: .claude/hooks/session-start.sh"
-# write_shim <name> <path of the tool relative to a checkout root>
+# write_shim <name> <path of the tool relative to a checkout root> [walk]
 write_shim() {
   name="$1"
   rel="$2"
+  walk="${3:-}"
   dest="$LOCAL_BIN/$name"
   [ -x "$PROJECT_DIR/$rel" ] || return 0
   # Leave a real, non-generated file alone: something deliberately installed
@@ -123,19 +128,31 @@ write_shim() {
     && ! grep -qF "$SHIM_MARKER" "$dest" 2>/dev/null; then
     return 0
   fi
-  cat >"$dest.tmp" <<SHIM
+  if [ "$walk" = walk ]; then
+    cat >"$dest.tmp" <<SHIM
 #!/usr/bin/env bash
 $SHIM_MARKER ($name re-exec shim)
 dir="\$PWD"
 while [ -n "\$dir" ]; do
-  if [ -x "\$dir/$rel" ]; then
-    exec "\$dir/$rel" "\$@"
-  fi
+  case "\$dir" in
+    "$PROJECT_DIR" | "$PROJECT_DIR"/.claude/worktrees/*)
+      if [ -x "\$dir/$rel" ]; then
+        exec "\$dir/$rel" "\$@"
+      fi
+      ;;
+  esac
   [ "\$dir" = "/" ] && break
   dir="\$(dirname "\$dir")"
 done
 exec "$PROJECT_DIR/$rel" "\$@"
 SHIM
+  else
+    cat >"$dest.tmp" <<SHIM
+#!/usr/bin/env bash
+$SHIM_MARKER ($name re-exec shim)
+exec "$PROJECT_DIR/$rel" "\$@"
+SHIM
+  fi
   # `mv -f` replaces a symlink at $dest itself rather than writing through it.
   chmod +x "$dest.tmp" 2>/dev/null && mv -f "$dest.tmp" "$dest" 2>/dev/null \
     || { rm -f "$dest.tmp" 2>/dev/null; log "could not write $name shim"; }
@@ -144,7 +161,7 @@ SHIM
 write_tool_shims() {
   write_shim fallow node_modules/.bin/fallow
   write_shim tsx node_modules/.bin/tsx
-  write_shim vp node_modules/vite-plus/bin/vp
+  write_shim vp node_modules/vite-plus/bin/vp walk
 }
 
 # ── 1. Repo binaries the documented workflows invoke directly ─────────────────
