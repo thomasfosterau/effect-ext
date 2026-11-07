@@ -163,7 +163,7 @@ Carried over from each effect-web package's own guidance, with paths and names r
 **Terms.**
 
 - **Product token** — the `User-agent:` name a group binds (`ExampleBot`), distinct from the **request header** (`ExampleBot/1.0 (+https://…)`). `makeRobotsChecker` takes both: `userAgentToken` selects the group, `userAgent` is sent.
-- **Group selection** — RFC 9309 §2.2.1: the group whose token matches the crawler's exactly or as a prefix (case-insensitive), longest wins; `*` matches everything and loses to any named group. Never a substring match (`userAgent.includes(token)`): that would let `User-agent: bot` bind `Googlebot`. The README says so.
+- **Group selection** — RFC 9309 §2.2.1: the group whose token matches the crawler's exactly or as a prefix (case-insensitive), longest wins; `*` matches everything and loses to any named group. Both sides are reduced to their product token first (the leading `[A-Za-z_-]` run), so a version or comment on either side (`ExampleBot/1.0`) does not stop the match; a line with no token matches nothing. Never a substring match (`userAgent.includes(token)`): that would let `User-agent: bot` bind `Googlebot`. The README says so.
 - **Failure posture** — RFC 9309 §2.3.1: 4xx / no file → no restrictions (`""`); 5xx, timeout, transport fault → unavailable (`ROBOTS_UNAVAILABLE_SENTINEL`, treated as disallow). `fetchRobots` never fails; it returns one of the three.
 - **Cache seam** — `RobotsCache<R>`: per-origin `get` / `put` with a TTL, generic over its requirements. Persistent adapters (a Workers KV one, say) live in the consuming application, never here.
 

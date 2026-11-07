@@ -367,15 +367,29 @@ const matchesPath = (rulePath: string, urlPath: string): boolean => {
 };
 
 /**
- * The specificity of a group's claim on a user agent: the length of its
- * longest matching product token (case-insensitive, exact or prefix), `0`
- * for the `*` wildcard, `-1` for no match (RFC 9309 §2.2.1).
+ * The product token of a `User-agent:` value or a crawler's name: its
+ * leading run of letters, `_` and `-` (RFC 9309 §2.2.1's token alphabet),
+ * lower-cased. A version or comment after it (`ExampleBot/1.0 (+https://…)`)
+ * is not part of the token, so `User-agent: ExampleBot/1.0` binds the
+ * `ExampleBot` crawler and a crawler that passes its versioned name still
+ * finds its `User-agent: ExampleBot` group (as Google's parser reads both).
  */
-const groupSpecificity = (group: RobotGroup, normalizedUserAgent: string): number =>
+const productToken = (value: string): string =>
+  (/^[A-Za-z_-]*/.exec(value.trim())?.[0] ?? "").toLowerCase();
+
+/**
+ * The specificity of a group's claim on a crawler's product token: the
+ * length of the group's longest matching product token (case-insensitive,
+ * exact or prefix), `0` for the `*` wildcard, `-1` for no match (RFC 9309
+ * §2.2.1). A line whose value has no product token matches nothing.
+ */
+const groupSpecificity = (group: RobotGroup, crawlerToken: string): number =>
   Arr.reduce(group.userAgents, -1, (specificity, userAgent) => {
-    const pattern = userAgent.toLowerCase();
-    if (pattern === "*") return Math.max(specificity, 0);
-    if (normalizedUserAgent.startsWith(pattern)) return Math.max(specificity, pattern.length);
+    if (userAgent.trim() === "*") return Math.max(specificity, 0);
+    const pattern = productToken(userAgent);
+    if (pattern !== "" && crawlerToken.startsWith(pattern)) {
+      return Math.max(specificity, pattern.length);
+    }
     return specificity;
   });
 
@@ -384,12 +398,12 @@ const groupSpecificity = (group: RobotGroup, normalizedUserAgent: string): numbe
  * longest matching token wins, ties keep the first group.
  */
 const findMatchingGroup = (robotsTxt: RobotsTxt, userAgent: string): Option.Option<RobotGroup> => {
-  const normalized = userAgent.toLowerCase();
+  const crawlerToken = productToken(userAgent);
   return Arr.reduce(
     robotsTxt.groups,
     { group: Option.none<RobotGroup>(), specificity: -1 },
     (best, group) => {
-      const specificity = groupSpecificity(group, normalized);
+      const specificity = groupSpecificity(group, crawlerToken);
       return specificity > best.specificity ? { group: Option.some(group), specificity } : best;
     },
   ).group;
