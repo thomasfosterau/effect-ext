@@ -269,7 +269,7 @@ const ANGLE_UNITS: Readonly<Record<string, number>> = {
 };
 
 /** A `<hue>` in degrees, normalised to [0, 360), or `none` when allowed. */
-const hue = (arg: Arg, allowNone: boolean): Option.Option<Channel> => {
+const hueChannel = (arg: Arg, allowNone: boolean): Option.Option<Channel> => {
   const degrees = Predicate.isTagged(arg, "Number")
     ? Option.some(arg.value)
     : Predicate.isTagged(arg, "Dimension")
@@ -305,7 +305,7 @@ const toRgb = (
   color: ({ readonly _tag: "Hsl" } & HslChannels) | ({ readonly _tag: "Hwb" } & HwbChannels),
 ) =>
   Predicate.isTagged(color, "Hsl")
-    ? rgb(
+    ? srgbColor(
         Spaces.hslToSrgb([
           zero(color.hue),
           // CSS Color 4 §7: a negative saturation is 0%, lightness is within [0%, 100%].
@@ -314,12 +314,12 @@ const toRgb = (
         ]),
         color.alpha,
       )
-    : rgb(
+    : srgbColor(
         Spaces.hwbToSrgb([zero(color.hue), zero(color.whiteness), zero(color.blackness)]),
         color.alpha,
       );
 
-const rgb = (
+const srgbColor = (
   channels: readonly [number, number, number],
   alpha: Channel,
 ): Extract<Color, { readonly _tag: "Rgb" }> => ({
@@ -374,7 +374,7 @@ const parseHsl = (args: ReadonlyArray<Arg>): Option.Option<Color> => {
     const [h, s, l] = channels;
     if (h === undefined || s === undefined || l === undefined) return Option.none();
     return all([
-      hue(h, true),
+      hueChannel(h, true),
       numberOrPercentage(s, 1, true),
       numberOrPercentage(l, 1, true),
       alphaOf(alpha, true),
@@ -388,7 +388,12 @@ const parseHsl = (args: ReadonlyArray<Arg>): Option.Option<Color> => {
       !Predicate.isTagged(l, "Percentage")
     )
       return Option.none();
-    return all([hue(h, false), Option.some(s.value), Option.some(l.value), alphaOf(alpha, false)]);
+    return all([
+      hueChannel(h, false),
+      Option.some(s.value),
+      Option.some(l.value),
+      alphaOf(alpha, false),
+    ]);
   });
   return Option.map(
     Option.orElse(modern, () => legacy),
@@ -408,7 +413,7 @@ const parseHwb = (args: ReadonlyArray<Arg>): Option.Option<Color> =>
       const [h, w, b] = channels;
       if (h === undefined || w === undefined || b === undefined) return Option.none();
       return all([
-        hue(h, true),
+        hueChannel(h, true),
         numberOrPercentage(w, 1, true),
         numberOrPercentage(b, 1, true),
         alphaOf(alpha, true),
@@ -472,7 +477,7 @@ const parseLchLike = (
       return all([
         numberOrPercentage(l, lightnessPercent, true),
         numberOrPercentage(c, chromaPercent, true),
-        hue(h, true),
+        hueChannel(h, true),
         alphaOf(alpha, true),
       ]);
     }),
@@ -569,14 +574,10 @@ const parseCustomColor = (space: string, rest: ReadonlyArray<Arg>): Option.Optio
 };
 
 /** The arguments split at top-level commas, each without surrounding whitespace. */
-const commaSeparated = (args: ReadonlyArray<Arg>): ReadonlyArray<ReadonlyArray<Arg>> =>
-  args.reduce<ReadonlyArray<ReadonlyArray<Arg>>>(
-    (groups, arg) =>
-      Predicate.isTagged(arg, "Comma")
-        ? [...groups, []]
-        : [...groups.slice(0, -1), [...(groups.at(-1) ?? []), arg]],
-    [[]],
-  );
+const commaSeparated = (args: ReadonlyArray<Arg>): ReadonlyArray<ReadonlyArray<Arg>> => {
+  const commas = args.flatMap((arg, index) => (Predicate.isTagged(arg, "Comma") ? [index] : []));
+  return [-1, ...commas].map((start, group) => args.slice(start + 1, commas[group] ?? args.length));
+};
 
 /** `light-dark()` (CSS Color 5 §11): two colours, separated by a comma. */
 const parseLightDark = (args: ReadonlyArray<Arg>): Option.Option<Color> => {

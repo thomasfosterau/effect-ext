@@ -112,49 +112,47 @@ describe("Shift_JIS, EUC-JP and EUC-KR", () => {
   });
 });
 
+/**
+ * Every character a pair decodes to (not U+FFFD, not Shift_JIS's
+ * decode-only EUDC Private Use range), all of them encoded back in one
+ * go and decoded again, gives the same text: the encoder picks a pointer
+ * for every character the decoder produces. (One encoder for the lot:
+ * building one costs a reverse index.)
+ */
+const roundTrips = (
+  encoding: Encoding.EncodingName,
+  all: ReadonlyArray<readonly [number, number]>,
+): boolean =>
+  Effect.runSync(
+    Effect.provide(
+      Effect.gen(function* () {
+        const decoded = yield* Encoding.decode(Uint8Array.from(all.flat()), {
+          encoding,
+          fatal: false,
+          bomHandling: "keep",
+        });
+        const text = Array.from(decoded)
+          .filter((char) => char !== "\uFFFD" && !/[\uE000-\uF8FF]/.test(char) && char >= "\u0080")
+          .join("");
+        const back = yield* Encoding.decode(yield* Encoding.encode(text, { encoding }), {
+          encoding,
+          bomHandling: "keep",
+        });
+        return text.length > 1000 && back === text;
+      }),
+      ALL,
+    ),
+  );
+
+const pairs = (leads: readonly [number, number], trails: readonly [number, number]) =>
+  Array.from({ length: leads[1] - leads[0] + 1 }, (_, l) =>
+    Array.from(
+      { length: trails[1] - trails[0] + 1 },
+      (_trailing, t) => [leads[0] + l, trails[0] + t] as const,
+    ),
+  ).flat();
+
 describe("round trips", () => {
-  const pairs = (leads: readonly [number, number], trails: readonly [number, number]) =>
-    Array.from({ length: leads[1] - leads[0] + 1 }, (_, l) =>
-      Array.from(
-        { length: trails[1] - trails[0] + 1 },
-        (_, t) => [leads[0] + l, trails[0] + t] as const,
-      ),
-    ).flat();
-
-  /**
-   * Every character a pair decodes to (not U+FFFD, not Shift_JIS's
-   * decode-only EUDC Private Use range), all of them encoded back in one
-   * go and decoded again, gives the same text: the encoder picks a pointer
-   * for every character the decoder produces. (One encoder for the lot:
-   * building one costs a reverse index.)
-   */
-  const roundTrips = (
-    encoding: Encoding.EncodingName,
-    all: ReadonlyArray<readonly [number, number]>,
-  ): boolean =>
-    Effect.runSync(
-      Effect.provide(
-        Effect.gen(function* () {
-          const decoded = yield* Encoding.decode(Uint8Array.from(all.flat()), {
-            encoding,
-            fatal: false,
-            bomHandling: "keep",
-          });
-          const text = Array.from(decoded)
-            .filter(
-              (char) => char !== "\uFFFD" && !/[\uE000-\uF8FF]/.test(char) && char >= "\u0080",
-            )
-            .join("");
-          const back = yield* Encoding.decode(yield* Encoding.encode(text, { encoding }), {
-            encoding,
-            bomHandling: "keep",
-          });
-          return text.length > 1000 && back === text;
-        }),
-        ALL,
-      ),
-    );
-
   it.each([
     ["Shift_JIS", pairs([0x81, 0xfc], [0x40, 0xfc])],
     ["EUC-JP", pairs([0xa1, 0xfe], [0xa1, 0xfe])],

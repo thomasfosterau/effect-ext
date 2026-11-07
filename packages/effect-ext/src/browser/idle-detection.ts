@@ -193,9 +193,9 @@ export const make = (IdleDetector: IdleDetectorLike | undefined): IdleDetection[
               detector.addEventListener("change", onChange);
               return new AbortController();
             }),
-            (controller) =>
+            (aborter) =>
               Effect.sync(() => {
-                controller.abort();
+                aborter.abort();
                 detector.removeEventListener("change", onChange);
               }),
           );

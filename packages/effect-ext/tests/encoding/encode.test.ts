@@ -208,15 +208,15 @@ describe("encodings without an encoder", () => {
   });
 });
 
-describe("encodeStream", () => {
-  const encodeChunks = (chunks: ReadonlyArray<string>, options?: Encoding.EncodeOptions) =>
-    run(
-      Effect.map(
-        Stream.runCollect(Encoding.encodeStream(Stream.fromIterable(chunks), options)),
-        (parts) => Array.from(parts),
-      ),
-    );
+const encodeChunks = (chunks: ReadonlyArray<string>, options?: Encoding.EncodeOptions) =>
+  run(
+    Effect.map(
+      Stream.runCollect(Encoding.encodeStream(Stream.fromIterable(chunks), options)),
+      (parts) => Array.from(parts),
+    ),
+  );
 
+describe("encodeStream", () => {
   it("joins a surrogate pair split across chunks, and agrees with encode", () => {
     const exit = encodeChunks(["a\uD83D", "\uDE00b"]);
     expect(Exit.map(exit, concat)).toStrictEqual(Exit.succeed(new TextEncoder().encode("a😀b")));

@@ -96,10 +96,10 @@ describe("Locks.acquire", () => {
           yield* locks.acquire("cache", { mode: "shared" });
           yield* locks.acquire("cache", { mode: "shared" });
           yield* Effect.forkScoped(locks.acquire("cache"));
-          yield* until(locks, (snapshot) => snapshot.pending.length === 1);
+          yield* until(locks, (state) => state.pending.length === 1);
           // A shared request after a queued exclusive one waits: no starvation.
           yield* Effect.forkScoped(locks.acquire("cache", { mode: "shared" }));
-          yield* until(locks, (snapshot) => snapshot.pending.length === 2);
+          yield* until(locks, (state) => state.pending.length === 2);
           return yield* locks.query;
         }),
       ),
@@ -280,12 +280,12 @@ describe("Locks without a lock manager", () => {
   });
 });
 
-describe("Locks rejection mapping", () => {
-  const rejecting = (cause: unknown): Locks.LockManagerLike => ({
-    request: () => Promise.reject(cause),
-    query: () => Promise.reject(cause),
-  });
+const rejecting = (cause: unknown): Locks.LockManagerLike => ({
+  request: () => Promise.reject(cause),
+  query: () => Promise.reject(cause),
+});
 
+describe("Locks rejection mapping", () => {
   it("maps the browser's DOMException names onto reasons", async () => {
     const reasons = await Effect.runPromise(
       Effect.all(
@@ -319,27 +319,26 @@ describe("Locks rejection mapping", () => {
   });
 });
 
-describe("Locks grant races", () => {
-  /** A manager whose grants the test hands out by hand, as a browser task would. */
-  const manual = () => {
-    const pending: Array<(lock: { readonly name: string; readonly mode: "exclusive" }) => void> =
-      [];
-    const outcomes: Array<Promise<void> | undefined> = [];
-    const manager: Locks.LockManagerLike = {
-      request: (name, _options, callback) =>
-        new Promise<void>((resolve) => {
-          pending.push((lock) => {
-            const held = callback(lock);
-            outcomes.push(held);
-            void Promise.resolve(held).then(() => resolve());
-          });
-        }),
-      query: () => Promise.resolve({}),
-    };
-    const grantNext = () => pending.shift()?.({ name: "x", mode: "exclusive" });
-    return { manager, grantNext, outcomes };
+/** A manager whose grants the test hands out by hand, as a browser task would. */
+const manual = () => {
+  const pending: Array<(lock: { readonly name: string; readonly mode: "exclusive" }) => void> = [];
+  const outcomes: Array<Promise<void> | undefined> = [];
+  const manager: Locks.LockManagerLike = {
+    request: (name, _options, callback) =>
+      new Promise<void>((resolve) => {
+        pending.push((lock) => {
+          const held = callback(lock);
+          outcomes.push(held);
+          void Promise.resolve(held).then(() => resolve());
+        });
+      }),
+    query: () => Promise.resolve({}),
   };
+  const grantNext = () => pending.shift()?.({ name: "x", mode: "exclusive" });
+  return { manager, grantNext, outcomes };
+};
 
+describe("Locks grant races", () => {
   it("releases at once a lock granted after the acquiring fiber was interrupted", async () => {
     const { manager, grantNext, outcomes } = manual();
     const locks = Locks.make(manager);

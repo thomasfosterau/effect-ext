@@ -67,6 +67,17 @@ const startsNumber = (first: number, second: number, third: number): boolean => 
   return isDigit(first);
 };
 
+/** Whether a code point inside an unquoted URL makes it a bad URL. */
+const isBadUrlPoint = (point: number): boolean =>
+  point === 0x22 || point === 0x27 || point === 0x28 || isNonPrintable(point);
+
+/** Whether a code point is a quotation mark (`"` or `'`). */
+const isQuote = (c: number) => c === 0x22 || c === 0x27;
+
+const delim = (point: number): Token => ({ _tag: "Delim", value: String.fromCodePoint(point) });
+
+const fixed = (token: Token) => (): Token => token;
+
 /** Tokenizes CSS text into tokens with their offsets, ending before EOF. */
 export const tokenize = (text: string): ReadonlyArray<Located> => {
   const input = preprocess(text);
@@ -162,10 +173,6 @@ export const tokenize = (text: string): ReadonlyArray<Located> => {
     return { _tag: "BadUrl" };
   };
 
-  /** Whether a code point inside an unquoted URL makes it a bad URL. */
-  const isBadUrlPoint = (point: number): boolean =>
-    point === 0x22 || point === 0x27 || point === 0x28 || isNonPrintable(point);
-
   /** Whitespace inside a URL: only `)` or the end may follow it. */
   const consumeUrlWhitespace = (value: string): Token => {
     while (isWhitespace(at(0))) next();
@@ -196,8 +203,7 @@ export const tokenize = (text: string): ReadonlyArray<Located> => {
     if (name.toLowerCase() === "url" && at(0) === 0x28) {
       next();
       while (isWhitespace(at(0)) && isWhitespace(at(1))) next();
-      const quote = (c: number) => c === 0x22 || c === 0x27;
-      if (quote(at(0)) || (isWhitespace(at(0)) && quote(at(1)))) {
+      if (isQuote(at(0)) || (isWhitespace(at(0)) && isQuote(at(1)))) {
         return { _tag: "Function", value: name };
       }
       return consumeUrl();
@@ -260,8 +266,6 @@ export const tokenize = (text: string): ReadonlyArray<Located> => {
     return { _tag: "UnicodeRange", start, end: start };
   };
 
-  const delim = (point: number): Token => ({ _tag: "Delim", value: String.fromCodePoint(point) });
-
   /** `token`, if the next code point is `=` (consumed), else a delim for `point`. */
   const matcher =
     (tag: "IncludeMatch" | "DashMatch" | "PrefixMatch" | "SuffixMatch" | "SubstringMatch") =>
@@ -277,8 +281,6 @@ export const tokenize = (text: string): ReadonlyArray<Located> => {
     position -= 1;
     return consumeNumeric();
   };
-
-  const fixed = (token: Token) => (): Token => token;
 
   /** §4.3.1's per-code-point rules, after the code point is consumed. */
   const RULES: Readonly<Record<number, (point: number) => Token>> = {

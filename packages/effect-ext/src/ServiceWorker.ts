@@ -267,7 +267,7 @@ const cacheCall = <A>(
     catch: (cause) => new CacheError({ operation, cacheName, cause }),
   });
 
-const handle = (name: string, cache: Cache): CacheHandle => ({
+const cacheHandle = (name: string, cache: Cache): CacheHandle => ({
   name,
   match: (request, options) =>
     Effect.map(
@@ -305,7 +305,7 @@ export const openCache = (name: string): Effect.Effect<CacheHandle, CacheError> 
   Caches.use((storage) =>
     Effect.map(
       cacheCall("open", name, () => storage.open(name)),
-      (cache) => handle(name, cache),
+      (cache) => cacheHandle(name, cache),
     ),
   );
 
@@ -486,7 +486,7 @@ export interface StrategyOptions {
 }
 
 /** Opens the strategy's cache and looks `request` up in it. */
-const lookup = (
+const lookupEntry = (
   options: Pick<StrategyOptions, "cacheName" | "matchOptions">,
   request: Request,
 ): Effect.Effect<
@@ -558,7 +558,7 @@ export const cacheFirst =
   (options: StrategyOptions): Strategy<CacheError | FetchFailed> =>
   (request) =>
     Effect.gen(function* () {
-      const { cache, hit } = yield* lookup(options, request);
+      const { cache, hit } = yield* lookupEntry(options, request);
       if (Option.isSome(hit)) return hit.value;
       return yield* fetchAndCache(cache, request, options);
     });
@@ -683,7 +683,7 @@ export const staleWhileRevalidate =
   (options: StrategyOptions): Strategy<CacheError | FetchFailed> =>
   (request) =>
     Effect.gen(function* () {
-      const { cache, hit } = yield* lookup(options, request);
+      const { cache, hit } = yield* lookupEntry(options, request);
       if (Option.isNone(hit)) return yield* fetchAndCache(cache, request, options);
       const lifetime = yield* EventLifetime;
       // The page may consume the request's body; revalidate with a copy.
@@ -715,7 +715,7 @@ export const cacheOnly =
   (options: Omit<StrategyOptions, "cacheable">): Strategy<CacheError | CacheMiss> =>
   (request) =>
     Effect.gen(function* () {
-      const { hit } = yield* lookup(options, request);
+      const { hit } = yield* lookupEntry(options, request);
       if (Option.isSome(hit)) return hit.value;
       return yield* new CacheMiss({ cacheName: options.cacheName, url: request.url });
     });
@@ -1502,9 +1502,9 @@ export const memoryCacheStorage = (options: MemoryCacheStorageOptions = {}): Cac
     keys: async () => caches.map(([name]) => name),
     // The first cache (in creation order) holding a match wins; later caches
     // are not consulted once one answers.
-    match: (request, options) =>
+    match: (request, query) =>
       Arr.reduce(
-        options?.cacheName === undefined ? caches.map(([name]) => name) : [options.cacheName],
+        query?.cacheName === undefined ? caches.map(([name]) => name) : [query.cacheName],
         miss,
         (previous, name) =>
           previous.then((hit) =>
@@ -1512,7 +1512,7 @@ export const memoryCacheStorage = (options: MemoryCacheStorageOptions = {}): Cac
               ? hit
               : Option.match(lookup(name), {
                   onNone: () => miss,
-                  onSome: (cache) => cache.match(request, options),
+                  onSome: (cache) => cache.match(request, query),
                 }),
           ),
       ),

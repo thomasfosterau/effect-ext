@@ -210,13 +210,14 @@ describe("assertAllowedUrl", () => {
   );
 });
 
+const reasonOf = (url: string) =>
+  Result.match(checkUrl(url), {
+    onFailure: (error) => error.reason,
+    onSuccess: () => "allowed",
+  });
+
 describe("checkUrl (the Result form)", () => {
   it("classifies every rejection with a tagged reason", () => {
-    const reasonOf = (url: string) =>
-      Result.match(checkUrl(url), {
-        onFailure: (error) => error.reason,
-        onSuccess: () => "allowed",
-      });
     expect(reasonOf("not a url at all")).toBe("invalid");
     expect(reasonOf("ftp://example.com/file")).toBe("scheme");
     expect(reasonOf("https://user:pass@example.com/")).toBe("credentials");
@@ -258,6 +259,18 @@ const withMockFetch = async (
 
 const redirectTo = (location: string, status = 302): Response =>
   new Response(null, { status, headers: { location } });
+
+const redirectingElsewhere: typeof fetch = () =>
+  Promise.resolve(redirectTo("https://example.org/elsewhere"));
+
+const unresolvable: typeof fetch = () => Promise.resolve(redirectTo("http://"));
+
+const redirectingToMetadata: typeof fetch = () =>
+  Promise.resolve(redirectTo("http://169.254.169.254/latest/meta-data"));
+
+const unreached: typeof fetch = () => expect.unreachable("fetch was called");
+
+const locationless: typeof fetch = () => Promise.resolve(new Response(null, { status: 302 }));
 
 describe("fetchFollowingRedirects (SEC-SSRF-003)", () => {
   it("returns directly when there is no redirect", async () => {
@@ -436,13 +449,13 @@ describe("fetchFollowingRedirects (SEC-SSRF-003)", () => {
     [1.5, 2],
   ])("bounds the chain when maxHops is %s (%i requests)", async (maxHops, requests) => {
     let calls = 0;
-    const stub: typeof fetch = async () => {
+    const counting: typeof fetch = async () => {
       calls += 1;
       if (calls > 50) throw plainError("stopped after 50 requests");
       return redirectTo(`https://example.com/${calls}`);
     };
     await expect(
-      fetchFollowingRedirects("https://example.com/start", {}, maxHops, stub),
+      fetchFollowingRedirects("https://example.com/start", {}, maxHops, counting),
     ).rejects.toThrow("too many redirects");
     expect(calls).toBe(requests);
   });
@@ -478,14 +491,12 @@ describe("fetchFollowingRedirects (SEC-SSRF-003)", () => {
     });
 
     it("rejects with a plain Error carrying RedirectRejected's message for a missing Location", async () => {
-      const locationless: typeof fetch = () => Promise.resolve(new Response(null, { status: 302 }));
       await expect(
         fetchFollowingRedirects("https://example.com/", {}, 5, locationless),
       ).rejects.toStrictEqual(plainError("redirect with no Location from 'https://example.com/'"));
     });
 
     it("carries the UnsafeUrl as cause for a blocked initial host", async () => {
-      const unreached: typeof fetch = () => expect.unreachable("fetch was called");
       await expectPlainErrorCausedBy(
         fetchFollowingRedirects("http://127.0.0.1/", {}, 5, unreached),
         UnsafeUrl,
@@ -499,10 +510,8 @@ describe("fetchFollowingRedirects (SEC-SSRF-003)", () => {
     });
 
     it("carries the UnsafeUrl for the redirect target as cause for a redirect into a blocked host", async () => {
-      const redirecting: typeof fetch = () =>
-        Promise.resolve(redirectTo("http://169.254.169.254/latest/meta-data"));
       await expectPlainErrorCausedBy(
-        fetchFollowingRedirects("https://example.com/", {}, 5, redirecting),
+        fetchFollowingRedirects("https://example.com/", {}, 5, redirectingToMetadata),
         UnsafeUrl,
         {
           _tag: "UnsafeUrl",
@@ -514,7 +523,6 @@ describe("fetchFollowingRedirects (SEC-SSRF-003)", () => {
     });
 
     it("carries the RedirectRejected as cause for a missing Location", async () => {
-      const locationless: typeof fetch = () => Promise.resolve(new Response(null, { status: 302 }));
       await expectPlainErrorCausedBy(
         fetchFollowingRedirects("https://example.com/", {}, 5, locationless),
         RedirectRejected,
@@ -528,7 +536,6 @@ describe("fetchFollowingRedirects (SEC-SSRF-003)", () => {
     });
 
     it("carries the RedirectRejected as cause for an unresolvable Location", async () => {
-      const unresolvable: typeof fetch = () => Promise.resolve(redirectTo("http://"));
       await expectPlainErrorCausedBy(
         fetchFollowingRedirects("https://example.com/", {}, 5, unresolvable),
         RedirectRejected,
@@ -542,10 +549,8 @@ describe("fetchFollowingRedirects (SEC-SSRF-003)", () => {
     });
 
     it("carries the RedirectRejected as cause past the hop limit", async () => {
-      const redirecting: typeof fetch = () =>
-        Promise.resolve(redirectTo("https://example.org/elsewhere"));
       await expectPlainErrorCausedBy(
-        fetchFollowingRedirects("https://example.com/", {}, 0, redirecting),
+        fetchFollowingRedirects("https://example.com/", {}, 0, redirectingElsewhere),
         RedirectRejected,
         {
           _tag: "RedirectRejected",
@@ -558,12 +563,12 @@ describe("fetchFollowingRedirects (SEC-SSRF-003)", () => {
   });
 });
 
-describe("followRedirects (the Effect form)", () => {
-  const stub =
-    (impl: (url: string) => Response): typeof fetch =>
-    (input) =>
-      Promise.resolve(impl(urlOf(input)));
+const stub =
+  (impl: (url: string) => Response): typeof fetch =>
+  (input) =>
+    Promise.resolve(impl(urlOf(input)));
 
+describe("followRedirects (the Effect form)", () => {
   it("fails with UnsafeUrl on a blocked hop and RedirectRejected on a broken chain", async () => {
     const blocked = await Effect.runPromise(
       Effect.flip(

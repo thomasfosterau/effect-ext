@@ -40,8 +40,11 @@ export interface CjkTables {
 export const EMPTY: CjkTables = { _tag: "EncodingTables" };
 
 /** Every table of every argument, a later one winning. */
-export const merge = (all: ReadonlyArray<CjkTables>): CjkTables =>
-  all.reduce<CjkTables>((merged, tables) => ({ ...merged, ...tables }), EMPTY);
+export const merge = (all: ReadonlyArray<CjkTables>): CjkTables => {
+  const merged: CjkTables = { ...EMPTY };
+  all.forEach((tables) => Object.assign(merged, tables));
+  return merged;
+};
 
 /** The end of the queue, where a handler is called with no byte or code point. */
 const EOQ = -1;

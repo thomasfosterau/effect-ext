@@ -434,9 +434,8 @@ export default defineConfig({
           // The `effect/http*` modules are marked unstable throughout
           // Effect 4; the feeds, sitemap and request policies are built on them.
           "effecttsgo/unstable-api-usage": "off",
-          // Immutable updates in `map` / `reduce`; the fix is mutation.
+          // Immutable updates in `map`; the fix is mutation.
           "oxc/no-map-spread": "off",
-          "oxc/no-accumulating-spread": "warn",
           // `BroadcastChannel.postMessage` takes no `targetOrigin`.
           "unicorn/require-post-message-target-origin": "off",
           // The in-memory Web Locks double mirrors the platform's promise
@@ -447,12 +446,6 @@ export default defineConfig({
           "vitest/require-to-throw-message": "off",
           // Misreads an exhaustive `switch` over a union as a missing return.
           "typescript/consistent-return": "off",
-          // `describeError`'s documented last resort stringifies an object.
-          "typescript/no-base-to-string": "warn",
-          // effect-web's adoption allowances for the `suspicious` category
-          // (48, 41 and 19 sites), each a pay-down item in #31.
-          "eslint/no-shadow": "warn",
-          "unicorn/consistent-function-scoping": "warn",
           // Off, not warn: its fix (applied by the pre-commit `vp check
           // --fix`) rewrites `const X: ReadonlyArray<T> = [...]` to
           // `= new Set([...])` and `.includes` to `.has`, but leaves the
@@ -461,6 +454,15 @@ export default defineConfig({
           // is how #32's wiring commit broke nine of these lookups. Whether
           // they become `HashSet`s is #31's call.
           "unicorn/prefer-set-has": "off",
+        },
+      },
+      // `describeError`'s documented last resort stringifies an object
+      // (`String(error)`), whatever its `toString` gives: that text is the
+      // contract, so no property can be picked instead.
+      {
+        files: ["packages/effect-ext/src/Observability.ts"],
+        rules: {
+          "typescript/no-base-to-string": "warn",
         },
       },
       // `logStructured` is called from plain code and runs its effect with

@@ -44,8 +44,8 @@ const toJsonItems = (value: ComponentValue): ReadonlyArray<Json> => {
 const BLOCK_NAMES = { "(": "()", "[": "[]", "{": "{}" } as const;
 
 /** A component value in the suite's representation (its README, "Component values"). */
-const toJson = (value: ComponentValue): Json =>
-  Match.valueTags(value, {
+const toJson = (component: ComponentValue): Json =>
+  Match.valueTags(component, {
     Ident: (value) => ["ident", value.value],
     AtKeyword: (value) => ["at-keyword", value.value],
     Hash: (value) => ["hash", value.value, value.type],
@@ -80,9 +80,9 @@ const toJson = (value: ComponentValue): Json =>
 const list = (values: ReadonlyArray<ComponentValue>): Json => values.flatMap(toJsonItems);
 
 const item = (
-  value: Syntax.Declaration | Syntax.AtRule | Syntax.QualifiedRule | Syntax.SyntaxError,
+  entry: Syntax.Declaration | Syntax.AtRule | Syntax.QualifiedRule | Syntax.SyntaxError,
 ): Json =>
-  Match.valueTags(value, {
+  Match.valueTags(entry, {
     Declaration: (value) => ["declaration", value.name, list(value.value), value.important],
     AtRule: (value) => [
       "at-rule",
@@ -155,17 +155,17 @@ describe("error offsets", () => {
   });
 });
 
-describe("deep nesting", () => {
-  /** The nesting depth of a component value, measured without recursion. */
-  const depthOf = (value: Option.Option<Token.ComponentValue>): number =>
-    Arr.unfold(value, (current) =>
-      Option.flatMap(current, (node) =>
-        Predicate.isTagged(node, "Block") || Predicate.isTagged(node, "Func")
-          ? Option.some([node, Arr.head(node.value)] as const)
-          : Option.none(),
-      ),
-    ).length;
+/** The nesting depth of a component value, measured without recursion. */
+const depthOf = (value: Option.Option<Token.ComponentValue>): number =>
+  Arr.unfold(value, (current) =>
+    Option.flatMap(current, (node) =>
+      Predicate.isTagged(node, "Block") || Predicate.isTagged(node, "Func")
+        ? Option.some([node, Arr.head(node.value)] as const)
+        : Option.none(),
+    ),
+  ).length;
 
+describe("deep nesting", () => {
   it.each(["(", "[", "{", "f("])(
     "parses 100000 levels of %s without overflowing the stack",
     (open) => {

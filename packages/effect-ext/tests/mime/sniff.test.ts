@@ -94,6 +94,11 @@ describe("pattern tables", () => {
   });
 });
 
+const rtf: Sniff.Signature = (input) =>
+  String.fromCharCode(...input.subarray(0, 5)) === "{\\rtf"
+    ? Option.some("application/rtf")
+    : Option.none();
+
 describe("sniff, an unknown type", () => {
   it("finds HTML after leading whitespace, case-insensitively, before a tag-terminating byte", () => {
     expect(sniffed(ascii("  \n<!doctype html>"))).toBe("text/html");
@@ -128,10 +133,6 @@ describe("sniff, an unknown type", () => {
   });
 
   it("tries extra signatures after the standard patterns, before text or binary", () => {
-    const rtf: Sniff.Signature = (input) =>
-      String.fromCharCode(...input.subarray(0, 5)) === "{\\rtf"
-        ? Option.some("application/rtf")
-        : Option.none();
     expect(sniffed(ascii("{\\rtf1\\ansi"), { signatures: [rtf] })).toBe("application/rtf");
     expect(sniffed(ascii("{\\rtf1\\ansi"))).toBe("text/plain");
     // A standard pattern still wins.
@@ -190,6 +191,11 @@ describe("Extension", () => {
   });
 });
 
+const ooxml: Sniff.Signature = (input) =>
+  String.fromCharCode(...input.subarray(4, 23)) === "[Content_Types].xml"
+    ? Option.some("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    : Option.none();
+
 describe("review regressions", () => {
   it("does not sniff scriptable types in an unknown resource under noSniff (§7)", () => {
     expect(sniffed(ascii("<html>"), { noSniff: true })).toBe("text/plain");
@@ -226,10 +232,6 @@ describe("review regressions", () => {
 
   it("lets a custom signature refine a generic ZIP match, but not a specific one", () => {
     const zip = Uint8Array.from([...ascii("PK\u0003\u0004"), ...ascii("[Content_Types].xml")]);
-    const ooxml: Sniff.Signature = (input) =>
-      String.fromCharCode(...input.subarray(4, 23)) === "[Content_Types].xml"
-        ? Option.some("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-        : Option.none();
     expect(sniffed(zip, { signatures: [ooxml] })).toBe(
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     );

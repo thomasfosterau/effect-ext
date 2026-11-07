@@ -143,6 +143,13 @@ export class Broadcast extends Context.Service<
   }
 >()("@thomasfosterau/effect-ext/Browser/Broadcast") {}
 
+/** A `message` listener that offers each event's `data` to `queue`. */
+const forwardTo =
+  (queue: Queue.Queue<unknown, Cause.Done>) =>
+  (event: unknown): void => {
+    Queue.offerUnsafe(queue, Predicate.hasProperty(event, "data") ? event.data : undefined);
+  };
+
 /**
  * Builds the {@link Broadcast} service over a channel factory; `undefined`
  * builds the unsupported service. {@link layer} passes the ambient
@@ -185,12 +192,7 @@ export const make = (factory: BroadcastChannelFactory | undefined): Broadcast["S
             const queue = yield* Queue.unbounded<unknown, Cause.Done>();
             yield* Effect.acquireRelease(
               Effect.sync(() => {
-                const onMessage = (event: unknown): void => {
-                  Queue.offerUnsafe(
-                    queue,
-                    Predicate.hasProperty(event, "data") ? event.data : undefined,
-                  );
-                };
+                const onMessage = forwardTo(queue);
                 channel.addEventListener("message", onMessage);
                 return onMessage;
               }),

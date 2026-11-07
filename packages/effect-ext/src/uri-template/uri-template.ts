@@ -569,4 +569,4 @@ export const matcher = (template: UriTemplate): Result.Result<Matcher, TemplateE
  * @since 0.1.0
  * @category matching
  */
-export const match = (matcher: Matcher, url: string): Option.Option<Matched> => matcher.match(url);
+export const match = (self: Matcher, url: string): Option.Option<Matched> => self.match(url);

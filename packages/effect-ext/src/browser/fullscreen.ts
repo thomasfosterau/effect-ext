@@ -278,12 +278,12 @@ export const withFullscreen: {
   (args) => Effect.isEffect(args[0]),
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
-    element: FullscreenElementLike,
+    target: FullscreenElementLike,
     options?: FullscreenOptions,
   ): Effect.Effect<A, E | FullscreenError, R | Fullscreen> =>
     Effect.flatMap(Fullscreen, (fullscreen) =>
       Effect.scopedWith((scope) =>
-        Effect.andThen(Scope.provide(fullscreen.enter(element, options), scope), self),
+        Effect.andThen(Scope.provide(fullscreen.enter(target, options), scope), self),
       ),
     ),
 );

@@ -221,7 +221,11 @@ export const current: Effect.Effect<
 > = Effect.flatMap(ScreenOrientation, (orientation) =>
   Effect.map(
     Effect.all([orientation.type, orientation.angle], { concurrency: 1 }),
-    ([type, angle]) => Option.zipWith(type, angle, (type, angle) => ({ type, angle })),
+    ([type, angle]) =>
+      Option.zipWith(type, angle, (typeValue, angleValue) => ({
+        type: typeValue,
+        angle: angleValue,
+      })),
   ),
 );
 
