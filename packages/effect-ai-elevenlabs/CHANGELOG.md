@@ -1,5 +1,21 @@
 # @thomasfosterau/effect-ai-elevenlabs
 
+## 0.4.0
+
+### Minor Changes
+
+- [#30](https://github.com/thomasfosterau/effect-ext/pull/30) [`06fa9d5`](https://github.com/thomasfosterau/effect-ext/commit/06fa9d5d6ef2af6d3dcc23f0299def163df989df) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - **Breaking:** the `effect` peer floor rises from `>=4.0.0-rc.118` to `>=4.0.0`, the first stable release. A consumer still on an `effect` 4.0 release candidate must upgrade to 4.0.0 or later. No API changes.
+
+- [#57](https://github.com/thomasfosterau/effect-ext/pull/57) [`a09d3ca`](https://github.com/thomasfosterau/effect-ext/commit/a09d3ca1a5713af5a9f363b25ae4c7900c95e3a3) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - **Breaking:** the package now depends on `@thomasfosterau/effect-ext` instead of `@thomasfosterau/effect-ai-ext`, which merged into it. The abstractions it implements (`RerankerModel`, `ClassifierModel`, `SpeechModel`, `TranscriptionModel`, `VoiceConversionModel`, `ModerationModel`) are now `@thomasfosterau/effect-ext/<Module>`, with `Context` keys to match, so a consumer moves its own imports of them to `@thomasfosterau/effect-ext` in the same upgrade: a layer this version builds does not provide a tag imported from `@thomasfosterau/effect-ai-ext`.
+
+### Patch Changes
+
+- The package now lives in [`thomasfosterau/effect-ext`](https://github.com/thomasfosterau/effect-ext): its `repository`, `homepage` and `bugs` fields and the README's source links point there. It is built and tested against `effect` 4.0.6; the published peer ranges are unchanged.
+
+- [#52](https://github.com/thomasfosterau/effect-ext/pull/52) [`9540034`](https://github.com/thomasfosterau/effect-ext/commit/95400348770d569e29ca71fb7625e837c2f1c7d7) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - The `effect` peer range, and the `@effect/ai-anthropic`, `@effect/platform-node` and `@effect/platform-browser` peers, change form from `>=4.0.0` to `^4.0.0` per the peer-range policy. Only the form changes: the floor stays 4.0.0, tested there. Effect 5 is no longer admitted. `IdleDetection.watch` now fails its stream when the detector refuses to start on effect 4.0.0, where the stream used to wait forever.
+- Updated dependencies [[`b888bd8`](https://github.com/thomasfosterau/effect-ext/commit/b888bd8816a3df41e082bac718d3996ee695ac09), [`9540034`](https://github.com/thomasfosterau/effect-ext/commit/95400348770d569e29ca71fb7625e837c2f1c7d7), [`854263d`](https://github.com/thomasfosterau/effect-ext/commit/854263dff04b6e88c57afea0a688abd61b9cf577), [`5d6b485`](https://github.com/thomasfosterau/effect-ext/commit/5d6b485562ca9b301bc88ecc54070deae711a1ac), [`36b09d0`](https://github.com/thomasfosterau/effect-ext/commit/36b09d0dda98d5f4c747205f2c9b2a63f77fb96e)]:
+  - @thomasfosterau/effect-ext@0.1.0
+
 ## 0.3.4
 
 ### Patch Changes

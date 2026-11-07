@@ -4,6 +4,31 @@
 
 This package was published as `@thomasfosterau/effect-ai-gateway` until 0.5.1 and renamed before its first release under this name (0.1.0). The entries below are that package's.
 
+## 0.1.0
+
+### Minor Changes
+
+- [#58](https://github.com/thomasfosterau/effect-ext/pull/58) [`809014c`](https://github.com/thomasfosterau/effect-ext/commit/809014c324bbeb8e6f9ce02a5b1cb33c4f305ca5) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - First release under this name: `@thomasfosterau/effect-ai-gateway` (published to 0.5.1, now deprecated) is renamed `@thomasfosterau/effect-ai-cloudflare` and extends the official `@effect/ai-cloudflare`. Every export of the gateway package keeps its name and behaviour, so moving is an import change. Changes since effect-ai-gateway 0.5.1, besides those listed with this release:
+  
+  - **Workers AI decision models, from the same package.** The new `WorkersAi` module re-exports `@effect/ai-cloudflare`'s `CloudflareClient`, `CloudflareDecisionModel` (Clef and Clef-flash for `effect/ai`'s `DecisionModel`) and `CloudflareSchema` unchanged, and wires that client to the AI Gateway the other routes use: `cloudflareClientLayer({ gateway, apiToken, apiUrl?, transformClient? })` sets its account id and `gatewayId` from a `GatewayUrlConfig` and sends the gateway's `cf-aig-authorization` token; `cloudflareClientLayerConfig` reads `CF_ACCOUNT_ID`, `CF_AIG_GATEWAY_ID`, `CF_AIG_TOKEN` and `CF_API_TOKEN` (the Cloudflare API token Workers AI REST authenticates with); `decisionModelLayerConfig({ model })` is the decision model over it.
+  - **Breaking: new required peer and a higher `effect` floor.** `@effect/ai-cloudflare` is a peer (`^4.0.6`, the first release whose `CloudflareClient` routes through an AI Gateway), and the `effect` peer rises from `^4.0.0` to `^4.0.6`, which that release requires. `@effect/ai-anthropic` stays `^4.0.0`.
+  - The package lives in [`thomasfosterau/effect-ext`](https://github.com/thomasfosterau/effect-ext); its `repository`, `homepage` and `bugs` fields point there.
+
+- [#25](https://github.com/thomasfosterau/effect-ext/pull/25) [`db7a951`](https://github.com/thomasfosterau/effect-ext/commit/db7a951bd82f57ebfb89657579d047754cba357d) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - The OpenAI moderation provider follows `ModerationModel`'s multimodal inputs and richer results (effect-ai-ext#143; the abstraction is now `@thomasfosterau/effect-ext/ModerationModel`).
+  
+  - **Per-category flags.** Each `ModerationResult.flags` is filled from OpenAI's `categories` (nulls dropped).
+  - **Resolved model id.** `ModerationResponse.modelId` is OpenAI's dated snapshot.
+  - **Call ledger.** `OpenAiModerationOptions.onCall` observes each HTTP call's `status`, `durationMillis` and `error` (`OpenAiModerationCall`), on success and failure, on both transports.
+  - Image file parts are sent as `image_url` parts, one request per multimodal input; a non-image file part fails with `AiError.InvalidUserInputError` before any request.
+
+- [#57](https://github.com/thomasfosterau/effect-ext/pull/57) [`a09d3ca`](https://github.com/thomasfosterau/effect-ext/commit/a09d3ca1a5713af5a9f363b25ae4c7900c95e3a3) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - **Breaking:** the package now depends on `@thomasfosterau/effect-ext` instead of `@thomasfosterau/effect-ai-ext`, which merged into it. The abstractions it implements (`RerankerModel`, `ClassifierModel`, `SpeechModel`, `TranscriptionModel`, `VoiceConversionModel`, `ModerationModel`) are now `@thomasfosterau/effect-ext/<Module>`, with `Context` keys to match, so a consumer moves its own imports of them to `@thomasfosterau/effect-ext` in the same upgrade: a layer this version builds does not provide a tag imported from `@thomasfosterau/effect-ai-ext`.
+
+### Patch Changes
+
+- `OpenAiModeration` accepts an image file part whose `data` is in the tagged JSON form that encoding a prompt produces (`{ _tag: "Uint8Array", base64 }` or `{ _tag: "URL", href }`), which `Prompt.FilePartEncoded` admits from `effect` 4.0.6. The first is sent as a `data:` URI and the second as its URL.
+- Updated dependencies [[`b888bd8`](https://github.com/thomasfosterau/effect-ext/commit/b888bd8816a3df41e082bac718d3996ee695ac09), [`9540034`](https://github.com/thomasfosterau/effect-ext/commit/95400348770d569e29ca71fb7625e837c2f1c7d7), [`854263d`](https://github.com/thomasfosterau/effect-ext/commit/854263dff04b6e88c57afea0a688abd61b9cf577), [`5d6b485`](https://github.com/thomasfosterau/effect-ext/commit/5d6b485562ca9b301bc88ecc54070deae711a1ac), [`36b09d0`](https://github.com/thomasfosterau/effect-ext/commit/36b09d0dda98d5f4c747205f2c9b2a63f77fb96e)]:
+  - @thomasfosterau/effect-ext@0.1.0
+
 ## 0.5.1
 
 ### Patch Changes

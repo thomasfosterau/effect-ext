@@ -1,0 +1,63 @@
+# @thomasfosterau/effect-ext
+
+## 0.1.0
+
+### Minor Changes
+
+- [#57](https://github.com/thomasfosterau/effect-ext/pull/57) [`b888bd8`](https://github.com/thomasfosterau/effect-ext/commit/b888bd8816a3df41e082bac718d3996ee695ac09) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - `@thomasfosterau/effect-ai-ext` and `@thomasfosterau/effect-evals` join `@thomasfosterau/effect-ext`. Both were published to 0.5.1 and are deprecated on npm in favour of this package; moving is an import change.
+  
+  - **AI service abstractions** (were `@thomasfosterau/effect-ai-ext`) — `RerankerModel`, `ClassifierModel`, `SpeechModel`, `TranscriptionModel`, `ImageModel`, `ModerationModel` and `VoiceConversionModel`, each one subpath (`@thomasfosterau/effect-ai-ext/RerankerModel` → `@thomasfosterau/effect-ext/RerankerModel`) and a namespace on the root barrel. The root barrel does not re-export `effect/ai` as effect-ai-ext's did: import `LanguageModel`, `EmbeddingModel`, `AiError` and the other upstream modules from `effect/ai`. Each service's `Context` key moves too (`@thomasfosterau/effect-ai-ext/RerankerModel` becomes `@thomasfosterau/effect-ext/RerankerModel`), so a layer from the old package does not provide the new service.
+  - **Evals** (was `@thomasfosterau/effect-evals`) — the toolkit's barrel is `@thomasfosterau/effect-ext/evals` (`import { Runner, Ranking } from "@thomasfosterau/effect-ext/evals"`), and each of its modules is also a subpath under `./evals/` mirroring its file (`./evals/Runner`, `./evals/metrics/Ranking`, `./evals/metrics/rag/Faithfulness`, `./evals/scorers/ExactMatch`, …). It stays off the root barrel, whose names would otherwise include a `Result`, a `Cache` and a `Metric` beside Effect's own. The `effect-evals` bin ships with this package, and `@effect/platform-node` (`^4.0.0`) is an optional peer, needed by the CLI only. `engines.node` becomes `>=22.18`, which the CLI's type stripping needs.
+  
+  Changes since effect-ai-ext 0.5.1 and effect-evals 0.5.1:
+  
+  - **`ModerationModel` screens images and reports more of the provider's reading** (effect-ai-ext#143). `ModerationOptions.inputs` (and `ProviderOptions.inputs`) take `ModerationInput`: a string, or an array of `effect/ai` user-message parts (`Prompt.UserMessagePartEncoded`, text and file) screened as one input; an empty part list fails with `AiError.InvalidUserInputError`. Breaking for provider implementations, which must now accept the wider input type; callers that pass strings are unaffected. `fromLanguageModel` sends a multimodal batch as a system message of instructions and a user message of parts, every caller text part JSON-quoted like a string input. `ModerationResult.flags?: Record<string, boolean>` carries the provider's own verdict per category, and `ModerationResponse.modelId?: string` names the model that served the call (for `fromLanguageModel`, the `LanguageModel`'s response metadata).
+  - **`runRetrievalSuite` carries per-case context to the port and keeps each case's ranked page and latency** (effect-ai-ext#142). `RetrievalPort.retrieve(query, { limit, golden })` receives the case's golden beside its query, so per-case narrowing (a type filter, a locale) needs no lookup keyed on the query string; `RetrievalSuite`, `RetrievalPort`, `RetrievalSuiteResult` and `runRetrievalSuite` take a `Golden extends RetrievalGolden` parameter (default `RetrievalGolden`). Existing ports that read only `limit` keep compiling; code that calls a port's `retrieve` directly must now pass `golden`. `Result.CaseResult` gains `taskOutputs: ReadonlyArray<Result.TaskTrialOutput<Output>>` — per successful trial, the task's `output`, its `durationMillis` (retries included) and whether it was `cached` (a cached trial has a duration of `0`); `CaseResult` and `SuiteResult` take an `Output` type parameter (default `unknown`), and `runSuite` returns `SuiteResult<Golden, Output>`. For a retrieval suite the output is the ranked page, truncated to `k`. The `json` reporter writes the new field. Code that constructs a `CaseResult` by hand must add `taskOutputs`.
+
+- [#20](https://github.com/thomasfosterau/effect-ext/pull/20) [`854263d`](https://github.com/thomasfosterau/effect-ext/commit/854263dff04b6e88c57afea0a688abd61b9cf577) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Initial release of `@thomasfosterau/effect-ext`: extensions to the Effect standard library, merging the unreleased `effect-ext` and `@thomasfosterau/effect-schema-ext` packages into one (14 modules). Peer: `effect` PEER_RANGE. Every module is its own entry point and a namespace on `.`.
+  
+  Binary data, Allocator-backed:
+  
+  - `Allocator` — an `Allocator` service (a `Context.Reference` defaulting to the heap) handing out `ArrayBuffer` blocks, with heap, arena and tracked allocators, layers and a typed `AllocationError`.
+  - `Layout` — binary layouts (`u8` … `f64`, `bool`, structs, fixed arrays) with C-like alignment.
+  - `BufferStruct` — structs whose fields live in an `ArrayBuffer`, exposed as ordinary properties.
+  - `Vec` — a growable, `ArrayBuffer`-backed array, like Rust's `Vec<T>`.
+  - `StructOfArrays` — a growable struct-of-arrays container with typed-array columns.
+  - `String` — a growable, Allocator-backed UTF-8 string, like Rust's `String` (byte offsets and lengths).
+  - `Str` — an immutable UTF-8 string slice with Rust's `str` API; usable as a `HashMap` key.
+  
+  Schema helpers, with no JSON:API, Drizzle or application vocabulary:
+  
+  - `TriState` — the update tri-state (absent = carry forward, `null` = clear, value = set) in both encodings: `clearable` (`optionalKey(OptionFromNullOr(X))`) and `clearableNullOr` (`optional(NullOr(X))`); the separating readers `read` / `readNullOr` / `match` / `toNullOr` / `toNullOrFields` for write paths; the folding readers `suppliedValue` / `suppliedNullOr` for side effects.
+  - `Issues` — `pathToJsonPointer` (RFC 6901), `leaves` (a `SchemaIssue` tree flattened with its paths) and `pointers` (each leaf as a pointer, tag and formatted message, under a caller-chosen prefix).
+  - `Bounded` — `NonNegative`, `pageLimit` / `PageOffset`, the `pagination` / `requiredPagination` fields (explicit `maxLimit`; defaulted, or both keys required), and `idList` / `IdList` (comma-separated or repeated-key UUIDs, bounded as sent, optionally de-duplicated). The exports shared with effect-jsonapi's `FlatQuery` keep its names, defaults and messages; their option objects take `Option`-valued members.
+  - `Ids` — `Uuid`, branded ids (`make`, `refine` for stacked brands), and slugs (`SLUG_PATTERN`, `Slug`, `slug`: 1–200 characters by default, optional reserved segments, as effect-jsonapi's `FlatQuery`).
+  - `LiteralExact` — `tuple` / `literals`: literal tuples checked at compile time to name every member of a union and nothing else.
+  - `Ast` — field traits by decode probe through the JSON codec (`acceptsNull`, `isArray`, `isDate`) and by AST (`isOptionalKey`), and `fieldTraits` over a struct's fields.
+  - `Url` — absolute URLs whose scheme, hostname (or domain), port, credentials and path are part of their type. `Url.schema(spec)` decodes, serialises and checks a string, and its type records what was checked, so `Url<{ scheme: "https"; hostname: "api.example.com" }>` is assignable where a `Url<{ scheme: "http" | "https" }>` or a URL in the `example.com` domain is expected, and not the other way round. Also `is`, `satisfies`, `parse`, `resolve` (keeps the base's authority, refuses a reference that leaves it), `toURL` and `components`.
+
+- [#45](https://github.com/thomasfosterau/effect-ext/pull/45) [`5d6b485`](https://github.com/thomasfosterau/effect-ext/commit/5d6b485562ca9b301bc88ecc54070deae711a1ac) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - The numeric modules of `effect-numeric` and the time-format modules of `@thomasfosterau/effect-time` join `@thomasfosterau/effect-ext` (merged in from thomasfosterau/effect-numeric and thomasfosterau/effect-time with their history; neither package was ever published). Each module is one subpath with the same exports:
+  
+  - **Numeric** — `I8`, `I16`, `I32`, `I64`, `I128`, `U8`, `U16`, `U32`, `U64` and `U128` (Rust's fixed-width integers, with strict, checked, wrapping, saturating and overflowing arithmetic), `FixedInt` (any width), the `Wrapping`, `Saturating`, `Checked` and `Overflowing` strategies, `Clamped`, `Float` and `F32`, `Ratio`, `Complex`, the `num-traits` style `Num`, `Integer` and `Range`, and `ArithmeticError`. The barrel re-exports them, the integer modules and `F32` as their one value (`import { U8 } from "@thomasfosterau/effect-ext"`).
+  - **Time** — `Rfc3339`, `Rfc9557`, `IsoDuration`, `PosixTz`, `CronExpression`, `RRule`, `IanaTimeZone` and `Tzif`, each a parser, an effectful decoder, a printer and a `Schema` over Effect's own `DateTime`, duration amounts and `Cron`. They need the optional peer `@thomasfosterau/effect-parse` (`^0.4.1`), so they are subpaths only, like `Robots`.
+  
+  effect-time's re-exports of `effect/Clock` and `effect/DateTime` are not carried: import them from `effect`.
+
+- [#32](https://github.com/thomasfosterau/effect-ext/pull/32) [`36b09d0`](https://github.com/thomasfosterau/effect-ext/commit/36b09d0dda98d5f4c747205f2c9b2a63f77fb96e) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - The web-platform modules of `@thomasfosterau/effect-web` and its sibling packages join `@thomasfosterau/effect-ext` (merged in from thomasfosterau/effect-web with their history). Each former entry point is one subpath with the same exports, so moving is an import change:
+  
+  - `Web` (was `@thomasfosterau/effect-web`) — response-header policies, the cross-origin mutation guard, the trusted client address, the degraded-session report, `siteBase`, the JSON:API guard responses and the Fetch adapters.
+  - `Net` (`effect-web/net`) — the SSRF host block list and the redirect-revalidating fetch.
+  - `Observability` (`effect-web/observability`) — the structured JSON-line sink, the allow-listed span tracer, the `logEvent` trio, `describeError`, the auth-outcome signal and per-request metrics.
+  - `Negotiate` (`effect-web/negotiate`) — the HTML / JSON:API / Markdown dispatch verdict.
+  - `ServiceWorker` (`effect-web/service-worker`) — Cache Storage as effects, the caching strategies, the route table and lifecycle listeners.
+  - `Browser` and `BrowserTesting` (`effect-web/browser`, `effect-web/testing`) — browser platform APIs as services, and an in-memory double for each.
+  - `Robots` (`@thomasfosterau/effect-robots`), `Sitemap` (`effect-sitemap`), `RssFeed`, `AtomFeed` and `JsonFeed` (`effect-rss-feed`, `effect-atom-feed`, `effect-json-feed`).
+  - `UriTemplate` (`effect-uri-template`), `Langtag` and `LangtagRegistry` (`effect-langtag`, `effect-langtag/registry`), `Css` (`effect-css`), `Mime` (`effect-mime`), and `Encoding` with `EncodingJapanese`, `EncodingGb18030`, `EncodingBig5` and `EncodingEucKr` (`effect-encoding` and its CJK entries).
+  
+  Three optional peers come with them, each needed only by the modules that import it: `@effect/platform-browser` `^4.0.0` (`Browser`, `BrowserTesting`), `@thomasfosterau/effect-jsonapi` `>=0.16.1` (`Negotiate`) and `@thomasfosterau/effect-parse` `^0.4.1` (`Robots`). Those four modules are subpaths only; the `.` barrel re-exports the other 18 as namespaces.
+  
+  Coming from effect-web, two things change besides the import path. The `effect` peer floor is `>=4.0.0` (effect-web's was `>=4.0.0-rc.118`). Each service's `Context` key moves too (`@thomasfosterau/effect-web/browser/Locks` becomes `@thomasfosterau/effect-ext/Browser/Locks`), so a layer from the old package does not provide the new service.
+
+### Patch Changes
+
+- [#52](https://github.com/thomasfosterau/effect-ext/pull/52) [`9540034`](https://github.com/thomasfosterau/effect-ext/commit/95400348770d569e29ca71fb7625e837c2f1c7d7) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - The `effect` peer range, and the `@effect/ai-anthropic`, `@effect/platform-node` and `@effect/platform-browser` peers, change form from `>=4.0.0` to `^4.0.0` per the peer-range policy. Only the form changes: the floor stays 4.0.0, tested there. Effect 5 is no longer admitted. `IdleDetection.watch` now fails its stream when the detector refuses to start on effect 4.0.0, where the stream used to wait forever.
