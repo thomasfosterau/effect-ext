@@ -144,6 +144,70 @@ describe("pointers", () => {
     ]);
   });
 
+  // effect-ext#69: a struct-level check that points its failure at a field
+  // puts a `Pointer` between the `Filter` and its message-less `InvalidValue`.
+  const Pair = Schema.Struct({ a: Schema.String, b: Schema.String }).check(
+    Schema.makeFilter(
+      (v) => v.a === v.b || { path: ["b"], issue: new SchemaIssue.InvalidValue() },
+      {
+        identifier: "bEqualsA",
+        title: "b equals a",
+        description: "a fixture check that points its failure at b",
+        message: "b must equal a",
+      },
+    ),
+  );
+
+  it("keeps a struct-level check's message when it points its failure at a field", () => {
+    expect(pointed(issueFor(Pair, { a: "x", b: "y" }))).toMatchObject([
+      { pointer: "/data/attributes/b", tag: "InvalidValue", message: "b must equal a" },
+    ]);
+  });
+
+  it("exposes the describing check on the leaf, and formats from it", () => {
+    const [leaf] = Issues.leaves(issueFor(Pair, { a: "x", b: "y" }));
+    expect(leaf?.path).toEqual(["b"]);
+    expect(leaf?.describedBy.pipe(Option.map((filter) => filter._tag))).toEqual(
+      Option.some("Filter"),
+    );
+    expect(leaf === undefined ? "" : Issues.message(leaf)).toBe("b must equal a");
+  });
+
+  it("keeps a pointed check's string message", () => {
+    const schema = Schema.Struct({ a: Schema.String, b: Schema.String }).check(
+      Schema.makeFilter((v) => v.a === v.b || { path: ["b"], issue: "b differs" }, {
+        identifier: "bEqualsA",
+        title: "b equals a",
+        description: "a fixture check that points a string message at b",
+      }),
+    );
+    expect(pointed(issueFor(schema, { a: "x", b: "y" }))).toMatchObject([
+      { pointer: "/data/attributes/b", message: "b differs" },
+    ]);
+  });
+
+  it("does not describe a leaf by a distant check that states no message", () => {
+    const pointer = new SchemaIssue.Pointer(["name"], new SchemaIssue.InvalidValue());
+    const [leaf] = Issues.leaves(new SchemaIssue.Filter(Schema.isMinLength(1), pointer));
+    expect(leaf?.describedBy).toEqual(Option.none());
+    expect(leaf === undefined ? "" : Issues.message(leaf)).toBe("Expected a valid value");
+  });
+
+  it("keeps the input a directly wrapping check reports", () => {
+    const issue = SchemaParser.decodeResult(Schema.String.check(Schema.isMinLength(3)))("ab", {
+      reportInput: true,
+    }).pipe(
+      Result.getFailure,
+      Option.getOrElse(() => expect.unreachable("the decode was expected to fail")),
+    );
+    expect(Issues.pointers(issue)[0]?.message).toBe(SchemaIssue.makeFormatterDefault()(issue));
+  });
+
+  it("describes nothing but a message-less InvalidValue", () => {
+    const [missing] = Issues.leaves(issueFor(Schema.Struct({ name: Schema.String }), {}));
+    expect(missing?.describedBy).toEqual(Option.none());
+  });
+
   it("reports the leaf, not the filter, from leaves()", () => {
     const schema = Schema.String.check(Schema.isMinLength(3));
     expect(Issues.leaves(issueFor(schema, "ab"))).toMatchObject([

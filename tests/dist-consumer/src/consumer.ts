@@ -147,6 +147,8 @@ export type Checks = [
   Assert<Equals<Parameters<typeof Issues.leaves>[0], SchemaIssue.Issue>>,
   Assert<Equals<ReturnType<typeof Issues.pathToJsonPointer>, string>>,
   Assert<Equals<Issues.PointedIssue["pointer"], string>>,
+  Assert<Equals<Issues.Leaf["describedBy"], Option.Option<SchemaIssue.Filter>>>,
+  Assert<Equals<ReturnType<typeof Issues.message>, string>>,
   // LiteralExact
   Assert<Equals<typeof statuses, readonly ["a", "b"]>>,
   // Ast
