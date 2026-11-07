@@ -294,12 +294,17 @@ export type AnyStruct = Struct<any>;
  *
  * console.log(Layout.alignUp(13, 8), Layout.alignUp(16, 8), Layout.alignUp(0, 4))
  * // → 16 16 0
+ * console.log(Layout.alignUp(2 ** 32 + 1, 8))
+ * // → 4294967304
  * ```
  *
  * @since 0.1.0
  * @category utils
  */
-export const alignUp = (n: number, align: number): number => (n + align - 1) & ~(align - 1);
+export const alignUp = (n: number, align: number): number =>
+  // Arithmetic, not `& ~(align - 1)`: bitwise operators truncate to 32 bits,
+  // so `alignUp(2 ** 31, 8)` was negative (effect-ext#19).
+  Math.ceil(n / align) * align;
 
 /**
  * Defines a struct layout.
