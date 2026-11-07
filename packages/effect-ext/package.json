@@ -85,6 +85,7 @@
     "dist",
     "src/evals/cli/loader.mjs",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "type": "module",
