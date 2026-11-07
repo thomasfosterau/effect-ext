@@ -96,7 +96,13 @@ export interface Allocator {
  */
 export const DEFAULT_ALIGN = 8;
 
-const isPowerOfTwo = (n: number) => Number.isSafeInteger(n) && n > 0 && (n & (n - 1)) === 0;
+// Arithmetic, not bitwise: `&` / `~` truncate to 32 bits, which breaks at
+// 2^31 bytes and beyond (effect-ext#19). `log2` of a power of two is exact.
+const isPowerOfTwo = (n: number) =>
+  Number.isSafeInteger(n) && n > 0 && 2 ** Math.round(Math.log2(n)) === n;
+
+/** `n` rounded up to a multiple of `align` (a power of two), exactly for any safe integer. */
+const alignOffset = (n: number, align: number) => Math.ceil(n / align) * align;
 
 const validateRequest = (size: number, align: number): Result.Result<void, AllocationError> => {
   if (!Number.isSafeInteger(size) || size < 0) {
@@ -111,6 +117,17 @@ const validateRequest = (size: number, align: number): Result.Result<void, Alloc
   }
   return Result.void;
 };
+
+const validateCapacity = (capacity: number): Result.Result<void, AllocationError> =>
+  Number.isSafeInteger(capacity) && capacity >= 0
+    ? Result.void
+    : Result.fail(
+        new AllocationError({
+          size: capacity,
+          align: 1,
+          reason: "capacity must be a non-negative integer",
+        }),
+      );
 
 const tryAllocate = <A>(
   size: number,
@@ -208,6 +225,8 @@ export interface Arena extends Allocator {
  * @category allocators
  */
 export const makeArenaUnsafe = (capacity: number): Arena => {
+  const validCapacity = validateCapacity(capacity);
+  if (Result.isFailure(validCapacity)) throw validCapacity.failure;
   const buffer = new ArrayBuffer(capacity);
   const bytes = new Uint8Array(buffer);
   let top = 0;
@@ -215,20 +234,21 @@ export const makeArenaUnsafe = (capacity: number): Arena => {
   const bump = (size: number, align: number): Result.Result<Block, AllocationError> => {
     const valid = validateRequest(size, align);
     if (Result.isFailure(valid)) return Result.fail(valid.failure);
-    const byteOffset = (top + align - 1) & ~(align - 1);
+    const byteOffset = alignOffset(top, align);
     if (byteOffset + size > capacity) {
-      return Result.fail(
-        new AllocationError({
-          size,
-          align,
-          reason: `arena exhausted (${capacity - top} of ${capacity} bytes free)`,
-        }),
-      );
+      return Result.fail(exhausted(size, align));
     }
     top = byteOffset + size;
     bytes.fill(0, byteOffset, top);
     return Result.succeed({ buffer, byteOffset, byteLength: size });
   };
+
+  const exhausted = (size: number, align: number) =>
+    new AllocationError({
+      size,
+      align,
+      reason: `arena exhausted (${capacity - top} of ${capacity} bytes free)`,
+    });
 
   const isLast = (block: Block) =>
     block.buffer === buffer && block.byteOffset + block.byteLength === top;
@@ -244,12 +264,8 @@ export const makeArenaUnsafe = (capacity: number): Arena => {
     reallocate(block, size, align) {
       const valid = validateRequest(size, align);
       if (Result.isFailure(valid)) return Result.fail(valid.failure);
-      if (isLast(block) && (block.byteOffset & (align - 1)) === 0) {
-        if (block.byteOffset + size > capacity) {
-          return Result.fail(
-            new AllocationError({ size, align, reason: `arena exhausted (${capacity} bytes)` }),
-          );
-        }
+      if (isLast(block) && block.byteOffset % align === 0) {
+        if (block.byteOffset + size > capacity) return Result.fail(exhausted(size, align));
         const end = block.byteOffset + size;
         if (end > top) bytes.fill(0, top, end);
         top = end;
@@ -289,10 +305,12 @@ export const makeArenaUnsafe = (capacity: number): Arena => {
  * @category allocators
  */
 export const makeArena = (capacity: number): Effect.Effect<Arena, AllocationError> =>
-  Effect.try({
-    try: () => makeArenaUnsafe(capacity),
-    catch: (cause) => new AllocationError({ size: capacity, align: 1, reason: String(cause) }),
-  });
+  Effect.flatMap(Effect.fromResult(validateCapacity(capacity)), () =>
+    Effect.try({
+      try: () => makeArenaUnsafe(capacity),
+      catch: (cause) => new AllocationError({ size: capacity, align: 1, reason: String(cause) }),
+    }),
+  );
 
 /**
  * Statistics collected by a {@link tracked} allocator.
@@ -309,8 +327,16 @@ export interface Stats {
   readonly allocations: number;
   /** Total number of successful `reallocate` calls. */
   readonly reallocations: number;
-  /** Total number of `deallocate` calls. */
+  /** Total number of `deallocate` calls that released a live block. */
   readonly deallocations: number;
+  /**
+   * Number of `deallocate` calls for a block that was not live: a double
+   * free, or a block this allocator never handed out. They change no other
+   * count and are not passed on to the underlying allocator.
+   *
+   * @since 0.2.0
+   */
+  readonly invalidDeallocations: number;
 }
 
 /**
@@ -327,6 +353,13 @@ export interface Tracked extends Allocator {
 /**
  * Wraps an allocator so that its usage can be inspected — useful for tests
  * and for finding leaks.
+ *
+ * It tracks each block it hands out by identity. Releasing a block that is
+ * not live — a double free, or a block it never handed out — changes no
+ * count except {@link Stats.invalidDeallocations}, and is not passed on to
+ * the underlying allocator. A release the underlying allocator cannot act on
+ * (an arena block other than the most recent one) still counts as released:
+ * the caller let go of it, and the arena reclaims it at `reset`.
  *
  * @example
  * ```ts
@@ -349,37 +382,68 @@ export interface Tracked extends Allocator {
  * @category allocators
  */
 export const tracked = (underlying: Allocator): Tracked => {
+  // Identity of every block handed out and not yet released (effect-ext#18):
+  // a release counts only for a live block, so a double free cannot drive
+  // the counts negative and hide a leak. A `WeakSet` keeps a leaked block
+  // collectable.
+  const live = new WeakSet<Block>();
   let liveBlocks = 0;
   let liveBytes = 0;
   let allocations = 0;
   let reallocations = 0;
   let deallocations = 0;
+  let invalidDeallocations = 0;
+  const acquire = (block: Block) => {
+    live.add(block);
+    liveBlocks++;
+    liveBytes += block.byteLength;
+  };
+  const release = (block: Block) => {
+    live.delete(block);
+    liveBlocks--;
+    liveBytes -= block.byteLength;
+  };
   return {
     name: `tracked(${underlying.name})`,
     underlying,
-    stats: () => ({ liveBlocks, liveBytes, allocations, reallocations, deallocations }),
+    stats: () => ({
+      liveBlocks,
+      liveBytes,
+      allocations,
+      reallocations,
+      deallocations,
+      invalidDeallocations,
+    }),
     allocate(size, align) {
       const result = underlying.allocate(size, align);
       if (Result.isSuccess(result)) {
         allocations++;
-        liveBlocks++;
-        liveBytes += size;
+        acquire(result.success);
       }
       return result;
     },
     reallocate(block, size, align) {
-      const previous = block.byteLength;
+      const wasLive = live.has(block);
       const result = underlying.reallocate(block, size, align);
       if (Result.isSuccess(result)) {
         reallocations++;
-        liveBytes += size - previous;
+        // The old block is gone (or is the same block, resized): swap it for
+        // the new one. A block this allocator never handed out comes back as
+        // a live one.
+        if (wasLive) release(block);
+        acquire(result.success);
       }
       return result;
     },
     deallocate(block) {
+      if (!live.has(block)) {
+        // A double free could release an unrelated block that now occupies
+        // the same bytes (an arena reuses the top), so it stops here.
+        invalidDeallocations++;
+        return;
+      }
       deallocations++;
-      liveBlocks--;
-      liveBytes -= block.byteLength;
+      release(block);
       underlying.deallocate(block);
     },
   };

@@ -2,6 +2,13 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Layout from "@thomasfosterau/effect-ext/Layout";
 
 describe("Layout", () => {
+  it("alignUp is exact past 2^31 bytes (effect-ext#19)", () => {
+    expect(Layout.alignUp(2 ** 31, 8)).toBe(2 ** 31);
+    expect(Layout.alignUp(2 ** 31 + 1, 8)).toBe(2 ** 31 + 8);
+    expect(Layout.alignUp(2 ** 32 + 1, 8)).toBe(2 ** 32 + 8);
+    expect(Layout.alignUp(2 ** 52 + 3, 4)).toBe(2 ** 52 + 4);
+  });
+
   it("primitives have matching size and alignment", () => {
     expect([Layout.u8, Layout.i16, Layout.u32, Layout.f64, Layout.i64].map((l) => l.size)).toEqual([
       1, 2, 4, 8, 8,

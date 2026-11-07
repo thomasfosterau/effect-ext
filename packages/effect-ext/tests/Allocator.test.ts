@@ -108,6 +108,108 @@ describe("Allocator", () => {
     });
   });
 
+  describe("tracked (effect-ext#18)", () => {
+    it.effect("counts a double free once and reports it, never going negative", () =>
+      Effect.gen(function* () {
+        const tracked = Allocator.tracked(Allocator.heap);
+        const block = yield* Effect.fromResult(tracked.allocate(8, 8));
+        tracked.deallocate(block);
+        tracked.deallocate(block);
+        expect(tracked.stats()).toEqual({
+          liveBlocks: 0,
+          liveBytes: 0,
+          allocations: 1,
+          reallocations: 0,
+          deallocations: 1,
+          invalidDeallocations: 1,
+        });
+      }),
+    );
+
+    it.effect("tracks several blocks and a reallocated one by identity", () =>
+      Effect.gen(function* () {
+        const tracked = Allocator.tracked(Allocator.heap);
+        const a = yield* Effect.fromResult(tracked.allocate(8, 8));
+        const b = yield* Effect.fromResult(tracked.allocate(16, 8));
+        const grown = yield* Effect.fromResult(tracked.reallocate(a, 32, 8));
+        // The block `reallocate` replaced is no longer live.
+        tracked.deallocate(a);
+        expect(tracked.stats()).toMatchObject({
+          liveBlocks: 2,
+          liveBytes: 48,
+          deallocations: 0,
+          invalidDeallocations: 1,
+        });
+        tracked.deallocate(grown);
+        tracked.deallocate(b);
+        expect(tracked.stats()).toMatchObject({ liveBlocks: 0, liveBytes: 0, deallocations: 2 });
+      }),
+    );
+
+    it.effect("ignores a block it never handed out, and does not pass it on", () =>
+      Effect.gen(function* () {
+        const arena = Allocator.makeArenaUnsafe(16);
+        const tracked = Allocator.tracked(arena);
+        const foreign = yield* Effect.fromResult(arena.allocate(8, 1));
+        tracked.deallocate(foreign);
+        expect(arena.used).toBe(8);
+        expect(tracked.stats()).toMatchObject({ liveBlocks: 0, invalidDeallocations: 1 });
+      }),
+    );
+
+    it.effect("keeps a stale double free from releasing the arena block now at the top", () =>
+      Effect.gen(function* () {
+        const arena = Allocator.makeArenaUnsafe(16);
+        const tracked = Allocator.tracked(arena);
+        const first = yield* Effect.fromResult(tracked.allocate(8, 1));
+        tracked.deallocate(first);
+        const second = yield* Effect.fromResult(tracked.allocate(8, 1));
+        expect(second.byteOffset).toBe(first.byteOffset);
+        tracked.deallocate(first);
+        expect(arena.used).toBe(8);
+        expect(tracked.stats()).toMatchObject({ liveBlocks: 1, liveBytes: 8 });
+      }),
+    );
+  });
+
+  describe("arena capacity and large offsets (effect-ext#19)", () => {
+    it("rejects a capacity that is not a non-negative integer", () => {
+      expect(() => Allocator.makeArenaUnsafe(1.5)).toThrow(Allocator.AllocationError);
+      expect(() => Allocator.makeArenaUnsafe(-1)).toThrow(
+        "capacity must be a non-negative integer",
+      );
+    });
+
+    it.effect("makeArena fails with AllocationError for a fractional capacity", () =>
+      Effect.gen(function* () {
+        const error = yield* Effect.flip(Allocator.makeArena(1.5));
+        expect(error).toBeInstanceOf(Allocator.AllocationError);
+        expect(error.reason).toBe("capacity must be a non-negative integer");
+      }),
+    );
+
+    it.effect("says the same thing when full, whether growing in place or bumping", () =>
+      Effect.gen(function* () {
+        const arena = Allocator.makeArenaUnsafe(8);
+        const block = yield* Effect.fromResult(arena.allocate(4, 1));
+        const grow = arena.reallocate(block, 16, 1);
+        const bump = arena.allocate(16, 1);
+        expect(Result.isFailure(grow) && grow.failure.reason).toBe(
+          "arena exhausted (4 of 8 bytes free)",
+        );
+        expect(Result.isFailure(bump) && bump.failure.reason).toBe(
+          "arena exhausted (4 of 8 bytes free)",
+        );
+      }),
+    );
+
+    it("accepts an alignment of 2^31 and beyond", () => {
+      expect(Result.isSuccess(Allocator.heap.allocate(0, 2 ** 31))).toBe(true);
+      expect(Result.isSuccess(Allocator.heap.allocate(0, 2 ** 40))).toBe(true);
+      expect(Result.isFailure(Allocator.heap.allocate(0, 2 ** 40 + 2))).toBe(true);
+    });
+  });
+
   it.effect("allocateScoped deallocates when the scope closes", () =>
     Effect.gen(function* () {
       const tracked = Allocator.tracked(Allocator.heap);
