@@ -219,8 +219,10 @@ for v in "${SCRUB[@]}"; do ENV_ARGS+=(-u "$v"); done
 # so no project .npmrc or package.json is picked up.
 NEUTRAL_DIR="$(mktemp -d "${TMPDIR:-/tmp}/npm-bootstrap.XXXXXX")" || exit 1
 trap 'rm -rf "$NEUTRAL_DIR"' EXIT
-npmc() { (cd "$NEUTRAL_DIR" && env "${ENV_ARGS[@]}" npm --registry="$REGISTRY" "$@"); }
-npmc_in() { local dir="$1"; shift; (cd "$dir" && env "${ENV_ARGS[@]}" npm --registry="$REGISTRY" "$@"); }
+# The options go after the command: npm 11.20's `trust` subcommands count everything after an
+# option that comes first as extra positionals ("Unknown positional argument: list").
+npmc() { (cd "$NEUTRAL_DIR" && env "${ENV_ARGS[@]}" npm "$@" --registry="$REGISTRY"); }
+npmc_in() { local dir="$1"; shift; (cd "$dir" && env "${ENV_ARGS[@]}" npm "$@" --registry="$REGISTRY"); }
 
 # Print a command the way the owner would type it.
 show() { printf '    $'; printf ' %q' "$@"; printf '\n'; }
@@ -323,7 +325,7 @@ build_placeholder() { # <dir> <name> <repo> <directory> <license>
 trust_entries() {
   local log cmd
   log="$(mktemp "$NEUTRAL_DIR/trust.XXXXXX")" || return 1
-  cmd="$(printf '%q ' env "${ENV_ARGS[@]}" npm --registry="$REGISTRY" --color=false trust list "$1")"
+  cmd="$(printf '%q ' env "${ENV_ARGS[@]}" npm trust list "$1" --color=false --registry="$REGISTRY")"
   (cd "$NEUTRAL_DIR" && script -qec "$cmd" "$log") </dev/tty >/dev/tty || return 1
   node -e '
     // npm prints one "key: value" block per entry, each starting with its "type:" line, or
