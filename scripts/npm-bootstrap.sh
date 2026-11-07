@@ -253,7 +253,6 @@ fi
 
 command -v node >/dev/null 2>&1 || die "node is not on PATH"
 command -v npm >/dev/null 2>&1 || die "npm is not on PATH"
-command -v script >/dev/null 2>&1 || die "script (util-linux) is not on PATH; the trust lookups need it"
 
 NPM_VERSION="$(npmc --version 2>/dev/null)" || die "npm --version failed"
 if ! node -e '
@@ -317,30 +316,18 @@ build_placeholder() { # <dir> <name> <repo> <directory> <license>
 }
 
 # trust_entries <name>: prints "id<TAB>repository<TAB>file<TAB>environment" per entry.
-# npm wants 2FA for reading a package's trust entries too, and asks only on a terminal (see
-# mutate), so capturing its output with $(...) fails with EOTP. script(1) runs it on a pseudo-
-# terminal wired to this one, so the owner sees and answers the 2FA prompt, and keeps a copy of
-# the output to parse. Not --json: in JSON mode npm holds the 2FA link back until the command
-# ends, so the owner would never see it.
+# Reading a package's trust entries needs no 2FA, so npm's output is captured; its errors still
+# reach the terminal.
 trust_entries() {
-  local log cmd
-  log="$(mktemp "$NEUTRAL_DIR/trust.XXXXXX")" || return 1
-  cmd="$(printf '%q ' env "${ENV_ARGS[@]}" npm trust list "$1" --color=false --registry="$REGISTRY")"
-  (cd "$NEUTRAL_DIR" && script -qec "$cmd" "$log") </dev/tty >/dev/tty || return 1
-  node -e '
-    // npm prints one "key: value" block per entry, each starting with its "type:" line, or
-    // "No trust configurations found" for none.
-    const text = require("fs").readFileSync(process.argv[1], "utf8")
-      .replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "").replace(/\r/g, "");
-    const entries = []; let cur;
-    for (const line of text.split("\n")) {
-      const m = /^(type|id|file|repository|environment): (.*)$/.exec(line.trim());
-      if (!m) continue;
-      if (m[1] === "type") { cur = {}; entries.push(cur); }
-      if (cur) cur[m[1]] = m[2].trim();
-    }
-    for (const e of entries) console.log([e.id, e.repository, e.file, e.environment].map(v => v ?? "").join("\t"));
-  ' "$log"
+  local json
+  json="$(npmc trust list "$1" --json)" || return 1
+  printf '%s' "$json" | node -e '
+    let s = ""; process.stdin.on("data", c => s += c).on("end", () => {
+      s = s.trim(); if (!s) return;
+      // npm prints one JSON object per configuration, one after another.
+      const items = JSON.parse("[" + s.replace(/\}\s*\{/g, "},{") + "]").flat();
+      for (const i of items) console.log([i.id, i.repository, i.file, i.environment].map(v => v ?? "").join("\t"));
+    })'
 }
 
 trust_create() { # <name> <repo> <workflow> <env>
