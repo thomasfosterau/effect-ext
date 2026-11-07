@@ -195,6 +195,11 @@ describe("evaluateRobots", () => {
   // A product token ends at the first character outside RFC 9309's token
   // alphabet, so a version on either side does not stop the match.
   it("binds a versioned User-agent line to the bare crawler token", () => {
+    // gardeneria#1582's repro, verbatim.
+    expect(
+      evaluateRobots(parse("User-agent: GardeneriaBot/1.0\nDisallow: /"), "GardeneriaBot", "/x")
+        .allowed,
+    ).toBe(false);
     const body = "User-agent: GardeneriaBot/1.0\nDisallow: /private\n\nUser-agent: *\nAllow: /";
     const result = evaluateRobots(parse(body), "GardeneriaBot", "/private/x");
     expect(result.allowed).toBe(false);
