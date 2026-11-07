@@ -28,6 +28,9 @@ const render = (input: string) =>
     Array.from(body),
   ]);
 
+const base64Body = (input: string) =>
+  Option.map(DataUrl.process(`data:;base64,${input}`), (url) => Array.from(url.body));
+
 describe("DataUrl.process (web-platform-tests)", () => {
   it("matches every vector in data-urls.json", () => {
     const vectors = Schema.decodeUnknownSync(DataUrlVectors)(dataUrls);
@@ -42,9 +45,7 @@ describe("DataUrl.process (web-platform-tests)", () => {
 
   it("matches every forgiving-base64 vector in base64.json, through data:;base64,", () => {
     const vectors = Schema.decodeUnknownSync(Base64Vectors)(base64);
-    const body = (input: string) =>
-      Option.map(DataUrl.process(`data:;base64,${input}`), (url) => Array.from(url.body));
-    expect(Arr.map(vectors, ([input]) => [input, body(input)])).toEqual(
+    expect(Arr.map(vectors, ([input]) => [input, base64Body(input)])).toEqual(
       Arr.map(vectors, ([input, expected]) => [input, Option.fromNullishOr(expected)]),
     );
   });

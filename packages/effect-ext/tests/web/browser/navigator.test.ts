@@ -207,6 +207,18 @@ describe("Navigator change streams", () => {
   });
 });
 
+const reasonFor = (share: "abort" | "deny" | "unsupported") =>
+  Effect.runPromise(
+    Effect.provide(
+      Effect.map(Effect.flip(Navigator.share({ text: "x" })), (error) => [
+        error.operation,
+        error.reason,
+        error.message,
+      ]),
+      TestNavigator.layer({ share: share }),
+    ),
+  );
+
 describe("Navigator calls", () => {
   it("shares, beacons and vibrates, and records each call", async () => {
     const result = await Effect.runPromise(
@@ -243,17 +255,6 @@ describe("Navigator calls", () => {
   });
 
   it("maps share refusals onto reasons", async () => {
-    const reasonFor = (share: "abort" | "deny" | "unsupported") =>
-      Effect.runPromise(
-        Effect.provide(
-          Effect.map(Effect.flip(Navigator.share({ text: "x" })), (error) => [
-            error.operation,
-            error.reason,
-            error.message,
-          ]),
-          TestNavigator.layer({ share: share }),
-        ),
-      );
     expect(await reasonFor("abort")).toStrictEqual([
       "share",
       "Aborted",

@@ -86,6 +86,11 @@ describe("sniffBom", () => {
   });
 });
 
+const offsetOf = (input: Uint8Array, options?: Encoding.DecodeOptions) =>
+  Option.flatMap(failureOf(decode(input, options)), (error) =>
+    error instanceof Encoding.DecodeError ? Option.some(error.offset) : Option.none(),
+  );
+
 describe("decode", () => {
   it("decodes UTF-8 by default and a legacy encoding on request", () => {
     expect(decode(bytes(0x63, 0x61, 0x66, 0xc3, 0xa9))).toStrictEqual(Exit.succeed("café"));
@@ -152,10 +157,6 @@ describe("decode", () => {
   });
 
   it("reports the byte offset the error was detected at", () => {
-    const offsetOf = (input: Uint8Array, options?: Encoding.DecodeOptions) =>
-      Option.flatMap(failureOf(decode(input, options)), (error) =>
-        error instanceof Encoding.DecodeError ? Option.some(error.offset) : Option.none(),
-      );
     expect(offsetOf(bytes(0x61, 0xff, 0x62))).toStrictEqual(Option.some(1));
     expect(offsetOf(bytes(0x61, 0x62, 0xe0, 0x00))).toStrictEqual(Option.some(3));
     // A sequence cut short by the end of input: the input's length.
@@ -194,25 +195,25 @@ describe("decode", () => {
   });
 });
 
+const utf8Only = (): void => {
+  const Native = globalThis.TextDecoder;
+  vi.stubGlobal(
+    "TextDecoder",
+    class extends Native {
+      constructor(label?: string, options?: TextDecoderOptions) {
+        if (label !== undefined && label.toLowerCase() !== "utf-8") {
+          throw new RangeError(`The "${label}" encoding is not supported`);
+        }
+        super(label, options);
+      }
+    },
+  );
+};
+
 describe("a runtime without the legacy encodings", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
-
-  const utf8Only = (): void => {
-    const Native = globalThis.TextDecoder;
-    vi.stubGlobal(
-      "TextDecoder",
-      class extends Native {
-        constructor(label?: string, options?: TextDecoderOptions) {
-          if (label !== undefined && label.toLowerCase() !== "utf-8") {
-            throw new RangeError(`The "${label}" encoding is not supported`);
-          }
-          super(label, options);
-        }
-      },
-    );
-  };
 
   it("fails clearly with UnsupportedEncodingError", () => {
     utf8Only();
@@ -229,6 +230,17 @@ describe("a runtime without the legacy encodings", () => {
     expect(decode(bytes(0xa4), { encoding: "ISO-8859-16" })).toStrictEqual(Exit.succeed("€"));
   });
 });
+
+/** A deterministic byte source (a linear congruential generator), biased towards UTF-8 lead and trail bytes. */
+const sample = (seed: number, length: number): Uint8Array => {
+  const alphabet = [
+    0x41, 0x7f, 0x80, 0xbf, 0xc2, 0xc3, 0xe2, 0xe0, 0xed, 0xf0, 0xf4, 0x82, 0xac, 0xff,
+  ];
+  return Uint8Array.from({ length }, (_, index) => {
+    const next = (seed * 1103515245 + 12345 * (index + 1)) % 2147483648;
+    return alphabet[next % alphabet.length] ?? 0x41;
+  });
+};
 
 describe("decodeStream", () => {
   it("joins a multi-byte sequence split across chunks", () => {
@@ -274,17 +286,6 @@ describe("decodeStream", () => {
     );
     expect(text).toEqual(["é"]);
   });
-
-  /** A deterministic byte source (a linear congruential generator), biased towards UTF-8 lead and trail bytes. */
-  const sample = (seed: number, length: number): Uint8Array => {
-    const alphabet = [
-      0x41, 0x7f, 0x80, 0xbf, 0xc2, 0xc3, 0xe2, 0xe0, 0xed, 0xf0, 0xf4, 0x82, 0xac, 0xff,
-    ];
-    return Uint8Array.from({ length }, (_, index) => {
-      const next = (seed * 1103515245 + 12345 * (index + 1)) % 2147483648;
-      return alphabet[next % alphabet.length] ?? 0x41;
-    });
-  };
 
   it.each(["UTF-8", "UTF-16LE", "Shift_JIS", "gb18030", "ISO-2022-JP"] as const)(
     "agrees with whole-input decoding under every chunking (%s)",

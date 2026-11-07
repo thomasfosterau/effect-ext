@@ -146,6 +146,15 @@ describe("isLocaleInvariantAsset", () => {
   });
 });
 
+// `globalThis.Headers` lower-cases names on read, so the names an adapter
+// writes are observed at `Headers#set`, the call a runtime sends as written.
+// A spy with no implementation calls through to the real `set`; the
+// returned reader lists the names it was called with so far.
+const recordSetNames = (): (() => ReadonlyArray<string>) => {
+  const spy = vi.spyOn(globalThis.Headers.prototype, "set");
+  return () => spy.mock.calls.map(([name]) => name);
+};
+
 describe("the Fetch adapter", () => {
   it("updateWebHeaders clones only when the policy changed something", () => {
     const untouched = new Response("x", { headers: { "x-frame-options": "DENY" } });
@@ -167,15 +176,6 @@ describe("the Fetch adapter", () => {
   });
 
   describe("header-name spelling", () => {
-    // `globalThis.Headers` lower-cases names on read, so the names an adapter
-    // writes are observed at `Headers#set`, the call a runtime sends as written.
-    // A spy with no implementation calls through to the real `set`; the
-    // returned reader lists the names it was called with so far.
-    const recordSetNames = (): (() => ReadonlyArray<string>) => {
-      const spy = vi.spyOn(globalThis.Headers.prototype, "set");
-      return () => spy.mock.calls.map(([name]) => name);
-    };
-
     afterEach(() => {
       vi.restoreAllMocks();
     });

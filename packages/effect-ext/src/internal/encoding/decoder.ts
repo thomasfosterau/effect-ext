@@ -166,6 +166,15 @@ interface Pair {
   readonly shadow: Option.Option<Backend>;
 }
 
+/** The offset within `bytes` of the byte the shadow rejects, fed one at a time. */
+const locate = (shadow: Backend, bytes: Uint8Array): number => {
+  const index = bytes.findIndex((_, at) =>
+    Result.isFailure(shadow.decode(bytes.subarray(at, at + 1), true)),
+  );
+  // Every byte was accepted mid-stream: the input ended inside a sequence.
+  return index >= 0 ? index : bytes.length;
+};
+
 /**
  * Builds the incremental decoder, or fails with the encoding the runtime
  * cannot decode. Under `sniff` the encoding is settled once three bytes
@@ -194,15 +203,6 @@ export const make = (options: DecoderOptions): Result.Result<Decoder, EncodingNa
     bomHandling === "sniff" ? Option.none() : Option.some(initial.success);
   let head: Uint8Array = new Uint8Array(0);
   let consumed = 0;
-
-  /** The offset within `bytes` of the byte the shadow rejects, fed one at a time. */
-  const locate = (shadow: Backend, bytes: Uint8Array): number => {
-    const index = bytes.findIndex((_, at) =>
-      Result.isFailure(shadow.decode(bytes.subarray(at, at + 1), true)),
-    );
-    // Every byte was accepted mid-stream: the input ended inside a sequence.
-    return index >= 0 ? index : bytes.length;
-  };
 
   const run = (
     current: Pair,

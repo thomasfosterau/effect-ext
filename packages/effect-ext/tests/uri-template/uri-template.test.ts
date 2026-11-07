@@ -42,7 +42,7 @@ const Suite = Schema.Record(
 );
 
 /** A template that must parse. */
-const template = (source: string): UriTemplate.UriTemplate =>
+const mustParse = (source: string): UriTemplate.UriTemplate =>
   Schema.decodeUnknownSync(UriTemplate.UriTemplateFromString)(source);
 
 /** Parses then expands: the expansion, or `false` when either step fails. */
@@ -94,7 +94,7 @@ describe("UriTemplate.parse", () => {
   });
 
   it("splits a template into literals and expressions", () => {
-    const parsed = template("/u{/id}{?f*,n:3}");
+    const parsed = mustParse("/u{/id}{?f*,n:3}");
     expect(parsed.source).toBe("/u{/id}{?f*,n:3}");
     expect(parsed.parts.map((part) => part._tag)).toStrictEqual([
       "Literal",
@@ -112,7 +112,7 @@ describe("UriTemplate.parse", () => {
   });
 
   it("fails PrefixOnComposite at expansion, at the expression", () => {
-    const parsed = template("/x{list:2}");
+    const parsed = mustParse("/x{list:2}");
     const expanded = UriTemplate.expand(parsed, { list: ["a", "b"] });
     expect(Result.isFailure(expanded) && expanded.failure).toMatchObject({
       reason: "PrefixOnComposite",
@@ -123,21 +123,21 @@ describe("UriTemplate.parse", () => {
 
 describe("UriTemplate.variables", () => {
   it("lists each variable once, in order of first use", () => {
-    const parsed = template("{a}/{+b,a}{?c*,b}x");
+    const parsed = mustParse("{a}/{+b,a}{?c*,b}x");
     expect(UriTemplate.variables(parsed)).toStrictEqual(["a", "b", "c"]);
   });
 });
 
 describe("UriTemplate.expand", () => {
   it("stringifies numbers and booleans, and treats null and undefined as undefined", () => {
-    const parsed = template("{?n,b,none,missing}");
+    const parsed = mustParse("{?n,b,none,missing}");
     expect(UriTemplate.expand(parsed, { n: 1.5, b: false, none: null })).toStrictEqual(
       Result.succeed("?n=1.5&b=false"),
     );
   });
 
   it("pct-encodes literal characters a URI cannot hold", () => {
-    const parsed = template("/café/{x}");
+    const parsed = mustParse("/café/{x}");
     expect(UriTemplate.expand(parsed, { x: "ü" })).toStrictEqual(
       Result.succeed("/caf%C3%A9/%C3%BC"),
     );

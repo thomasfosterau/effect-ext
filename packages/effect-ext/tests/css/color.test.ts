@@ -81,6 +81,24 @@ describe("css-parsing-tests colour vectors", () => {
   });
 });
 
+const inColorForm = (color: Color.Color): string =>
+  Predicate.isTagged(color, "Rgb") ||
+  Predicate.isTagged(color, "Named") ||
+  Predicate.isTagged(color, "Hsl") ||
+  Predicate.isTagged(color, "Hwb")
+    ? Option.getOrElse(
+        Option.map(Color.toSrgb(color), ({ red, green, blue, alpha }) =>
+          Color.serialize({
+            _tag: "ColorFunction",
+            space: "srgb",
+            channels: [red, green, blue],
+            alpha,
+          }),
+        ),
+        () => "",
+      )
+    : Color.serialize(color);
+
 /**
  * `color_functions_5.json` writes a `light-dark()` result as the list of
  * its two colours, each serialised in `color()` form (an sRGB colour as
@@ -88,23 +106,6 @@ describe("css-parsing-tests colour vectors", () => {
  * `[null, null]`; everything else as a single serialisation.
  */
 const level5 = (input: string): (typeof functions5)[number] => {
-  const inColorForm = (color: Color.Color): string =>
-    Predicate.isTagged(color, "Rgb") ||
-    Predicate.isTagged(color, "Named") ||
-    Predicate.isTagged(color, "Hsl") ||
-    Predicate.isTagged(color, "Hwb")
-      ? Option.getOrElse(
-          Option.map(Color.toSrgb(color), ({ red, green, blue, alpha }) =>
-            Color.serialize({
-              _tag: "ColorFunction",
-              space: "srgb",
-              channels: [red, green, blue],
-              alpha,
-            }),
-          ),
-          () => "",
-        )
-      : Color.serialize(color);
   const parsed = Color.parse(input);
   if (input.startsWith("light-dark(")) {
     return Option.match(parsed, {
@@ -128,6 +129,14 @@ describe("css-parsing-tests Color 5 vectors (color_functions_5)", () => {
   });
 });
 
+const srgb = (input: string) =>
+  Option.map(Option.flatMap(Color.parse(input), Color.toSrgb), ({ red, green, blue, alpha }) => [
+    Math.round(red * 100) / 100 + 0,
+    Math.round(green * 100) / 100 + 0,
+    Math.round(blue * 100) / 100 + 0,
+    alpha,
+  ]);
+
 describe("Color 5 beyond the vectors", () => {
   it("serialises light-dark() with both colours", () => {
     expect(serialized("light-dark(red, #00f8)")).toBe("light-dark(red, rgba(0, 0, 255, 0.533333))");
@@ -148,16 +157,6 @@ describe("Color 5 beyond the vectors", () => {
   });
 
   it("converts device-cmyk() to sRGB naively, and has no sRGB for a custom space or light-dark()", () => {
-    const srgb = (input: string) =>
-      Option.map(
-        Option.flatMap(Color.parse(input), Color.toSrgb),
-        ({ red, green, blue, alpha }) => [
-          Math.round(red * 100) / 100 + 0,
-          Math.round(green * 100) / 100 + 0,
-          Math.round(blue * 100) / 100 + 0,
-          alpha,
-        ],
-      );
     expect(srgb("device-cmyk(0 1 1 0 / 0.5)")).toStrictEqual(Option.some([1, 0, 0, 0.5]));
     expect(srgb("device-cmyk(0 0 0 50%)")).toStrictEqual(Option.some([0.5, 0.5, 0.5, 1]));
     expect(srgb("color(--profile 1 2 3)")).toStrictEqual(Option.none());
@@ -211,14 +210,6 @@ describe("keywords and component values", () => {
 });
 
 describe("toSrgb", () => {
-  const srgb = (input: string) =>
-    Option.map(Option.flatMap(Color.parse(input), Color.toSrgb), ({ red, green, blue, alpha }) => [
-      Math.round(red * 100) / 100 + 0,
-      Math.round(green * 100) / 100 + 0,
-      Math.round(blue * 100) / 100 + 0,
-      alpha,
-    ]);
-
   it.each([
     ["red", [1, 0, 0, 1]],
     ["lab(54.29 80.82 69.89)", [1, 0, 0, 1]],

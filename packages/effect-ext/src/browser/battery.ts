@@ -144,7 +144,7 @@ export const make = (
         manager,
         Option.match({
           onNone: () => Stream.empty,
-          onSome: (manager) => watch(manager, EVENTS, () => read(manager), sameState),
+          onSome: (battery) => watch(battery, EVENTS, () => read(battery), sameState),
         }),
       ),
     ),

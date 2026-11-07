@@ -87,10 +87,10 @@ describe("Serialize.string", () => {
   });
 });
 
-describe("Serialize.componentValues", () => {
-  const roundTrip = (css: string): string =>
-    Serialize.componentValues(Syntax.parseComponentValueList(css));
+const roundTrip = (css: string): string =>
+  Serialize.componentValues(Syntax.parseComponentValueList(css));
 
+describe("Serialize.componentValues", () => {
   it.each([
     ["a  b", "a b"],
     ["rgb( 0 ,1 )", "rgb( 0 ,1 )"],
@@ -134,6 +134,12 @@ describe("Serialize.declaration", () => {
   });
 });
 
+// The suite's parser edition keeps the whitespace around a value; the serialiser trims it.
+const declarations = (css: string) =>
+  Syntax.parseDeclarationList(css).flatMap((one) =>
+    Predicate.isTagged(one, "Declaration") ? [{ ...one, value: terminated(trim(one.value)) }] : [],
+  );
+
 describe("round trip over css-parsing-tests", () => {
   it.each([
     ...inputs(componentValueList),
@@ -147,13 +153,6 @@ describe("round trip over css-parsing-tests", () => {
   });
 
   it.each(inputs(declarationList))("declaration list %j", (input) => {
-    // The suite's parser edition keeps the whitespace around a value; the serialiser trims it.
-    const declarations = (css: string) =>
-      Syntax.parseDeclarationList(css).flatMap((one) =>
-        Predicate.isTagged(one, "Declaration")
-          ? [{ ...one, value: terminated(trim(one.value)) }]
-          : [],
-      );
     const parsed = declarations(input);
     const reparsed = declarations(Serialize.declarationList(Syntax.parseDeclarationList(input)));
     expect(reparsed).toStrictEqual(parsed);

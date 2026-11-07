@@ -372,6 +372,14 @@ const textOrBinary = (bytes: Uint8Array): string => {
     : "application/octet-stream";
 };
 
+/** `type` parsed, or `application/octet-stream` where it does not parse. */
+const computed = (type: string): MimeType =>
+  Option.getOrElse(parse(type), () => ({
+    type: "application",
+    subtype: "octet-stream",
+    parameters: [],
+  }));
+
 /**
  * Determines a resource's computed MIME type (§7.1), from up to its first
  * 1445 bytes and the type it was supplied with:
@@ -409,12 +417,6 @@ const textOrBinary = (bytes: Uint8Array): string => {
 export const sniff = (bytes: Uint8Array, options: SniffOptions = {}): MimeType => {
   const header = bytes.subarray(0, 1445);
   const supplied = Option.flatMap(Option.fromNullishOr(options.supplied), parse);
-  const computed = (type: string): MimeType =>
-    Option.getOrElse(parse(type), () => ({
-      type: "application",
-      subtype: "octet-stream",
-      parameters: [],
-    }));
   return Option.match(
     Option.filter(supplied, (mimeType) => !UNKNOWN_TYPES.includes(essence(mimeType))),
     {

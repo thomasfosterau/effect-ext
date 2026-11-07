@@ -152,16 +152,14 @@ const SYSTEM_FONTS: ReadonlyArray<string> = [
 ];
 
 /** The comma-separated groups of `values`, each without whitespace. */
-const commaGroups = (values: Values): ReadonlyArray<Values> =>
-  values
-    .reduce<ReadonlyArray<Values>>(
-      (groups, value) =>
-        Predicate.isTagged(value, "Comma")
-          ? [...groups, []]
-          : [...groups.slice(0, -1), [...(groups.at(-1) ?? []), value]],
-      [[]],
-    )
-    .map(significant);
+const commaGroups = (values: Values): ReadonlyArray<Values> => {
+  const commas = values.flatMap((value, index) =>
+    Predicate.isTagged(value, "Comma") ? [index] : [],
+  );
+  return [-1, ...commas].map((start, group) =>
+    significant(values.slice(start + 1, commas[group] ?? values.length)),
+  );
+};
 
 const identValue = (value: ComponentValue): Option.Option<string> =>
   Predicate.isTagged(value, "Ident") ? Option.some(value.value) : Option.none();

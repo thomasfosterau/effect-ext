@@ -185,7 +185,7 @@ export const make = (initial?: Fix): Effect.Effect<Fixture> =>
         setPosition: (fix) =>
           Effect.flatMap(
             Effect.clockWith((clock) => clock.currentTimeMillis),
-            (now) => publish(Result.succeed(toPosition(fix, now))),
+            (millis) => publish(Result.succeed(toPosition(fix, millis))),
           ).pipe(Effect.asVoid),
         fail: (failure) => publish(Result.fail(toError(failure))).pipe(Effect.asVoid),
       }),

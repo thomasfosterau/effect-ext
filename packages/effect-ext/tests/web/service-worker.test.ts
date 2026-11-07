@@ -241,9 +241,9 @@ describe("cache storage effects", () => {
   });
 });
 
-describe("isCacheable", () => {
-  const get = () => new Request(URL_A);
+const get = () => new Request(URL_A);
 
+describe("isCacheable", () => {
   it("accepts a plain 200 to a GET", () => {
     expect(isCacheable(get(), new Response("ok"))).toBe(true);
     expect(
@@ -322,6 +322,16 @@ describe("cacheFirst", () => {
   });
 });
 
+/** A network that answers after `ms`, or rejects when its signal aborts. */
+const slow = (ms: number) => (_request: Request, init: RequestInit | undefined) =>
+  new Promise<Response>((resolve, reject) => {
+    const timer = setTimeout(() => resolve(new Response("fresh")), ms);
+    init?.signal?.addEventListener("abort", () => {
+      clearTimeout(timer);
+      reject(init.signal?.reason);
+    });
+  });
+
 describe("networkFirst", () => {
   it("serves the network and writes it back", async () => {
     const h = harness(async () => new Response("fresh"));
@@ -346,16 +356,6 @@ describe("networkFirst", () => {
     );
     expect(error).toBeInstanceOf(FetchFailed);
   });
-
-  /** A network that answers after `ms`, or rejects when its signal aborts. */
-  const slow = (ms: number) => (_request: Request, init: RequestInit | undefined) =>
-    new Promise<Response>((resolve, reject) => {
-      const timer = setTimeout(() => resolve(new Response("fresh")), ms);
-      init?.signal?.addEventListener("abort", () => {
-        clearTimeout(timer);
-        reject(init.signal?.reason);
-      });
-    });
 
   it("serves the cache once the timeout elapses, aborting the network", async () => {
     const h = harness(slow(5_000));
@@ -513,19 +513,19 @@ const fakeFetchEvent = (url: string) => {
   };
 };
 
-describe("fetchListener", () => {
-  const build = <A>(
-    listener: Effect.Effect<A>,
-    storage: CacheStorage,
-    fetch: typeof globalThis.fetch,
-  ) =>
-    Effect.runSync(
-      listener.pipe(
-        Effect.provideService(Caches, storage),
-        Effect.provideService(FetchHttpClient.Fetch, fetch),
-      ),
-    );
+const build = <A>(
+  listener: Effect.Effect<A>,
+  storage: CacheStorage,
+  fetch: typeof globalThis.fetch,
+) =>
+  Effect.runSync(
+    listener.pipe(
+      Effect.provideService(Caches, storage),
+      Effect.provideService(FetchHttpClient.Fetch, fetch),
+    ),
+  );
 
+describe("fetchListener", () => {
   it("answers through the first matching route", async () => {
     const network = stubFetch(async () => new Response("network"));
     const onFetch = build(

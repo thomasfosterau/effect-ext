@@ -219,21 +219,21 @@ describe("logAuthOutcome / deriveAuthOutcome", () => {
   });
 });
 
-describe("the event trio", () => {
-  /** A recording logger: captures level, message and annotations per line. */
-  const record = <A, E>(effect: Effect.Effect<A, E>) => {
-    const lines: Array<{ level: string; message: unknown; annotations: Record<string, unknown> }> =
-      [];
-    const logger = Logger.make(({ logLevel, message, fiber }) => {
-      lines.push({
-        level: logLevel,
-        message,
-        annotations: { ...fiber.getRef(References.CurrentLogAnnotations) },
-      });
+/** A recording logger: captures level, message and annotations per line. */
+const record = <A, E>(effect: Effect.Effect<A, E>) => {
+  const lines: Array<{ level: string; message: unknown; annotations: Record<string, unknown> }> =
+    [];
+  const logger = Logger.make(({ logLevel, message, fiber }) => {
+    lines.push({
+      level: logLevel,
+      message,
+      annotations: { ...fiber.getRef(References.CurrentLogAnnotations) },
     });
-    return Effect.runPromise(effect.pipe(Effect.provide(Logger.layer([logger])))).then(() => lines);
-  };
+  });
+  return Effect.runPromise(effect.pipe(Effect.provide(Logger.layer([logger])))).then(() => lines);
+};
 
+describe("the event trio", () => {
   it("carries the event name as both message and annotation, with the fields as annotations", async () => {
     const lines = await record(logEvent("feed.consume", { cycleId: "c1", outcome: "ok" }));
     expect(lines).toHaveLength(1);

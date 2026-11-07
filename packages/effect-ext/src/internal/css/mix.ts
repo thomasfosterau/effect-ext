@@ -89,6 +89,9 @@ const isAchromatic = (space: Space, channels: Vector): boolean => {
   return false;
 };
 
+/** Whether a space is `hsl()` or `hwb()`, whose missing pairs mirror each other. */
+const isPolarSpace = (space: Space) => space === "hsl" || space === "hwb";
+
 /**
  * The target channels missing because a pair of source channels that
  * together make them is missing: a Lab-like colour's `a` and `b` (or an
@@ -105,8 +108,9 @@ const pairMissing = (color: Working, target: Space): ReadonlyArray<number> => {
   if (isLab(source) && isLch(targetCategories) && second === "none" && third === "none")
     return [1, 2];
   if (isLch(source) && isLab(targetCategories) && second === "none") return [1, 2];
-  const polar = (space: Space) => space === "hsl" || space === "hwb";
-  return polar(color.space) && polar(target) && second === "none" && third === "none" ? [1, 2] : [];
+  return isPolarSpace(color.space) && isPolarSpace(target) && second === "none" && third === "none"
+    ? [1, 2]
+    : [];
 };
 
 /**

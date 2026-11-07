@@ -137,7 +137,7 @@ export const url = (origin: string | URL, suffix: string): Result.Result<URL, We
 };
 
 /**
- * The well-known suffix `url` addresses — the first path segment after
+ * The well-known suffix `uri` addresses — the first path segment after
  * `/.well-known/` — or `None` when it is not a well-known URI.
  *
  * @example
@@ -151,8 +151,8 @@ export const url = (origin: string | URL, suffix: string): Result.Result<URL, We
  * @since 0.1.0
  * @category accessors
  */
-export const suffixOf = (url: string | URL): Option.Option<string> => {
-  const parsed = parseUrl(url);
+export const suffixOf = (uri: string | URL): Option.Option<string> => {
+  const parsed = parseUrl(uri);
   const match = parsed === null ? null : /^\/\.well-known\/([^/]+)/u.exec(parsed.pathname);
   return Option.filter(Option.fromNullishOr(match?.[1]), isValidSuffix);
 };

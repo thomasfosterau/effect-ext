@@ -35,6 +35,8 @@ describe("parse / serialize (web-platform-tests)", () => {
   });
 });
 
+const xml = (input: string) => Option.map(MimeType.parse(input), MimeType.isXml);
+
 describe("accessors", () => {
   const parsed = Option.getOrElse(MimeType.parse('Text/HTML;Charset="utf-8";x=y'), () => ({
     type: "",
@@ -60,7 +62,6 @@ describe("accessors", () => {
   });
 
   it("recognises XML MIME types", () => {
-    const xml = (input: string) => Option.map(MimeType.parse(input), MimeType.isXml);
     expect(xml("image/svg+xml")).toStrictEqual(Option.some(true));
     expect(xml("text/xml")).toStrictEqual(Option.some(true));
     expect(xml("application/xml;charset=utf-8")).toStrictEqual(Option.some(true));

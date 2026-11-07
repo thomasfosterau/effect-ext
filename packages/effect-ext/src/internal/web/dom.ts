@@ -83,9 +83,12 @@ export interface PendingPromise {
   readonly resolve: () => void;
 }
 
+/** The placeholder settle function, replaced before `pendingPromise` returns. */
+const unsettled = (): void => {};
+
 /** Makes a {@link PendingPromise}. */
 export const pendingPromise = (): PendingPromise => {
-  let resolve = (): void => {};
+  let resolve = unsettled;
   const promise = new Promise<void>((settle) => {
     resolve = settle;
   });

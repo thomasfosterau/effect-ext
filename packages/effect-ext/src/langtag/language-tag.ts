@@ -335,7 +335,7 @@ const RTL_LANGUAGES: ReadonlyArray<string> = [
 export const direction = (tag: LanguageTag): "ltr" | "rtl" => {
   const parts = subtags(tag);
   const rtl = Option.match(parts.script, {
-    onSome: (script) => RTL_SCRIPTS.includes(script.toLowerCase()),
+    onSome: (code) => RTL_SCRIPTS.includes(code.toLowerCase()),
     onNone: () =>
       Option.match(parts.language, {
         onSome: (language) => RTL_LANGUAGES.includes(language),
