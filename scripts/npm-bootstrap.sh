@@ -315,12 +315,32 @@ build_placeholder() { # <dir> <name> <repo> <directory> <license>
   ' "$@"
 }
 
+# trust_list_json <name>: npm's JSON for the package's trust entries, captured. npm's messages go
+# to $NEUTRAL_DIR/trust.err; returns 3 when npm wants 2FA (EOTP), 1 on any other failure.
+trust_list_json() {
+  local out
+  if out="$(npmc trust list "$1" --json 2>"$NEUTRAL_DIR/trust.err")"; then printf '%s' "$out"; return 0; fi
+  if printf '%s' "$out" | cat - "$NEUTRAL_DIR/trust.err" | grep -q EOTP; then return 3; fi
+  return 1
+}
+
 # trust_entries <name>: prints "id<TAB>repository<TAB>file<TAB>environment" per entry.
-# Reading a package's trust entries needs no 2FA, so npm's output is captured; its errors still
-# reach the terminal.
+# Reading a package's trust entries needs 2FA, which npm asks for only on a terminal (see mutate),
+# so a captured read fails with EOTP outside a 2FA window. Then the same list runs once on the
+# terminal, where the owner approves it (ticking "skip two-factor authentication for the next 5
+# minutes"), and the captured read is retried inside the window that opens.
 trust_entries() {
-  local json
-  json="$(npmc trust list "$1" --json)" || return 1
+  local json rc
+  json="$(trust_list_json "$1")"; rc=$?
+  if [ "$rc" = 3 ]; then
+    echo "    npm wants 2FA to read $1's trust entries: approve it, and tick \"skip two-factor authentication for the next 5 minutes\"" >/dev/tty
+    npmc trust list "$1" </dev/tty >/dev/tty || { cat "$NEUTRAL_DIR/trust.err" >&2; return 1; }
+    json="$(trust_list_json "$1")"; rc=$?
+    if [ "$rc" = 3 ]; then
+      echo "    npm still wants 2FA: the five-minute box was not ticked, or the window has closed" >&2
+    fi
+  fi
+  if [ "$rc" != 0 ]; then cat "$NEUTRAL_DIR/trust.err" >&2; return 1; fi
   printf '%s' "$json" | node -e '
     let s = ""; process.stdin.on("data", c => s += c).on("end", () => {
       s = s.trim(); if (!s) return;
