@@ -23,6 +23,8 @@
  * probe with `@cloudflare/workers-types` loaded, proving a Worker's `env.AI`
  * is accepted unchanged (see `checkWorkersBinding`).
  *
+ * Every published package's `files` must also name `CHANGELOG.md` (#72).
+ *
  * Every published package that declares a `bin` is also PACKED (`pnpm pack`),
  * unpacked into `node_modules/` of a scratch directory and its bin launched
  * from there (issue #42). Node refuses to type-strip TypeScript under
@@ -215,6 +217,18 @@ for (const { dir, manifest } of published) {
     );
   } else {
     console.log(`ok   ${manifest.name} .d.ts type-check (${files} files)`);
+  }
+}
+
+// Every published tarball ships its release notes (effect-ext#72): npm adds
+// only `package.json`, `README` and `LICENSE` on its own, so `CHANGELOG.md`
+// has to be named in `files` for a consumer to read it in `node_modules`.
+for (const { manifest } of published) {
+  if ((manifest.files ?? []).includes("CHANGELOG.md")) {
+    console.log(`ok   ${manifest.name} files includes CHANGELOG.md`);
+  } else {
+    failures++;
+    console.error(`FAIL ${manifest.name} files does not include CHANGELOG.md`);
   }
 }
 
