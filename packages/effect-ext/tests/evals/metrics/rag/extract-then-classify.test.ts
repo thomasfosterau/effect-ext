@@ -108,7 +108,7 @@ describe("ExtractThenClassify.classifyStatements", () => {
       makeJudgeStub([() => ({ verdicts: [{ statement: "a", verdict: "yes" }] })]),
     );
 
-    const failure = (await expectFailureInstanceOf(
+    const failure = await expectFailureInstanceOf(
       ExtractThenClassify.classifyStatements({
         instructions: "classify",
         statements: ["a", "b", "c"],
@@ -116,7 +116,7 @@ describe("ExtractThenClassify.classifyStatements", () => {
         referenceText: "the context text",
       }).pipe(Effect.provide(provideJudge(model)), Effect.asVoid),
       ExtractThenClassify.VerdictCountMismatchError,
-    )) as ExtractThenClassify.VerdictCountMismatchError;
+    );
 
     expect(failure.expected).toBe(3);
     expect(failure.actual).toBe(1);
@@ -134,7 +134,7 @@ describe("ExtractThenClassify.classifyStatements", () => {
       ]),
     );
 
-    const failure = (await expectFailureInstanceOf(
+    const failure = await expectFailureInstanceOf(
       ExtractThenClassify.classifyStatements({
         instructions: "classify",
         statements: ["a"],
@@ -142,7 +142,7 @@ describe("ExtractThenClassify.classifyStatements", () => {
         referenceText: "the context text",
       }).pipe(Effect.provide(provideJudge(model)), Effect.asVoid),
       ExtractThenClassify.VerdictCountMismatchError,
-    )) as ExtractThenClassify.VerdictCountMismatchError;
+    );
 
     expect(failure.expected).toBe(1);
     expect(failure.actual).toBe(2);

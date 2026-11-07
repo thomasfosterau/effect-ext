@@ -21,7 +21,7 @@ const noUsage = { inputTokens: undefined } as const;
 
 const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
   const failure = await expectFailureInstanceOf(program, AiError.AiError);
-  return String(failure.message);
+  return failure.message;
 };
 
 const makeStub = (
@@ -53,7 +53,7 @@ describe("ImageModel", () => {
     const bytes = new Uint8Array([9, 9]);
     const { response, calls } = await runTest(
       Effect.gen(function* () {
-        const { model, calls } = yield* makeStub({
+        const { model, calls: stubCalls } = yield* makeStub({
           respond: () => ({
             images: [
               { data: "aGVsbG8=", mediaType: "image/png" },
@@ -63,7 +63,7 @@ describe("ImageModel", () => {
           }),
         });
         const result = yield* model.generate({ prompt: "a cat", size: "512x512", count: 2 });
-        return { response: result, calls };
+        return { response: result, calls: stubCalls };
       }),
     );
 

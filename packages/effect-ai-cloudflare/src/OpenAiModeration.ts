@@ -100,7 +100,7 @@ export interface OpenAiModerationOptions {
    * The application's own OpenAI key, sent as `Authorization: Bearer`.
    * Omit it when the key is configured on the gateway (BYOK).
    */
-  readonly apiKey?: Redacted.Redacted<string> | undefined;
+  readonly apiKey?: Redacted.Redacted | undefined;
   /** The moderation model to request. Defaults to {@link OPENAI_MODERATION_MODEL}. */
   readonly model?: string | undefined;
   /**

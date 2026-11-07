@@ -118,7 +118,7 @@ const completion = (over?: Record<string, unknown>) => ({
 const modelLayer = (
   fetch: typeof globalThis.fetch,
   options?: {
-    readonly apiKey?: Redacted.Redacted<string>;
+    readonly apiKey?: Redacted.Redacted;
     readonly config?: Omit<MistralLanguageModel.ConfigService, "model">;
   },
 ) =>
@@ -804,13 +804,14 @@ const makeChunkedSseFetch = (frames: ReadonlyArray<unknown>, hang = false) => {
       if (frame !== undefined) {
         index += 1;
         controller.enqueue(encoder.encode(`data: ${toJson(frame)}\n\n`));
-        return;
+        return undefined;
       }
       if (hang) {
         return new Promise<void>(() => {});
       }
       controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       controller.close();
+      return undefined;
     },
     cancel() {
       state.cancelled = true;
@@ -1085,18 +1086,19 @@ describe("MistralLanguageModel finish reasons", () => {
   });
 });
 
+/** A fetch stub that rejects, simulating a transport-level failure. */
+const networkDownFetch: typeof globalThis.fetch = async () => {
+  throw new TypeError("network down");
+};
+
 describe("MistralClient", () => {
   it("maps a transport failure to an AiError", async () => {
-    const fetch: typeof globalThis.fetch = async () => {
-      throw new TypeError("network down");
-    };
-
     await expectFailureInstanceOf(
       LanguageModel.generateText({ prompt: "hi" }).pipe(
         Effect.provide(
           MistralLanguageModel.layer({ model: "mistral-small-latest" }).pipe(
             Layer.provide(MistralClient.layer({ apiKey: Redacted.make("k") })),
-            Layer.provide(httpLayer(fetch)),
+            Layer.provide(httpLayer(networkDownFetch)),
           ),
         ),
       ),

@@ -143,7 +143,7 @@ export interface Options {
    * setups (e.g. a gateway that injects the credential) or tests — requests
    * then carry no `xi-api-key` header.
    */
-  readonly apiKey?: Redacted.Redacted<string> | undefined;
+  readonly apiKey?: Redacted.Redacted | undefined;
   /**
    * The base URL for the API. Override to target a proxy or gateway route.
    *
@@ -177,6 +177,26 @@ const contentTypeOf = (response: HttpClientResponse.HttpClientResponse): string 
     Option.getOrUndefined,
   );
 
+/** Reads a completed audio response into bytes + declared content type. */
+const readAudio = (
+  response: HttpClientResponse.HttpClientResponse,
+): Effect.Effect<AudioResult, HttpClientError.HttpClientError> =>
+  response.arrayBuffer.pipe(
+    Effect.map((buffer) => ({
+      audio: new Uint8Array(buffer),
+      contentType: contentTypeOf(response),
+    })),
+  );
+
+/** Adds the `output_format` query parameter when one is requested. */
+const withOutputFormat = (
+  request: HttpClientRequest.HttpClientRequest,
+  options: AudioRequestOptions | undefined,
+): HttpClientRequest.HttpClientRequest =>
+  Predicate.isNotUndefined(options?.outputFormat)
+    ? HttpClientRequest.setUrlParam(request, "output_format", options.outputFormat)
+    : request;
+
 /**
  * Constructs a {@link Service} from explicit {@link Options}. Requires an
  * `HttpClient` in context.
@@ -185,42 +205,25 @@ const contentTypeOf = (response: HttpClientResponse.HttpClientResponse): string 
  * @see {@link layerConfig} for loading settings from `Config`
  */
 export const make = Effect.fnUntraced(function* (
-  options: Options,
+  clientOptions: Options,
 ): Effect.fn.Return<Service, never, HttpClient.HttpClient> {
   const baseClient = yield* HttpClient.HttpClient;
 
   const httpClient = baseClient.pipe(
     HttpClient.mapRequest((request) =>
       request.pipe(
-        HttpClientRequest.prependUrl(options.apiUrl ?? defaultApiUrl),
-        Predicate.isNotUndefined(options.apiKey)
-          ? HttpClientRequest.setHeader("xi-api-key", Redacted.value(options.apiKey))
+        HttpClientRequest.prependUrl(clientOptions.apiUrl ?? defaultApiUrl),
+        Predicate.isNotUndefined(clientOptions.apiKey)
+          ? HttpClientRequest.setHeader("xi-api-key", Redacted.value(clientOptions.apiKey))
           : identity,
       ),
     ),
-    Predicate.isNotUndefined(options.transformClient) ? options.transformClient : identity,
+    Predicate.isNotUndefined(clientOptions.transformClient)
+      ? clientOptions.transformClient
+      : identity,
   );
 
   const httpClientOk = HttpClient.filterStatusOk(httpClient);
-
-  /** Reads a completed audio response into bytes + declared content type. */
-  const readAudio = (
-    response: HttpClientResponse.HttpClientResponse,
-  ): Effect.Effect<AudioResult, HttpClientError.HttpClientError> =>
-    response.arrayBuffer.pipe(
-      Effect.map((buffer) => ({
-        audio: new Uint8Array(buffer),
-        contentType: contentTypeOf(response),
-      })),
-    );
-
-  const withOutputFormat = (
-    request: HttpClientRequest.HttpClientRequest,
-    options: AudioRequestOptions | undefined,
-  ): HttpClientRequest.HttpClientRequest =>
-    Predicate.isNotUndefined(options?.outputFormat)
-      ? HttpClientRequest.setUrlParam(request, "output_format", options.outputFormat)
-      : request;
 
   const textToSpeech: Service["textToSpeech"] = (voiceId, request, options) => {
     const httpRequest = withOutputFormat(
@@ -316,7 +319,7 @@ export const layer = (
  * provider).
  */
 export const layerConfig = (options?: {
-  readonly apiKey?: Config.Config<Redacted.Redacted<string> | undefined> | undefined;
+  readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined;
   readonly apiUrl?: Config.Config<string> | undefined;
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined;
 }): Layer.Layer<ElevenLabsClient, Config.ConfigError, HttpClient.HttpClient> =>

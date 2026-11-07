@@ -125,12 +125,12 @@ describe("Ranking.scoreCase", () => {
   });
 });
 
-describe("Ranking scorers", () => {
-  const rankingCase = (output: ReadonlyArray<string>): Ranking.RankingCase => ({
-    golden: { relevant: { a: 3, b: 1 } },
-    output,
-  });
+const rankingCase = (output: ReadonlyArray<string>): Ranking.RankingCase => ({
+  golden: { relevant: { a: 3, b: 1 } },
+  output,
+});
 
+describe("Ranking scorers", () => {
   it("names each scorer by its metric key", () => {
     expect(Ranking.ndcgAtK(10).name).toBe("ndcg@10");
     expect(Ranking.recallAtK(10).name).toBe("recall@10");

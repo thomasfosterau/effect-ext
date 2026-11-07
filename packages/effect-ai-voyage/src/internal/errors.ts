@@ -30,13 +30,11 @@ const MODULE = "VoyageClient";
  * form, in which each sensitive header (authorization, cookies, API keys) is a
  * `Redacted` value instead of its string.
  */
-const redactHeaders = (
-  headers: Headers.Headers,
-): Record<string, string | Redacted.Redacted<string>> =>
+const redactHeaders = (headers: Headers.Headers): Record<string, string | Redacted.Redacted> =>
   // SAFETY: `Headers` implements `Redactable` with `Headers.redact`, whose
   // result maps each header name to its string value, or to that value
   // wrapped in `Redacted` for a sensitive header.
-  Redactable.redact(headers) as Record<string, string | Redacted.Redacted<string>>;
+  Redactable.redact(headers) as Record<string, string | Redacted.Redacted>;
 
 const buildRequestDetails = (
   request: HttpClientRequest.HttpClientRequest,

@@ -126,7 +126,7 @@ const chatReply = (over?: Record<string, unknown>) => ({
 
 const clientLayer = (
   fetch: typeof globalThis.fetch,
-  options?: { readonly apiKey?: Redacted.Redacted<string> | undefined; readonly apiUrl?: string },
+  options?: { readonly apiKey?: Redacted.Redacted | undefined; readonly apiUrl?: string },
 ) =>
   CohereClient.layer({
     apiKey: options?.apiKey ?? Redacted.make("test-key"),
@@ -136,7 +136,7 @@ const clientLayer = (
 const modelLayer = (
   fetch: typeof globalThis.fetch,
   options?: {
-    readonly apiKey?: Redacted.Redacted<string>;
+    readonly apiKey?: Redacted.Redacted;
     readonly config?: Omit<CohereLanguageModel.ConfigService, "model">;
   },
 ) =>
@@ -391,6 +391,11 @@ describe("CohereLanguageModel.generateText", () => {
 
 // ── Configuration & apiUrl (BYOK) override ────────────────────────────
 
+/** A fetch stub that rejects, simulating a transport-level failure. */
+const networkDownFetch: typeof globalThis.fetch = async () => {
+  throw new TypeError("network down");
+};
+
 describe("CohereLanguageModel configuration", () => {
   it("threads construction-time config into the request", async () => {
     const { calls, fetch } = makeFetch(() => jsonResponse(chatReply()));
@@ -512,12 +517,10 @@ describe("CohereLanguageModel configuration", () => {
   });
 
   it("maps a transport failure to an AiError", async () => {
-    const fetch: typeof globalThis.fetch = async () => {
-      throw new TypeError("network down");
-    };
-
     await expectFailureInstanceOf(
-      LanguageModel.generateText({ prompt: "hi" }).pipe(Effect.provide(modelLayer(fetch))),
+      LanguageModel.generateText({ prompt: "hi" }).pipe(
+        Effect.provide(modelLayer(networkDownFetch)),
+      ),
       AiError.AiError,
     );
   });
@@ -1028,13 +1031,14 @@ const makeChunkedSseFetch = (frames: ReadonlyArray<unknown>, hang = false) => {
       if (frame !== undefined) {
         index += 1;
         controller.enqueue(encoder.encode(`data: ${toJson(frame)}\n\n`));
-        return;
+        return undefined;
       }
       if (hang) {
         return new Promise<void>(() => {});
       }
       // Cohere ends its stream by closing after `message-end`, with no sentinel.
       controller.close();
+      return undefined;
     },
     cancel() {
       state.cancelled = true;

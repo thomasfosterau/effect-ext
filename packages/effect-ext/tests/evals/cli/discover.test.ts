@@ -66,8 +66,8 @@ describe("Discover.findEvalFiles", () => {
   it("matches the default-glob shape (**/evals/**/*.eval.ts), excluding node_modules", async () => {
     const { files, expected } = await inFixtureTree((dir, path) =>
       findEvalFiles(["**/evals/**/*.eval.ts"], dir).pipe(
-        Effect.map((files) => ({
-          files: Arr.sort(files, Order.String),
+        Effect.map((found) => ({
+          files: Arr.sort(found, Order.String),
           expected: Arr.sort(
             [
               path.join(dir, "packages/jobs/evals/summarize.eval.ts"),
@@ -85,7 +85,7 @@ describe("Discover.findEvalFiles", () => {
   it("resolves matches to absolute paths, deduplicated across overlapping patterns", async () => {
     const { files, absolute } = await inFixtureTree((dir, path) =>
       findEvalFiles(["**/*.eval.ts", "packages/**/*.eval.ts"], dir).pipe(
-        Effect.map((files) => ({ files, absolute: Arr.map(files, path.isAbsolute) })),
+        Effect.map((found) => ({ files: found, absolute: Arr.map(found, path.isAbsolute) })),
       ),
     );
 

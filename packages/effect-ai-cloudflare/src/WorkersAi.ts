@@ -52,7 +52,7 @@ export interface CloudflareClientOptions {
    * with Workers AI permission), sent as the bearer token. Not a provider
    * key: Workers AI is Cloudflare's own.
    */
-  readonly apiToken: Redacted.Redacted<string>;
+  readonly apiToken: Redacted.Redacted;
   /**
    * Overrides the Workers AI REST base URL
    * (`https://api.cloudflare.com/client/v4` by default), for a proxy or a

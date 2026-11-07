@@ -104,7 +104,7 @@ export interface Options {
    * (e.g. a gateway that injects the credential) or tests — requests then
    * carry no `authorization` header.
    */
-  readonly apiKey?: Redacted.Redacted<string> | undefined;
+  readonly apiKey?: Redacted.Redacted | undefined;
   /**
    * The base URL for the API. Override to target a proxy or another
    * OpenAI-compatible endpoint.
@@ -236,7 +236,7 @@ export const layer = (options: Options): Layer.Layer<MistralClient, never, HttpC
  * provider).
  */
 export const layerConfig = (options?: {
-  readonly apiKey?: Config.Config<Redacted.Redacted<string> | undefined> | undefined;
+  readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined;
   readonly apiUrl?: Config.Config<string> | undefined;
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined;
 }): Layer.Layer<MistralClient, Config.ConfigError, HttpClient.HttpClient> =>

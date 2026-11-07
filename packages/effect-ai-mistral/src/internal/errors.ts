@@ -34,11 +34,11 @@ const MODULE = "MistralClient";
  */
 export const redactHeaders = (
   headers: Headers.Headers,
-): Record<string, string | Redacted.Redacted<string>> =>
+): Record<string, string | Redacted.Redacted> =>
   // SAFETY: `Headers` implements `Redactable` with `Headers.redact`, whose
   // result maps each header name to its string value, or to that value
   // wrapped in `Redacted` for a sensitive header.
-  Redactable.redact(headers) as Record<string, string | Redacted.Redacted<string>>;
+  Redactable.redact(headers) as Record<string, string | Redacted.Redacted>;
 
 const buildRequestDetails = (
   request: HttpClientRequest.HttpClientRequest,

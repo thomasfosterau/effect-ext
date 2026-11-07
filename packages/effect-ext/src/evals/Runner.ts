@@ -162,7 +162,7 @@ export const makeSuite = <
   TaskE = never,
   TaskR = never,
   const Metrics extends ReadonlyArray<AnyMetric<EvaluatedCase<Golden, Output>>> = ReadonlyArray<
-    Metric.Metric<EvaluatedCase<Golden, Output>, never, never>
+    Metric.Metric<EvaluatedCase<Golden, Output>>
   >,
 >(options: {
   readonly name: string;
@@ -199,9 +199,9 @@ export interface RunnerOptions<ReporterR = never> {
   /** The judge model id folded into metric cache keys. */
   readonly judgeModelId?: string;
   /** Retry policy for the task, applied only to retryable `AiError`s. Defaults to a jittered, capped exponential backoff. */
-  readonly taskRetrySchedule?: Schedule.Schedule<unknown, unknown>;
+  readonly taskRetrySchedule?: Schedule.Schedule<unknown>;
   /** Retry policy for metric evaluation, applied only to retryable `AiError`s. Defaults to a jittered, capped exponential backoff. */
-  readonly metricRetrySchedule?: Schedule.Schedule<unknown, unknown>;
+  readonly metricRetrySchedule?: Schedule.Schedule<unknown>;
   /** Reporters invoked once, after the suite completes. */
   readonly reporters?: ReadonlyArray<Reporter.Reporter<ReporterR>>;
 }
@@ -215,14 +215,14 @@ const defaultRetrySchedule = Schedule.max([
   Schedule.recurs(3),
 ]).pipe(Schedule.jittered);
 
-type ResolvedConfig = Required<Omit<RunnerOptions<never>, "reporters" | "judgeModelId">> & {
+type ResolvedConfig = Required<Omit<RunnerOptions, "reporters" | "judgeModelId">> & {
   readonly judgeModelId: string | undefined;
 };
 
 /** Retries only on a retryable `AiError`; any other failure (or a non-retryable `AiError`) surfaces immediately. */
 const retryAiErrors = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
-  schedule: Schedule.Schedule<unknown, unknown>,
+  schedule: Schedule.Schedule<unknown>,
 ): Effect.Effect<A, E, R> =>
   effect.pipe(
     Effect.retry({ schedule, while: (error) => AiError.isAiError(error) && error.isRetryable }),
@@ -266,9 +266,9 @@ const cacheGetJson = <A>(
     );
   });
 
-const cacheSetJson = <A>(
+const cacheSetJson = (
   key: string,
-  value: A,
+  value: unknown,
 ): Effect.Effect<void, never, Cache.KeyValueStore.KeyValueStore> =>
   Cache.KeyValueStore.KeyValueStore.pipe(
     Effect.flatMap((kv) => encodeCacheEntry(value).pipe(Effect.flatMap((raw) => kv.set(key, raw)))),

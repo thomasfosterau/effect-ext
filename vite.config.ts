@@ -239,21 +239,18 @@ export default defineConfig({
           // language service keeps it as an editor suggestion
           // (tsconfig.base.json).
           "effecttsgo/unstable-api-usage": "off",
-          // Oxlint's `suspicious` category, which effect-ext enables and the
-          // AI packages arrived without (effect-ai-ext#161). Each rule below
-          // fired on them at the merge; paying them down, and deleting each
-          // line here as it reaches zero, is #24.
           // The AI suites provide layers per test with `Effect.provide`
           // (AGENTS.md → Tests), not `@effect/vitest`'s `layer(...)`.
           "effecttsgo/strict-effect-provide": "off",
-          "typescript/no-unnecessary-type-arguments": "off",
-          "typescript/no-unnecessary-type-conversion": "off",
-          "typescript/no-unnecessary-type-assertion": "off",
+        },
+      },
+      // `unsafeCoerce<T>` is the evals suites' one deliberate escape hatch:
+      // the caller names `T` to hand an ill-typed input to a failure path, so
+      // the type parameter appears only in the return type by design.
+      {
+        files: ["packages/effect-ext/tests/evals/helpers/unsafe.ts"],
+        rules: {
           "typescript/no-unnecessary-type-parameters": "off",
-          "typescript/consistent-return": "off",
-          "unicorn/consistent-function-scoping": "off",
-          "eslint/no-shadow": "off",
-          "promise/always-return": "off",
         },
       },
       // Build/test configs are evaluated by Vite and Vitest in bare Node,

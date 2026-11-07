@@ -211,7 +211,7 @@ describe("makeOpenAiModerationModel", () => {
     const failure = await expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
     expect(failure.reason._tag).toBe("InvalidOutputError");
-    expect(String(failure.message)).toContain("expected 1");
+    expect(failure.message).toContain("expected 1");
   });
 
   it("fails with AiError (not a defect) when the gateway call itself rejects", async () => {
@@ -223,7 +223,7 @@ describe("makeOpenAiModerationModel", () => {
 
     const failure = await expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
-    expect(String(failure.message)).toContain("gateway call failed");
+    expect(failure.message).toContain("gateway call failed");
   });
 
   it("fails with AiError on a 200 whose body is not JSON at all", async () => {
@@ -233,7 +233,7 @@ describe("makeOpenAiModerationModel", () => {
 
     const failure = await expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
-    expect(String(failure.message)).toContain("response body");
+    expect(failure.message).toContain("response body");
   });
 
   it("carries the provider's per-category verdicts and the dated model that served the call", async () => {

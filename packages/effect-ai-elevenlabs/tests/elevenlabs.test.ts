@@ -312,7 +312,7 @@ describe("ElevenLabsSpeechModel.stream", () => {
         state.pulled += 1;
         if (state.pulled === 1) {
           controller.enqueue(first);
-          return;
+          return undefined;
         }
         // Keep the body open indefinitely so the consumer blocks until interrupted.
         return new Promise<void>(() => {});
@@ -555,6 +555,11 @@ describe("ElevenLabsVoiceConversionModel.convert", () => {
 
 // ── Client — BYOK routing and middleware ──────────────────────────────
 
+/** A fetch stub that rejects, simulating a transport-level failure. */
+const networkDownFetch: typeof globalThis.fetch = async () => {
+  throw new TypeError("network down");
+};
+
 describe("ElevenLabsClient", () => {
   it("routes through the apiUrl override (BYOK) from a Config-driven layer", async () => {
     const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
@@ -593,14 +598,10 @@ describe("ElevenLabsClient", () => {
   });
 
   it("maps a transport failure to an AiError", async () => {
-    const fetch: typeof globalThis.fetch = async () => {
-      throw new TypeError("network down");
-    };
-
     await expectFailureInstanceOf(
       Effect.flatMap(SpeechModel.SpeechModel, (model) =>
         model.generate({ text: "hi", voice: "v" }),
-      ).pipe(Effect.provide(speechLayer(fetch))),
+      ).pipe(Effect.provide(speechLayer(networkDownFetch))),
       AiError.AiError,
     );
   });

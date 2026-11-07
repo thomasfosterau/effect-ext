@@ -12,6 +12,8 @@ import * as Exit from "effect/Exit";
 import { Cache } from "../../src/evals/index.ts";
 import { runTest, runTestExit } from "./helpers/effect.ts";
 
+const hash = (input: Cache.CacheKeyInput) => runTest(Cache.hashKey(input));
+
 describe("Cache.hashKey", () => {
   const base = {
     golden: { input: "Bonjour" },
@@ -21,7 +23,14 @@ describe("Cache.hashKey", () => {
     trial: 1,
   };
 
-  const hash = (input: Cache.CacheKeyInput) => runTest(Cache.hashKey(input));
+  const withDate = (date: Date) => ({ ...base, golden: { askedAt: date } });
+
+  const withMap = (entries: Array<[string, string]>) => ({
+    ...base,
+    golden: { tags: new Map(entries) },
+  });
+
+  const withSet = (values: Array<string>) => ({ ...base, golden: { tags: new Set(values) } });
 
   it("is a full SHA-256 hex digest, not a small structural hash", async () => {
     expect(await hash(base)).toMatch(/^[0-9a-f]{64}$/);
@@ -80,22 +89,16 @@ describe("Cache.hashKey", () => {
   });
 
   it("distinguishes goldens that differ only by a Date field", async () => {
-    const withDate = (date: Date) => ({ ...base, golden: { askedAt: date } });
     expect(await hash(withDate(new Date("2026-01-01")))).not.toBe(
       await hash(withDate(new Date("2026-07-16"))),
     );
   });
 
   it("distinguishes goldens that differ only by a Map's contents", async () => {
-    const withMap = (entries: Array<[string, string]>) => ({
-      ...base,
-      golden: { tags: new Map(entries) },
-    });
     expect(await hash(withMap([["a", "1"]]))).not.toBe(await hash(withMap([["a", "2"]])));
   });
 
   it("distinguishes goldens that differ only by a Set's contents", async () => {
-    const withSet = (values: Array<string>) => ({ ...base, golden: { tags: new Set(values) } });
     expect(await hash(withSet(["a"]))).not.toBe(await hash(withSet(["b"])));
   });
 });

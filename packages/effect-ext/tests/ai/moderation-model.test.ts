@@ -23,7 +23,7 @@ const noUsage = { inputTokens: undefined } as const;
 
 const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
   const failure = await expectFailureInstanceOf(program, AiError.AiError);
-  return String(failure.message);
+  return failure.message;
 };
 
 const makeStub = (
