@@ -91,17 +91,32 @@ describe("Complex: remaining operations", () => {
     // num-complex: sqrt(-2i) = 1 - i, sqrt(2i) = 1 + i.
     expect(close(Complex.sqrt(Complex.make(0, -2)), Complex.make(1, -1))).toBe(true);
     expect(close(Complex.sqrt(Complex.make(0, 2)), Complex.make(1, 1))).toBe(true);
-    // Well-conditioned inputs only (parts on a 1/16 grid): when |im| is tiny next to |re|,
-    // `sqrt` loses the small part to cancellation (sqrt(1 + 1e-10i) gives 1+0i).
-    const grid = fc.integer({ min: -1000, max: 1000 }).map((n) => n / 16);
+    // effect-ext#39: a part tiny next to the other was lost to cancellation.
+    // Expected values are num-complex's.
+    expect(Complex.sqrt(Complex.make(1, 1e-10))).toEqual(Complex.make(1, 5e-11));
+    expect(Complex.sqrt(Complex.make(-1, 1e-10))).toEqual(Complex.make(5e-11, 1));
+    expect(Complex.sqrt(Complex.make(-1, -1e-10))).toEqual(Complex.make(5e-11, -1));
+    const tiny = Complex.sqrt(Complex.make(0.054794158005943776, 1.0000000000000003e-9));
+    expect(Math.abs(tiny.im - 2.1360080026736956e-9)).toBeLessThanOrEqual(
+      1e-15 * 2.1360080026736956e-9 * 4,
+    );
+    // Any finite parts, ill-conditioned ones included (subnormal-scale parts
+    // are left out: their square underflows). Each part of `r * r` must match
+    // its own part of `a` relative to that part's size, so a lost small part
+    // fails even when the other part is large.
+    const part = fc
+      .double({ min: -1e100, max: 1e100, noNaN: true })
+      .filter((x) => x === 0 || Math.abs(x) > 1e-100);
     fc.assert(
-      fc.property(fc.tuple(grid, grid), ([re, im]) => {
+      fc.property(fc.tuple(part, part), ([re, im]) => {
         const a = Complex.make(re, im);
         const r = Complex.sqrt(a);
+        const squared = Complex.mul(r, r);
         expect(r.re).toBeGreaterThanOrEqual(0);
-        expect(relClose(Complex.mul(r, r), a)).toBe(true);
+        expect(Math.abs(squared.re - re)).toBeLessThanOrEqual(1e-12 * Complex.abs(a));
+        expect(Math.abs(squared.im - im)).toBeLessThanOrEqual(1e-12 * Math.abs(im));
       }),
-      { numRuns: 300 },
+      { numRuns: 2000 },
     );
   });
 

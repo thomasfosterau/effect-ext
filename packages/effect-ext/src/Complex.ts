@@ -261,10 +261,14 @@ export const sqrt = (a: Complex): Complex => {
       ? make(Math.sqrt(a.re), a.im)
       : make(0, Math.sqrt(-a.re) * (Object.is(a.im, -0) ? -1 : 1));
   }
-  const m = abs(a);
-  const re = Math.sqrt((m + a.re) / 2);
-  const im = Math.sqrt((m - a.re) / 2);
-  return make(re, a.im < 0 ? -im : im);
+  // The stable form (effect-ext#39): `(m ± re) / 2` only ever adds two
+  // non-negative terms, and the other part is recovered by division, so a
+  // part that is tiny next to the other one is not lost to cancellation
+  // (`sqrt(1 + 1e-10i)` is `1 + 5e-11i`, not `1 + 0i`).
+  const t = Math.sqrt((abs(a) + Math.abs(a.re)) / 2);
+  const other = Math.abs(a.im) / (2 * t);
+  const sign = a.im < 0 ? -1 : 1;
+  return a.re >= 0 ? make(t, sign * other) : make(other, sign * t);
 };
 
 /**
