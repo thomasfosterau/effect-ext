@@ -219,8 +219,9 @@ Both map "absent" and "clear" to `Option.none()`. Never use them to compute a co
 ## Issues
 
 - `Issues.pathToJsonPointer(path)` — an RFC 6901 pointer (`~` → `~0`, `/` → `~1`; `[]` → `""`).
-- `Issues.leaves(issue)` — a `SchemaIssue` tree flattened to `{ path, issue }` leaves: `Pointer` extends the path, `Composite` and a non-empty `AnyOf` fan out, `Filter` / `Encoding` unwrap, anything else (and an empty `AnyOf`) is a leaf.
-- `Issues.pointers(issue, { prefix })` — each leaf as `{ pointer, tag, message, issue }`. `message` is Effect's default formatting; a built-in check's failure (`isMinLength(3)`) keeps its expectation ("Expected a value with a length of at least 3").
+- `Issues.leaves(issue)` — a `SchemaIssue` tree flattened to `{ path, issue }` leaves: `Pointer` extends the path, `Composite` and a non-empty `AnyOf` fan out, `Filter` / `Encoding` unwrap, anything else (and an empty `AnyOf`) is a leaf. Each leaf also carries `describedBy`: for a message-less `InvalidValue`, the nearest enclosing `Filter` when it wraps the leaf directly (a built-in check) or states a `message` of its own (a struct-level check that points its failure at a field, `{ path: ["b"], issue }`); `Option.none()` otherwise.
+- `Issues.message(leaf)` — the leaf's message from Effect's default formatter, formatted from `describedBy` when present, so the check's expectation or `message` survives.
+- `Issues.pointers(issue, { prefix })` — each leaf as `{ pointer, tag, message, issue }`, with `message` from `Issues.message`: a built-in check's failure (`isMinLength(3)`) keeps its expectation ("Expected a value with a length of at least 3"), and a struct-level check pointed at a field keeps its `message`.
 
 ```ts
 import { Effect, Option, Schema } from "effect";

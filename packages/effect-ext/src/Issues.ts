@@ -56,6 +56,16 @@ export const pathToJsonPointer = (path: ReadonlyArray<PropertyKey>): string =>
 export interface Leaf {
   readonly path: ReadonlyArray<PropertyKey>;
   readonly issue: SchemaIssue.Issue;
+  /**
+   * The check that describes a message-less `InvalidValue` leaf: the nearest
+   * enclosing `Filter`, when it wraps the leaf directly (a built-in check such
+   * as `isMinLength`) or states a `message` of its own (a struct-level check
+   * that points its failure at a field). {@link message} formats from it.
+   * `Option.none()` for every other leaf.
+   *
+   * @since 0.2.0
+   */
+  readonly describedBy: Option.Option<SchemaIssue.Filter>;
 }
 
 /**
@@ -83,59 +93,105 @@ export interface Leaf {
  * @since 0.1.0
  * @category destructors
  */
-export const leaves = (issue: SchemaIssue.Issue): ReadonlyArray<Leaf> =>
-  Arr.map(walkLeaves(issue), ({ path, issue: leaf }) => ({ path, issue: leaf }));
-
-/**
- * A leaf plus the node its message is best formatted from: the leaf itself,
- * or — for a built-in check (`isMinLength`, `isPattern`, …) whose failure is
- * an `InvalidValue` carrying no message of its own — the `Filter` wrapping it,
- * which knows what was expected ("Expected a value with a length of at least
- * 3" rather than "Expected a valid value").
- */
-interface WalkedLeaf extends Leaf {
-  readonly formatFrom: SchemaIssue.Issue;
-}
+export const leaves = (issue: SchemaIssue.Issue): ReadonlyArray<Leaf> => {
+  const found: Array<Leaf> = [];
+  const walk = (
+    current: SchemaIssue.Issue,
+    path: ReadonlyArray<PropertyKey>,
+    filter: Option.Option<SchemaIssue.Filter>,
+  ): void => {
+    Match.value(current).pipe(
+      // `Pointer` extends the path and recurses into its one inner issue.
+      Match.tag("Pointer", (node) => walk(node.issue, [...path, ...node.path], filter)),
+      // `Composite` groups sibling issues under the same path.
+      Match.tag("Composite", (node) => node.issues.forEach((child) => walk(child, path, filter))),
+      // A union no-match: one leaf per rejected member, so a caller can see
+      // which branch failed — or the `AnyOf` itself when it carries none.
+      Match.tag("AnyOf", (node) => {
+        if (Arr.isReadonlyArrayEmpty(node.issues)) found.push(leafOf(path, node, filter));
+        else node.issues.forEach((child) => walk(child, path, filter));
+      }),
+      // A `Filter` unwraps, and becomes the nearest check for what is below it.
+      Match.tag("Filter", (node) => walk(node.issue, path, Option.some(node))),
+      Match.tag("Encoding", (node) => walk(node.issue, path, filter)),
+      // A terminal leaf: `InvalidType`, `InvalidValue`, `MissingKey`,
+      // `UnexpectedKey`, `Forbidden`, `OneOf`.
+      Match.orElse((leaf) => {
+        found.push(leafOf(path, leaf, filter));
+      }),
+    );
+  };
+  walk(issue, [], Option.none());
+  return found;
+};
 
 /** An `InvalidValue` that states no message of its own. */
 const isBareInvalidValue = (issue: SchemaIssue.Issue): boolean =>
   P.isTagged(issue, "InvalidValue") && issue.annotations?.message === undefined;
 
-const walkLeaves = (issue: SchemaIssue.Issue): ReadonlyArray<WalkedLeaf> => {
-  const found: Array<WalkedLeaf> = [];
-  const push = (path: ReadonlyArray<PropertyKey>, leaf: SchemaIssue.Issue) =>
-    found.push({ path, issue: leaf, formatFrom: leaf });
-  const walk = (current: SchemaIssue.Issue, path: ReadonlyArray<PropertyKey>): void => {
-    Match.value(current).pipe(
-      // `Pointer` extends the path and recurses into its one inner issue.
-      Match.tag("Pointer", (node) => walk(node.issue, [...path, ...node.path])),
-      // `Composite` groups sibling issues under the same path.
-      Match.tag("Composite", (node) => node.issues.forEach((child) => walk(child, path))),
-      // A union no-match: one leaf per rejected member, so a caller can see
-      // which branch failed — or the `AnyOf` itself when it carries none.
-      Match.tag("AnyOf", (node) => {
-        if (Arr.isReadonlyArrayEmpty(node.issues)) push(path, node);
-        else node.issues.forEach((child) => walk(child, path));
-      }),
-      // A `Filter` wrapping a message-less `InvalidValue` is a built-in check
-      // failing: keep the leaf, but format from the filter, which carries the
-      // expectation. Any other `Filter`, and every `Encoding`, just unwraps.
-      Match.tag("Filter", (node) => {
-        if (isBareInvalidValue(node.issue)) {
-          found.push({ path, issue: node.issue, formatFrom: node });
-        } else walk(node.issue, path);
-      }),
-      Match.tag("Encoding", (node) => walk(node.issue, path)),
-      // A terminal leaf: `InvalidType`, `InvalidValue`, `MissingKey`,
-      // `UnexpectedKey`, `Forbidden`, `OneOf`.
-      Match.orElse((leaf) => {
-        push(path, leaf);
-      }),
-    );
-  };
-  walk(issue, []);
-  return found;
-};
+/**
+ * A leaf, described by the nearest enclosing `Filter` when that filter knows
+ * more than the leaf does: the leaf is a message-less `InvalidValue`, and the
+ * filter either wraps it directly (a built-in check: "Expected a value with a
+ * length of at least 3" rather than "Expected a valid value") or carries a
+ * `message` of its own (a struct-level check returning `{ path, issue }`).
+ * This is effect-jsonapi's `describedBy` rule (effect-ext#69).
+ */
+const leafOf = (
+  path: ReadonlyArray<PropertyKey>,
+  issue: SchemaIssue.Issue,
+  filter: Option.Option<SchemaIssue.Filter>,
+): Leaf => ({
+  path,
+  issue,
+  describedBy: Option.filter(
+    filter,
+    (enclosing) =>
+      isBareInvalidValue(issue) &&
+      (enclosing.issue === issue || SchemaIssue.defaultCheckHook(enclosing) !== undefined),
+  ),
+});
+
+/**
+ * A leaf's message, from Effect's default issue formatter: formatted from its
+ * {@link Leaf.describedBy} check when it has one, so the check's expectation
+ * or `message` survives, else from the leaf itself. The path is not part of
+ * the message.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Schema, SchemaIssue } from "effect"
+ * import { Issues } from "@thomasfosterau/effect-ext"
+ *
+ * const Pair = Schema.Struct({ a: Schema.String, b: Schema.String }).check(
+ *   Schema.makeFilter(
+ *     (v) => v.a === v.b || { path: ["b"], issue: new SchemaIssue.InvalidValue() },
+ *     { message: "b must equal a" },
+ *   ),
+ * )
+ * const failure = Schema.decodeUnknownEffect(Pair)({ a: "x", b: "y" }).pipe(Effect.flip, Effect.runSync)
+ *
+ * const [leaf] = Issues.leaves(failure.issue)
+ * if (leaf !== undefined) console.log(leaf.path, Issues.message(leaf))
+ * // → [ 'b' ] b must equal a
+ * ```
+ *
+ * @since 0.2.0
+ * @category destructors
+ */
+export const message = (leaf: Leaf): string =>
+  // Effect's default formatter: `String(issue)` is not a message for a leaf
+  // node (a `MissingKey` stringifies as `[object Object]`). The describing
+  // check is re-wrapped around the leaf alone, so the formatter neither walks
+  // the check's own subtree nor appends its `at <path>` suffix.
+  defaultFormat(
+    Option.match(leaf.describedBy, {
+      onNone: () => leaf.issue,
+      onSome: (filter) => new SchemaIssue.Filter(filter.filter, leaf.issue),
+    }),
+  );
+
+const defaultFormat = SchemaIssue.makeFormatterDefault();
 
 /**
  * Options of {@link pointers}.
@@ -164,9 +220,9 @@ export interface PointedIssue {
   /** The leaf's `_tag` (`InvalidType`, `MissingKey`, …): a stable code. */
   readonly tag: SchemaIssue.Issue["_tag"];
   /**
-   * The leaf's message, from Effect's default issue formatter — formatted from
-   * the enclosing `Filter` when the leaf is a built-in check's message-less
-   * `InvalidValue`, so the expectation survives.
+   * The leaf's message, as {@link message} formats it: from the check that
+   * describes a message-less `InvalidValue` when there is one, so its
+   * expectation or `message` survives.
    */
   readonly message: string;
   /** The leaf itself. */
@@ -204,13 +260,10 @@ export const pointers = (
   { prefix = Option.none() }: PointerOptions = {},
 ): ReadonlyArray<PointedIssue> => {
   const segments = Option.getOrElse(prefix, (): ReadonlyArray<PropertyKey> => []);
-  // Effect's default formatter, per leaf: `String(issue)` is not a message
-  // for a leaf node (a `MissingKey` stringifies as `[object Object]`).
-  const format = SchemaIssue.makeFormatterDefault();
-  return Arr.map(walkLeaves(issue), (leaf) => ({
+  return Arr.map(leaves(issue), (leaf) => ({
     pointer: pathToJsonPointer([...segments, ...leaf.path]),
     tag: leaf.issue._tag,
-    message: format(leaf.formatFrom),
+    message: message(leaf),
     issue: leaf.issue,
   }));
 };
