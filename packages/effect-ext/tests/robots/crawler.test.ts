@@ -14,6 +14,7 @@ import * as HttpClientResponse from "effect/http/HttpClientResponse";
 import {
   evaluateRobots,
   fetchRobots,
+  isAllowed,
   isRobotsBody,
   makeRobotsChecker,
   memoryRobotsCache,
@@ -189,6 +190,30 @@ describe("evaluateRobots", () => {
       "Allow: /",
     ].join("\n");
     expect(evaluate(body, "/anything").allowed).toBe(true);
+  });
+
+  // A product token ends at the first character outside RFC 9309's token
+  // alphabet, so a version on either side does not stop the match.
+  it("binds a versioned User-agent line to the bare crawler token", () => {
+    const body = "User-agent: GardeneriaBot/1.0\nDisallow: /private\n\nUser-agent: *\nAllow: /";
+    const result = evaluateRobots(parse(body), "GardeneriaBot", "/private/x");
+    expect(result.allowed).toBe(false);
+  });
+
+  it("finds the bare group for a crawler that passes its versioned name", () => {
+    const body = "User-agent: GardeneriaBot\nDisallow: /private\n\nUser-agent: *\nAllow: /";
+    expect(evaluateRobots(parse(body), "GardeneriaBot/1.0", "/private/x").allowed).toBe(false);
+    expect(
+      evaluateRobots(parse(body), "GardeneriaBot/1.0 (+https://example.com/bot)", "/private/x")
+        .allowed,
+    ).toBe(false);
+    expect(isAllowed(parse(body), "gardeneriabot/2.3", "/private/x")).toBe(false);
+  });
+
+  it("still never binds by substring, and a token-less line matches nothing", () => {
+    const body = "User-agent: bot/1.0\nDisallow: /\n\nUser-agent: 1.0\nDisallow: /";
+    expect(evaluateRobots(parse(body), "Googlebot/2.1", "/x").allowed).toBe(true);
+    expect(evaluateRobots(parse(body), "bot/9", "/x").allowed).toBe(false);
   });
 
   it("keeps Allow on an equal-length tie whichever side it appears on", () => {

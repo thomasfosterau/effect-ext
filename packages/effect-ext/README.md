@@ -666,7 +666,7 @@ encode(robotsTxt); // the canonical text
 | `isAllowed(robotsTxt, userAgent, path)` | Group selection by the longest matching product token (exact or prefix, case-insensitive; `*` matches everything, last); rule selection by the longest matching pattern, `Allow` winning a tie; `*` wildcards and `$` anchors; a query string or fragment on `path` is stripped. No group or no matching rule means allowed. |
 | `getCrawlDelay`, `getSitemaps` | The selected group's `Crawl-delay` as an `Option`; every `Sitemap:` line. |
 
-Group selection follows RFC 9309 §2.2.1: the **product token** matches exactly or as a prefix, never as a **substring** (`userAgent.includes(token)`). A `User-agent: Google` group binds `Googlebot`; a `User-agent: bot` group does not bind `Googlebot`.
+Group selection follows RFC 9309 §2.2.1: the **product token** matches exactly or as a prefix, never as a **substring** (`userAgent.includes(token)`). A `User-agent: Google` group binds `Googlebot`; a `User-agent: bot` group does not bind `Googlebot`. Both sides are compared by their product token, the leading run of letters, `_` and `-`, so a version or comment is ignored: `User-agent: ExampleBot/1.0` binds the `ExampleBot` crawler, and a crawler passing `ExampleBot/1.0 (+https://…)` finds its `User-agent: ExampleBot` group.
 
 #### The crawler side
 
