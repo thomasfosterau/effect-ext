@@ -20,11 +20,10 @@ import * as Option from "effect/Option";
 import * as Tracer from "effect/Tracer";
 
 /** Run a fully-provided Effect to a Promise of its success value. */
-export const runTest = <A, E>(effect: Effect.Effect<A, E, never>): Promise<A> =>
-  Effect.runPromise(effect);
+export const runTest = <A, E>(effect: Effect.Effect<A, E>): Promise<A> => Effect.runPromise(effect);
 
 /** Run a fully-provided Effect to its `Exit`, for failure-path assertions. */
-export const runTestExit = <A, E>(effect: Effect.Effect<A, E, never>): Promise<Exit.Exit<A, E>> =>
+export const runTestExit = <A, E>(effect: Effect.Effect<A, E>): Promise<Exit.Exit<A, E>> =>
   Effect.runPromiseExit(effect);
 
 /**
@@ -33,7 +32,7 @@ export const runTestExit = <A, E>(effect: Effect.Effect<A, E, never>): Promise<E
  * fields.
  */
 export const expectFailureInstanceOf = async <A, E, T>(
-  program: Effect.Effect<A, E, never>,
+  program: Effect.Effect<A, E>,
   errorClass: abstract new (...args: never[]) => T,
 ): Promise<T> => {
   const exit = await runTestExit(program);

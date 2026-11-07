@@ -288,24 +288,24 @@ describe("Runner.runSuite — retry", () => {
   });
 });
 
-describe("Runner.runSuite — ignore vs fail metric errors", () => {
-  const makeFlakyOnceMetric = () => {
-    let call = 0;
-    return Metric.makeMetric({
+const makeFlakyOnceMetric = () => {
+  let call = 0;
+  return Metric.makeMetric({
+    name: "flaky-once",
+    scorer: Scorer.makeScorer<Runner.EvaluatedCase<string, string>, TaskError>({
       name: "flaky-once",
-      scorer: Scorer.makeScorer<Runner.EvaluatedCase<string, string>, TaskError>({
-        name: "flaky-once",
-        evaluate: () =>
-          Effect.gen(function* () {
-            call++;
-            if (call === 1) return yield* Effect.fail(new TaskError("first trial fails"));
-            return { score: 1 };
-          }),
-      }),
-      threshold: Threshold.strict,
-    });
-  };
+      evaluate: () =>
+        Effect.gen(function* () {
+          call++;
+          if (call === 1) return yield* Effect.fail(new TaskError("first trial fails"));
+          return { score: 1 };
+        }),
+    }),
+    threshold: Threshold.strict,
+  });
+};
 
+describe("Runner.runSuite — ignore vs fail metric errors", () => {
   it("fails the case on any metric error by default (ignoreErrors: false)", async () => {
     const suite = Runner.makeSuite({
       name: "strict-errors",
@@ -344,6 +344,9 @@ describe("Runner.runSuite — ignore vs fail metric errors", () => {
     expect(result.cases[0]?.passed).toBe(true);
   });
 });
+
+const storeFailure = (method: string) =>
+  Effect.fail(new Cache.KeyValueStore.KeyValueStoreError({ message: "store down", method }));
 
 describe("Runner.runSuite — caching", () => {
   it("makes zero further scorer/task calls on a repeat run against the same cache", async () => {
@@ -450,8 +453,6 @@ describe("Runner.runSuite — caching", () => {
 
   it("treats a failing cache store as a miss on read and a no-op on write, never failing the run", async () => {
     let taskCalls = 0;
-    const storeFailure = (method: string) =>
-      Effect.fail(new Cache.KeyValueStore.KeyValueStoreError({ message: "store down", method }));
     const failingStore: Layer.Layer<Cache.KeyValueStore.KeyValueStore> = Layer.succeed(
       Cache.KeyValueStore.KeyValueStore,
     )(

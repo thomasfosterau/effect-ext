@@ -89,7 +89,7 @@ const rerankBody = (
 const embeddingLayer = (
   fetch: typeof globalThis.fetch,
   options?: {
-    readonly apiKey?: Redacted.Redacted<string>;
+    readonly apiKey?: Redacted.Redacted;
     readonly model?: VoyageEmbeddingModel.Options;
   },
 ) =>
@@ -101,7 +101,7 @@ const embeddingLayer = (
 const rerankerLayer = (
   fetch: typeof globalThis.fetch,
   options?: {
-    readonly apiKey?: Redacted.Redacted<string>;
+    readonly apiKey?: Redacted.Redacted;
     readonly model?: VoyageRerankerModel.Options;
   },
 ) =>
@@ -398,14 +398,15 @@ describe("VoyageRerankerModel", () => {
 
 // ── Client-level behaviour ────────────────────────────────────────────
 
+/** A fetch stub that rejects, simulating a transport-level failure. */
+const networkDownFetch: typeof globalThis.fetch = async () => {
+  throw new TypeError("network down");
+};
+
 describe("VoyageClient", () => {
   it("maps a transport failure to an AiError", async () => {
-    const fetch: typeof globalThis.fetch = async () => {
-      throw new TypeError("network down");
-    };
-
     await expectFailureInstanceOf(
-      embedMany(["x"]).pipe(Effect.provide(embeddingLayer(fetch))),
+      embedMany(["x"]).pipe(Effect.provide(embeddingLayer(networkDownFetch))),
       AiError.AiError,
     );
   });

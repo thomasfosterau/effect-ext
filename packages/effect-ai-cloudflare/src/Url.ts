@@ -37,7 +37,7 @@ export interface GatewayUrlConfig {
    * `cf-aig-authorization` header. `Redacted` so it never prints in a log
    * or error message.
    */
-  readonly token: Redacted.Redacted<string>;
+  readonly token: Redacted.Redacted;
 }
 
 /**

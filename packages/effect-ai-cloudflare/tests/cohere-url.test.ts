@@ -50,25 +50,27 @@ const stubFetch = (response: { status: number; body: unknown }) => {
 };
 
 /** A fetch stub that returns a 200 response whose body is not valid JSON. */
+const malformedBodyFetch: typeof globalThis.fetch = async () =>
+  new Response("not valid json", {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+
 const stubFetchMalformedBody = () => {
-  const fetch: typeof globalThis.fetch = async () =>
-    new Response("not valid json", {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
   const layer = FetchHttpClient.layer.pipe(
-    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch)),
+    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, malformedBodyFetch)),
   );
   return { layer };
 };
 
 /** A fetch stub that rejects, simulating a transport-level failure. */
+const rejectingFetch: typeof globalThis.fetch = async () => {
+  throw new TypeError("network unreachable");
+};
+
 const stubFetchReject = () => {
-  const fetch: typeof globalThis.fetch = async () => {
-    throw new TypeError("network unreachable");
-  };
   const layer = FetchHttpClient.layer.pipe(
-    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch)),
+    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, rejectingFetch)),
   );
   return { layer };
 };
@@ -149,7 +151,7 @@ describe("makeCohereEmbeddingModelFromUrl", () => {
       AiError.AiError,
     );
 
-    expect(String(failure.message)).toContain("response body");
+    expect(failure.message).toContain("response body");
   });
 
   it("fails with AiError (not a defect) when the transport call rejects", async () => {
@@ -163,7 +165,7 @@ describe("makeCohereEmbeddingModelFromUrl", () => {
       AiError.AiError,
     );
 
-    expect(String(failure.message)).toContain("gateway call failed");
+    expect(failure.message).toContain("gateway call failed");
   });
 
   it("fails layer construction with a typed ConfigError when CF_ACCOUNT_ID is missing", async () => {
@@ -283,7 +285,7 @@ describe("makeCohereRerankerFromUrl", () => {
       AiError.AiError,
     );
 
-    expect(String(failure.message)).toContain("response body");
+    expect(failure.message).toContain("response body");
   });
 
   it("fails with AiError (not a defect) when the transport call rejects", async () => {
@@ -297,7 +299,7 @@ describe("makeCohereRerankerFromUrl", () => {
       AiError.AiError,
     );
 
-    expect(String(failure.message)).toContain("gateway call failed");
+    expect(failure.message).toContain("gateway call failed");
   });
 
   it("fails with AiError when the response does not match the rerank shape", async () => {

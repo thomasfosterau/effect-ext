@@ -202,7 +202,7 @@ describe("makeOpenAiModerationModelFromUrl", () => {
       AiError.AiError,
     );
 
-    expect(String(failure.message)).toContain("response body");
+    expect(failure.message).toContain("response body");
   });
 
   it("fails with AiError (not a defect) when the transport call rejects", async () => {
@@ -218,7 +218,7 @@ describe("makeOpenAiModerationModelFromUrl", () => {
       AiError.AiError,
     );
 
-    expect(String(failure.message)).toContain("gateway call failed");
+    expect(failure.message).toContain("gateway call failed");
   });
 
   it("fails construction with a typed ConfigError when CF_ACCOUNT_ID is missing", async () => {

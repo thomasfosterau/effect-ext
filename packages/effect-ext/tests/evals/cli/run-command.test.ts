@@ -51,7 +51,7 @@ const runCli = (
   const testFs = FileSystem.makeNoop({
     writeFileString: (path, content) =>
       Effect.sync(() => {
-        writes.push({ path: String(path), content });
+        writes.push({ path: path, content });
       }),
     makeDirectory: () => Effect.void,
   });

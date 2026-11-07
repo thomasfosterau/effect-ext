@@ -18,7 +18,7 @@ import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 
 const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
   const failure = await expectFailureInstanceOf(program, AiError.AiError);
-  return String(failure.message);
+  return failure.message;
 };
 
 const makeStub = (
@@ -51,7 +51,7 @@ describe("TranscriptionModel", () => {
   it("returns text, segments, language, and usage; passes options through", async () => {
     const { response, calls } = await runTest(
       Effect.gen(function* () {
-        const { model, calls } = yield* makeStub({
+        const { model, calls: stubCalls } = yield* makeStub({
           respond: () => ({
             text: "hello world",
             segments: [
@@ -63,7 +63,7 @@ describe("TranscriptionModel", () => {
           }),
         });
         const result = yield* model.transcribe({ audio, mediaType: "audio/wav", language: "en" });
-        return { response: result, calls };
+        return { response: result, calls: stubCalls };
       }),
     );
 

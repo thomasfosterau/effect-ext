@@ -177,7 +177,7 @@ describe("Cohere embeddings", () => {
       AiError.AiError,
     );
 
-    expect(String(failure.message)).toContain("expected shape");
+    expect(failure.message).toContain("expected shape");
   });
 
   it("fails with AiError when the response body cannot be parsed as JSON", async () => {
@@ -191,7 +191,7 @@ describe("Cohere embeddings", () => {
       AiError.AiError,
     );
 
-    expect(String(failure.message)).toContain("response body");
+    expect(failure.message).toContain("response body");
   });
 
   it("fails with AiError (not a defect) when the gateway binding call rejects", async () => {
@@ -205,7 +205,7 @@ describe("Cohere embeddings", () => {
       AiError.AiError,
     );
 
-    expect(String(failure.message)).toContain("gateway call failed");
+    expect(failure.message).toContain("gateway call failed");
   });
 });
 
@@ -316,6 +316,6 @@ describe("Cohere reranker", () => {
       AiError.AiError,
     );
 
-    expect(String(failure.message)).toContain("gateway call failed");
+    expect(failure.message).toContain("gateway call failed");
   });
 });

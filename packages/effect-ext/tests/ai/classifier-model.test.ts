@@ -27,7 +27,7 @@ const noUsage = { inputTokens: undefined } as const;
 
 const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
   const failure = await expectFailureInstanceOf(program, AiError.AiError);
-  return String(failure.message);
+  return failure.message;
 };
 
 const makeStub = (
@@ -85,14 +85,14 @@ describe("ClassifierModel", () => {
   it("passes normalised provider options through (multiLabel defaults to false)", async () => {
     const calls = await runTest(
       Effect.gen(function* () {
-        const { model, calls } = yield* makeStub({
+        const { model, calls: stubCalls } = yield* makeStub({
           respond: () => ({
             classifications: [{ classes: [{ label: "a", score: 1 }] }],
             usage: noUsage,
           }),
         });
         yield* model.classify({ inputs: ["x"], labels: ["a", "b"] });
-        return calls;
+        return stubCalls;
       }),
     );
 

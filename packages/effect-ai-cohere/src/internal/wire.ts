@@ -318,5 +318,5 @@ const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
  * `undefined` value (a tool that returns nothing) has no JSON text, so it
  * stays `undefined` and its key is left off the serialised request body.
  */
-export const stringifyJson = <A>(value: A): string | undefined =>
+export const stringifyJson = (value: unknown): string | undefined =>
   Predicate.isUndefined(value) ? undefined : encodeJson(value);

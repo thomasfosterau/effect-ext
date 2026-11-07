@@ -52,11 +52,11 @@ describe("Report.writeJsonReport", () => {
     const testFs = FileSystem.layerNoop({
       makeDirectory: (path) =>
         Effect.sync(() => {
-          created = String(path);
+          created = path;
         }),
       writeFileString: (path, content) =>
         Effect.sync(() => {
-          written = { path: String(path), content };
+          written = { path: path, content };
         }),
     });
 
@@ -84,7 +84,7 @@ describe("Report.writeJsonReport", () => {
         }),
       writeFileString: (path, content) =>
         Effect.sync(() => {
-          written = { path: String(path), content };
+          written = { path: path, content };
         }),
     });
 

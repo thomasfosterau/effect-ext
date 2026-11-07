@@ -54,7 +54,7 @@ const ideal = stubPort({
 });
 
 const run = (
-  suite: Partial<Runner.RetrievalSuite<never, never, string, never>> = {},
+  suite: Partial<Runner.RetrievalSuite<never, never, string>> = {},
   options: Runner.RunnerOptions = {},
 ) =>
   runTest(
@@ -265,11 +265,11 @@ describe("Runner.runRetrievalSuite", () => {
     const suite = { name: "f", dataset, port: counting, k: 3 };
     const [first, second, other] = await runTest(
       Effect.gen(function* () {
-        const first = yield* Runner.runRetrievalSuite(suite);
-        const second = yield* Runner.runRetrievalSuite(suite);
+        const firstRun = yield* Runner.runRetrievalSuite(suite);
+        const secondRun = yield* Runner.runRetrievalSuite(suite);
         // A different cutoff is a different measurement — its own cache key.
-        const other = yield* Runner.runRetrievalSuite({ ...suite, k: 5 });
-        return [first, second, other] as const;
+        const otherRun = yield* Runner.runRetrievalSuite({ ...suite, k: 5 });
+        return [firstRun, secondRun, otherRun] as const;
       }).pipe(Effect.provide(Cache.layerMemory)),
     );
     expect(calls).toBe(4);
@@ -285,47 +285,47 @@ describe("Runner.runRetrievalSuite", () => {
   });
 });
 
-describe("Result.aggregate", () => {
-  const scored = (metric: string, mean: number): Result.MetricAggregate => ({
-    metric,
-    trials: [{ _tag: "Scored", trial: 1, score: { score: mean }, cached: false }],
-    summary: Result.summarize([mean]),
-    errorCount: 0,
-    passed: true,
-  });
-  const errored = (metric: string): Result.MetricAggregate => ({
-    metric,
-    trials: [{ _tag: "Errored", trial: 1, error: "boom", cached: false }],
-    summary: undefined,
-    errorCount: 1,
-    passed: false,
-  });
-  const caseResult = (
-    metrics: ReadonlyArray<Result.MetricAggregate>,
-    taskFailures: ReadonlyArray<Result.TaskTrialFailure> = [],
-  ): Result.CaseResult => ({
-    golden: {},
-    trials: 1,
-    taskOutputs: [],
-    taskFailures,
-    metrics,
-    passed: true,
-  });
-  const suite = (cases: ReadonlyArray<Result.CaseResult>): Result.SuiteResult => ({
-    suite: "s",
-    cases,
-    passed: true,
-    durationMillis: 0,
-  });
+const scoredAggregate = (metric: string, mean: number): Result.MetricAggregate => ({
+  metric,
+  trials: [{ _tag: "Scored", trial: 1, score: { score: mean }, cached: false }],
+  summary: Result.summarize([mean]),
+  errorCount: 0,
+  passed: true,
+});
+const erroredAggregate = (metric: string): Result.MetricAggregate => ({
+  metric,
+  trials: [{ _tag: "Errored", trial: 1, error: "boom", cached: false }],
+  summary: undefined,
+  errorCount: 1,
+  passed: false,
+});
+const makeCaseResult = (
+  metrics: ReadonlyArray<Result.MetricAggregate>,
+  taskFailures: ReadonlyArray<Result.TaskTrialFailure> = [],
+): Result.CaseResult => ({
+  golden: {},
+  trials: 1,
+  taskOutputs: [],
+  taskFailures,
+  metrics,
+  passed: true,
+});
+const makeSuiteResult = (cases: ReadonlyArray<Result.CaseResult>): Result.SuiteResult => ({
+  suite: "s",
+  cases,
+  passed: true,
+  durationMillis: 0,
+});
 
+describe("Result.aggregate", () => {
   it("means over the cases that scored only — a failed case is never a zero", () => {
     const aggregate = Result.aggregate(
-      suite([
-        caseResult([scored("ndcg@5", 1)]),
-        caseResult([scored("ndcg@5", 0.5)]),
+      makeSuiteResult([
+        makeCaseResult([scoredAggregate("ndcg@5", 1)]),
+        makeCaseResult([scoredAggregate("ndcg@5", 0.5)]),
         // If this contributed a 0 the mean would be 0.5, and a broken
         // provider would read as a quality regression.
-        caseResult([errored("ndcg@5")], [{ trial: 1, error: "gateway down" }]),
+        makeCaseResult([erroredAggregate("ndcg@5")], [{ trial: 1, error: "gateway down" }]),
       ]),
     );
     expect(aggregate.metrics).toEqual({ "ndcg@5": { mean: 0.75, cases: 2 } });
@@ -334,14 +334,16 @@ describe("Result.aggregate", () => {
 
   it("returns an empty aggregate rather than NaN when every case failed", () => {
     const aggregate = Result.aggregate(
-      suite([caseResult([errored("ndcg@5")], [{ trial: 1, error: "boom" }])]),
+      makeSuiteResult([
+        makeCaseResult([erroredAggregate("ndcg@5")], [{ trial: 1, error: "boom" }]),
+      ]),
     );
     expect(aggregate.metrics).toEqual({});
     expect(aggregate.successfulCases).toBe(0);
   });
 
   it("aggregates an empty suite without dividing by zero", () => {
-    expect(Result.aggregate(suite([]))).toEqual({
+    expect(Result.aggregate(makeSuiteResult([]))).toEqual({
       metrics: {},
       totalCases: 0,
       successfulCases: 0,
@@ -351,9 +353,9 @@ describe("Result.aggregate", () => {
 
   it("means each metric over only the cases that carry it", () => {
     const aggregate = Result.aggregate(
-      suite([
-        caseResult([scored("ndcg@5", 1), scored("recall@5", 0.5)]),
-        caseResult([scored("ndcg@5", 0), errored("recall@5")]),
+      makeSuiteResult([
+        makeCaseResult([scoredAggregate("ndcg@5", 1), scoredAggregate("recall@5", 0.5)]),
+        makeCaseResult([scoredAggregate("ndcg@5", 0), erroredAggregate("recall@5")]),
       ]),
     );
     expect(aggregate.metrics).toEqual({

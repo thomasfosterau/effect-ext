@@ -19,7 +19,7 @@ const noUsage = { inputTokens: undefined } as const;
 
 const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
   const failure = await expectFailureInstanceOf(program, AiError.AiError);
-  return String(failure.message);
+  return failure.message;
 };
 
 const documents = ["alpha document", "bravo document", "charlie document"];
@@ -53,11 +53,11 @@ describe("RerankerModel", () => {
   it("passes query, documents, and topN through to the provider", async () => {
     const calls = await runTest(
       Effect.gen(function* () {
-        const { model, calls } = yield* makeStubModel({
+        const { model, calls: stubCalls } = yield* makeStubModel({
           respond: () => ({ results: [{ index: 1, relevanceScore: 1 }], usage: noUsage }),
         });
         yield* model.rerank({ query: "needle", documents, topN: 1 });
-        return calls;
+        return stubCalls;
       }),
     );
 

@@ -62,8 +62,8 @@ export const stubLanguageModel = (
           new LanguageModel.GenerateObjectResponse(value, [...content] as never),
         );
       }) as never,
-      generateText: (() => Effect.die(new NotStubbed({ method: "generateText" }))) as never,
-      streamText: (() => Stream.die(new NotStubbed({ method: "streamText" }))) as never,
+      generateText: () => Effect.die(new NotStubbed({ method: "generateText" })),
+      streamText: () => Stream.die(new NotStubbed({ method: "streamText" })),
     }),
   );
 
@@ -81,7 +81,7 @@ export const failingLanguageModel = (): Layer.Layer<LanguageModel.LanguageModel>
             reason: new AiError.UnknownError({ description: "stubbed failure" }),
           }),
         )) as never,
-      generateText: (() => Effect.die(new NotStubbed({ method: "generateText" }))) as never,
-      streamText: (() => Stream.die(new NotStubbed({ method: "streamText" }))) as never,
+      generateText: () => Effect.die(new NotStubbed({ method: "generateText" })),
+      streamText: () => Stream.die(new NotStubbed({ method: "streamText" })),
     }),
   );

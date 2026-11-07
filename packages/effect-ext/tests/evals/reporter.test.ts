@@ -101,7 +101,7 @@ describe("Reporter.json", () => {
     const testFs = FileSystem.layerNoop({
       writeFileString: (path, content) =>
         Effect.sync(() => {
-          written = { path: String(path), content };
+          written = { path: path, content };
         }),
     });
 
