@@ -193,6 +193,16 @@ describe("pointers", () => {
     expect(leaf === undefined ? "" : Issues.message(leaf)).toBe("Expected a valid value");
   });
 
+  it("keeps the input a directly wrapping check reports", () => {
+    const issue = SchemaParser.decodeResult(Schema.String.check(Schema.isMinLength(3)))("ab", {
+      reportInput: true,
+    }).pipe(
+      Result.getFailure,
+      Option.getOrElse(() => expect.unreachable("the decode was expected to fail")),
+    );
+    expect(Issues.pointers(issue)[0]?.message).toBe(SchemaIssue.makeFormatterDefault()(issue));
+  });
+
   it("describes nothing but a message-less InvalidValue", () => {
     const [missing] = Issues.leaves(issueFor(Schema.Struct({ name: Schema.String }), {}));
     expect(missing?.describedBy).toEqual(Option.none());

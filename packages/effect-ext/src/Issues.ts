@@ -181,13 +181,15 @@ const leafOf = (
  */
 export const message = (leaf: Leaf): string =>
   // Effect's default formatter: `String(issue)` is not a message for a leaf
-  // node (a `MissingKey` stringifies as `[object Object]`). The describing
-  // check is re-wrapped around the leaf alone, so the formatter neither walks
-  // the check's own subtree nor appends its `at <path>` suffix.
+  // node (a `MissingKey` stringifies as `[object Object]`). A check that
+  // wraps the leaf directly formats as it is (keeping any reported input); a
+  // more distant one is re-wrapped around the leaf alone, so the formatter
+  // neither walks the check's own subtree nor appends its `at <path>` suffix.
   defaultFormat(
     Option.match(leaf.describedBy, {
       onNone: () => leaf.issue,
-      onSome: (filter) => new SchemaIssue.Filter(filter.filter, leaf.issue),
+      onSome: (filter) =>
+        filter.issue === leaf.issue ? filter : new SchemaIssue.Filter(filter.filter, leaf.issue),
     }),
   );
 
