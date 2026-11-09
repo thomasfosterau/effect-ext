@@ -74,7 +74,7 @@ catalog:
   # `pnpm install` itself in the `prepare` script. Read the `components`
   # table in node_modules/@effect/tsgo/dist/effect-tsgo.cjs before bumping
   # any of the three.
-  "@effect/tsgo": 0.67.1
+  "@effect/tsgo": 0.67.5
   # Lockstep with `effect`: @effect/vitest is released on the same version
   # line. The `it.effect` runner the Allocator / Vec / String tests use.
   "@effect/vitest": 4.0.6
