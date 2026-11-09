@@ -13,8 +13,8 @@ catalogs:
       specifier: ^3.0.3
       version: 3.0.3
     '@cloudflare/workers-types':
-      specifier: ^5.20261029.1
-      version: 5.20261106.1
+      specifier: ^5.20261108.1
+      version: 5.20261108.1
     '@effect/ai-anthropic':
       specifier: 4.0.6
       version: 4.0.6
@@ -152,7 +152,7 @@ importers:
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
-        version: 5.20261106.1
+        version: 5.20261108.1
       '@effect/ai-anthropic':
         specifier: 'catalog:'
         version: 4.0.6(effect@4.0.6)
@@ -420,8 +420,8 @@ packages:
     resolution: {integrity: sha512-dlT1m5e/0yUL0kRNcQn7yGLVThkgbB0Ga/1AmfDDC/8ik6AIiSf2QLQO2zPYvefsHP0aFgxO93cVLCCfDp7kzQ==}
     engines: {node: '>= 20.12.0'}
 
-  '@cloudflare/workers-types@5.20261106.1':
-    resolution: {integrity: sha512-uQtZyYehF0hwImaFi0/z/BWeTC/DMKpEo+nCySs5WZwoMhnIqLnN3sVjS7GCBc222EWf+F6khsHPWIvPEaP6JA==}
+  '@cloudflare/workers-types@5.20261108.1':
+    resolution: {integrity: sha512-lCGPhVOCy4sepGLuuy6KGxlxt8pVD8kbAt+mkdPcdr29fi5YLtihOLGKeNtInnmgdkSGiKhPCkRv/iq5tXC1/w==}
 
   '@effect/ai-anthropic@4.0.6':
     resolution: {integrity: sha512-hGMzHIWCgUN0r02wWAIjaaIHK6HU+BXRVZiRbsT/zWwG0BwdYu0YPNuPOQwoqwOUANa7T2bhF+ghHaWcPfL9Xg==}
@@ -2491,7 +2491,7 @@ snapshots:
       fast-wrap-ansi: 0.2.2
       sisteransi: 1.0.5
 
-  '@cloudflare/workers-types@5.20261106.1': {}
+  '@cloudflare/workers-types@5.20261108.1': {}
 
   '@effect/ai-anthropic@4.0.6(effect@4.0.6)':
     dependencies:
