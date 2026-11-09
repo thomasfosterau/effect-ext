@@ -1,5 +1,32 @@
 # @thomasfosterau/effect-ext
 
+## 0.2.0
+
+### Minor Changes
+
+- [#76](https://github.com/thomasfosterau/effect-ext/pull/76) [`5b8cbd8`](https://github.com/thomasfosterau/effect-ext/commit/5b8cbd8eadcb6de5202890f1e0f4dc254a23fee9) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Allocator and Layout fixes ([#18](https://github.com/thomasfosterau/effect-ext/issues/18), [#19](https://github.com/thomasfosterau/effect-ext/issues/19)):
+  
+  - `Allocator.tracked` now tracks its blocks by identity. A double free, or freeing a block it never handed out, no longer drives `liveBlocks` / `liveBytes` negative. Such a call is counted in a new `Stats.invalidDeallocations` and isn't passed on to the underlying allocator, so a stale free can't release the arena block that now occupies the same bytes. A block replaced by `reallocate` is no longer live.
+  - `Layout.alignUp`, the arena's offset rounding and the alignment check use arithmetic instead of 32-bit bitwise operators. They are now exact at 2^31 bytes and beyond, where `alignUp(2 ** 31, 8)` returned `-2147483648` before.
+  - `Allocator.makeArena` fails with `AllocationError`, and `makeArenaUnsafe` throws it, for a capacity that isn't a non-negative integer (`1.5` was accepted with `buffer.byteLength` 1).
+  - The arena's "full" message is the same whether a block grows in place or a new one is bumped: `arena exhausted (N of M bytes free)`.
+
+- [#73](https://github.com/thomasfosterau/effect-ext/pull/73) [`2c387ee`](https://github.com/thomasfosterau/effect-ext/commit/2c387ee9c878a9b8debb3c47cfba72b32e1b53ec) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - `Issues.pointers` keeps a struct-level check's `message` when the check points its failure at a field (`{ path, issue: new SchemaIssue.InvalidValue() }`), where it said "Expected a valid value" ([#69](https://github.com/thomasfosterau/effect-ext/issues/69)). The walk now carries the nearest `Filter` down through `Pointer`, `Composite`, `AnyOf` and `Encoding`, as effect-jsonapi's `issueLeaves` does. `Issues.Leaf` gains `describedBy` (the check that describes a message-less `InvalidValue`), and the new `Issues.message(leaf)` formats a leaf the way `pointers` does, so a caller with its own error envelope can build on `Issues.leaves`.
+
+### Patch Changes
+
+- [#81](https://github.com/thomasfosterau/effect-ext/pull/81) [`ff06937`](https://github.com/thomasfosterau/effect-ext/commit/ff06937db249eda44fe49be614d219be428a4469) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Internal lint clean-up of the AI providers and the evals toolkit ([#24](https://github.com/thomasfosterau/effect-ext/issues/24)). Behaviour is unchanged. Some emitted declarations now omit type arguments equal to their defaults (`Redacted.Redacted` for `Redacted.Redacted<string>`, `Schedule.Schedule<unknown>` for `Schedule.Schedule<unknown, unknown>`); they denote the same types.
+
+- [#74](https://github.com/thomasfosterau/effect-ext/pull/74) [`6354c4b`](https://github.com/thomasfosterau/effect-ext/commit/6354c4bd06786e7d1dba236d47f7e4b196563e09) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - `Complex.sqrt` no longer loses a part that is tiny next to the other one to cancellation ([#39](https://github.com/thomasfosterau/effect-ext/issues/39)): `sqrt(1 + 1e-10i)` is `1 + 5e-11i` (was `1 + 0i`) and `sqrt(-1 + 1e-10i)` is `5e-11 + 1i` (was `0 + 1i`), matching num-complex. It now uses the stable form, which recovers the smaller part by division rather than by subtracting nearly equal terms.
+
+- [#78](https://github.com/thomasfosterau/effect-ext/pull/78) [`16c15fd`](https://github.com/thomasfosterau/effect-ext/commit/16c15fd2a93c9c0ed1d294d3a781354666f37f5d) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Widen the optional `@thomasfosterau/effect-parse` peer, used by `Robots` and the time modules, from `^0.4.1` to `^0.4.1 || ^0.5.0`, so a consumer on effect-parse 0.5 no longer gets a peer warning. Both minors pass the type check and test suite.
+
+- [#80](https://github.com/thomasfosterau/effect-ext/pull/80) [`dd58f51`](https://github.com/thomasfosterau/effect-ext/commit/dd58f515b3a572c5e81fa5fda62c5672dbdf7b88) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - `Robots` group selection now compares product tokens ([#79](https://github.com/thomasfosterau/effect-ext/issues/79)). Both the `User-agent:` value and the crawler's name are reduced to their leading run of letters, `_` and `-` (RFC 9309 §2.2.1), so `User-agent: GardeneriaBot/1.0` binds the `GardeneriaBot` crawler, and a crawler passing its versioned name still finds its group. Matching remains exact or prefix, never substring, and a line with no token matches nothing.
+
+- [#77](https://github.com/thomasfosterau/effect-ext/pull/77) [`5ed07b2`](https://github.com/thomasfosterau/effect-ext/commit/5ed07b280c68a39f4722a5994a9e8d15f5093238) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - The published tarball now includes `CHANGELOG.md`, so the release notes can be read from `node_modules` ([#72](https://github.com/thomasfosterau/effect-ext/issues/72)).
+
+- [#82](https://github.com/thomasfosterau/effect-ext/pull/82) [`38f447e`](https://github.com/thomasfosterau/effect-ext/commit/38f447e6331bf995b8029e62e1cf5b407e382e6c) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Internal lint clean-up of the web-platform modules ([#31](https://github.com/thomasfosterau/effect-ext/issues/31)). Behaviour is unchanged. Two parameters were renamed in the emitted declarations, `UriTemplate.match(self, url)` (was `matcher`) and `WellKnown.suffixOf(uri)` (was `url`), with the same types.
+
 ## 0.1.0
 
 ### Minor Changes

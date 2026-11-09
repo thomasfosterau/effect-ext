@@ -1,6 +1,6 @@
 {
   "name": "@thomasfosterau/effect-ai-cloudflare",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Cloudflare AI for Effect: @effect/ai-cloudflare's Workers AI decision models and client, routed through a Cloudflare AI Gateway, plus Anthropic, Cohere and OpenAI moderation through the gateway's Worker binding or public HTTPS endpoint, BYOK.",
   "keywords": [
     "ai",
