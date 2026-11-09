@@ -100,7 +100,7 @@ catalog:
   # Dependabot's `effect` group moves both together. The published range is
   # `catalogs.peers` below.
   effect: 4.0.6
-  fallow: 3.39.0
+  fallow: 3.41.0
   # The property tests behind effect-ext's numeric modules (merged in
   # from thomasfosterau/effect-numeric): arithmetic laws checked against a
   # `bigint` reference. Test-only, never a dependency of `dist/`.
