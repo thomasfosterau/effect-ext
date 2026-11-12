@@ -173,7 +173,7 @@ describe("cache storage effects", () => {
         const cache = yield* openCache("v1");
         yield* cache.put(URL_A, new Response("a"));
         const hit = yield* cache.match(URL_A);
-        const keys = yield* cache.keys();
+        const keys = yield* cache.keys;
         const removed = yield* cache.delete(URL_A);
         const miss = yield* cache.match(URL_A);
         const names = yield* cacheNames;

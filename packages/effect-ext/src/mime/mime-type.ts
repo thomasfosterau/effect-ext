@@ -272,11 +272,10 @@ export type MimeTypeFromString = typeof MimeTypeFromString.Type;
 export const MimeTypeFromString: Schema.Codec<MimeType, string> = Schema.String.pipe(
   Schema.decodeTo(MimeType, {
     decode: SchemaGetter.transformEffect((input: string) =>
-      Option.match(parse(input), {
-        onSome: Effect.succeed,
-        onNone: () =>
-          Effect.fail(new SchemaIssue.InvalidValue({ message: "not a MIME type" }, input)),
-      }),
+      Effect.mapError(
+        Effect.fromOption(parse(input)),
+        () => new SchemaIssue.InvalidValue({ message: "not a MIME type" }, input),
+      ),
     ),
     encode: SchemaGetter.transform(serialize),
   }),

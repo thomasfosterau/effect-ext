@@ -161,11 +161,7 @@ export const make = (initial?: Fix): Effect.Effect<Fixture> =>
           Stream.fromSubscription(subscription),
         ),
       ),
-    ).pipe(
-      Stream.mapEffect((update) =>
-        Result.match(update, { onSuccess: Effect.succeed, onFailure: Effect.fail }),
-      ),
-    );
+    ).pipe(Stream.mapEffect((update) => Effect.fromResult(update)));
     const geolocation: Geolocation.Geolocation = Geolocation.Geolocation.of({
       [GEOLOCATION_TYPE_ID]: GEOLOCATION_TYPE_ID,
       getCurrentPosition: () =>

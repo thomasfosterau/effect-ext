@@ -245,8 +245,6 @@ interface RequestState {
   release: () => void;
   released: Effect.Effect<void>;
   cancelled: boolean;
-  /** Withdraws a queued request: on interruption, or when the scope closes first. */
-  readonly withdraw: AbortController;
 }
 
 const toInfo = (info: LockInfoLike): LockInfo => ({
@@ -307,24 +305,26 @@ export const make = (manager?: LockManagerLike): Locks["Service"] => {
         release: () => {},
         released: Effect.void,
         cancelled: false,
-        withdraw: new AbortController(),
       };
-      // Closing the scope withdraws a still-queued request, releases a held
-      // lock, and waits for the browser to report either, so once `withLock`
-      // returns, another context can already be granted the lock.
+      // Closing the scope first aborts the request's signal (withdrawing a
+      // still-queued request); this finalizer then releases a held lock and
+      // waits for the browser to report either, so once `withLock` returns,
+      // another context can already be granted the lock.
       yield* Effect.addFinalizer(() =>
         Effect.suspend(() => {
           state.cancelled = true;
-          state.withdraw.abort();
           state.release();
           return state.released;
         }),
       );
+      // Acquired after the finalizer above, so on close the signal aborts
+      // first and the finalizer then waits for the browser to report it.
+      const scopeSignal = yield* Effect.abortSignal;
       const stolen = yield* Deferred.make<void>();
       return yield* Effect.callback<Option.Option<HeldLock>, LockError>((resume, interrupted) => {
         let granted = false;
-        const signal = state.withdraw.signal;
-        interrupted.addEventListener("abort", () => state.withdraw.abort(), { once: true });
+        // Withdrawn on interruption, or when the scope closes first.
+        const signal = AbortSignal.any([scopeSignal, interrupted]);
         // The browser refuses a signal next to `steal` / `ifAvailable`; neither
         // ever queues, so neither needs withdrawing.
         const options: LockManagerRequestOptions =

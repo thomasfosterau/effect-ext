@@ -229,7 +229,7 @@ describe("checkUrl (the Result form)", () => {
   it("is a tagged error a caller can catch by tag", async () => {
     const tag = await Effect.runPromise(
       Effect.fromResult(checkUrl("http://localhost/")).pipe(
-        Effect.map(() => "allowed"),
+        Effect.as("allowed"),
         Effect.catchTag("UnsafeUrl", (error) => Effect.succeed(error._tag)),
       ),
     );

@@ -40,7 +40,7 @@ const makeJudgeStub = (
     const calls: JudgeCall[] = [];
     const model = yield* LanguageModel.make({
       generateText: (options) =>
-        Effect.sync(() => {
+        Effect.suspend(() => {
           const systemMessage = options.prompt.content.find((message) => message.role === "system");
           const userMessage = options.prompt.content.findLast((message) => message.role === "user");
           const system = systemMessage?.role === "system" ? systemMessage.content : "";
@@ -50,12 +50,10 @@ const makeJudgeStub = (
               : "";
           const call = { system, user };
           calls.push(call);
-          return [
-            {
-              type: "text" as const,
-              text: Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))(respond(call)),
-            },
-          ];
+          return Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown))(respond(call)).pipe(
+            Effect.map((text) => [{ type: "text" as const, text }]),
+            Effect.orDie,
+          );
         }),
       streamText: () => Stream.die("streamText is not used by gEval"),
     });

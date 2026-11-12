@@ -57,12 +57,10 @@ export const makeJudgeStub = (
               `makeJudgeStub: unexpected call ${calls.length} (only ${responses.length} configured)`,
             );
           }
-          return Effect.succeed([
-            {
-              type: "text" as const,
-              text: Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))(respond(call)),
-            },
-          ]);
+          return Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown))(respond(call)).pipe(
+            Effect.map((text) => [{ type: "text" as const, text }]),
+            Effect.orDie,
+          );
         }),
       streamText: () => Stream.die("streamText is not used by the RAG metrics"),
     });

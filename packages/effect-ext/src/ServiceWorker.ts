@@ -254,7 +254,7 @@ export interface CacheHandle {
     request: RequestInfo | URL,
     options?: CacheQueryOptions,
   ) => Effect.Effect<boolean, CacheError>;
-  readonly keys: () => Effect.Effect<ReadonlyArray<Request>, CacheError>;
+  readonly keys: Effect.Effect<ReadonlyArray<Request>, CacheError>;
 }
 
 const cacheCall = <A>(
@@ -276,7 +276,7 @@ const cacheHandle = (name: string, cache: Cache): CacheHandle => ({
     ),
   put: (request, response) => cacheCall("put", name, () => cache.put(request, response)),
   delete: (request, options) => cacheCall("delete", name, () => cache.delete(request, options)),
-  keys: () => cacheCall("keys", name, () => cache.keys()),
+  keys: cacheCall("keys", name, () => cache.keys()),
 });
 
 /**
@@ -769,7 +769,7 @@ export const networkOnly: Strategy<FetchFailed> = fetchRequest;
  * const program = Effect.gen(function* () {
  *   yield* precache("shell-v1", ["https://example.com/", "https://example.com/app.css"])
  *   const cache = yield* openCache("shell-v1")
- *   return (yield* cache.keys()).length
+ *   return (yield* cache.keys).length
  * })
  *
  * await Effect.runPromise(

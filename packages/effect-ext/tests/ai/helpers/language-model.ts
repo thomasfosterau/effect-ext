@@ -68,20 +68,19 @@ export const stubLanguageModel = (
   );
 
 /** A `LanguageModel` layer whose `generateObject` fails with an `AiError`. */
-export const failingLanguageModel = (): Layer.Layer<LanguageModel.LanguageModel> =>
-  Layer.succeed(
-    LanguageModel.LanguageModel,
-    LanguageModel.LanguageModel.of({
-      [LanguageModel.TypeId]: LanguageModel.TypeId,
-      generateObject: (() =>
-        Effect.fail(
-          AiError.make({
-            module: "test",
-            method: "generateObject",
-            reason: new AiError.UnknownError({ description: "stubbed failure" }),
-          }),
-        )) as never,
-      generateText: () => Effect.die(new NotStubbed({ method: "generateText" })),
-      streamText: () => Stream.die(new NotStubbed({ method: "streamText" })),
-    }),
-  );
+export const failingLanguageModel: Layer.Layer<LanguageModel.LanguageModel> = Layer.succeed(
+  LanguageModel.LanguageModel,
+  LanguageModel.LanguageModel.of({
+    [LanguageModel.TypeId]: LanguageModel.TypeId,
+    generateObject: (() =>
+      Effect.fail(
+        AiError.make({
+          module: "test",
+          method: "generateObject",
+          reason: new AiError.UnknownError({ description: "stubbed failure" }),
+        }),
+      )) as never,
+    generateText: () => Effect.die(new NotStubbed({ method: "generateText" })),
+    streamText: () => Stream.die(new NotStubbed({ method: "streamText" })),
+  }),
+);

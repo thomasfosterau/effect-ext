@@ -288,14 +288,14 @@ const rejecting = (cause: unknown): Locks.LockManagerLike => ({
 describe("Locks rejection mapping", () => {
   it("maps the browser's DOMException names onto reasons", async () => {
     const reasons = await Effect.runPromise(
-      Effect.all(
+      Effect.forEach(
         [
           new DOMException("opaque origin", "SecurityError"),
           new DOMException("inactive document", "InvalidStateError"),
           new TypeError("something else"),
-        ].map((cause) =>
+        ],
+        (cause) =>
           Effect.map(Effect.flip(Locks.make(rejecting(cause)).query), (error) => error.reason),
-        ),
         { concurrency: 1 },
       ),
     );

@@ -139,19 +139,19 @@ const decodeNormalized = <S extends Schema.Top>(
   schema: S,
 ): Effect.Effect<S["Type"], AiError.AiError, S["DecodingServices"]> =>
   response.pipe(
-    Effect.flatMap((res) =>
-      res.status >= 200 && res.status < 300
-        ? Effect.succeed(res)
-        : res.text.pipe(
-            Effect.flatMap((body) =>
-              Effect.fail(
-                failure(
-                  origin,
-                  AiError.reasonFromHttpStatus({ status: res.status, description: body }),
-                ),
+    Effect.filterOrElse(
+      (res) => res.status >= 200 && res.status < 300,
+      (res) =>
+        res.text.pipe(
+          Effect.flatMap((body) =>
+            Effect.fail(
+              failure(
+                origin,
+                AiError.reasonFromHttpStatus({ status: res.status, description: body }),
               ),
             ),
           ),
+        ),
     ),
     Effect.flatMap((res) => res.json),
     Effect.flatMap((json) =>

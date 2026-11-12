@@ -789,10 +789,8 @@ export const fetchRobots = (
     return response.status >= 500 ? ROBOTS_UNAVAILABLE_SENTINEL : ROBOTS_NO_RESTRICTIONS;
   }).pipe(
     // The caller's client refused the request: the origin was never asked.
-    Effect.catch((error) =>
-      (options.isRefusal ?? isNeverRefusal)(error)
-        ? Effect.succeed(ROBOTS_REFUSED_SENTINEL)
-        : Effect.fail(error),
+    Effect.catchIf(options.isRefusal ?? isNeverRefusal, () =>
+      Effect.succeed(ROBOTS_REFUSED_SENTINEL),
     ),
     Effect.timeout(options.timeout ?? Duration.seconds(10)),
     // Transport failure, timeout, a redirect the client refused, an

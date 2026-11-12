@@ -359,7 +359,7 @@ describe("ModerationModel", () => {
         Effect.gen(function* () {
           const model = yield* fromLanguageModel;
           return yield* model.moderate({ inputs: ["x"] });
-        }).pipe(Effect.provide(failingLanguageModel())),
+        }).pipe(Effect.provide(failingLanguageModel)),
       );
 
       expect(message).toContain("stubbed failure");

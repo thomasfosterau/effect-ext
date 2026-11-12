@@ -134,6 +134,14 @@ const encoder = new TextEncoder();
 const toHex = (bytes: ArrayBuffer): string =>
   Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
 
+/** The digest call rejected; `hashKey` turns it into a defect. */
+class DigestFailed extends Schema.TaggedError<DigestFailed, { readonly brand: unique symbol }>()(
+  "DigestFailed",
+  {
+    detail: Schema.Unknown,
+  },
+) {}
+
 /**
  * A deterministic cache key for the given inputs — stable across process
  * runs. A full SHA-256 hex digest (not a 32-bit structural hash — this key
@@ -148,7 +156,7 @@ export const hashKey = (input: CacheKeyInput): Effect.Effect<string> =>
     Effect.flatMap((json) =>
       Effect.tryPromise({
         try: () => crypto.subtle.digest("SHA-256", encoder.encode(json)),
-        catch: (cause) => cause,
+        catch: (cause) => new DigestFailed({ detail: cause }),
       }),
     ),
     Effect.map(toHex),

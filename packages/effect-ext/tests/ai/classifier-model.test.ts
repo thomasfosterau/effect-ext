@@ -243,7 +243,7 @@ describe("ClassifierModel", () => {
         Effect.gen(function* () {
           const model = yield* fromLanguageModel;
           return yield* model.classify({ inputs: ["x"] });
-        }).pipe(Effect.provide(failingLanguageModel())),
+        }).pipe(Effect.provide(failingLanguageModel)),
       );
 
       expect(message).toContain("stubbed failure");

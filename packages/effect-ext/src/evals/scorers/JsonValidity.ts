@@ -15,6 +15,8 @@
  */
 
 import * as Effect from "effect/Effect";
+import * as P from "effect/Predicate";
+import * as Schema from "effect/Schema";
 import * as Scorer from "../Scorer.ts";
 
 /**
@@ -26,8 +28,11 @@ export interface JsonCase {
   readonly output: string;
 }
 
-/** The one failure `JSON.parse` reports for unparseable text. */
-const isSyntaxError = (cause: unknown): cause is SyntaxError => cause instanceof SyntaxError;
+/** `JSON.parse` threw; `syntax` is whether it was the `SyntaxError` unparseable text raises. */
+class JsonParseFailed extends Schema.TaggedError<
+  JsonParseFailed,
+  { readonly brand: unique symbol }
+>()("JsonParseFailed", { message: Schema.String, syntax: Schema.Boolean }) {}
 
 /**
  * Whether `evalCase.output` parses as JSON.
@@ -41,10 +46,17 @@ export const jsonValidity: Scorer.Scorer<JsonCase> = Scorer.makeScorer({
       try: (): void => {
         JSON.parse(evalCase.output);
       },
-      catch: (cause) => cause,
+      catch: (cause) =>
+        new JsonParseFailed({
+          message: P.isError(cause) ? cause.message : String(cause),
+          syntax: cause instanceof SyntaxError,
+        }),
     }).pipe(
       Effect.map(() => ({ score: 1 })),
-      Effect.catchIf(isSyntaxError, (error) => Effect.succeed({ score: 0, reason: error.message })),
+      Effect.catchIf(
+        (error) => error.syntax,
+        (error) => Effect.succeed({ score: 0, reason: error.message }),
+      ),
       Effect.orDie,
     ),
 });
