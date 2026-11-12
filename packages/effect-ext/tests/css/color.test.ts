@@ -24,14 +24,16 @@ import functions5 from "./fixtures/css-parsing-tests/color_functions_5.json" wit
 
 /** The suite's alternating input / expected pairs. */
 const pairs = (
-  fixture: ReadonlyArray<string | null>,
-): ReadonlyArray<readonly [string, string | null]> =>
+  fixture: ReadonlyArray<unknown>,
+): ReadonlyArray<readonly [string, Option.Option<string>]> =>
   fixture.flatMap((input, index) =>
-    index % 2 === 0 && input !== null ? [[input, fixture[index + 1] ?? null] as const] : [],
+    index % 2 === 0 && P.isString(input)
+      ? [[input, Option.liftPredicate(fixture[index + 1], P.isString)] as const]
+      : [],
   );
 
-const serialized = (input: string): string | null =>
-  Option.getOrNull(Option.map(Color.parse(input), Color.serialize));
+const serialized = (input: string): Option.Option<string> =>
+  Option.map(Color.parse(input), Color.serialize);
 
 /**
  * The colour a vector's input and its expected serialisation both stand
@@ -72,11 +74,8 @@ describe("css-parsing-tests colour vectors", () => {
   ] as const)("%s", (_, fixture) => {
     const cases = pairs(fixture);
     expect(cases.length).toBeGreaterThan(0);
-    expect(cases.map(([input]) => [input, Option.getOrNull(meaning(input))])).toEqual(
-      cases.map(([input, expected]) => [
-        input,
-        expected === null ? null : Option.getOrNull(meaning(expected)),
-      ]),
+    expect(cases.map(([input]) => [input, meaning(input)])).toEqual(
+      cases.map(([input, expected]) => [input, Option.flatMap(expected, meaning)]),
     );
   });
 });
@@ -139,21 +138,27 @@ const srgb = (input: string) =>
 
 describe("Color 5 beyond the vectors", () => {
   it("serialises light-dark() with both colours", () => {
-    expect(serialized("light-dark(red, #00f8)")).toBe("light-dark(red, rgba(0, 0, 255, 0.533333))");
+    expect(serialized("light-dark(red, #00f8)")).toEqual(
+      Option.some("light-dark(red, rgba(0, 0, 255, 0.533333))"),
+    );
   });
 
   it("rejects light-dark() without exactly two colours", () => {
-    expect(serialized("light-dark(red)")).toBeNull();
-    expect(serialized("light-dark(red, blue, green)")).toBeNull();
-    expect(serialized("light-dark(red blue)")).toBeNull();
+    expect(serialized("light-dark(red)")).toEqual(Option.none());
+    expect(serialized("light-dark(red, blue, green)")).toEqual(Option.none());
+    expect(serialized("light-dark(red blue)")).toEqual(Option.none());
   });
 
   it("takes none in device-cmyk() and a custom space, and any channel count in a custom space", () => {
-    expect(serialized("device-cmyk(none 0 0 1)")).toBe("color(device-cmyk none 0 0 1)");
-    expect(serialized("color(--profile 1 none)")).toBe("color(--profile 1 none)");
-    expect(serialized("color(--profile 0.5 / 25%)")).toBe("color(--profile 0.5 / 0.25)");
-    expect(serialized("color(--profile)")).toBeNull();
-    expect(serialized("color(-- 1 2 3)")).toBeNull();
+    expect(serialized("device-cmyk(none 0 0 1)")).toEqual(
+      Option.some("color(device-cmyk none 0 0 1)"),
+    );
+    expect(serialized("color(--profile 1 none)")).toEqual(Option.some("color(--profile 1 none)"));
+    expect(serialized("color(--profile 0.5 / 25%)")).toEqual(
+      Option.some("color(--profile 0.5 / 0.25)"),
+    );
+    expect(serialized("color(--profile)")).toEqual(Option.none());
+    expect(serialized("color(-- 1 2 3)")).toEqual(Option.none());
   });
 
   it("converts device-cmyk() to sRGB naively, and has no sRGB for a custom space or light-dark()", () => {
@@ -173,26 +178,26 @@ describe("rgb()", () => {
     ["rgb(1 2 3 / none)", "color(srgb 0.003922 0.007843 0.011765 / none)"],
     ["rgb(300 -5 0)", "rgb(255, 0, 0)"],
   ])("%s → %s", (input, expected) => {
-    expect(serialized(input)).toBe(expected);
+    expect(serialized(input)).toEqual(Option.some(expected));
   });
 
   it.each(["rgb(255, 0%, 0)", "rgb(1, 2)", "rgb(1 2 3 4)", "rgb(none, 0, 0)", "rgb(1, 2, 3 / 1)"])(
     "rejects %s",
     (input) => {
-      expect(serialized(input)).toBeNull();
+      expect(serialized(input)).toEqual(Option.none());
     },
   );
 });
 
 describe("keywords and component values", () => {
   it("parses currentcolor in any case, and serialises it lower-case", () => {
-    expect(serialized("CurrentColor")).toBe("currentcolor");
+    expect(serialized("CurrentColor")).toEqual(Option.some("currentcolor"));
   });
 
   it("keeps a named colour's name, lower-cased, and writes hex as rgb()", () => {
-    expect(serialized("RebeccaPurple")).toBe("rebeccapurple");
-    expect(serialized("TRANSPARENT")).toBe("transparent");
-    expect(serialized("#FEDCBA")).toBe("rgb(254, 220, 186)");
+    expect(serialized("RebeccaPurple")).toEqual(Option.some("rebeccapurple"));
+    expect(serialized("TRANSPARENT")).toEqual(Option.some("transparent"));
+    expect(serialized("#FEDCBA")).toEqual(Option.some("rgb(254, 220, 186)"));
     expect(Option.flatMap(Color.parse("red"), Color.toSrgb)).toStrictEqual(
       Option.some({ red: 1, green: 0, blue: 0, alpha: 1 }),
     );
@@ -284,11 +289,11 @@ describe("hsl() and hwb()", () => {
   });
 
   it("serialise as rgb(), or as themselves while a channel is none", () => {
-    expect(serialized("hsl(120 100% 25%)")).toBe("rgb(0, 128, 0)");
-    expect(serialized("hsl(120 -10% 120%)")).toBe("rgb(255, 255, 255)");
-    expect(serialized("hsl(120 none 50 / 0.5)")).toBe("hsl(120 none 50% / 0.5)");
-    expect(serialized("hwb(120 30% 50%)")).toBe("rgb(77, 128, 77)");
-    expect(serialized("hwb(none 10 20%)")).toBe("hwb(none 10% 20%)");
+    expect(serialized("hsl(120 100% 25%)")).toEqual(Option.some("rgb(0, 128, 0)"));
+    expect(serialized("hsl(120 -10% 120%)")).toEqual(Option.some("rgb(255, 255, 255)"));
+    expect(serialized("hsl(120 none 50 / 0.5)")).toEqual(Option.some("hsl(120 none 50% / 0.5)"));
+    expect(serialized("hwb(120 30% 50%)")).toEqual(Option.some("rgb(77, 128, 77)"));
+    expect(serialized("hwb(none 10 20%)")).toEqual(Option.some("hwb(none 10% 20%)"));
   });
 
   it("convert to sRGB with none as 0", () => {

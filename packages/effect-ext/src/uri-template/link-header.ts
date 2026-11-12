@@ -66,14 +66,14 @@ export interface Link {
  * @category models
  */
 export interface LinkOptions {
-  readonly rel?: string | ReadonlyArray<string> | undefined;
-  readonly anchor?: string | undefined;
-  readonly type?: string | undefined;
-  readonly media?: string | undefined;
-  readonly title?: string | undefined;
-  readonly titleStar?: string | ExtendedValue | undefined;
-  readonly hreflang?: ReadonlyArray<string> | undefined;
-  readonly params?: ReadonlyArray<readonly [name: string, value: string]> | undefined;
+  readonly rel?: string | ReadonlyArray<string>;
+  readonly anchor?: string;
+  readonly type?: string;
+  readonly media?: string;
+  readonly title?: string;
+  readonly titleStar?: string | ExtendedValue;
+  readonly hreflang?: ReadonlyArray<string>;
+  readonly params?: ReadonlyArray<readonly [name: string, value: string]>;
 }
 
 const normaliseRel = (rel: string): string => (rel.includes(":") ? rel : rel.toLowerCase());
@@ -133,7 +133,7 @@ const PARAMETERS = /;\s*([^;,=\s]+)\s*(?:=\s*("(?:[^"\\]|\\.)*"|[^;,\s"]*))?/gu;
 const unquote = (value: string): string =>
   value.startsWith('"') ? value.slice(1, -1).replace(/\\(.)/gu, "$1") : value;
 
-const resolve = (reference: string, base: string | URL | undefined): string =>
+const resolve = (reference: string, base?: string | URL): string =>
   base !== undefined && URL.canParse(reference, base) ? new URL(reference, base).href : reference;
 
 const latin1 = (encoded: string): string =>
@@ -172,7 +172,7 @@ const first = (parameters: ReadonlyArray<Parameter>, name: string): Option.Optio
 
 const SINGLE = ["rel", "anchor", "type", "media", "title", "title*", "hreflang"];
 
-const linkOf = (target: string, rawParameters: string, base: string | URL | undefined): Link => {
+const linkOf = (target: string, rawParameters: string, base?: string | URL): Link => {
   const parameters = Arr.map(
     Arr.fromIterable(rawParameters.matchAll(PARAMETERS)),
     ([, name = "", value = ""]): Parameter => [name.toLowerCase(), unquote(value)],
