@@ -13,5 +13,5 @@ export const both: RssItem = { path: "/a", title: "A", description: "A" };
 // @ts-expect-error — an item with neither a title nor a description.
 export const neither: RssItem = { path: "/a" };
 
-// @ts-expect-error — both present but undefined is still neither.
+// @ts-expect-error — an `undefined` member is not a value: omit the key, and the item has neither.
 export const undefinedBoth: RssItem = { path: "/a", title: undefined, description: undefined };

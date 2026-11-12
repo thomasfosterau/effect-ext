@@ -26,9 +26,9 @@ import { element, escapeXml, optionalElement, XML_DECLARATION } from "./internal
  */
 export interface AtomPerson {
   readonly name: string;
-  readonly email?: string | undefined;
+  readonly email?: string;
   /** A site-root-relative path or an absolute URL, emitted absolute on the feed's `base`. */
-  readonly uri?: string | undefined;
+  readonly uri?: string;
 }
 
 /**
@@ -51,21 +51,21 @@ export interface AtomFeedOptions {
    * supplies, never a clock read.
    */
   readonly updated: DateTime.DateTime;
-  readonly subtitle?: string | undefined;
+  readonly subtitle?: string;
   /** The feed's permanent `<id>`. Defaults to the feed's absolute URL. */
-  readonly id?: string | undefined;
+  readonly id?: string;
   /** The page the feed describes, the `rel="alternate"` link. Defaults to `/`. */
-  readonly homePath?: string | undefined;
+  readonly homePath?: string;
   /** The feed's own path, the `rel="self"` link. Defaults to `/atom.xml`. */
-  readonly feedPath?: string | undefined;
+  readonly feedPath?: string;
   /** A language tag (`en-AU`), emitted as `xml:lang` on `<feed>`. */
-  readonly language?: string | undefined;
-  readonly authors?: ReadonlyArray<AtomPerson> | undefined;
-  readonly rights?: string | undefined;
+  readonly language?: string;
+  readonly authors?: ReadonlyArray<AtomPerson>;
+  readonly rights?: string;
   /** A small square image: a site-root-relative path or an absolute URL. */
-  readonly icon?: string | undefined;
+  readonly icon?: string;
   /** A larger 2:1 image: a site-root-relative path or an absolute URL. */
-  readonly logo?: string | undefined;
+  readonly logo?: string;
 }
 
 /**
@@ -80,19 +80,19 @@ export interface AtomEntry {
   /** When the entry last changed. */
   readonly updated: DateTime.DateTime;
   /** When the entry was first available. */
-  readonly published?: DateTime.DateTime | undefined;
+  readonly published?: DateTime.DateTime;
   /**
    * The entry's permanent `<id>`. Defaults to its absolute URL, which is
    * stable only as long as the path is; give a `tag:` URI where it is not.
    */
-  readonly id?: string | undefined;
+  readonly id?: string;
   /** Plain text. */
-  readonly summary?: string | undefined;
+  readonly summary?: string;
   /** HTML, emitted escaped as `<content type="html">`. */
-  readonly content?: string | undefined;
+  readonly content?: string;
   /** The entry's own authors; absent, it inherits the feed's. */
-  readonly authors?: ReadonlyArray<AtomPerson> | undefined;
-  readonly categories?: ReadonlyArray<string> | undefined;
+  readonly authors?: ReadonlyArray<AtomPerson>;
+  readonly categories?: ReadonlyArray<string>;
 }
 
 // ── Rendering ──────────────────────────────────────────────────────────
@@ -110,10 +110,10 @@ const absolute = (base: string, path: string): string => new URL(path, base).toS
 const link = (rel: string, href: string, type?: string): string =>
   `<link rel="${rel}"${type === undefined ? "" : ` type="${type}"`} href="${escapeXml(href)}"/>`;
 
-const optionalUrl = (name: string, base: string, path: string | undefined): string =>
+const optionalUrl = (name: string, base: string, path?: string): string =>
   path === undefined ? "" : element(name, absolute(base, path));
 
-const persons = (base: string, people: ReadonlyArray<AtomPerson> | undefined): string =>
+const persons = (base: string, people?: ReadonlyArray<AtomPerson>): string =>
   Arr.map(
     people ?? [],
     (person) =>
@@ -227,9 +227,9 @@ export const LOW_CHURN_CACHE_CONTROL =
  */
 export interface AtomResponseOptions {
   /** The `Cache-Tag` a mutation purges; absent means untagged. */
-  readonly cacheTag?: string | undefined;
+  readonly cacheTag?: string;
   /** Defaults to {@link LOW_CHURN_CACHE_CONTROL}. */
-  readonly cacheControl?: string | undefined;
+  readonly cacheControl?: string;
 }
 
 /**
