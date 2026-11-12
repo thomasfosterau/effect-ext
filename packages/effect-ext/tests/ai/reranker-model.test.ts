@@ -10,12 +10,13 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
 import { RerankedDocument } from "@thomasfosterau/effect-ext/RerankerModel";
 import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 import { makeStubReranker as makeStubModel } from "./helpers/reranker";
 
-const noUsage = { inputTokens: undefined } as const;
+const noUsage = { inputTokens: Option.none() } as const;
 
 const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
   const failure = await expectFailureInstanceOf(program, AiError.AiError);
@@ -35,7 +36,7 @@ describe("RerankerModel", () => {
               { index: 2, relevanceScore: 0.9 },
               { index: 1, relevanceScore: 0.5 },
             ],
-            usage: { inputTokens: 42 },
+            usage: { inputTokens: Option.some(42) },
           }),
         });
         return yield* model.rerank({ query: "which is best?", documents });
@@ -47,7 +48,7 @@ describe("RerankerModel", () => {
       new RerankedDocument({ index: 1, relevanceScore: 0.5 }),
       new RerankedDocument({ index: 0, relevanceScore: 0.1 }),
     ]);
-    expect(response.usage.inputTokens).toBe(42);
+    expect(response.usage.inputTokens).toStrictEqual(Option.some(42));
   });
 
   it("passes query, documents, and topN through to the provider", async () => {
@@ -68,7 +69,7 @@ describe("RerankerModel", () => {
     const { response, callCount } = await runTest(
       Effect.gen(function* () {
         const { model, calls } = yield* makeStubModel({
-          respond: () => ({ results: [], usage: { inputTokens: 1 } }),
+          respond: () => ({ results: [], usage: { inputTokens: Option.some(1) } }),
         });
         const result = yield* model.rerank({ query: "anything", documents: [] });
         return { response: result, callCount: calls.length };
@@ -76,7 +77,7 @@ describe("RerankerModel", () => {
     );
 
     expect(response.results).toEqual([]);
-    expect(response.usage.inputTokens).toBeUndefined();
+    expect(response.usage.inputTokens).toStrictEqual(Option.none());
     expect(callCount).toBe(0);
   });
 

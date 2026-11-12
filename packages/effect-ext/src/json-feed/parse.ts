@@ -71,29 +71,29 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
   };
 
   /** A string member; `null` reads as absent, any other non-string is dropped. */
-  const string = (members: Members, key: string, path: string): string | undefined => {
+  const string = (members: Members, key: string, path: string): Option.Option<string> => {
     const value = members[key];
-    if (P.isNullish(value)) return undefined;
-    if (P.isString(value)) return value;
+    if (P.isNullish(value)) return Option.none();
+    if (P.isString(value)) return Option.some(value);
     report(`${path}.${key}`, "not a string; ignored");
-    return undefined;
+    return Option.none();
   };
 
   /** A finite, non-negative number member. */
-  const count = (members: Members, key: string, path: string): number | undefined => {
+  const count = (members: Members, key: string, path: string): Option.Option<number> => {
     const value = members[key];
-    if (P.isNullish(value)) return undefined;
-    if (P.isNumber(value) && Number.isFinite(value) && value >= 0) return value;
+    if (P.isNullish(value)) return Option.none();
+    if (P.isNumber(value) && Number.isFinite(value) && value >= 0) return Option.some(value);
     report(`${path}.${key}`, "not a non-negative number; ignored");
-    return undefined;
+    return Option.none();
   };
 
-  const boolean = (members: Members, key: string, path: string): boolean | undefined => {
+  const boolean = (members: Members, key: string, path: string): Option.Option<boolean> => {
     const value = members[key];
-    if (P.isNullish(value)) return undefined;
-    if (P.isBoolean(value)) return value;
+    if (P.isNullish(value)) return Option.none();
+    if (P.isBoolean(value)) return Option.some(value);
     report(`${path}.${key}`, "not a boolean; ignored");
-    return undefined;
+    return Option.none();
   };
 
   /** An array member's elements, each read by `read` (which drops one by returning `None`). */
@@ -102,15 +102,15 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
     key: string,
     path: string,
     read: (value: unknown, path: string) => Option.Option<A>,
-  ): ReadonlyArray<A> | undefined => {
+  ): Option.Option<ReadonlyArray<A>> => {
     const value = members[key];
-    if (P.isNullish(value)) return undefined;
+    if (P.isNullish(value)) return Option.none();
     if (!Array.isArray(value)) {
       report(`${path}.${key}`, "not an array; ignored");
-      return undefined;
+      return Option.none();
     }
-    return Arr.getSomes(
-      Arr.map(value, (element, index) => read(element, `${path}.${key}[${index}]`)),
+    return Option.some(
+      Arr.getSomes(Arr.map(value, (element, index) => read(element, `${path}.${key}[${index}]`))),
     );
   };
 
@@ -131,7 +131,7 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
       const name = string(members, "name", path);
       const url = string(members, "url", path);
       const avatar = string(members, "avatar", path);
-      if (name === undefined && url === undefined && avatar === undefined) {
+      if (Option.isNone(name) && Option.isNone(url) && Option.isNone(avatar)) {
         report(path, "an author needs a name, url or avatar; dropped");
         return Option.none();
       }
@@ -139,28 +139,25 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
     });
 
   /** `authors`, or a JSON Feed 1.0 `author` as a one-element `authors`. */
-  const authors = (members: Members, path: string): ReadonlyArray<JsonFeedAuthor> | undefined => {
-    const many = list(members, "authors", path, author);
-    if (many !== undefined) return many;
-    if (P.isNullish(members["author"])) return undefined;
-    return Option.match(author(members["author"], `${path}.author`), {
-      onNone: () => undefined,
-      onSome: (one) => [one],
-    });
-  };
+  const authors = (members: Members, path: string): Option.Option<ReadonlyArray<JsonFeedAuthor>> =>
+    Option.orElse(list(members, "authors", path, author), () =>
+      P.isNullish(members["author"])
+        ? Option.none()
+        : Option.map(author(members["author"], `${path}.author`), (one) => [one]),
+    );
 
   const attachment = (value: unknown, path: string): Option.Option<JsonFeedAttachment> =>
     Option.flatMap(object(value, path), (members) => {
       const url = string(members, "url", path);
       const mimeType = string(members, "mime_type", path);
-      if (url === undefined || mimeType === undefined) {
+      if (Option.isNone(url) || Option.isNone(mimeType)) {
         report(path, "an attachment needs a url and a mime_type; dropped");
         return Option.none();
       }
       return Option.some(
         compact<JsonFeedAttachment>({
-          url,
-          mime_type: mimeType,
+          url: url.value,
+          mime_type: mimeType.value,
           title: string(members, "title", path),
           size_in_bytes: count(members, "size_in_bytes", path),
           duration_in_seconds: count(members, "duration_in_seconds", path),
@@ -190,7 +187,7 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
       Option.map(id(members, path), (itemId) => {
         const contentHtml = string(members, "content_html", path);
         const contentText = string(members, "content_text", path);
-        if (contentHtml === undefined && contentText === undefined) {
+        if (Option.isNone(contentHtml) && Option.isNone(contentText)) {
           report(path, "has neither content_html nor content_text");
         }
         return compact<JsonFeedItem>({
@@ -264,12 +261,12 @@ export const decodeJsonFeed = (
   const diagnostics: Array<JsonFeedDiagnostic> = [];
   const read = makeReader(diagnostics);
   const title = read.string(input, "title", "$");
-  if (title === undefined) read.report("$.title", "missing; read as an empty title");
+  if (Option.isNone(title)) read.report("$.title", "missing; read as an empty title");
   const items = read.list(input, "items", "$", read.item);
-  if (items === undefined) read.report("$.items", "missing; read as no items");
+  if (Option.isNone(items)) read.report("$.items", "missing; read as no items");
   const feed = compact<JsonFeed>({
     version: "https://jsonfeed.org/version/1.1",
-    title: title ?? "",
+    title: Option.getOrElse(title, () => ""),
     home_page_url: read.string(input, "home_page_url", "$"),
     feed_url: read.string(input, "feed_url", "$"),
     description: read.string(input, "description", "$"),
@@ -280,7 +277,7 @@ export const decodeJsonFeed = (
     authors: read.authors(input, "$"),
     language: read.string(input, "language", "$"),
     expired: read.boolean(input, "expired", "$"),
-    items: items ?? [],
+    items: Option.getOrElse(items, () => []),
   });
   return Result.succeed({ feed, version, diagnostics });
 };
@@ -309,7 +306,7 @@ export const parseJsonFeed = (text: string): Effect.Effect<ParsedJsonFeed, JsonF
   Effect.suspend(() =>
     Effect.fromResult(
       Result.flatMap(
-        Result.mapError(Schema.decodeUnknownResult(UnknownFromJson)(text), () =>
+        Result.mapError(Schema.decodeResult(UnknownFromJson)(text), () =>
           parseError("InvalidJson", "Not JSON"),
         ),
         decodeJsonFeed,

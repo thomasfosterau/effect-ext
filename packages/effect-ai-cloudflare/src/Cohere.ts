@@ -23,6 +23,7 @@
 
 import type * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import type { AiError } from "effect/ai";
 import { EmbeddingModel } from "effect/ai";
@@ -227,7 +228,7 @@ const mapRerankResponse = (
     index: entry.index,
     relevanceScore: entry.relevance_score,
   })),
-  usage: { inputTokens: response.meta?.billed_units?.search_units },
+  usage: { inputTokens: Option.fromUndefinedOr(response.meta?.billed_units?.search_units) },
 });
 
 /** Builds a `RerankerModel.Service` backed by Cohere `rerank-v3.5` over the gateway. */

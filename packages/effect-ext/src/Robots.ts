@@ -329,7 +329,7 @@ export type RobotsTxtFromString = typeof RobotsTxtFromString.Type;
  * @category parsing
  */
 export const parse = (content: string): RobotsTxt =>
-  Schema.decodeUnknownSync(RobotsTxtFromString)(content);
+  Schema.decodeSync(RobotsTxtFromString)(content);
 
 /**
  * Encodes a {@link RobotsTxt} back to robots.txt text (synchronous).

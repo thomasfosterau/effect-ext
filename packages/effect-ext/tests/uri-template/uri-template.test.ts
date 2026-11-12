@@ -43,7 +43,7 @@ const Suite = Schema.Record(
 
 /** A template that must parse. */
 const mustParse = (source: string): UriTemplate.UriTemplate =>
-  Schema.decodeUnknownSync(UriTemplate.UriTemplateFromString)(source);
+  Schema.decodeSync(UriTemplate.UriTemplateFromString)(source);
 
 /** Parses then expands: the expansion, or `false` when either step fails. */
 const outcome = (template: string, variables: UriTemplate.Variables): string | false =>
@@ -145,10 +145,10 @@ describe("UriTemplate.expand", () => {
 
 describe("UriTemplate.UriTemplateFromString", () => {
   it("decodes a template, fails on a malformed one, and encodes the source", () => {
-    const decoded = Schema.decodeUnknownSync(UriTemplate.UriTemplateFromString)("{/path*}");
+    const decoded = Schema.decodeSync(UriTemplate.UriTemplateFromString)("{/path*}");
     expect(decoded.parts).toHaveLength(1);
     expect(Schema.encodeSync(UriTemplate.UriTemplateFromString)(decoded)).toBe("{/path*}");
-    expect(() => Schema.decodeUnknownSync(UriTemplate.UriTemplateFromString)("{/path*")).toThrow(
+    expect(() => Schema.decodeSync(UriTemplate.UriTemplateFromString)("{/path*")).toThrow(
       /UnmatchedBrace|unmatched/,
     );
   });

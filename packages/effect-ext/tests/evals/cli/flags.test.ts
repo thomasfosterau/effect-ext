@@ -27,7 +27,7 @@ interface Captured {
   readonly out: string;
 }
 
-let captured: Captured | undefined;
+let captured = Option.none<Captured>();
 
 const probeCommand = Command.make(
   "probe",
@@ -42,14 +42,14 @@ const probeCommand = Command.make(
   },
   (config) =>
     Effect.sync(() => {
-      captured = config;
+      captured = Option.some(config);
     }),
 );
 
 /** The config the probe captured on the last {@link parse}; fails the test if the probe never ran. */
 const parsed = (): Captured => {
-  assert(captured !== undefined, "the probe command never ran");
-  return captured;
+  assert(Option.isSome(captured), "the probe command never ran");
+  return captured.value;
 };
 
 const parse = (args: ReadonlyArray<string>) =>
@@ -63,19 +63,19 @@ describe("cli/Flags — run command parsing", () => {
   it("defaults: no globs, no trials/concurrency/filter override, force off, no reporter selection, default out", async () => {
     await parse([]);
 
-    expect(captured?.globs).toEqual([]);
+    expect(parsed().globs).toEqual([]);
     expect(Option.isNone(parsed().trials)).toBe(true);
     expect(Option.isNone(parsed().concurrency)).toBe(true);
-    expect(captured?.force).toBe(false);
-    expect(captured?.reporter).toEqual([]);
+    expect(parsed().force).toBe(false);
+    expect(parsed().reporter).toEqual([]);
     expect(Option.isNone(parsed().filter)).toBe(true);
-    expect(captured?.out).toBe(".effect-evals/results.json");
+    expect(parsed().out).toBe(".effect-evals/results.json");
   });
 
   it("parses variadic positional globs", async () => {
     await parse(["packages/jobs/evals/*.eval.ts", "packages/ai/evals/*.eval.ts"]);
 
-    expect(captured?.globs).toEqual([
+    expect(parsed().globs).toEqual([
       "packages/jobs/evals/*.eval.ts",
       "packages/ai/evals/*.eval.ts",
     ]);
@@ -90,12 +90,12 @@ describe("cli/Flags — run command parsing", () => {
 
   it("parses --force", async () => {
     await parse(["--force"]);
-    expect(captured?.force).toBe(true);
+    expect(parsed().force).toBe(true);
   });
 
   it("parses repeated --reporter flags", async () => {
     await parse(["--reporter", "terminal", "--reporter", "json"]);
-    expect(captured?.reporter).toEqual(["terminal", "json"]);
+    expect(parsed().reporter).toEqual(["terminal", "json"]);
   });
 
   it("parses --filter", async () => {
@@ -105,14 +105,14 @@ describe("cli/Flags — run command parsing", () => {
 
   it("parses --out, overriding the default", async () => {
     await parse(["--out", "./tmp/report.json"]);
-    expect(captured?.out).toBe("./tmp/report.json");
+    expect(parsed().out).toBe("./tmp/report.json");
   });
 
   it("parses flags together with globs", async () => {
     await parse(["--trials", "3", "--force", "packages/jobs/evals/*.eval.ts"]);
 
     expect(Option.getOrUndefined(parsed().trials)).toBe(3);
-    expect(captured?.force).toBe(true);
-    expect(captured?.globs).toEqual(["packages/jobs/evals/*.eval.ts"]);
+    expect(parsed().force).toBe(true);
+    expect(parsed().globs).toEqual(["packages/jobs/evals/*.eval.ts"]);
   });
 });

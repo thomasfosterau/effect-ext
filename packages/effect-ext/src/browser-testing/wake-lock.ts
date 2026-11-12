@@ -21,8 +21,8 @@ import { make as makeWakeLock, WakeLock, type WakeLockLike } from "../browser/wa
  * @category models
  */
 export interface Options {
-  readonly supported?: boolean | undefined;
-  readonly deny?: boolean | undefined;
+  readonly supported?: boolean;
+  readonly deny?: boolean;
 }
 
 /**

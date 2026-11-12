@@ -35,7 +35,7 @@ interface Request {
   readonly clientId: string;
   readonly callback: (
     lock: { readonly name: string; readonly mode: LockMode } | null,
-  ) => Promise<void> | undefined;
+  ) => Promise<void>;
   readonly resolve: () => void;
   readonly reject: (cause: unknown) => void;
   /** Rejected by a steal: the held callback runs on, its outcome unreported. */
@@ -111,9 +111,7 @@ const refusal = (
  * @since 0.2.0
  * @category constructors
  */
-export const makeLockManager = (options?: {
-  readonly clientId?: string | undefined;
-}): TestLockManager => {
+export const makeLockManager = (options?: { readonly clientId?: string }): TestLockManager => {
   const held: Array<Request> = [];
   const queues = MutableHashMap.empty<string, Array<Request>>();
 

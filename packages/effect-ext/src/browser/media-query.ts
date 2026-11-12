@@ -12,6 +12,7 @@
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import { watch } from "../internal/web/dom.ts";
 import { ambientMatchMedia } from "../internal/web/globals.ts";
@@ -67,14 +68,14 @@ export class MediaQuery extends Context.Service<
  * import * as Effect from "effect/Effect"
  * import { MediaQuery } from "@thomasfosterau/effect-ext/Browser"
  *
- * const mediaQuery = MediaQuery.make(undefined)
+ * const mediaQuery = MediaQuery.make()
  * Effect.runPromise(mediaQuery.matches("(prefers-color-scheme: dark)")).then(console.log) // false
  * ```
  *
  * @since 0.2.0
  * @category constructors
  */
-export const make = (matchMedia: MatchMediaLike | undefined): MediaQuery["Service"] => {
+export const make = (matchMedia?: MatchMediaLike): MediaQuery["Service"] => {
   if (matchMedia === undefined) {
     const never = Effect.succeed(false);
     return MediaQuery.of({ matches: () => never, changes: () => Stream.fromEffect(never) });
@@ -107,7 +108,7 @@ export const make = (matchMedia: MatchMediaLike | undefined): MediaQuery["Servic
  * @category layers
  */
 export const layer: Layer.Layer<MediaQuery> = Layer.sync(MediaQuery, () =>
-  make(ambientMatchMedia()),
+  make(Option.getOrUndefined(ambientMatchMedia())),
 );
 
 /**

@@ -15,6 +15,7 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Struct from "effect/Struct";
 import {
   make as makeNavigator,
   Navigator,
@@ -37,8 +38,8 @@ import {
  * @category models
  */
 export interface Behaviour {
-  readonly share?: "succeed" | "abort" | "deny" | "unsupported" | undefined;
-  readonly beacon?: "queue" | "reject" | "unsupported" | undefined;
+  readonly share?: "succeed" | "abort" | "deny" | "unsupported";
+  readonly beacon?: "queue" | "reject" | "unsupported";
 }
 
 /**
@@ -49,11 +50,11 @@ export interface Behaviour {
  * @category models
  */
 export interface ConnectionInit {
-  readonly type?: string | undefined;
-  readonly effectiveType?: string | undefined;
-  readonly downlink?: number | undefined;
-  readonly rtt?: number | undefined;
-  readonly saveData?: boolean | undefined;
+  readonly type?: string;
+  readonly effectiveType?: string;
+  readonly downlink?: number;
+  readonly rtt?: number;
+  readonly saveData?: boolean;
 }
 
 /**
@@ -67,26 +68,24 @@ export interface ConnectionInit {
  * @category models
  */
 export interface Options extends Behaviour {
-  readonly userAgent?: string | undefined;
-  readonly languages?: ReadonlyArray<string> | undefined;
-  readonly onLine?: boolean | undefined;
-  readonly hardwareConcurrency?: number | undefined;
-  readonly deviceMemory?: number | undefined;
-  readonly maxTouchPoints?: number | undefined;
-  readonly cookieEnabled?: boolean | undefined;
-  readonly webdriver?: boolean | undefined;
-  readonly globalPrivacyControl?: boolean | undefined;
-  readonly connection?: ConnectionInit | undefined;
-  readonly userActivation?: UserActivationState | undefined;
-  readonly storage?:
-    | {
-        readonly usage?: number | undefined;
-        readonly quota?: number | undefined;
-        readonly persisted?: boolean | undefined;
-        /** Whether a `persist()` request is granted (default `true`). */
-        readonly grantPersistence?: boolean | undefined;
-      }
-    | undefined;
+  readonly userAgent?: string;
+  readonly languages?: ReadonlyArray<string>;
+  readonly onLine?: boolean;
+  readonly hardwareConcurrency?: number;
+  readonly deviceMemory?: number;
+  readonly maxTouchPoints?: number;
+  readonly cookieEnabled?: boolean;
+  readonly webdriver?: boolean;
+  readonly globalPrivacyControl?: boolean;
+  readonly connection?: ConnectionInit;
+  readonly userActivation?: UserActivationState;
+  readonly storage?: {
+    readonly usage?: number;
+    readonly quota?: number;
+    readonly persisted?: boolean;
+    /** Whether a `persist()` request is granted (default `true`). */
+    readonly grantPersistence?: boolean;
+  };
 }
 
 /**
@@ -126,35 +125,48 @@ export class Control extends Context.Service<
   }
 >()("@thomasfosterau/effect-ext/BrowserTesting/NavigatorControl") {}
 
-/** A `navigator.connection` whose fields read the double's live state. */
+/**
+ * A `navigator.connection` whose fields read the double's live state. A field
+ * the init leaves out reads `undefined`, as on an agent that does not report it.
+ */
 class TestConnection extends EventTarget {
-  readonly #read: () => ConnectionInit | undefined;
-  constructor(read: () => ConnectionInit | undefined) {
+  readonly #read: () => Option.Option<ConnectionInit>;
+  constructor(read: () => Option.Option<ConnectionInit>) {
     super();
     this.#read = read;
   }
   get type(): string | undefined {
-    return this.#read()?.type;
+    return Option.getOrUndefined(
+      Option.flatMap(this.#read(), (init) => Option.fromUndefinedOr(init.type)),
+    );
   }
   get effectiveType(): string | undefined {
-    return this.#read()?.effectiveType;
+    return Option.getOrUndefined(
+      Option.flatMap(this.#read(), (init) => Option.fromUndefinedOr(init.effectiveType)),
+    );
   }
   get downlink(): number | undefined {
-    return this.#read()?.downlink;
+    return Option.getOrUndefined(
+      Option.flatMap(this.#read(), (init) => Option.fromUndefinedOr(init.downlink)),
+    );
   }
   get rtt(): number | undefined {
-    return this.#read()?.rtt;
+    return Option.getOrUndefined(
+      Option.flatMap(this.#read(), (init) => Option.fromUndefinedOr(init.rtt)),
+    );
   }
   get saveData(): boolean | undefined {
-    return this.#read()?.saveData;
+    return Option.getOrUndefined(
+      Option.flatMap(this.#read(), (init) => Option.fromUndefinedOr(init.saveData)),
+    );
   }
 }
 
 interface State {
   onLine: boolean;
   languages: ReadonlyArray<string>;
-  connection: ConnectionInit | undefined;
-  userActivation: UserActivationState | undefined;
+  connection: Option.Option<ConnectionInit>;
+  userActivation: Option.Option<UserActivationState>;
 }
 
 const refusal = (name: string, message: string) => new DOMException(message, name);
@@ -171,15 +183,13 @@ export interface Fixture {
   readonly control: Control["Service"];
 }
 
-const or = <A>(value: A | undefined, fallback: A): A => value ?? fallback;
-
 /** The in-memory `navigator.storage`: a fixed estimate, and a persistence flag. */
 const makeStorage = (init: Options["storage"]): StorageManagerLike => {
   const storage = {
-    usage: or(init?.usage, 0),
-    quota: or(init?.quota, 1024 ** 3),
-    persisted: or(init?.persisted, false),
-    grant: or(init?.grantPersistence, true),
+    usage: init?.usage ?? 0,
+    quota: init?.quota ?? 1024 ** 3,
+    persisted: init?.persisted ?? false,
+    grant: init?.grantPersistence ?? true,
   };
   return {
     estimate: () => Promise.resolve({ usage: storage.usage, quota: storage.quota }),
@@ -252,19 +262,18 @@ export const make = (options?: Options): Fixture => {
   const vibrations: Array<VibratePattern> = [];
 
   const state: State = {
-    onLine: or(init.onLine, true),
-    languages: or(init.languages, ["en-US"]),
-    connection: init.connection,
-    userActivation: init.userActivation,
+    onLine: init.onLine ?? true,
+    languages: init.languages ?? ["en-US"],
+    connection: Option.fromUndefinedOr(init.connection),
+    userActivation: Option.fromUndefinedOr(init.userActivation),
   };
 
-  const connection =
-    state.connection === undefined ? undefined : new TestConnection(() => state.connection);
+  const connection = Option.map(state.connection, () => new TestConnection(() => state.connection));
 
   const fake: NavigatorLike = {
-    userAgent: or(init.userAgent, "TestNavigator"),
+    userAgent: init.userAgent ?? "TestNavigator",
     get language() {
-      return state.languages[0];
+      return state.languages[0] ?? "";
     },
     get languages() {
       return state.languages;
@@ -273,23 +282,25 @@ export const make = (options?: Options): Fixture => {
       return state.onLine;
     },
     get userActivation() {
-      return state.userActivation;
+      return Option.getOrUndefined(state.userActivation);
     },
-    cookieEnabled: or(init.cookieEnabled, true),
-    hardwareConcurrency: or(init.hardwareConcurrency, 4),
-    deviceMemory: init.deviceMemory,
-    maxTouchPoints: or(init.maxTouchPoints, 0),
-    webdriver: or(init.webdriver, false),
-    globalPrivacyControl: init.globalPrivacyControl,
-    connection,
+    cookieEnabled: init.cookieEnabled ?? true,
+    hardwareConcurrency: init.hardwareConcurrency ?? 4,
+    maxTouchPoints: init.maxTouchPoints ?? 0,
+    webdriver: init.webdriver ?? false,
+    ...Struct.pick(init, ["deviceMemory", "globalPrivacyControl"]),
+    ...Option.match(connection, {
+      onNone: () => ({}),
+      onSome: (value) => ({ connection: value }),
+    }),
     storage: makeStorage(init.storage),
     vibrate: (pattern) => {
       vibrations.push(pattern);
       return true;
     },
   };
-  installShare(fake, or(init.share, "succeed"), shares);
-  installBeacon(fake, or(init.beacon, "queue"), beacons);
+  installShare(fake, init.share ?? "succeed", shares);
+  installBeacon(fake, init.beacon ?? "queue", beacons);
 
   return {
     navigator: makeNavigator({ navigator: fake, events }),
@@ -306,12 +317,12 @@ export const make = (options?: Options): Fixture => {
         }),
       setConnection: (next) =>
         Effect.sync(() => {
-          state.connection = next;
-          connection?.dispatchEvent(new Event("change"));
+          state.connection = Option.some(next);
+          Option.map(connection, (target) => target.dispatchEvent(new Event("change")));
         }),
       setUserActivation: (next) =>
         Effect.sync(() => {
-          state.userActivation = next;
+          state.userActivation = Option.some(next);
         }),
       shares: Effect.sync(() => [...shares]),
       beacons: Effect.sync(() => [...beacons]),

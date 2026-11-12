@@ -15,6 +15,7 @@
 
 import * as VoiceConversionModel from "@thomasfosterau/effect-ext/VoiceConversionModel";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import { ElevenLabsClient } from "./ElevenLabsClient";
@@ -87,7 +88,7 @@ export const make = (
           return {
             audio: result.audio,
             mediaType: result.contentType ?? mediaTypeForOutputFormat(outputFormat),
-            usage: { durationSeconds: undefined },
+            usage: { durationSeconds: Option.none() },
           };
         }),
     });

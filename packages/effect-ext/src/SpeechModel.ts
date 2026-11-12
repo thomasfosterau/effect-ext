@@ -16,6 +16,7 @@
 
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { AiError } from "effect/ai";
@@ -44,7 +45,7 @@ export class SpeechModel extends Context.Service<SpeechModel, Service>()(
  *
  * **Details**
  *
- * `inputCharacters` is `undefined` when the provider does not report usage.
+ * `inputCharacters` is `Option.none()` when the provider does not report usage.
  *
  * @category models
  *
@@ -53,7 +54,7 @@ export class SpeechModel extends Context.Service<SpeechModel, Service>()(
 export class SpeechUsage extends Schema.Class<SpeechUsage>(
   "@thomasfosterau/effect-ext/SpeechModel/SpeechUsage",
 )({
-  inputCharacters: Schema.UndefinedOr(Schema.Finite),
+  inputCharacters: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
 /**
@@ -86,11 +87,11 @@ export interface SpeechOptions {
   /** The text to synthesise. */
   readonly text: string;
   /** Provider voice identifier (provider default when omitted). */
-  readonly voice?: string | undefined;
+  readonly voice?: string;
   /** Desired audio container/codec (e.g. `mp3`, `wav`, `pcm`). */
-  readonly format?: string | undefined;
+  readonly format?: string;
   /** Desired sample rate in Hz. */
-  readonly sampleRate?: number | undefined;
+  readonly sampleRate?: number;
 }
 
 /**
@@ -102,9 +103,9 @@ export interface SpeechOptions {
  */
 export interface ProviderOptions {
   readonly text: string;
-  readonly voice: string | undefined;
-  readonly format: string | undefined;
-  readonly sampleRate: number | undefined;
+  readonly voice?: string;
+  readonly format?: string;
+  readonly sampleRate?: number;
 }
 
 /**
@@ -117,7 +118,7 @@ export interface ProviderOptions {
 export interface ProviderResponse {
   readonly audio: Uint8Array;
   readonly mediaType: string;
-  readonly usage: { readonly inputCharacters: number | undefined };
+  readonly usage: { readonly inputCharacters: Option.Option<number> };
 }
 
 /**
@@ -154,13 +155,6 @@ const mapProviderResponse = (
   );
 };
 
-const toProviderOptions = (options: SpeechOptions): ProviderOptions => ({
-  text: options.text,
-  voice: options.voice,
-  format: options.format,
-  sampleRate: options.sampleRate,
-});
-
 /**
  * Creates a `SpeechModel` service from provider synthesis implementations — the
  * analogue of `EmbeddingModel.make`.
@@ -188,9 +182,8 @@ export const make = (params: {
     SpeechModel.of({
       generate: (options) =>
         params
-          .generate(toProviderOptions(options))
+          .generate(options)
           .pipe(Effect.flatMap(mapProviderResponse), Effect.withSpan("SpeechModel.generate")),
-      stream: (options) =>
-        params.stream(toProviderOptions(options)).pipe(Stream.withSpan("SpeechModel.stream")),
+      stream: (options) => params.stream(options).pipe(Stream.withSpan("SpeechModel.stream")),
     }),
   );

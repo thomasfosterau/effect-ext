@@ -46,7 +46,7 @@ export class TranscriptionModel extends Context.Service<TranscriptionModel, Serv
  *
  * **Details**
  *
- * `durationSeconds` is `undefined` when the provider does not report the
+ * `durationSeconds` is `Option.none()` when the provider does not report the
  * transcribed audio duration.
  *
  * @category models
@@ -56,7 +56,7 @@ export class TranscriptionModel extends Context.Service<TranscriptionModel, Serv
 export class TranscriptionUsage extends Schema.Class<TranscriptionUsage>(
   "@thomasfosterau/effect-ext/TranscriptionModel/TranscriptionUsage",
 )({
-  durationSeconds: Schema.UndefinedOr(Schema.Finite),
+  durationSeconds: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
 /**
@@ -81,7 +81,7 @@ export class TranscriptionSegment extends Schema.Class<TranscriptionSegment>(
  *
  * **Details**
  *
- * `segments` and `language` are `undefined` when the provider does not report
+ * `segments` and `language` are `Option.none()` when the provider does not report
  * them.
  *
  * @see {@link TranscriptionSegment} for individual segments
@@ -95,8 +95,8 @@ export class TranscriptionResponse extends Schema.Class<TranscriptionResponse>(
   "@thomasfosterau/effect-ext/TranscriptionModel/TranscriptionResponse",
 )({
   text: Schema.String,
-  segments: Schema.UndefinedOr(Schema.Array(TranscriptionSegment)),
-  language: Schema.UndefinedOr(Schema.String),
+  segments: Schema.OptionFromOptionalKey(Schema.Array(TranscriptionSegment)),
+  language: Schema.OptionFromOptionalKey(Schema.String),
   usage: TranscriptionUsage,
 }) {}
 
@@ -111,9 +111,9 @@ export interface TranscriptionOptions {
   /** The audio to transcribe, as a byte buffer or a stream of chunks. */
   readonly audio: Uint8Array | Stream.Stream<Uint8Array>;
   /** IANA media type of the audio (e.g. `audio/mpeg`). */
-  readonly mediaType?: string | undefined;
+  readonly mediaType?: string;
   /** Hint for the spoken language (auto-detected when omitted). */
-  readonly language?: string | undefined;
+  readonly language?: string;
 }
 
 /**
@@ -125,8 +125,8 @@ export interface TranscriptionOptions {
  */
 export interface ProviderOptions {
   readonly audio: Uint8Array | Stream.Stream<Uint8Array>;
-  readonly mediaType: string | undefined;
-  readonly language: string | undefined;
+  readonly mediaType?: string;
+  readonly language?: string;
 }
 
 /**
@@ -138,11 +138,11 @@ export interface ProviderOptions {
  */
 export interface ProviderResponse {
   readonly text: string;
-  readonly segments:
-    | ReadonlyArray<{ readonly text: string; readonly start: number; readonly end: number }>
-    | undefined;
-  readonly language: string | undefined;
-  readonly usage: { readonly durationSeconds: number | undefined };
+  readonly segments: Option.Option<
+    ReadonlyArray<{ readonly text: string; readonly start: number; readonly end: number }>
+  >;
+  readonly language: Option.Option<string>;
+  readonly usage: { readonly durationSeconds: Option.Option<number> };
 }
 
 /**
@@ -168,32 +168,33 @@ const invalidProviderResponse = (description: string): AiError.AiError =>
 const mapProviderResponse = (
   response: ProviderResponse,
 ): Effect.Effect<TranscriptionResponse, AiError.AiError> => {
-  const invalid = Arr.findFirst(response.segments ?? [], (segment) =>
-    !Number.isFinite(segment.start) || !Number.isFinite(segment.end)
-      ? Option.some(
-          `Provider returned a segment with non-finite timestamps (${segment.start}, ${segment.end})`,
-        )
-      : segment.end < segment.start
+  const invalid = Arr.findFirst(
+    Option.getOrElse(response.segments, () => []),
+    (segment) =>
+      !Number.isFinite(segment.start) || !Number.isFinite(segment.end)
         ? Option.some(
-            `Provider returned a segment ending (${segment.end}) before it starts (${segment.start})`,
+            `Provider returned a segment with non-finite timestamps (${segment.start}, ${segment.end})`,
           )
-        : Option.none(),
+        : segment.end < segment.start
+          ? Option.some(
+              `Provider returned a segment ending (${segment.end}) before it starts (${segment.start})`,
+            )
+          : Option.none(),
   );
   if (Option.isSome(invalid)) {
     return Effect.fail(invalidProviderResponse(invalid.value));
   }
-  const segments =
-    response.segments === undefined
-      ? undefined
-      : Arr.map(
-          response.segments,
-          (segment) =>
-            new TranscriptionSegment({
-              text: segment.text,
-              start: segment.start,
-              end: segment.end,
-            }),
-        );
+  const segments = Option.map(response.segments, (reported) =>
+    Arr.map(
+      reported,
+      (segment) =>
+        new TranscriptionSegment({
+          text: segment.text,
+          start: segment.start,
+          end: segment.end,
+        }),
+    ),
+  );
   return Effect.succeed(
     new TranscriptionResponse({
       text: response.text,
@@ -231,11 +232,7 @@ export const make = (params: {
     TranscriptionModel.of({
       transcribe: (options) =>
         params
-          .transcribe({
-            audio: options.audio,
-            mediaType: options.mediaType,
-            language: options.language,
-          })
+          .transcribe(options)
           .pipe(
             Effect.flatMap(mapProviderResponse),
             Effect.withSpan("TranscriptionModel.transcribe"),

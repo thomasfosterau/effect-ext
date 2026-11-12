@@ -5,6 +5,8 @@ import {
   fromOption,
   type OptionalKey,
   optionalKey,
+  type Present,
+  presentFields,
 } from "@thomasfosterau/effect-ext/OptionalKey";
 
 interface Person {
@@ -53,3 +55,27 @@ export const required = (limit?: number): { readonly b: string } => fields({ a: 
 
 // @ts-expect-error — a required member stays required
 export const missingRequired: Defined<{ b: string }> = {};
+
+/** A row from a nullable SQL column, spelled without writing the union. */
+type NullableString = ReturnType<typeof Option.getOrNull<string>>;
+
+interface Resource {
+  readonly id: number;
+  readonly summary?: string;
+}
+
+// The row-to-resource boundary: a nullable column spreads into an optional key.
+export const toResource = (id: number, summary: NullableString): Resource => ({
+  id,
+  ...presentFields({ summary }),
+});
+
+// A non-nullable member stays required; a nullable one becomes optional without `null`.
+export const present = (
+  summary: NullableString,
+): Present<{ id: number; summary: NullableString }> => presentFields({ id: 1, summary });
+export const requiredId = (summary: NullableString): { readonly id: number } =>
+  presentFields({ id: 1, summary });
+
+// @ts-expect-error — a non-nullable member stays required
+export const missingId: Present<{ id: number }> = {};

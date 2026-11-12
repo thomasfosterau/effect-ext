@@ -27,7 +27,7 @@ export const element = (name: string, text: string): string =>
   `<${name}>${escapeXml(text)}</${name}>`;
 
 /** {@link element}, or nothing when the text is absent. */
-export const optionalElement = (name: string, text: string | undefined): string =>
+export const optionalElement = (name: string, text?: string): string =>
   text === undefined ? "" : element(name, text);
 
 /** The declaration every document opens with. */

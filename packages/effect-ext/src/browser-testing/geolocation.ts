@@ -32,9 +32,9 @@ import * as Geolocation from "@effect/platform-browser/Geolocation";
 export interface Fix {
   readonly latitude: number;
   readonly longitude: number;
-  readonly accuracy?: number | undefined;
-  readonly altitude?: number | undefined;
-  readonly timestamp?: number | undefined;
+  readonly accuracy?: number;
+  readonly altitude?: number;
+  readonly timestamp?: number;
 }
 
 /**

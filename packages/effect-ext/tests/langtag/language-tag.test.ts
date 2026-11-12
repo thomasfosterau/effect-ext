@@ -9,7 +9,7 @@ import * as Schema from "effect/Schema";
 import { LanguageTag } from "@thomasfosterau/effect-ext/Langtag";
 
 const tag = (value: string): LanguageTag.LanguageTag =>
-  Schema.decodeUnknownSync(LanguageTag.LanguageTagFromString)(value);
+  Schema.decodeSync(LanguageTag.LanguageTagFromString)(value);
 
 describe("LanguageTag.parse", () => {
   // RFC 5646 Appendix A, every well-formed example, already in canonical case.
@@ -94,10 +94,10 @@ describe("LanguageTag.parse", () => {
 
 describe("LanguageTag schemas", () => {
   it("decodes to canonical case and encodes as itself", () => {
-    const decoded = Schema.decodeUnknownSync(LanguageTag.LanguageTagFromString)("pt-br");
+    const decoded = Schema.decodeSync(LanguageTag.LanguageTagFromString)("pt-br");
     expect(decoded).toBe("pt-BR");
     expect(Schema.encodeSync(LanguageTag.LanguageTagFromString)(decoded)).toBe("pt-BR");
-    expect(() => Schema.decodeUnknownSync(LanguageTag.LanguageTagFromString)("pt_BR")).toThrow();
+    expect(() => Schema.decodeSync(LanguageTag.LanguageTagFromString)("pt_BR")).toThrow();
   });
 
   it("accepts only canonical-case tags as LanguageTag", () => {
