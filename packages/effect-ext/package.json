@@ -272,6 +272,10 @@
       "types": "./dist/Observability.d.ts",
       "default": "./dist/Observability.js"
     },
+    "./OptionalKey": {
+      "types": "./dist/OptionalKey.d.ts",
+      "default": "./dist/OptionalKey.js"
+    },
     "./Overflowing": {
       "types": "./dist/Overflowing.d.ts",
       "default": "./dist/Overflowing.js"

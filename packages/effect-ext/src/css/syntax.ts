@@ -68,18 +68,24 @@ export interface SyntaxError {
   readonly offset: number;
 }
 
+const tokenOf = (located: Located): Token => located.token;
+
+/** Whether `token` is present and has the tag `tag`. */
+const hasTag = (token: Option.Option<Token>, tag: Token["_tag"]): boolean =>
+  Option.exists(token, (found) => found._tag === tag);
+
 /** A token cursor with the input's end offset for errors at EOF. */
 const cursor = (input: string) => {
   const tokens = tokenize(input);
   const end = tokens.length > 0 ? (tokens.at(-1)?.offset ?? 0) + 1 : 0;
   let index = 0;
   return {
-    peek: (): Token | undefined => tokens[index]?.token,
+    peek: (): Option.Option<Token> => Option.map(Option.fromUndefinedOr(tokens[index]), tokenOf),
     offset: (): number => tokens[index]?.offset ?? end,
-    next: (): Token | undefined => {
-      const located: Located | undefined = tokens[index];
+    next: (): Option.Option<Token> => {
+      const located = Option.fromUndefinedOr(tokens[index]);
       index += 1;
-      return located?.token;
+      return Option.map(located, tokenOf);
     },
     back: (): void => {
       index -= 1;
@@ -150,14 +156,14 @@ const frameFor = (token: Opener): Frame => {
  * `((((…` cannot overflow it. The cursor is not at EOF.
  */
 const consumeComponentValue = (input: Cursor): ComponentValue => {
-  const first: Token = input.next() ?? { _tag: "Whitespace" };
+  const first: Token = Option.getOrElse(input.next(), (): Token => ({ _tag: "Whitespace" }));
   if (!isOpener(first)) return first;
   const root = frameFor(first);
   const stack: Array<Frame> = [root];
   for (;;) {
     const top = stack[stack.length - 1] ?? root;
-    const token = input.next();
-    if (token === undefined || token._tag === top.closer) {
+    const next = input.next();
+    if (Option.isNone(next) || next.value._tag === top.closer) {
       stack.pop();
       const node = top.build(top.value);
       const parent = stack[stack.length - 1];
@@ -165,6 +171,7 @@ const consumeComponentValue = (input: Cursor): ComponentValue => {
       parent.value.push(node);
       continue;
     }
+    const token = next.value;
     if (isOpener(token)) {
       stack.push(frameFor(token));
     } else {
@@ -183,17 +190,18 @@ const consumeBlock = (input: Cursor, open: keyof typeof closer): Block => {
 };
 
 const skipWhitespace = (input: Cursor): void => {
-  while (input.peek()?._tag === "Whitespace") input.next();
+  while (hasTag(input.peek(), "Whitespace")) input.next();
 };
 
 /** §5.4.2: an at-rule, after its at-keyword. */
 const consumeAtRule = (input: Cursor, name: string): AtRule => {
   const prelude: Array<ComponentValue> = [];
   for (;;) {
-    const token = input.next();
-    if (token === undefined || token._tag === "Semicolon") {
+    const next = input.next();
+    if (Option.isNone(next) || next.value._tag === "Semicolon") {
       return { _tag: "AtRule", name, prelude, block: Option.none() };
     }
+    const token = next.value;
     if (token._tag === "OpenCurly") {
       return {
         _tag: "AtRule",
@@ -212,8 +220,9 @@ const consumeQualifiedRule = (input: Cursor): QualifiedRule | SyntaxError => {
   const prelude: Array<ComponentValue> = [];
   for (;;) {
     const offset = input.offset();
-    const token = input.next();
-    if (token === undefined) return { _tag: "SyntaxError", kind: "invalid", offset };
+    const next = input.next();
+    if (Option.isNone(next)) return { _tag: "SyntaxError", kind: "invalid", offset };
+    const token = next.value;
     if (token._tag === "OpenCurly") {
       return { _tag: "QualifiedRule", prelude, block: consumeBlock(input, "OpenCurly").value };
     }
@@ -229,8 +238,9 @@ const consumeRules = (
 ): Array<AtRule | QualifiedRule | SyntaxError> => {
   const rules: Array<AtRule | QualifiedRule | SyntaxError> = [];
   for (;;) {
-    const token = input.next();
-    if (token === undefined) return rules;
+    const next = input.next();
+    if (Option.isNone(next)) return rules;
+    const token = next.value;
     if (token._tag === "Whitespace") continue;
     if (topLevel && (token._tag === "CDO" || token._tag === "CDC")) continue;
     if (token._tag === "AtKeyword") {
@@ -242,8 +252,8 @@ const consumeRules = (
   }
 };
 
-const isImportantIdent = (value: ComponentValue | undefined): boolean =>
-  value?._tag === "Ident" && value.value.replace(/[A-Z]/g, (c) => c.toLowerCase()) === "important";
+const isImportantIdent = (value: ComponentValue): boolean =>
+  value._tag === "Ident" && value.value.replace(/[A-Z]/g, (c) => c.toLowerCase()) === "important";
 
 /** §5.4.6: a declaration from an ident and the component values after it. */
 const consumeDeclaration = (
@@ -279,7 +289,7 @@ const consumeDeclaration = (
 /** Component values up to (not including) the next `;` or EOF. */
 const consumeUntilSemicolon = (input: Cursor): Array<ComponentValue> => {
   const values: Array<ComponentValue> = [];
-  while (input.peek() !== undefined && input.peek()?._tag !== "Semicolon") {
+  while (Option.isSome(input.peek()) && !hasTag(input.peek(), "Semicolon")) {
     values.push(consumeComponentValue(input));
   }
   return values;
@@ -311,10 +321,11 @@ const consumeNestedDeclaration = (
 const consumeNestedQualifiedRule = (input: Cursor, offset: number): QualifiedRule | SyntaxError => {
   const prelude: Array<ComponentValue> = [];
   for (;;) {
-    const token = input.next();
-    if (token === undefined || token._tag === "Semicolon") {
+    const next = input.next();
+    if (Option.isNone(next) || next.value._tag === "Semicolon") {
       return { _tag: "SyntaxError", kind: "invalid", offset };
     }
+    const token = next.value;
     if (token._tag === "OpenCurly") {
       return { _tag: "QualifiedRule", prelude, block: consumeBlock(input, "OpenCurly").value };
     }
@@ -350,8 +361,9 @@ export const parseBlockContents = (
   for (;;) {
     const offset = input.offset();
     const start = input.mark();
-    const token = input.next();
-    if (token === undefined) return items;
+    const next = input.next();
+    if (Option.isNone(next)) return items;
+    const token = next.value;
     if (token._tag === "Whitespace" || token._tag === "Semicolon") continue;
     if (token._tag === "AtKeyword") {
       items.push(consumeAtRule(input, token.value));
@@ -393,8 +405,9 @@ export const parseDeclarationList = (
   const items: Array<Declaration | AtRule | SyntaxError> = [];
   for (;;) {
     const offset = input.offset();
-    const token = input.next();
-    if (token === undefined) return items;
+    const next = input.next();
+    if (Option.isNone(next)) return items;
+    const token = next.value;
     if (token._tag === "Whitespace" || token._tag === "Semicolon") continue;
     if (token._tag === "AtKeyword") {
       items.push(consumeAtRule(input, token.value));
@@ -434,12 +447,13 @@ export const parseDeclaration = (css: string): Declaration | SyntaxError => {
   const input = cursor(css);
   skipWhitespace(input);
   const offset = input.offset();
-  const token = input.next();
-  if (token === undefined) return { _tag: "SyntaxError", kind: "empty", offset };
+  const next = input.next();
+  if (Option.isNone(next)) return { _tag: "SyntaxError", kind: "empty", offset };
+  const token = next.value;
   const invalid: SyntaxError = { _tag: "SyntaxError", kind: "invalid", offset };
   if (token._tag !== "Ident") return invalid;
   const rest: Array<ComponentValue> = [];
-  while (input.peek() !== undefined) rest.push(consumeComponentValue(input));
+  while (Option.isSome(input.peek())) rest.push(consumeComponentValue(input));
   return Option.getOrElse(consumeDeclaration(token.value, rest), () => invalid);
 };
 
@@ -496,8 +510,9 @@ export const parseRule = (css: string): AtRule | QualifiedRule | SyntaxError => 
   const input = cursor(css);
   skipWhitespace(input);
   const offset = input.offset();
-  const token = input.next();
-  if (token === undefined) return { _tag: "SyntaxError", kind: "empty", offset };
+  const next = input.next();
+  if (Option.isNone(next)) return { _tag: "SyntaxError", kind: "empty", offset };
+  const token = next.value;
   let rule: AtRule | QualifiedRule | SyntaxError;
   if (token._tag === "AtKeyword") {
     rule = consumeAtRule(input, token.value);
@@ -507,7 +522,7 @@ export const parseRule = (css: string): AtRule | QualifiedRule | SyntaxError => 
   }
   if (rule._tag === "SyntaxError") return { ...rule, offset };
   skipWhitespace(input);
-  return input.peek() === undefined
+  return Option.isNone(input.peek())
     ? rule
     : { _tag: "SyntaxError", kind: "extra-input", offset: input.offset() };
 };
@@ -530,7 +545,7 @@ export const parseRule = (css: string): AtRule | QualifiedRule | SyntaxError => 
 export const parseComponentValueList = (css: string): ReadonlyArray<ComponentValue> => {
   const input = cursor(css);
   const values: Array<ComponentValue> = [];
-  while (input.peek() !== undefined) values.push(consumeComponentValue(input));
+  while (Option.isSome(input.peek())) values.push(consumeComponentValue(input));
   return values;
 };
 
@@ -551,10 +566,10 @@ export const parseComponentValue = (css: string): ComponentValue | SyntaxError =
   const input = cursor(css);
   skipWhitespace(input);
   const offset = input.offset();
-  if (input.peek() === undefined) return { _tag: "SyntaxError", kind: "empty", offset };
+  if (Option.isNone(input.peek())) return { _tag: "SyntaxError", kind: "empty", offset };
   const value = consumeComponentValue(input);
   skipWhitespace(input);
-  return input.peek() === undefined
+  return Option.isNone(input.peek())
     ? value
     : { _tag: "SyntaxError", kind: "extra-input", offset: input.offset() };
 };

@@ -28,7 +28,7 @@ import { canonicalCase, parseParts, type Parts } from "../internal/langtag/gramm
 export const LanguageTag = Schema.String.pipe(
   Schema.check(
     Schema.makeFilter(
-      (tag: string) => parseParts(tag) !== undefined && canonicalCase(tag) === tag,
+      (tag: string) => Option.isSome(parseParts(tag)) && canonicalCase(tag) === tag,
       {
         identifier: "LanguageTag",
         title: "BCP 47 language tag",
@@ -112,7 +112,7 @@ const decodeOption = Schema.decodeUnknownOption(LanguageTagFromString);
  * @since 0.1.0
  * @category predicates
  */
-export const isWellFormed = (tag: string): boolean => parseParts(tag) !== undefined;
+export const isWellFormed = (tag: string): boolean => Option.isSome(parseParts(tag));
 
 /**
  * One extension of a tag (RFC 5646 §2.2.6): its `singleton` (`u`, `t`, …)
@@ -156,10 +156,10 @@ export interface Subtags {
 
 const EMPTY_PARTS: Parts = {
   kind: "grandfathered",
-  language: undefined,
+  language: Option.none(),
   extlangs: [],
-  script: undefined,
-  region: undefined,
+  script: Option.none(),
+  region: Option.none(),
   variants: [],
   extensions: [],
   privateUse: [],
@@ -184,16 +184,13 @@ const EMPTY_PARTS: Parts = {
  */
 export const subtags = (tag: LanguageTag): Subtags => {
   // A `LanguageTag` is well-formed by construction; the fallback is unreachable.
-  const parts = parseParts(tag) ?? EMPTY_PARTS;
+  const parts = Option.getOrElse(parseParts(tag), () => EMPTY_PARTS);
   return {
     kind: parts.kind,
-    language: Option.fromUndefinedOr(parts.language),
+    language: parts.language,
     extlangs: parts.extlangs,
-    script: Option.map(
-      Option.fromUndefinedOr(parts.script),
-      (script) => script.charAt(0).toUpperCase() + script.slice(1),
-    ),
-    region: Option.map(Option.fromUndefinedOr(parts.region), (region) => region.toUpperCase()),
+    script: Option.map(parts.script, (script) => script.charAt(0).toUpperCase() + script.slice(1)),
+    region: Option.map(parts.region, (region) => region.toUpperCase()),
     variants: parts.variants,
     extensions: parts.extensions,
     privateUse: parts.privateUse,
