@@ -70,7 +70,7 @@ export class TemplateError extends Schema.TaggedError<TemplateError>()("Template
     "PrefixOnComposite",
     "Unmatchable",
   ]),
-  position: Schema.Number,
+  position: Schema.Int,
   message: Schema.String,
 }) {}
 

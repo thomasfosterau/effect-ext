@@ -615,7 +615,7 @@ describe("extendableListener", () => {
 });
 
 describe("messageListener", () => {
-  const Ping = Schema.Struct({ type: Schema.Literal("PING"), id: Schema.Number });
+  const Ping = Schema.Struct({ type: Schema.Literal("PING"), id: Schema.Finite });
 
   it("runs the handler on a decoded message and drops the rest", async () => {
     const seen: Array<number> = [];

@@ -140,9 +140,9 @@ export interface ChatCompletionRequest {
 
 /** Token accounting reported by Mistral on completions and final chunks. */
 const Usage = Schema.Struct({
-  prompt_tokens: Schema.optional(Schema.Number),
-  completion_tokens: Schema.optional(Schema.Number),
-  total_tokens: Schema.optional(Schema.Number),
+  prompt_tokens: Schema.optional(Schema.Finite),
+  completion_tokens: Schema.optional(Schema.Finite),
+  total_tokens: Schema.optional(Schema.Finite),
 });
 
 /** A completed tool call in a non-streaming response message. */
@@ -164,7 +164,7 @@ const ResponseMessage = Schema.Struct({
 
 /** One choice in a non-streaming completion. */
 const ResponseChoice = Schema.Struct({
-  index: Schema.optional(Schema.Number),
+  index: Schema.optional(Schema.Finite),
   message: ResponseMessage,
   finish_reason: Schema.optional(Schema.NullOr(Schema.String)),
 });
@@ -177,7 +177,7 @@ const envelope = {
   id: Schema.optional(Schema.String),
   object: Schema.optional(Schema.String),
   model: Schema.optional(Schema.String),
-  created: Schema.optional(Schema.Number),
+  created: Schema.optional(Schema.Finite),
   usage: Schema.optional(Schema.NullOr(Usage)),
 } as const;
 
@@ -194,7 +194,7 @@ export type ChatCompletionResponse = typeof ChatCompletionResponse.Type;
 
 /** An incremental tool call fragment within a streaming delta. */
 const DeltaToolCall = Schema.Struct({
-  index: Schema.optional(Schema.Number),
+  index: Schema.optional(Schema.Finite),
   id: Schema.optional(Schema.String),
   type: Schema.optional(Schema.String),
   function: Schema.optional(
@@ -217,7 +217,7 @@ const ChunkDelta = Schema.Struct({
 
 /** One choice in a streaming chunk. */
 const ChunkChoice = Schema.Struct({
-  index: Schema.optional(Schema.Number),
+  index: Schema.optional(Schema.Finite),
   delta: ChunkDelta,
   finish_reason: Schema.optional(Schema.NullOr(Schema.String)),
 });

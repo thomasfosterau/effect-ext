@@ -14,12 +14,12 @@ import dataUrls from "./fixtures/data-urls.json" with { type: "json" };
 const DataUrlVectors = Schema.Array(
   Schema.Union([
     Schema.Tuple([Schema.String, Schema.Null]),
-    Schema.Tuple([Schema.String, Schema.String, Schema.Array(Schema.Number)]),
+    Schema.Tuple([Schema.String, Schema.String, Schema.Array(Schema.Finite)]),
   ]),
 );
 
 const Base64Vectors = Schema.Array(
-  Schema.Tuple([Schema.String, Schema.NullOr(Schema.Array(Schema.Number))]),
+  Schema.Tuple([Schema.String, Schema.NullOr(Schema.Array(Schema.Finite))]),
 );
 
 const render = (input: string) =>
