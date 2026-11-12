@@ -85,7 +85,7 @@ Swapping in Cohere (`CohereRerankerModel`) or `effect-ai-cloudflare`'s AI Gatewa
 ## Documentation
 
 - The package READMEs — the API reference, module by module.
-- [CONTRIBUTING.md](CONTRIBUTING.md) — setup, hooks and the individual checks.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — setup, the branch model, hooks and the commands.
 - [AGENTS.md](AGENTS.md) — repository conventions and the verification gates.
 - [PUBLISHING.md](PUBLISHING.md) — the changesets release flow and its one-time setup.
 - [SECURITY.md](SECURITY.md) — vulnerability reporting, credentials and the supply-chain posture.
