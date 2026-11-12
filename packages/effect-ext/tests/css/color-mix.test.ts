@@ -23,7 +23,7 @@ interface Vector {
   readonly epsilon: Option.Option<number>;
 }
 
-const toVector = (entry: ReadonlyArray<string | number | null>): Vector => {
+const toVector = (entry: ReadonlyArray<unknown>): Vector => {
   const [input, expected, epsilon] = entry;
   return {
     input: String(input),

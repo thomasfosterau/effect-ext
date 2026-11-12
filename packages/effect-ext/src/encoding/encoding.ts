@@ -123,14 +123,14 @@ export type BomHandling = Decoder.BomMode;
  */
 export interface DecodeOptions {
   /** The encoding to decode with (before BOM sniffing). Defaults to `UTF-8`. */
-  readonly encoding?: EncodingName | undefined;
+  readonly encoding?: EncodingName;
   /**
    * Whether malformed input fails with a {@link DecodeError}. Defaults to
    * `true`; `false` decodes it to U+FFFD, as `TextDecoder` does by default.
    */
-  readonly fatal?: boolean | undefined;
+  readonly fatal?: boolean;
   /** What to do with a byte-order mark. Defaults to `"sniff"`. */
-  readonly bomHandling?: BomHandling | undefined;
+  readonly bomHandling?: BomHandling;
 }
 
 /**
@@ -437,9 +437,9 @@ export type EncodeErrorMode = Encoder.ErrorMode;
  */
 export interface EncodeOptions {
   /** The encoding to encode to. Defaults to `UTF-8`. */
-  readonly encoding?: EncodingName | undefined;
+  readonly encoding?: EncodingName;
   /** What to do with an unmappable code point. Defaults to `"fatal"`. */
-  readonly errorMode?: EncodeErrorMode | undefined;
+  readonly errorMode?: EncodeErrorMode;
 }
 
 /**
