@@ -51,8 +51,8 @@ export type LockMode = "exclusive" | "shared";
  * @category models
  */
 export interface LockOptions {
-  readonly mode?: LockMode | undefined;
-  readonly steal?: boolean | undefined;
+  readonly mode?: LockMode;
+  readonly steal?: boolean;
 }
 
 /**
@@ -171,10 +171,10 @@ const REJECTION_REASONS = {
  * @category models
  */
 export interface LockManagerRequestOptions {
-  readonly mode?: LockMode | undefined;
-  readonly ifAvailable?: boolean | undefined;
-  readonly steal?: boolean | undefined;
-  readonly signal?: AbortSignal | undefined;
+  readonly mode?: LockMode;
+  readonly ifAvailable?: boolean;
+  readonly steal?: boolean;
+  readonly signal?: AbortSignal;
 }
 
 /**
@@ -189,13 +189,11 @@ export interface LockManagerLike {
   request(
     name: string,
     options: LockManagerRequestOptions,
-    callback: (
-      lock: { readonly name: string; readonly mode: LockMode } | null,
-    ) => Promise<void> | undefined,
+    callback: (lock: { readonly name: string; readonly mode: LockMode } | null) => Promise<void>,
   ): Promise<void>;
   query(): Promise<{
-    readonly held?: ReadonlyArray<LockInfoLike> | undefined;
-    readonly pending?: ReadonlyArray<LockInfoLike> | undefined;
+    readonly held?: ReadonlyArray<LockInfoLike>;
+    readonly pending?: ReadonlyArray<LockInfoLike>;
   }>;
 }
 
@@ -207,9 +205,9 @@ export interface LockManagerLike {
  * @category models
  */
 export interface LockInfoLike {
-  readonly name?: string | undefined;
-  readonly mode?: LockMode | undefined;
-  readonly clientId?: string | undefined;
+  readonly name?: string;
+  readonly mode?: LockMode;
+  readonly clientId?: string;
 }
 
 /**
@@ -236,7 +234,7 @@ export class Locks extends Context.Service<
     ) => Effect.Effect<HeldLock, LockError, Scope.Scope>;
     readonly tryAcquire: (
       name: string,
-      options?: { readonly mode?: LockMode | undefined },
+      options?: { readonly mode?: LockMode },
     ) => Effect.Effect<Option.Option<HeldLock>, LockError, Scope.Scope>;
     readonly query: Effect.Effect<LockSnapshot, LockError>;
   }
@@ -258,7 +256,7 @@ const toInfo = (info: LockInfoLike): LockInfo => ({
 });
 
 /**
- * Builds the {@link Locks} service over a lock manager; `undefined` builds
+ * Builds the {@link Locks} service over a lock manager; no manager builds
  * the unsupported service (`supported: false`, every operation failing
  * `Unsupported`). {@link layer} passes `navigator.locks`.
  *
@@ -284,7 +282,7 @@ const toInfo = (info: LockInfoLike): LockInfo => ({
  * @since 0.2.0
  * @category constructors
  */
-export const make = (manager: LockManagerLike | undefined): Locks["Service"] => {
+export const make = (manager?: LockManagerLike): Locks["Service"] => {
   if (manager === undefined) {
     const unsupported = (name: Option.Option<string>) =>
       Effect.fail(lockError(name, "Unsupported", undefined));
@@ -336,11 +334,11 @@ export const make = (manager: LockManagerLike | undefined): Locks["Service"] => 
         const outcome = manager.request(name, options, (lock) => {
           if (lock === null) {
             resume(Effect.succeedNone);
-            return undefined;
+            return Promise.resolve();
           }
           // Interrupted (the signal) or its scope closed while the grant was
           // in flight: release at once rather than hold a lock nobody has.
-          if (state.cancelled || signal.aborted) return undefined;
+          if (state.cancelled || signal.aborted) return Promise.resolve();
           granted = true;
           const held = pendingPromise();
           state.release = held.resolve;
@@ -420,7 +418,13 @@ export const make = (manager: LockManagerLike | undefined): Locks["Service"] => 
  * @since 0.2.0
  * @category layers
  */
-export const layer: Layer.Layer<Locks> = Layer.sync(Locks, () => make(ambientNavigator()?.locks));
+export const layer: Layer.Layer<Locks> = Layer.sync(Locks, () =>
+  make(
+    Option.getOrUndefined(
+      Option.flatMap(ambientNavigator(), (navigator) => Option.fromUndefinedOr(navigator.locks)),
+    ),
+  ),
+);
 
 const runHolding = <A, E, R>(
   self: Effect.Effect<A, E, R>,
@@ -508,21 +512,21 @@ export const withLock: {
 export const withLockIfAvailable: {
   (
     name: string,
-    options?: { readonly mode?: LockMode | undefined },
+    options?: { readonly mode?: LockMode },
   ): <A, E, R>(
     self: Effect.Effect<A, E, R>,
   ) => Effect.Effect<Option.Option<A>, E | LockError, R | Locks>;
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
     name: string,
-    options?: { readonly mode?: LockMode | undefined },
+    options?: { readonly mode?: LockMode },
   ): Effect.Effect<Option.Option<A>, E | LockError, R | Locks>;
 } = dual(
   (args) => Effect.isEffect(args[0]),
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
     name: string,
-    options?: { readonly mode?: LockMode | undefined },
+    options?: { readonly mode?: LockMode },
   ): Effect.Effect<Option.Option<A>, E | LockError, R | Locks> =>
     Effect.flatMap(Locks, (locks) =>
       Effect.scopedWith((scope) =>

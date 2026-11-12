@@ -6,67 +6,67 @@
  *
  * The DOM lib types these globals as always present; at runtime they are
  * not (reading a missing one off `globalThis` is `undefined`, never a
- * throw), so each read is typed `| undefined` for the caller to narrow.
+ * throw), so each read is an `Option`, `None` where the global is missing.
  */
+import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import type { BatteryManagerLike } from "../../browser/battery.ts";
 import type { IdleDetectorLike } from "../../browser/idle-detection.ts";
 
 /** `globalThis.navigator`, where the context has one. */
-export const ambientNavigator = (): Navigator | undefined => globalThis.navigator;
+export const ambientNavigator = (): Option.Option<Navigator> =>
+  Option.fromUndefinedOr(globalThis.navigator);
 
 /** `globalThis.document`, where the context has one (a window, not a worker). */
-export const ambientDocument = (): Document | undefined => globalThis.document;
+export const ambientDocument = (): Option.Option<Document> =>
+  Option.fromUndefinedOr(globalThis.document);
 
 /** `globalThis.matchMedia`, bound to `globalThis`, where the context has one. */
-export const ambientMatchMedia = (): ((query: string) => MediaQueryList) | undefined => {
-  const matchMedia: typeof globalThis.matchMedia | undefined = globalThis.matchMedia;
-  return matchMedia === undefined ? undefined : (query) => matchMedia.call(globalThis, query);
-};
+export const ambientMatchMedia = (): Option.Option<(query: string) => MediaQueryList> =>
+  Option.map(
+    Option.fromUndefinedOr<typeof globalThis.matchMedia>(globalThis.matchMedia),
+    (matchMedia) => (query: string) => matchMedia.call(globalThis, query),
+  );
 
 /** `globalThis.BroadcastChannel`, where the context has one. */
-export const ambientBroadcastChannel = (): typeof globalThis.BroadcastChannel | undefined =>
-  globalThis.BroadcastChannel;
+export const ambientBroadcastChannel = (): Option.Option<typeof globalThis.BroadcastChannel> =>
+  Option.fromUndefinedOr(globalThis.BroadcastChannel);
 
 /**
  * `globalThis` as the event target `online` / `offline` / `languagechange`
- * fire on (the window, or a worker's global scope); `undefined` where it is
+ * fire on (the window, or a worker's global scope); `None` where it is
  * not one.
  */
-export const ambientEventTarget = (): EventTarget | undefined =>
-  P.isFunction(globalThis.addEventListener) ? globalThis : undefined;
+export const ambientEventTarget = (): Option.Option<EventTarget> =>
+  P.isFunction(globalThis.addEventListener) ? Option.some(globalThis) : Option.none();
 
 /** `globalThis.IdleDetector`, where the agent has one (Chromium, in a window or a dedicated worker). */
-export const ambientIdleDetector = (): IdleDetectorLike | undefined => {
+export const ambientIdleDetector = (): Option.Option<IdleDetectorLike> => {
   // The DOM lib has no `IdleDetector`; the `navigator` member only stops the
   // annotation reading as a weak type (one with no member in common).
-  const scope: { readonly IdleDetector?: IdleDetectorLike | undefined } & Pick<
-    typeof globalThis,
-    "navigator"
-  > = globalThis;
-  return scope.IdleDetector;
+  const scope: { readonly IdleDetector?: IdleDetectorLike } & Pick<typeof globalThis, "navigator"> =
+    globalThis;
+  return Option.fromUndefinedOr(scope.IdleDetector);
 };
 
 /** `navigator.getBattery`, bound to `navigator`, where the agent has it (Chromium). */
-export const ambientGetBattery = (): (() => Promise<BatteryManagerLike>) | undefined => {
-  // The DOM lib has no `getBattery`; `userAgent` as for `ambientIdleDetector`.
-  const navigator:
-    | ({ getBattery?: (() => Promise<BatteryManagerLike>) | undefined } & Pick<
-        Navigator,
-        "userAgent"
-      >)
-    | undefined = ambientNavigator();
-  const getBattery = navigator?.getBattery;
-  return getBattery === undefined ? undefined : () => getBattery.call(navigator);
-};
+export const ambientGetBattery = (): Option.Option<() => Promise<BatteryManagerLike>> =>
+  Option.flatMap(ambientNavigator(), (navigator) => {
+    // The DOM lib has no `getBattery`; `userAgent` as for `ambientIdleDetector`.
+    const withBattery: { getBattery?: () => Promise<BatteryManagerLike> } & Pick<
+      Navigator,
+      "userAgent"
+    > = navigator;
+    const getBattery = withBattery.getBattery;
+    return Option.map(Option.fromUndefinedOr(getBattery), (fn) => () => fn.call(navigator));
+  });
 
 /** `globalThis.screen.orientation`, where the context has one (a window, in an agent that ships it). */
-export const ambientScreenOrientation = (): ScreenOrientation | undefined => {
-  const screen: Screen | undefined = globalThis.screen;
-  const orientation: ScreenOrientation | undefined = screen?.orientation;
-  return orientation;
-};
+export const ambientScreenOrientation = (): Option.Option<ScreenOrientation> =>
+  Option.flatMap(Option.fromUndefinedOr(globalThis.screen), (screen) =>
+    Option.fromUndefinedOr(screen.orientation),
+  );
 
 /** `globalThis.Notification`, where the context has one (a window, or a dedicated worker). */
-export const ambientNotification = (): typeof globalThis.Notification | undefined =>
-  globalThis.Notification;
+export const ambientNotification = (): Option.Option<typeof globalThis.Notification> =>
+  Option.fromUndefinedOr(globalThis.Notification);

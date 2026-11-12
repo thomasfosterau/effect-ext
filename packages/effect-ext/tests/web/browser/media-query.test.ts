@@ -67,7 +67,7 @@ describe("MediaQuery", () => {
   });
 
   it("matches nothing without matchMedia, and under Node's live layer", async () => {
-    const mediaQuery = MediaQuery.make(undefined);
+    const mediaQuery = MediaQuery.make();
     expect(await Effect.runPromise(Stream.runCollect(mediaQuery.changes("print")))).toStrictEqual([
       false,
     ]);

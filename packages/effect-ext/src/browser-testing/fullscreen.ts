@@ -29,8 +29,8 @@ import {
  * @category models
  */
 export interface Options {
-  readonly supported?: boolean | undefined;
-  readonly allow?: boolean | undefined;
+  readonly supported?: boolean;
+  readonly allow?: boolean;
 }
 
 /**
@@ -80,7 +80,7 @@ export interface Fixture {
 interface State {
   allowed: boolean;
   requests: number;
-  element: TestElement | null;
+  element: Option.Option<TestElement>;
 }
 
 /** A document whose `fullscreenElement` reads the double's live state. */
@@ -93,19 +93,19 @@ class TestDocument extends EventTarget {
     this.fullscreenEnabled = enabled;
   }
   get fullscreenElement(): TestElement | null {
-    return this.#state.element;
+    return Option.getOrNull(this.#state.element);
   }
   /** Sets the fullscreen element and fires `fullscreenchange` when it changed. */
-  show(element: TestElement | null): void {
-    if (this.#state.element === element) return;
+  show(element: Option.Option<TestElement>): void {
+    if (Option.makeEquivalence(Object.is)(this.#state.element, element)) return;
     this.#state.element = element;
     this.dispatchEvent(new Event("fullscreenchange"));
   }
   exitFullscreen(): Promise<void> {
-    if (this.#state.element === null) {
+    if (Option.isNone(this.#state.element)) {
       return Promise.reject(new TypeError("Not in fullscreen"));
     }
-    this.show(null);
+    this.show(Option.none());
     return Promise.resolve();
   }
 }
@@ -131,7 +131,7 @@ class TestDocument extends EventTarget {
  * @category constructors
  */
 export const make = (options?: Options): Fixture => {
-  const state: State = { allowed: options?.allow ?? true, requests: 0, element: null };
+  const state: State = { allowed: options?.allow ?? true, requests: 0, element: Option.none() };
   const document = new TestDocument(state, options?.supported ?? true);
   const elements = MutableHashMap.empty<string, TestElement>();
   const element = (id: string): TestElement => {
@@ -143,7 +143,7 @@ export const make = (options?: Options): Fixture => {
           document.dispatchEvent(new Event("fullscreenerror"));
           return Promise.reject(new TypeError("Permissions check failed"));
         }
-        document.show(made);
+        document.show(Option.some(made));
         return Promise.resolve();
       },
     };
@@ -165,7 +165,7 @@ export const make = (options?: Options): Fixture => {
         Effect.sync(() => {
           state.allowed = allowed;
         }),
-      exit: Effect.sync(() => document.show(null)),
+      exit: Effect.sync(() => document.show(Option.none())),
     }),
   };
 };
