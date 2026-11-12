@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Config from "effect/Config";
-import * as EffectRecord from "effect/Record";
+import * as R from "effect/Record";
 import * as RerankerModelExt from "@thomasfosterau/effect-ext/RerankerModel";
 
 const EXPORTS = [
@@ -43,7 +43,7 @@ describe("module load", () => {
   it("imports the package entry and exposes every provider constructor", async () => {
     const entry: Record<string, unknown> = await import("@thomasfosterau/effect-ai-cloudflare");
 
-    expect(EffectRecord.keys(entry)).toEqual(expect.arrayContaining([...EXPORTS]));
+    expect(R.keys(entry)).toEqual(expect.arrayContaining([...EXPORTS]));
   });
 
   it.each(EXPORTS)("exposes %s from the package entry", async (name) => {
@@ -52,7 +52,7 @@ describe("module load", () => {
     expect(entry[name], name).toBeDefined();
   });
 
-  it.each(EffectRecord.keys(RerankerModelExt))(
+  it.each(R.keys(RerankerModelExt))(
     "re-exports no RerankerModel value %s (removed in 0.5.0, #97)",
     async (name) => {
       const entry: Record<string, unknown> = await import("@thomasfosterau/effect-ai-cloudflare");

@@ -14,7 +14,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import { Metric, Ranking, Threshold } from "../../../src/evals/index.ts";
 import { runTest } from "../helpers/effect.ts";
 
@@ -114,9 +114,12 @@ describe("Ranking.mrr", () => {
 
 describe("Ranking.scoreCase", () => {
   it("keys every score by metric and cutoff, so two page sizes never share a column", () => {
-    expect(
-      Arr.sort(Record.keys(Ranking.scoreCase(evidence(["a", "b"], 10))), Order.String),
-    ).toEqual(["mrr@10", "ndcg@10", "precision@10", "recall@10"]);
+    expect(Arr.sort(R.keys(Ranking.scoreCase(evidence(["a", "b"], 10))), Order.String)).toEqual([
+      "mrr@10",
+      "ndcg@10",
+      "precision@10",
+      "recall@10",
+    ]);
     expect(Ranking.metricKey("ndcg", 20)).toBe("ndcg@20");
   });
 

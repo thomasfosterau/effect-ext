@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import * as EffectRecord from "effect/Record";
+import * as R from "effect/Record";
 
 /** This package's own abstractions — each also published as a subpath. */
 const NAMESPACES = [
@@ -30,7 +30,7 @@ describe("module load", () => {
   it("imports the package entry and exposes every abstraction", async () => {
     const entry: Record<string, unknown> = await import("@thomasfosterau/effect-ext");
 
-    expect(EffectRecord.keys(entry)).toEqual(expect.arrayContaining([...NAMESPACES]));
+    expect(R.keys(entry)).toEqual(expect.arrayContaining([...NAMESPACES]));
   });
 
   it.each(NAMESPACES)("exposes the %s namespace from the package entry", async (name) => {
@@ -42,6 +42,6 @@ describe("module load", () => {
   it.each(NAMESPACES)("imports the ./%s subpath", async (name) => {
     const subpath: Record<string, unknown> = await import(`@thomasfosterau/effect-ext/${name}`);
 
-    expect(EffectRecord.keys(subpath).length).toBeGreaterThan(0);
+    expect(R.keys(subpath).length).toBeGreaterThan(0);
   });
 });

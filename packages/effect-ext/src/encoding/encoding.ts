@@ -11,7 +11,7 @@ import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
@@ -68,7 +68,7 @@ export const ENCODING_NAMES: ReadonlyArray<EncodingName> = NAMES;
  * @category labels
  */
 export const getEncoding = (label: string): Option.Option<EncodingName> =>
-  Record.get<string, EncodingName>(
+  R.get<string, EncodingName>(
     LABELS,
     Str.toLowerCase(label.replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, "")),
   );
@@ -283,19 +283,19 @@ export const decode = (
 export const decodeStream: {
   (
     options?: DecodeOptions,
-  ): <E, R>(
-    self: Stream.Stream<Uint8Array, E, R>,
-  ) => Stream.Stream<string, E | DecodeError | UnsupportedEncodingError, R>;
-  <E, R>(
-    self: Stream.Stream<Uint8Array, E, R>,
+  ): <E, RIn>(
+    self: Stream.Stream<Uint8Array, E, RIn>,
+  ) => Stream.Stream<string, E | DecodeError | UnsupportedEncodingError, RIn>;
+  <E, RIn>(
+    self: Stream.Stream<Uint8Array, E, RIn>,
     options?: DecodeOptions,
-  ): Stream.Stream<string, E | DecodeError | UnsupportedEncodingError, R>;
+  ): Stream.Stream<string, E | DecodeError | UnsupportedEncodingError, RIn>;
 } = dual(
   (args) => Stream.isStream(args[0]),
-  <E, R>(
-    self: Stream.Stream<Uint8Array, E, R>,
+  <E, RIn>(
+    self: Stream.Stream<Uint8Array, E, RIn>,
     options: DecodeOptions = {},
-  ): Stream.Stream<string, E | DecodeError | UnsupportedEncodingError, R> =>
+  ): Stream.Stream<string, E | DecodeError | UnsupportedEncodingError, RIn> =>
     Stream.unwrap(
       Effect.map(makeDecoder(options), (decoder) =>
         self.pipe(
@@ -564,19 +564,19 @@ export const encode = (
 export const encodeStream: {
   (
     options?: EncodeOptions,
-  ): <E, R>(
-    self: Stream.Stream<string, E, R>,
-  ) => Stream.Stream<Uint8Array, E | EncodeError | UnsupportedEncodingError, R>;
-  <E, R>(
-    self: Stream.Stream<string, E, R>,
+  ): <E, RIn>(
+    self: Stream.Stream<string, E, RIn>,
+  ) => Stream.Stream<Uint8Array, E | EncodeError | UnsupportedEncodingError, RIn>;
+  <E, RIn>(
+    self: Stream.Stream<string, E, RIn>,
     options?: EncodeOptions,
-  ): Stream.Stream<Uint8Array, E | EncodeError | UnsupportedEncodingError, R>;
+  ): Stream.Stream<Uint8Array, E | EncodeError | UnsupportedEncodingError, RIn>;
 } = dual(
   (args) => Stream.isStream(args[0]),
-  <E, R>(
-    self: Stream.Stream<string, E, R>,
+  <E, RIn>(
+    self: Stream.Stream<string, E, RIn>,
     options: EncodeOptions = {},
-  ): Stream.Stream<Uint8Array, E | EncodeError | UnsupportedEncodingError, R> =>
+  ): Stream.Stream<Uint8Array, E | EncodeError | UnsupportedEncodingError, RIn> =>
     Stream.unwrap(
       Effect.map(makeEncoder(options), (encoder) =>
         self.pipe(

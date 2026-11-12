@@ -6,8 +6,8 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import * as Predicate from "effect/Predicate";
-import * as Record from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { UriTemplate } from "@thomasfosterau/effect-ext/UriTemplate";
@@ -53,14 +53,13 @@ const outcome = (template: string, variables: UriTemplate.Variables): string | f
   );
 
 const cases = (suite: unknown) =>
-  Record.toEntries(Schema.decodeUnknownSync(Suite)(suite)).flatMap(
-    ([group, { variables, testcases }]) =>
-      testcases.map(([template, expected]) => ({
-        group,
-        template,
-        acceptable: expected === false || Predicate.isString(expected) ? [expected] : expected,
-        variables,
-      })),
+  R.toEntries(Schema.decodeUnknownSync(Suite)(suite)).flatMap(([group, { variables, testcases }]) =>
+    testcases.map(([template, expected]) => ({
+      group,
+      template,
+      acceptable: expected === false || P.isString(expected) ? [expected] : expected,
+      variables,
+    })),
   );
 
 describe.each([

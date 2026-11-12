@@ -22,7 +22,7 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import { identity } from "effect/Function";
 import * as Layer from "effect/Layer";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Redacted from "effect/Redacted";
 import type * as AiError from "effect/ai/AiError";
 import * as HttpBody from "effect/http/HttpBody";
@@ -133,13 +133,13 @@ export const make = Effect.fnUntraced(function* (
     HttpClient.mapRequest((request) =>
       request.pipe(
         HttpClientRequest.prependUrl(options.apiUrl ?? defaultApiUrl),
-        Predicate.isNotUndefined(options.apiKey)
+        P.isNotUndefined(options.apiKey)
           ? HttpClientRequest.bearerToken(Redacted.value(options.apiKey))
           : identity,
         HttpClientRequest.acceptJson,
       ),
     ),
-    Predicate.isNotUndefined(options.transformClient) ? options.transformClient : identity,
+    P.isNotUndefined(options.transformClient) ? options.transformClient : identity,
   );
 
   const httpClientOk = HttpClient.filterStatusOk(httpClient);
@@ -207,8 +207,8 @@ export const layerConfig = (options?: {
   Layer.effect(
     VoyageClient,
     Effect.gen(function* () {
-      const apiKey = Predicate.isNotUndefined(options?.apiKey) ? yield* options.apiKey : undefined;
-      const apiUrl = Predicate.isNotUndefined(options?.apiUrl) ? yield* options.apiUrl : undefined;
+      const apiKey = P.isNotUndefined(options?.apiKey) ? yield* options.apiKey : undefined;
+      const apiUrl = P.isNotUndefined(options?.apiUrl) ? yield* options.apiUrl : undefined;
       return yield* make({ apiKey, apiUrl, transformClient: options?.transformClient });
     }),
   );

@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import { Color } from "@thomasfosterau/effect-ext/Css";
 import vectors from "./fixtures/wpt-color-mix.json" with { type: "json" };
 
@@ -28,7 +28,7 @@ const toVector = (entry: ReadonlyArray<string | number | null>): Vector => {
   return {
     input: String(input),
     expected: String(expected),
-    epsilon: Predicate.isNumber(epsilon) ? Option.some(epsilon) : Option.none(),
+    epsilon: P.isNumber(epsilon) ? Option.some(epsilon) : Option.none(),
   };
 };
 

@@ -8,8 +8,8 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as Record from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Result from "effect/Result";
 import type { Operator, Part, VariableSpec } from "../../uri-template/uri-template.ts";
 import { encodeReserved } from "./encoding.ts";
@@ -141,7 +141,7 @@ const pathStyle = (expression: Expression): Step => ({
 });
 
 const toStep = (part: Part): Step => {
-  if (Predicate.isTagged(part, "Literal"))
+  if (P.isTagged(part, "Literal"))
     return { source: escape(encodeReserved(part.text)), readers: [] };
   if (part.operator === ";") return pathStyle(part);
   // `refuseExpression` has left exactly one variable in an unnamed expression.
@@ -151,7 +151,7 @@ const toStep = (part: Part): Step => {
   });
 };
 
-const isExpression = (part: Part): part is Expression => Predicate.isTagged(part, "Expression");
+const isExpression = (part: Part): part is Expression => P.isTagged(part, "Expression");
 const isQuery = (part: Part): part is Expression =>
   isExpression(part) && (part.operator === "?" || part.operator === "&");
 
@@ -272,7 +272,7 @@ const leftovers = (
   return present(
     Option.map(
       Option.all(Arr.map(unclaimed, ([key, value]) => Option.all([decode(key), decode(value)]))),
-      (entries) => Record.fromEntries(entries),
+      (entries) => R.fromEntries(entries),
     ),
   );
 };
@@ -341,9 +341,7 @@ export const compile = (parts: ReadonlyArray<Part>): Result.Result<Compiled, Ref
             entry(spec.name, readQueryVariable(pairs, querySpecs, spec)),
           ),
         ];
-        return Option.map(Option.all(reads), (entries) =>
-          Record.fromEntries(Arr.getSomes(entries)),
-        );
+        return Option.map(Option.all(reads), (entries) => R.fromEntries(Arr.getSomes(entries)));
       }),
   });
 };
