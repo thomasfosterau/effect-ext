@@ -221,6 +221,13 @@ export type Checks = [
   Assert<Not<IsAny<typeof Robots.isAllowed>>>,
   Assert<Not<IsAny<typeof Browser.Locks.withLock>>>,
   Assert<Not<IsAny<typeof Negotiate.negotiateRepresentation>>>,
+  Assert<Equals<ReturnType<typeof Negotiate.negotiateRepresentation>, Negotiate.Negotiation>>,
+  Assert<
+    Equals<
+      Negotiate.Negotiation["_tag"],
+      "Selected" | "Fallback" | "NotAcceptable" | "UnsupportedMediaType"
+    >
+  >,
   // The modules merged in from effect-numeric and effect-time
   Assert<Not<IsAny<U8>>>,
   Assert<Equals<ReturnType<typeof U8.make>, U8>>,

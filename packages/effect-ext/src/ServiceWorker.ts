@@ -125,7 +125,7 @@ export class CacheMiss extends Schema.TaggedError<CacheMiss>()("CacheMiss", {
  */
 export class PrecacheRejected extends Schema.TaggedError<PrecacheRejected>()("PrecacheRejected", {
   url: Schema.String,
-  status: Schema.Number,
+  status: Schema.Int,
 }) {}
 
 // ---------------------------------------------------------------------------

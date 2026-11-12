@@ -15,7 +15,7 @@ import extendedTests from "./fixtures/uritemplate-test/extended-tests.json" with
 import specExamplesBySection from "./fixtures/uritemplate-test/spec-examples-by-section.json" with { type: "json" };
 import specExamples from "./fixtures/uritemplate-test/spec-examples.json" with { type: "json" };
 
-const Primitive = Schema.Union([Schema.String, Schema.Number, Schema.Boolean]);
+const Primitive = Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]);
 const Suite = Schema.Record(
   Schema.String,
   Schema.Struct({

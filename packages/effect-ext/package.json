@@ -525,7 +525,6 @@
     "@effect/platform-browser": "catalog:",
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
-    "@thomasfosterau/effect-jsonapi": "catalog:",
     "@thomasfosterau/effect-parse": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
@@ -535,7 +534,6 @@
   "peerDependencies": {
     "@effect/platform-browser": "catalog:peers",
     "@effect/platform-node": "catalog:peers",
-    "@thomasfosterau/effect-jsonapi": "catalog:peers",
     "@thomasfosterau/effect-parse": "catalog:peers",
     "effect": "catalog:peers"
   },
@@ -544,9 +542,6 @@
       "optional": true
     },
     "@effect/platform-node": {
-      "optional": true
-    },
-    "@thomasfosterau/effect-jsonapi": {
       "optional": true
     },
     "@thomasfosterau/effect-parse": {

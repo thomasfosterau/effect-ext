@@ -86,10 +86,6 @@ catalog:
   # `@oxlint/plugins`, so it is not tied to the toolchain set and Dependabot
   # proposes it on its own; an `effect` bump re-runs `vp check` against it.
   "@enfect/oxlint": 0.10.0
-  # Optional peer of effect-ext: only the `Negotiate` module imports it
-  # (the JSON:API §5/§6 media-type rules are adopted from its `Middleware`,
-  # never re-implemented here).
-  "@thomasfosterau/effect-jsonapi": ^0.21.0
   # Optional peer of effect-ext: the `Robots` line grammar is an
   # effect-parse parser, decoded through its `ParserSchema` (effect-web#113).
   "@thomasfosterau/effect-parse": ^0.5.0
@@ -150,18 +146,17 @@ catalog:
 # 4.20250312.0, the first whose `AiGateway` declares `getUrl()`. Re-verify
 # assignability at the floor before moving it.
 #
-# effect-ext's three optional peers (merged in from
+# effect-ext's two optional peers (merged in from
 # thomasfosterau/effect-web) each serve only the modules that import them:
 # `@effect/platform-browser` (`Browser`, `BrowserTesting`; its 4.0.0 is the
-# first stable release, on the `effect` floor), `@thomasfosterau/effect-jsonapi`
-# (`Negotiate`) and `@thomasfosterau/effect-parse` (`Robots`).
+# first stable release, on the `effect` floor) and
+# `@thomasfosterau/effect-parse` (`Robots`).
 catalogs:
   peers:
     "@cloudflare/workers-types": ">=4.20250312.0"
     "@effect/ai-anthropic": ^4.0.0
     "@effect/platform-browser": ^4.0.0
     "@effect/platform-node": ^4.0.0
-    "@thomasfosterau/effect-jsonapi": ">=0.16.1"
     # Carets, not `>=`: on 0.x a minor release may break the combinator API
     # the robots grammar and the time parsers are written against. Each
     # minor in the union is one the gates passed on: 0.4.1 (the floor) and

@@ -18,6 +18,11 @@
  * framework parses against the caller's schema. Tool-call parameters are
  * returned as parsed JSON; the framework validates them against the toolkit.
  *
+ * User messages accept image file parts (sent as `image_url`); any other
+ * media type fails with an `AiError`, since Mistral chat completions accept
+ * images only. Every transport, HTTP-status and decoding failure leaves the
+ * model as an `AiError`, its reason derived from the HTTP status.
+ *
  * @module MistralLanguageModel
  *
  * @copyright Thomas Foster

@@ -136,7 +136,7 @@ describe("notification listeners", () => {
 
     const dismissed: Array<unknown> = [];
     const onClose = Effect.runSync(
-      notificationCloseListener(Schema.Number, (data) => Effect.sync(() => dismissed.push(data))),
+      notificationCloseListener(Schema.Finite, (data) => Effect.sync(() => dismissed.push(data))),
     );
     const pending: Array<Promise<unknown>> = [];
     onClose(notificationEvent(7, pending));
