@@ -36,7 +36,7 @@ import { describeError, logErrorEvent } from "./Observability.ts";
  */
 export interface SitemapUrl {
   readonly path: string;
-  readonly lastmod?: string | undefined;
+  readonly lastmod?: string;
 }
 
 /**
@@ -70,9 +70,9 @@ export const LOW_CHURN_CACHE_CONTROL =
  */
 export interface DocumentCacheOptions {
   /** The `Cache-Tag` a mutation purges ({@link purgeCacheTags}); absent means untagged. */
-  readonly cacheTag?: string | undefined;
+  readonly cacheTag?: string;
   /** Defaults to {@link LOW_CHURN_CACHE_CONTROL}. */
-  readonly cacheControl?: string | undefined;
+  readonly cacheControl?: string;
 }
 
 /**
@@ -81,7 +81,7 @@ export interface DocumentCacheOptions {
  */
 type DocumentHeaders = {
   readonly "cache-control": string;
-  readonly "cache-tag"?: string | undefined;
+  readonly "cache-tag"?: string;
 };
 
 /** The cache headers of a served document; the tag only when given. */
@@ -115,27 +115,29 @@ export const escapeXml = (value: string): string =>
 
 /**
  * The `YYYY-MM-DD` day of a `Date` or an ISO timestamp string, or
- * `undefined` when unparsable — the value `renderUrl` reads as "omit
- * `<lastmod>`". A parse of an existing value, never a clock read.
+ * `None` when unparsable. A parse of an existing value, never a clock
+ * read. A {@link SitemapUrl} omits `lastmod` when it is absent, and
+ * `renderUrl` then omits the element.
  *
  * @example
  * ```ts
  * import { lastmodOf } from "@thomasfosterau/effect-ext/Sitemap"
  *
- * lastmodOf("2026-03-04T05:06:07.000Z") // "2026-03-04"
- * lastmodOf(new Date("2026-03-04T23:59:59Z")) // "2026-03-04"
- * lastmodOf("not a date") // undefined
+ * lastmodOf("2026-03-04T05:06:07.000Z") // Option.some("2026-03-04")
+ * lastmodOf(new Date("2026-03-04T23:59:59Z")) // Option.some("2026-03-04")
+ * lastmodOf("not a date") // Option.none()
  * ```
  *
  * @since 0.1.0
  * @category rendering
  */
-// oxlint-disable-next-line effect/prefer-option-over-null -- XML render seam: the result is interpolated into an optional `<lastmod>` element, and `undefined` is what `renderUrl` reads as "omit the element" — the same shape `SitemapUrl.lastmod` carries.
-export const lastmodOf = (value: unknown): string | undefined => {
+export const lastmodOf = (value: unknown): Option.Option<string> => {
   if (P.isDate(value))
-    return Number.isNaN(value.getTime()) ? undefined : value.toISOString().slice(0, 10);
-  if (P.isString(value) && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
-  return undefined;
+    return Number.isNaN(value.getTime())
+      ? Option.none()
+      : Option.some(value.toISOString().slice(0, 10));
+  if (P.isString(value) && /^\d{4}-\d{2}-\d{2}/.test(value)) return Option.some(value.slice(0, 10));
+  return Option.none();
 };
 
 /**
@@ -349,9 +351,9 @@ export interface FeedEntry {
   /** ISO 8601 datetime of the earliest version — the item's `date_published`. */
   readonly publishedAt: string;
   // oxlint-disable-next-line effect/prefer-option-over-null -- a wire shape: the JSON Feed row as SQL produces it (an absent `MAX(text_high)` arrives as NULL) and as `buildJsonFeed` consumes it.
-  readonly title?: string | null | undefined;
+  readonly title?: string | null;
   // oxlint-disable-next-line effect/prefer-option-over-null -- same wire contract as `title`.
-  readonly summary?: string | null | undefined;
+  readonly summary?: string | null;
 }
 
 /**
@@ -366,9 +368,9 @@ export interface JsonFeedOptions {
   readonly title: string;
   readonly description: string;
   /** The feed's own path. Defaults to `/feed.json`. */
-  readonly feedPath?: string | undefined;
+  readonly feedPath?: string;
   /** The home page's path. Defaults to `/`. */
-  readonly homePath?: string | undefined;
+  readonly homePath?: string;
 }
 
 /**
@@ -415,24 +417,29 @@ export const buildJsonFeed = (
   entries: ReadonlyArray<FeedEntry>,
 ): JsonFeed => JsonFeedDocument.buildJsonFeed(options, Arr.map(entries, jsonFeedEntry));
 
-/** A nullable wire text as an optional member. */
-const optionalText = (text: string | null | undefined): string | undefined => text ?? undefined;
+/** An ISO 8601 wire timestamp as a `DateTime`, or `None` when it does not parse. */
+const timestamp = (iso: string): Option.Option<DateTime.Utc> => DateTime.make(iso);
 
-/** An ISO 8601 wire timestamp as a `DateTime`, or `undefined` when it does not parse. */
-const timestamp = (iso: string): DateTime.Utc | undefined =>
-  Option.getOrUndefined(DateTime.make(iso));
-
-/** One {@link FeedEntry} as effect-json-feed's entry. */
+/** One {@link FeedEntry} as effect-json-feed's entry; an absent member is an omitted key. */
 const jsonFeedEntry = (entry: FeedEntry): JsonFeedDocument.JsonFeedEntry => {
-  const title = optionalText(entry.title);
-  const summary = optionalText(entry.summary);
+  const title = Option.fromNullishOr(entry.title);
+  const summary = Option.fromNullishOr(entry.summary);
   return {
     path: entry.path,
-    title,
-    summary,
-    contentText: summary ?? title ?? "",
-    publishedAt: timestamp(entry.publishedAt),
-    updatedAt: timestamp(entry.updatedAt),
+    ...Option.match(title, { onNone: () => ({}), onSome: (value) => ({ title: value }) }),
+    ...Option.match(summary, { onNone: () => ({}), onSome: (value) => ({ summary: value }) }),
+    contentText: Option.getOrElse(
+      Option.orElse(summary, () => title),
+      () => "",
+    ),
+    ...Option.match(timestamp(entry.publishedAt), {
+      onNone: () => ({}),
+      onSome: (value) => ({ publishedAt: value }),
+    }),
+    ...Option.match(timestamp(entry.updatedAt), {
+      onNone: () => ({}),
+      onSome: (value) => ({ updatedAt: value }),
+    }),
   };
 };
 
@@ -471,7 +478,7 @@ export const jsonFeedResponse = (
   options: DocumentCacheOptions = {},
 ): HttpServerResponse.HttpServerResponse =>
   JsonFeedDocument.jsonFeedResponse(feed, {
-    cacheTag: options.cacheTag,
+    ...options,
     cacheControl: options.cacheControl ?? LOW_CHURN_CACHE_CONTROL,
   });
 
@@ -532,14 +539,12 @@ export const makePurgeTagsForResourceType = (
  * @category models
  */
 export interface CachePurgeContext {
-  readonly cache?:
-    | {
-        purge(options: { readonly tags: Array<string> }): Promise<{
-          readonly success: boolean;
-          readonly errors: ReadonlyArray<unknown>;
-        }>;
-      }
-    | undefined;
+  readonly cache?: {
+    purge(options: { readonly tags: Array<string> }): Promise<{
+      readonly success: boolean;
+      readonly errors: ReadonlyArray<unknown>;
+    }>;
+  };
 }
 
 /**
@@ -556,12 +561,13 @@ export interface CachePurgeContext {
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
+ * import * as Option from "effect/Option"
  * import { purgeCacheTags } from "@thomasfosterau/effect-ext/Sitemap"
  *
  * const purged: Array<ReadonlyArray<string>> = []
  * const ctx = { cache: { purge: async ({ tags }: { tags: Array<string> }) => { purged.push(tags); return { success: true, errors: [] } } } }
- * await Effect.runPromise(purgeCacheTags(ctx, ["sitemap", "feed"]))
- * await Effect.runPromise(purgeCacheTags(undefined, ["sitemap"])) // no cache: no-op
+ * await Effect.runPromise(purgeCacheTags(Option.some(ctx), ["sitemap", "feed"]))
+ * await Effect.runPromise(purgeCacheTags(Option.none(), ["sitemap"])) // no cache: no-op
  * purged // [["sitemap", "feed"]]
  * ```
  *
@@ -569,14 +575,14 @@ export interface CachePurgeContext {
  * @category purging
  */
 export const purgeCacheTags = (
-  ctx: CachePurgeContext | undefined,
+  ctx: Option.Option<CachePurgeContext>,
   tags: ReadonlyArray<string>,
 ): Effect.Effect<void> => {
   if (Arr.isReadonlyArrayEmpty(tags)) return Effect.void;
-  const cache = ctx?.cache;
-  if (cache === undefined) return Effect.void;
+  const cache = Option.flatMapNullishOr(ctx, (context) => context.cache);
+  if (Option.isNone(cache)) return Effect.void;
   return Effect.tryPromise({
-    try: () => cache.purge({ tags: [...tags] }),
+    try: () => cache.value.purge({ tags: [...tags] }),
     catch: (cause) => describeError(cause),
   }).pipe(
     Effect.flatMap((result) =>
@@ -594,16 +600,17 @@ export const purgeCacheTags = (
  *
  * @example
  * ```ts
+ * import * as Option from "effect/Option"
  * import { purgeCacheTagsPromise } from "@thomasfosterau/effect-ext/Sitemap"
  *
- * await purgeCacheTagsPromise(undefined, ["sitemap"]) // resolves; nothing to purge against
+ * await purgeCacheTagsPromise(Option.none(), ["sitemap"]) // resolves; nothing to purge against
  * ```
  *
  * @since 0.1.0
  * @category purging
  */
 export const purgeCacheTagsPromise = (
-  ctx: CachePurgeContext | undefined,
+  ctx: Option.Option<CachePurgeContext>,
   tags: ReadonlyArray<string>,
 ): Promise<void> =>
   // oxlint-disable-next-line effect/effect-run-in-body -- boundary: `ctx.waitUntil` takes a `Promise`, and the front door calling this is plain JS with no runtime to run it inside.

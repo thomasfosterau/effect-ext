@@ -176,7 +176,7 @@ Carried over from each effect-web package's own guidance, with paths and names r
 - **The rendered bytes are a stable contract.** `renderSitemap` joins with `""` after the XML declaration; `jsonFeedResponse` pretty-prints with two spaces; an absent `title` / `summary` is an omitted key, never `null`. The cached copies at the edge are those bytes, so a change here is a visible change in every consumer.
 - **The JSON Feed is `JsonFeed`'s.** `buildJsonFeed` / `jsonFeedResponse` are an adapter: they map a `FeedEntry` (the SQL wire shape) to `JsonFeed`'s entry and build and serve with its functions, never a second serialiser. Every item carries `content_text` (the `summary`, else the `title`, else `""`), as JSON Feed 1.1 requires.
 - **No XML escaping on `<loc>`**: every location is the canonical origin plus a path derived from validated ids or a hand-written list. `escapeXml` exists for authored text a consumer emits; nothing here emits any.
-- **`lastmodOf` is a parse, never a clock read**; `undefined` means omit the element.
+- **`lastmodOf` is a parse, never a clock read**; `None` means leave `lastmod` off the `SitemapUrl`, and `renderUrl` omits the element.
 - **`purgeCacheTags` never fails**: a rejection or a `success: false` is one error-level event (`cache-purge.failed` / `cache-purge.rejected`), and the mutation that triggered it completes.
 - **The stream form never materialises the enumeration**: `sitemapStream` maps the source stream one entry per chunk; the caller runs any database enumeration before the response is built, never inside the body stream.
 
@@ -223,7 +223,7 @@ Carried over from each effect-web package's own guidance, with paths and names r
 
 **Invariants.**
 
-- **An absent member is an omitted key**, never `null` or `undefined`-valued: `compact` drops them, and its mapped parameter type makes the builder name every member of the output type once.
+- **An absent member is an omitted key**, never `null` or `undefined`-valued: `compact` drops the `None` ones (the builders and the reader work in `Option`; `JsonFeed` itself stays the wire document, with native optional members), and its mapped parameter type makes the builder name every member of the output type once.
 - **An item has `content_html` or `content_text`**, an author at least one of `name` / `url` / `avatar` (JSON Feed 1.1); the input types are unions so the invalid shapes do not compile (`tests/json-feed/index.types.ts`).
 - **The reader is lenient and says so.** Only input that is not a JSON Feed at all (`InvalidJson`, `NotAnObject`, `NotAJsonFeed`) fails; everything it drops or repairs is a `JsonFeedDiagnostic`. A decoded item may lack both contents (reported, kept), so the content invariant above holds for built feeds, not parsed ones. A built feed decodes back to itself with no diagnostics (`tests/json-feed/parse.test.ts`).
 - **The served bytes are 2-space pretty-printed**; changing the indent changes every cached copy.

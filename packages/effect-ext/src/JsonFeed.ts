@@ -18,6 +18,7 @@
 import * as Arr from "effect/Array";
 import * as DateTime from "effect/DateTime";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
+import * as Option from "effect/Option";
 import { compact } from "./internal/json-feed/compact.ts";
 
 // ── The document ───────────────────────────────────────────────────────
@@ -42,17 +43,17 @@ export const JSON_FEED_VERSION = "https://jsonfeed.org/version/1.1";
 export type JsonFeedAuthor =
   | {
       readonly name: string;
-      readonly url?: string | undefined;
-      readonly avatar?: string | undefined;
+      readonly url?: string;
+      readonly avatar?: string;
     }
   | {
-      readonly name?: string | undefined;
+      readonly name?: string;
       readonly url: string;
-      readonly avatar?: string | undefined;
+      readonly avatar?: string;
     }
   | {
-      readonly name?: string | undefined;
-      readonly url?: string | undefined;
+      readonly name?: string;
+      readonly url?: string;
       readonly avatar: string;
     };
 
@@ -68,9 +69,9 @@ export type JsonFeedAuthor =
 export interface JsonFeedAttachment {
   readonly url: string;
   readonly mime_type: string;
-  readonly title?: string | undefined;
-  readonly size_in_bytes?: number | undefined;
-  readonly duration_in_seconds?: number | undefined;
+  readonly title?: string;
+  readonly size_in_bytes?: number;
+  readonly duration_in_seconds?: number;
 }
 
 /**
@@ -82,20 +83,20 @@ export interface JsonFeedAttachment {
  */
 export interface JsonFeedItem {
   readonly id: string;
-  readonly url?: string | undefined;
-  readonly external_url?: string | undefined;
-  readonly title?: string | undefined;
-  readonly content_html?: string | undefined;
-  readonly content_text?: string | undefined;
-  readonly summary?: string | undefined;
-  readonly image?: string | undefined;
-  readonly banner_image?: string | undefined;
-  readonly date_published?: string | undefined;
-  readonly date_modified?: string | undefined;
-  readonly authors?: ReadonlyArray<JsonFeedAuthor> | undefined;
-  readonly tags?: ReadonlyArray<string> | undefined;
-  readonly language?: string | undefined;
-  readonly attachments?: ReadonlyArray<JsonFeedAttachment> | undefined;
+  readonly url?: string;
+  readonly external_url?: string;
+  readonly title?: string;
+  readonly content_html?: string;
+  readonly content_text?: string;
+  readonly summary?: string;
+  readonly image?: string;
+  readonly banner_image?: string;
+  readonly date_published?: string;
+  readonly date_modified?: string;
+  readonly authors?: ReadonlyArray<JsonFeedAuthor>;
+  readonly tags?: ReadonlyArray<string>;
+  readonly language?: string;
+  readonly attachments?: ReadonlyArray<JsonFeedAttachment>;
 }
 
 /**
@@ -107,16 +108,16 @@ export interface JsonFeedItem {
 export interface JsonFeed {
   readonly version: typeof JSON_FEED_VERSION;
   readonly title: string;
-  readonly home_page_url?: string | undefined;
-  readonly feed_url?: string | undefined;
-  readonly description?: string | undefined;
-  readonly user_comment?: string | undefined;
-  readonly next_url?: string | undefined;
-  readonly icon?: string | undefined;
-  readonly favicon?: string | undefined;
-  readonly authors?: ReadonlyArray<JsonFeedAuthor> | undefined;
-  readonly language?: string | undefined;
-  readonly expired?: boolean | undefined;
+  readonly home_page_url?: string;
+  readonly feed_url?: string;
+  readonly description?: string;
+  readonly user_comment?: string;
+  readonly next_url?: string;
+  readonly icon?: string;
+  readonly favicon?: string;
+  readonly authors?: ReadonlyArray<JsonFeedAuthor>;
+  readonly language?: string;
+  readonly expired?: boolean;
   readonly items: ReadonlyArray<JsonFeedItem>;
 }
 
@@ -134,24 +135,24 @@ export interface JsonFeedOptions {
   /** The canonical origin every URL is resolved on, never the request origin. */
   readonly base: string;
   readonly title: string;
-  readonly description?: string | undefined;
+  readonly description?: string;
   /** The page the feed describes, `home_page_url`. Defaults to `/`. */
-  readonly homePath?: string | undefined;
+  readonly homePath?: string;
   /** The feed's own path, `feed_url`. Defaults to `/feed.json`. */
-  readonly feedPath?: string | undefined;
+  readonly feedPath?: string;
   /** The next page of a paginated feed, `next_url`. */
-  readonly nextPath?: string | undefined;
+  readonly nextPath?: string;
   /** A note to a human who opens the document, `user_comment`. */
-  readonly userComment?: string | undefined;
+  readonly userComment?: string;
   /** A 512 × 512 image. */
-  readonly icon?: string | undefined;
+  readonly icon?: string;
   /** A 64 × 64 image. */
-  readonly favicon?: string | undefined;
-  readonly authors?: ReadonlyArray<JsonFeedAuthor> | undefined;
+  readonly favicon?: string;
+  readonly authors?: ReadonlyArray<JsonFeedAuthor>;
   /** A language tag (`en-AU`). */
-  readonly language?: string | undefined;
+  readonly language?: string;
   /** `true` when the feed will never update again. */
-  readonly expired?: boolean | undefined;
+  readonly expired?: boolean;
 }
 
 /**
@@ -165,54 +166,54 @@ export interface JsonFeedOptions {
 export type JsonFeedEntry = {
   readonly path: string;
   /** The item's permanent `id`. Defaults to its absolute URL. */
-  readonly id?: string | undefined;
+  readonly id?: string;
   /** The URL of the page the item is about, when that is elsewhere. */
-  readonly externalUrl?: string | undefined;
-  readonly title?: string | undefined;
+  readonly externalUrl?: string;
+  readonly title?: string;
   /** Plain text. */
-  readonly summary?: string | undefined;
+  readonly summary?: string;
   /** The item's main image: a site-root-relative path or an absolute URL. */
-  readonly image?: string | undefined;
+  readonly image?: string;
   /** A banner image: a site-root-relative path or an absolute URL. */
-  readonly bannerImage?: string | undefined;
+  readonly bannerImage?: string;
   /** When the item was first available, `date_published`. */
-  readonly publishedAt?: DateTime.DateTime | undefined;
+  readonly publishedAt?: DateTime.DateTime;
   /** When the item last changed, `date_modified`. */
-  readonly updatedAt?: DateTime.DateTime | undefined;
+  readonly updatedAt?: DateTime.DateTime;
   /** The item's own authors; absent, it inherits the feed's. */
-  readonly authors?: ReadonlyArray<JsonFeedAuthor> | undefined;
-  readonly tags?: ReadonlyArray<string> | undefined;
-  readonly language?: string | undefined;
+  readonly authors?: ReadonlyArray<JsonFeedAuthor>;
+  readonly tags?: ReadonlyArray<string>;
+  readonly language?: string;
   /** Related resources (enclosures); each `url` a site-root-relative path or an absolute URL. */
-  readonly attachments?: ReadonlyArray<JsonFeedAttachment> | undefined;
+  readonly attachments?: ReadonlyArray<JsonFeedAttachment>;
 } & (
-  | { readonly contentHtml: string; readonly contentText?: string | undefined }
-  | { readonly contentHtml?: string | undefined; readonly contentText: string }
+  | { readonly contentHtml: string; readonly contentText?: string }
+  | { readonly contentHtml?: string; readonly contentText: string }
 );
 
 // ── Building ───────────────────────────────────────────────────────────
 
 const absolute = (base: string, path: string): string => new URL(path, base).toString();
 
-const optionalUrl = (base: string, path: string | undefined): string | undefined =>
-  path === undefined ? undefined : absolute(base, path);
+const optionalUrl = (base: string, path?: string): Option.Option<string> =>
+  Option.map(Option.fromUndefinedOr(path), (value) => absolute(base, value));
 
-const optionalDate = (date: DateTime.DateTime | undefined): string | undefined =>
-  date === undefined ? undefined : DateTime.formatIso(date);
+const optionalDate = (date?: DateTime.DateTime): Option.Option<string> =>
+  Option.map(Option.fromUndefinedOr(date), DateTime.formatIso);
 
 const authors = (
   base: string,
-  people: ReadonlyArray<JsonFeedAuthor> | undefined,
-): ReadonlyArray<JsonFeedAuthor> | undefined =>
-  people === undefined
-    ? undefined
-    : Arr.map(people, (person) =>
-        compact<JsonFeedAuthor>({
-          name: person.name,
-          url: optionalUrl(base, person.url),
-          avatar: optionalUrl(base, person.avatar),
-        }),
-      );
+  people?: ReadonlyArray<JsonFeedAuthor>,
+): Option.Option<ReadonlyArray<JsonFeedAuthor>> =>
+  Option.map(Option.fromUndefinedOr(people), (list) =>
+    Arr.map(list, (person) =>
+      compact<JsonFeedAuthor>({
+        name: Option.fromUndefinedOr(person.name),
+        url: optionalUrl(base, person.url),
+        avatar: optionalUrl(base, person.avatar),
+      }),
+    ),
+  );
 
 /**
  * One item on `base` (the canonical origin, never the request origin): its
@@ -243,29 +244,28 @@ export const buildJsonFeedItem = (base: string, entry: JsonFeedEntry): JsonFeedI
     id: entry.id ?? url,
     url,
     external_url: optionalUrl(base, entry.externalUrl),
-    title: entry.title,
-    content_html: entry.contentHtml,
-    content_text: entry.contentText,
-    summary: entry.summary,
+    title: Option.fromUndefinedOr(entry.title),
+    content_html: Option.fromUndefinedOr(entry.contentHtml),
+    content_text: Option.fromUndefinedOr(entry.contentText),
+    summary: Option.fromUndefinedOr(entry.summary),
     image: optionalUrl(base, entry.image),
     banner_image: optionalUrl(base, entry.bannerImage),
     date_published: optionalDate(entry.publishedAt),
     date_modified: optionalDate(entry.updatedAt),
     authors: authors(base, entry.authors),
-    tags: entry.tags,
-    language: entry.language,
-    attachments:
-      entry.attachments === undefined
-        ? undefined
-        : Arr.map(entry.attachments, (attachment) =>
-            compact<JsonFeedAttachment>({
-              url: absolute(base, attachment.url),
-              mime_type: attachment.mime_type,
-              title: attachment.title,
-              size_in_bytes: attachment.size_in_bytes,
-              duration_in_seconds: attachment.duration_in_seconds,
-            }),
-          ),
+    tags: Option.fromUndefinedOr(entry.tags),
+    language: Option.fromUndefinedOr(entry.language),
+    attachments: Option.map(Option.fromUndefinedOr(entry.attachments), (list) =>
+      Arr.map(list, (attachment) =>
+        compact<JsonFeedAttachment>({
+          url: absolute(base, attachment.url),
+          mime_type: attachment.mime_type,
+          title: Option.fromUndefinedOr(attachment.title),
+          size_in_bytes: Option.fromUndefinedOr(attachment.size_in_bytes),
+          duration_in_seconds: Option.fromUndefinedOr(attachment.duration_in_seconds),
+        }),
+      ),
+    ),
   });
 };
 
@@ -301,14 +301,14 @@ export const buildJsonFeed = (
     title: options.title,
     home_page_url: absolute(base, options.homePath ?? "/"),
     feed_url: absolute(base, options.feedPath ?? "/feed.json"),
-    description: options.description,
-    user_comment: options.userComment,
+    description: Option.fromUndefinedOr(options.description),
+    user_comment: Option.fromUndefinedOr(options.userComment),
     next_url: optionalUrl(base, options.nextPath),
     icon: optionalUrl(base, options.icon),
     favicon: optionalUrl(base, options.favicon),
     authors: authors(base, options.authors),
-    language: options.language,
-    expired: options.expired,
+    language: Option.fromUndefinedOr(options.language),
+    expired: Option.fromUndefinedOr(options.expired),
     items: Arr.map(Arr.fromIterable(entries), (entry) => buildJsonFeedItem(base, entry)),
   });
 };
@@ -344,9 +344,9 @@ export const LOW_CHURN_CACHE_CONTROL =
  */
 export interface JsonFeedResponseOptions {
   /** The `Cache-Tag` a mutation purges; absent means untagged. */
-  readonly cacheTag?: string | undefined;
+  readonly cacheTag?: string;
   /** Defaults to {@link LOW_CHURN_CACHE_CONTROL}. */
-  readonly cacheControl?: string | undefined;
+  readonly cacheControl?: string;
 }
 
 /**

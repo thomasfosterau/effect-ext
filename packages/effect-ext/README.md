@@ -791,6 +791,7 @@ Invariant ids in doc comments and below (`CANON-001`, `PERF-CACHE-002`, …) nam
 #### Sitemaps
 
 ```ts
+import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import {
   lastmodOf,
@@ -807,7 +808,13 @@ const STATIC_PAGES: ReadonlyArray<SitemapUrl> = [{ path: "/" }, { path: "/about"
 const wholeSitemap = (base: string, rows: ReadonlyArray<{ id: string; updatedAt: Date }>) =>
   renderSitemap(base, [
     ...STATIC_PAGES,
-    ...rows.map((row) => ({ path: `/people/${row.id}`, lastmod: lastmodOf(row.updatedAt) })),
+    ...rows.map((row) => ({
+      path: `/people/${row.id}`,
+      ...Option.match(lastmodOf(row.updatedAt), {
+        onNone: () => ({}),
+        onSome: (lastmod) => ({ lastmod }),
+      }),
+    })),
   ]);
 
 // Streamed, one chunk per entry, for a large one (run the enumeration before building the response):
@@ -818,7 +825,7 @@ const streamedSitemap = (base: string, entries: ReadonlyArray<SitemapUrl>) =>
 | Export | What it is |
 | --- | --- |
 | `SitemapUrl` | `{ path, lastmod?: "YYYY-MM-DD" }`. |
-| `lastmodOf(value)` | The day of a `Date` or an ISO string; `undefined` (omit `<lastmod>`) otherwise. A parse, never a clock read. |
+| `lastmodOf(value)` | `Option<string>`: the day of a `Date` or an ISO string; `None` otherwise (leave `lastmod` off the `SitemapUrl` and `<lastmod>` is omitted). A parse, never a clock read. |
 | `renderUrl(base, entry)` | One `<url>`, its `<loc>` absolute on `base`. |
 | `renderSitemap(base, entries)` | The whole `<urlset>` with the XML declaration, every `<loc>` absolute on `base` (CANON-001). |
 | `sitemapStream(base, Stream<SitemapUrl>)` | The document as a `Stream<string>`: opening, one chunk per entry, closing — never materialised in the isolate. Every `<loc>` is absolute on `base` (CANON-001). |
@@ -863,6 +870,7 @@ const feedResponse = (base: string, rows: ReadonlyArray<FeedEntry>) =>
 #### Cache-Tag purge on mutation
 
 ```ts
+import * as Option from "effect/Option";
 import {
   makePurgeTagsForResourceType,
   purgeCacheTags,
@@ -874,7 +882,7 @@ const purgeTagsForResourceType = makePurgeTagsForResourceType(["posts", "people"
 
 // After a mutation to a resource of `type` (and after the response has gone out):
 const purgeAfterMutation = (ctx: CachePurgeContext, type: string) =>
-  purgeCacheTags(ctx, purgeTagsForResourceType(type));
+  purgeCacheTags(Option.some(ctx), purgeTagsForResourceType(type));
 ```
 
 | Export | What it is |
@@ -882,8 +890,8 @@ const purgeAfterMutation = (ctx: CachePurgeContext, type: string) =>
 | `FEED_CACHE_TAG` (`feed`), `SITEMAP_CACHE_TAG` (`sitemap`) | The tags the responses carry and the purge names. |
 | `makePurgeTagsForResourceType(eligibleTypes, tags?)` | `(type) => tags`: both tags for a type the documents enumerate, none otherwise — decided from the type alone, no visibility check (a wasted purge over a missed one). |
 | `CachePurgeContext` | The `{ cache?: { purge({ tags }) } }` subset of a Workers `ExecutionContext`; `cache` is absent in local dev. |
-| `purgeCacheTags(ctx, tags)` | `Effect<void>`: a no-op for no tags or no `cache`; a logged `cache-purge.rejected` (`success: false`) or `cache-purge.failed` (rejection), never a failure — the mutation never sees a dropped purge. The purge half of PERF-CACHE-002. |
-| `purgeCacheTagsPromise(ctx, tags)` | The same as a `Promise`, for `ctx.waitUntil`. |
+| `purgeCacheTags(ctx, tags)` | `ctx` is an `Option<CachePurgeContext>` (`Option.fromUndefinedOr(ctx)` for a platform handle that may be absent). `Effect<void>`: a no-op for no tags or no `cache`; a logged `cache-purge.rejected` (`success: false`) or `cache-purge.failed` (rejection), never a failure — the mutation never sees a dropped purge. The purge half of PERF-CACHE-002. |
+| `purgeCacheTagsPromise(ctx, tags)` | The same (`ctx` an `Option`) as a `Promise`, for `ctx.waitUntil`. |
 | `LOW_CHURN_CACHE_CONTROL` | The document `Cache-Control` (an hour at the edge, a day stale-while-revalidate): the explicit edge TTL of PERF-CACHE-002. |
 
 ## RssFeed
