@@ -424,7 +424,6 @@ const optionalPeerSubpaths = {
     "@effect/platform-browser": ["./Browser", "./BrowserTesting"],
     // The `effect-evals` bin's CLI only.
     "@effect/platform-node": [],
-    "@thomasfosterau/effect-jsonapi": ["./Negotiate"],
     "@thomasfosterau/effect-parse": [
       "./CronExpression",
       "./IanaTimeZone",
