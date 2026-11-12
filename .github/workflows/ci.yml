@@ -2,7 +2,9 @@ name: CI
 
 # One command: `vp run ci` (the `ci` task in vite.config.ts), so CI and a local
 # run are the same gate. It runs on Node 22 and 24 (the supported lines
-# `engines.node` promises), the current LTS and the latest release; the `ci` job at the end is the one stable check name for rulesets.
+# `engines.node` promises), the current LTS and the latest release. Rulesets
+# require each leg by name: `ci (node 22)`, `ci (node 24)`, `ci (node lts)`,
+# `ci (node latest)`.
 # Nothing here needs a database, a stage or a credential, so every PR runs the
 # whole gate.
 
@@ -23,7 +25,7 @@ concurrency:
 permissions: {}
 
 jobs:
-  test:
+  ci:
     name: ci (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -70,17 +72,3 @@ jobs:
       - name: CI gate
         run: vp run ci
 
-  # The one stable check name (`ci`) for required-check rulesets, whatever the
-  # matrix holds.
-  ci:
-    name: ci
-    needs: [test]
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions: {}
-    steps:
-      - name: Every matrix job passed
-        env:
-          RESULT: ${{ needs.test.result }}
-        run: test "$RESULT" = success
