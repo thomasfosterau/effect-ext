@@ -4,6 +4,37 @@
 
 This package was published as `@thomasfosterau/effect-ai-gateway` until 0.5.1 and renamed before its first release under this name (0.1.0). The entries below are that package's.
 
+## 0.2.0
+
+### Minor Changes
+
+- [#123](https://github.com/thomasfosterau/effect-ext/pull/123) [`93a05ba`](https://github.com/thomasfosterau/effect-ext/commit/93a05ba9ec262d894b06e8e99264d7635edc9e15) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Absence is spelled the way the rest of the workspace spells it ([#17](https://github.com/thomasfosterau/effect-ext/issues/17)). Breaking on 0.x.
+  
+  - `WorkersAi` and `OpenAiModeration` option members (`apiUrl`, `transformClient`, `apiKey`, `model`, `onCall`): `x?: T | undefined` is now `x?: T`.
+  - `OpenAiModerationCall` (`GatewayCall`, what `onCall` observes): `status: number | undefined` is now `Option.Option<number>` and `error: AiError | undefined` is now `Option.Option<AiError>`.
+
+### Patch Changes
+
+- [#100](https://github.com/thomasfosterau/effect-ext/pull/100) [`d3a6bac`](https://github.com/thomasfosterau/effect-ext/commit/d3a6bac4bc36d7f895b605efcaaf1da1487fc92e) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - The AI abstractions and the evals toolkit now spell absence the way the rest of the package does ([#17](https://github.com/thomasfosterau/effect-ext/issues/17)): an optional setting in an options object is `x?: T`, and a value that may be absent in a result is an `Option`. This is breaking on 0.x.
+  
+  **Options objects: `x?: T | undefined` is now `x?: T`.** A caller holding `undefined` omits the key (or spreads, or uses `Struct.pick`). Affected: `RerankOptions` / `RerankerModel.ProviderOptions` (`topN`), `ClassifyOptions` / `ClassifierModel.ProviderOptions` (`labels`, `multiLabel`, `examples`; `ProviderOptions.multiLabel` stays a required `boolean`), `SpeechOptions`, `ImageOptions`, `TranscriptionOptions`, `VoiceConversionOptions` and each `ProviderOptions` (`voice`, `format`, `sampleRate`, `size`, `count`, `mediaType`, `language`), the evals' `RetrievalGolden.name`, `RetrievalSuite.metrics`, `Ranking.MetricsAtKOptions` (`metrics`, `thresholds`), `Cache.CacheKeyInput.judgeModelId`, `GEvalTemplateParams` and `GEval.judge`'s params (`criteria`, `evaluationSteps`, `rubric`). A `ProviderOptions` now has a key only when the caller supplied it, so a provider that destructures is unaffected.
+  
+  **Results and provider responses: `T | undefined` is now `Option.Option<T>`, required.**
+  
+  - `*Usage.inputTokens` (Reranker, Classifier, Image, Moderation), `SpeechUsage.inputCharacters`, `TranscriptionUsage.durationSeconds` and `VoiceConversionUsage.durationSeconds` are `Option<number>`; in a `Schema.Class` model the encoded form is an omitted key (`Schema.OptionFromOptionalKey`), not `undefined`.
+  - `TranscriptionResponse.segments` and `.language` are `Option`. `ModerationResult.flags` and `ModerationResponse.modelId` are `Option` (were `Schema.optional`).
+  - Every `ProviderResponse` mirrors this: `usage.*` is an `Option`, `TranscriptionModel`'s `segments` / `language` and `ModerationModel`'s `flags` / `modelId` are required `Option`s. A provider that built `{ usage: { inputTokens: n } }` now builds `{ usage: { inputTokens: Option.fromUndefinedOr(n) } }`.
+  - Evals: `Result.MetricAggregate.summary` is `Option<Summary>` and `Result.formatSpread` takes an `Option<Summary>`; `ExtractThenClassify.Verdict.reason` is `Option<string>`. The JSON reports are unchanged (`summary` is still the object or `null`; verdicts in `Score.metadata` still omit `reason` when there is none): use the new `Result.summaryReplacer` when stringifying a `SuiteResult` yourself, and `ExtractThenClassify.verdictMetadata` for the metadata form.
+  - `GEvalCase`, `GEvalConversationalCase` (now a type alias) and `RagCase` are `Pick`s of the `Golden` / `EvalCase` decoded types instead of hand-written `?: T | undefined` members, so they still accept a decoded case.
+  
+  The provider packages' published code changed only to build the new `ProviderResponse` shapes; their own APIs are unchanged.
+  
+  `evals/Cache.hashKey` now canonicalises a golden to `Schema.Json` before hashing. The JSON it hashes is the same as before for every value `JSON.stringify` could already encode, so existing cache keys keep their digests (a pinned-digest test checks this). One key changes: a golden holding a `bigint` used to make `hashKey` die, because `JSON.stringify` throws on one; it is now keyed as `{ "__bigint": "<digits>" }`.
+
+- [#108](https://github.com/thomasfosterau/effect-ext/pull/108) [`06f7c84`](https://github.com/thomasfosterau/effect-ext/commit/06f7c848c95dd299eb47b56c35849af585923270) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Move the details from the README into the exported doc comments.
+- Updated dependencies [[`9210f78`](https://github.com/thomasfosterau/effect-ext/commit/9210f7825de4a0582f0404313e54b64c5a0da5f2), [`68c6983`](https://github.com/thomasfosterau/effect-ext/commit/68c69831c24ebc74bbba2416b790a9e4a51f300e), [`1ed5c76`](https://github.com/thomasfosterau/effect-ext/commit/1ed5c768a53bb715343af16763f18784e9d74371), [`c6daa75`](https://github.com/thomasfosterau/effect-ext/commit/c6daa75a9e3f7cb315ad0888ccccd6fa150d6f8f), [`00d27f5`](https://github.com/thomasfosterau/effect-ext/commit/00d27f5950e5189fe5127d2a02931d4fc5c5ec89), [`0aae924`](https://github.com/thomasfosterau/effect-ext/commit/0aae924ff2e1fce4845e95088adbdbe42a81ebe1), [`5e4c9f2`](https://github.com/thomasfosterau/effect-ext/commit/5e4c9f275cea1fd5c2e83b44070a859a5f916f1e), [`d3a6bac`](https://github.com/thomasfosterau/effect-ext/commit/d3a6bac4bc36d7f895b605efcaaf1da1487fc92e), [`87e9258`](https://github.com/thomasfosterau/effect-ext/commit/87e92588099c642f9d7805b2923dcec9b7330c96), [`0f60093`](https://github.com/thomasfosterau/effect-ext/commit/0f6009334aa10e7d3160cf052001eec4cc2468b9), [`3950735`](https://github.com/thomasfosterau/effect-ext/commit/395073596084c6e90cb6087e00ed904b41b5846d), [`37af9fd`](https://github.com/thomasfosterau/effect-ext/commit/37af9fd34cf88d38995af7f81846dadc8c32a0a1), [`a6de9db`](https://github.com/thomasfosterau/effect-ext/commit/a6de9dba3de047e0c817866625177ed6bf502349), [`d8677d2`](https://github.com/thomasfosterau/effect-ext/commit/d8677d274de3ea8902e6a6701a971bbc2f2b2761), [`c88e834`](https://github.com/thomasfosterau/effect-ext/commit/c88e834ae130b24fab8f22b5af4fce65b7b21385), [`55fc0bd`](https://github.com/thomasfosterau/effect-ext/commit/55fc0bdce98da68d7f89f570cba870175a97e7bf)]:
+  - @thomasfosterau/effect-ext@0.3.0
+
 ## 0.1.1
 
 ### Patch Changes
