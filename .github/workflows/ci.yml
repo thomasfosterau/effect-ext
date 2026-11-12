@@ -1,8 +1,8 @@
 name: CI
 
 # One command: `vp run ci` (the `ci` task in vite.config.ts), so CI and a local
-# run are the same gate. It runs on the current LTS and the latest Node
-# release; the `ci` job at the end is the one stable check name for rulesets.
+# run are the same gate. It runs on Node 22 and 24 (the supported lines
+# `engines.node` promises), the current LTS and the latest release; the `ci` job at the end is the one stable check name for rulesets.
 # Nothing here needs a database, a stage or a credential, so every PR runs the
 # whole gate.
 
@@ -32,7 +32,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [lts, latest]
+        # The supported lines `engines.node` promises (22, 24), plus whatever
+        # setup-vp resolves as the current LTS and the latest release.
+        node: ["22", "24", lts, latest]
     env:
       # A modest ceiling for every Node process in the pipeline. NODE_OPTIONS
       # is inherited by every child, including each vitest fork.
