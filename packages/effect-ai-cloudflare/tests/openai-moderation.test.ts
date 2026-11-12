@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
 import { AiError } from "effect/ai";
 import type { ModerationModel } from "@thomasfosterau/effect-ext";
@@ -43,11 +44,21 @@ const stubAi = (response: { status: number; body: unknown }) => {
 const binding = (ai: WorkersAiBinding) => ({ ai, gatewayId: "website" });
 
 /** One `omni-moderation` result, in the provider's wire shape. */
+const UNASSESSED = Option.none();
+
 const omniResult = (
   flagged: boolean,
-  categories: Record<string, boolean | null>,
-  scores: Record<string, number | null>,
-) => ({ flagged, categories, category_scores: scores });
+  categories: Record<string, boolean | typeof UNASSESSED>,
+  scores: Record<string, number | typeof UNASSESSED>,
+) => ({
+  flagged,
+  categories: R.map(categories, (verdict) =>
+    Option.isOption(verdict) ? Option.getOrNull(verdict) : verdict,
+  ),
+  category_scores: R.map(scores, (score) =>
+    Option.isOption(score) ? Option.getOrNull(score) : score,
+  ),
+});
 
 const omniBody = (results: ReadonlyArray<unknown>, extra: Record<string, unknown> = {}) => ({
   id: "modr-test",
@@ -133,7 +144,7 @@ describe("makeOpenAiModerationModel", () => {
     const { ai } = stubAi({
       status: 200,
       body: omniBody([
-        omniResult(false, { hate: null, sexual: false }, { hate: null, sexual: 0.2 }),
+        omniResult(false, { hate: UNASSESSED, sexual: false }, { hate: UNASSESSED, sexual: 0.2 }),
       ]),
     });
 
@@ -241,7 +252,7 @@ describe("makeOpenAiModerationModel", () => {
     const { ai } = stubAi({
       status: 200,
       body: omniBody(
-        [omniResult(true, { hate: true, violence: false, sexual: null }, { hate: 0.9 })],
+        [omniResult(true, { hate: true, violence: false, sexual: UNASSESSED }, { hate: 0.9 })],
         { model: "omni-moderation-2024-09-26" },
       ),
     });
@@ -364,10 +375,10 @@ describe("makeOpenAiModerationModel", () => {
     );
 
     expect(seen).toHaveLength(2);
-    expect(seen[0]).toMatchObject({ status: 200, error: undefined });
+    expect(seen[0]).toMatchObject({ status: Option.some(200), error: Option.none() });
     expect(seen[0]?.durationMillis).toBeGreaterThanOrEqual(0);
-    expect(seen[1]?.status).toBe(429);
-    expect(seen[1]?.error).toBe(failure);
+    expect(seen[1]?.status).toEqual(Option.some(429));
+    expect(seen[1]?.error).toEqual(Option.some(failure));
   });
 
   it("reports a transport failure to onCall with no status", async () => {
@@ -384,7 +395,9 @@ describe("makeOpenAiModerationModel", () => {
     );
 
     expect(seen).toHaveLength(1);
-    expect(seen[0]?.status).toBeUndefined();
-    expect(seen[0]?.error?.reason._tag).toBe("UnknownError");
+    expect(seen[0]?.status).toEqual(Option.none());
+    expect(Option.map(seen[0]?.error ?? Option.none(), (error) => error.reason._tag)).toEqual(
+      Option.some("UnknownError"),
+    );
   });
 });

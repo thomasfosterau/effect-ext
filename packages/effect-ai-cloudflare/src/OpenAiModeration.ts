@@ -52,7 +52,7 @@
  *
  * ## The call ledger
  *
- * `onCall` observes every HTTP call once it settles — its status (`undefined`
+ * `onCall` observes every HTTP call once it settles — its status (`None`
  * when the transport failed before a response), its duration, and the
  * `AiError` it failed with, if it did — for a caller that records the cost and
  * latency of each call. The hook runs on failure too, before the `AiError`
@@ -100,21 +100,21 @@ export interface OpenAiModerationOptions {
    * The application's own OpenAI key, sent as `Authorization: Bearer`.
    * Omit it when the key is configured on the gateway (BYOK).
    */
-  readonly apiKey?: Redacted.Redacted | undefined;
+  readonly apiKey?: Redacted.Redacted;
   /** The moderation model to request. Defaults to {@link OPENAI_MODERATION_MODEL}. */
-  readonly model?: string | undefined;
+  readonly model?: string;
   /**
    * Observes each HTTP call once it settles, success or failure, for a cost /
    * latency ledger. See {@link OpenAiModerationCall}.
    */
-  readonly onCall?: ((call: OpenAiModerationCall) => Effect.Effect<void>) | undefined;
+  readonly onCall?: (call: OpenAiModerationCall) => Effect.Effect<void>;
 }
 
 /**
  * One settled moderations call, as `onCall` sees it: the HTTP `status`
- * (`undefined` when the transport failed before a response), the
+ * (`None` when the transport failed before a response), the
  * `durationMillis` from sending the request to decoding its response, and the
- * `error` it failed with (`undefined` on success).
+ * `error` it failed with (`None` on success).
  */
 export type OpenAiModerationCall = GatewayCall;
 
@@ -137,18 +137,18 @@ const OmniModerationResponse = Schema.Struct({
   ),
 });
 
+/** One decoded result of a moderations response. */
+type WireResult = (typeof OmniModerationResponse.Type)["results"][number];
+
 /**
  * Drops the provider's `null` entries — "not assessed for this input" —
  * rather than coercing them to a score.
  */
-const definedScores = (
-  scores: Readonly<Record<string, number | null>> | undefined,
-): Record<string, number> => (scores === undefined ? {} : R.filter(scores, P.isNotNull));
+const definedScores = (scores: WireResult["category_scores"]): Record<string, number> =>
+  scores === undefined ? {} : R.filter(scores, P.isNotNull);
 
 /** The provider's per-category verdicts, `null` ("not assessed") dropped. */
-const definedFlags = (
-  flags: Readonly<Record<string, boolean | null>> | undefined,
-): Option.Option<Record<string, boolean>> =>
+const definedFlags = (flags: WireResult["categories"]): Option.Option<Record<string, boolean>> =>
   Option.map(Option.fromUndefinedOr(flags), (verdicts) => R.filter(verdicts, P.isNotNull));
 
 /** One part of a multimodal moderations input, as OpenAI's wire carries it. */

@@ -44,14 +44,14 @@ export interface Origin {
 
 /**
  * What one gateway call came to, for a caller keeping a cost / latency ledger:
- * the HTTP status (`undefined` when the transport failed before a response),
+ * the HTTP status (`None` when the transport failed before a response),
  * the wall-clock time from sending the request to decoding (or failing to
  * decode) the response, and the `AiError` the call failed with, if it did.
  */
 export interface GatewayCall {
-  readonly status: number | undefined;
+  readonly status: Option.Option<number>;
   readonly durationMillis: number;
-  readonly error: AiError.AiError | undefined;
+  readonly error: Option.Option<AiError.AiError>;
 }
 
 /** Observes each gateway call once it settles; see {@link GatewayCall}. */
@@ -102,7 +102,7 @@ const decodeResponse = <S extends Schema.Top>(
   origin: Origin,
   response: Effect.Effect<NormalizedResponse, AiError.AiError>,
   schema: S,
-  onCall: OnGatewayCall | undefined,
+  onCall?: OnGatewayCall,
 ): Effect.Effect<S["Type"], AiError.AiError, S["DecodingServices"]> =>
   onCall === undefined
     ? decodeNormalized(origin, response, schema)
@@ -119,16 +119,16 @@ const observed = <S extends Schema.Top>(
   onCall: OnGatewayCall,
 ): Effect.Effect<S["Type"], AiError.AiError, S["DecodingServices"]> =>
   Effect.gen(function* () {
-    const status = yield* Ref.make<number | undefined>(undefined);
+    const status = yield* Ref.make(Option.none<number>());
     const [duration, exit] = yield* decodeNormalized(
       origin,
-      response.pipe(Effect.tap((res) => Ref.set(status, res.status))),
+      response.pipe(Effect.tap((res) => Ref.set(status, Option.some(res.status)))),
       schema,
     ).pipe(Effect.exit, Effect.timed);
     yield* onCall({
       status: yield* Ref.get(status),
       durationMillis: Duration.toMillis(duration),
-      error: Option.getOrUndefined(Exit.findErrorOption(exit)),
+      error: Exit.findErrorOption(exit),
     });
     return yield* exit;
   });

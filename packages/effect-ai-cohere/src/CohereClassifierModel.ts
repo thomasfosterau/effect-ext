@@ -51,12 +51,12 @@ export interface Options {
    *
    * @default "command-a-03-2025"
    */
-  readonly model?: (string & Record<never, never>) | CohereLanguageModel.Model | undefined;
+  readonly model?: (string & Record<never, never>) | CohereLanguageModel.Model;
   /**
    * Chat request tuning (temperature, etc.) applied to each classification
    * request. Defaults to a temperature of 0 for deterministic labelling.
    */
-  readonly config?: Omit<CohereLanguageModel.ConfigService, "model"> | undefined;
+  readonly config?: Omit<CohereLanguageModel.ConfigService, "model">;
 }
 
 /**

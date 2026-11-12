@@ -49,7 +49,7 @@ export interface RequestToolCall {
   readonly type: "function";
   readonly function: {
     readonly name: string;
-    readonly arguments: string | undefined;
+    readonly arguments?: string;
   };
 }
 
@@ -77,7 +77,7 @@ export interface AssistantMessageRequest {
 export interface ToolMessageRequest {
   readonly role: "tool";
   readonly tool_call_id: string;
-  readonly content: string | undefined;
+  readonly content?: string;
 }
 
 /** Any message accepted by the chat request. */
@@ -315,8 +315,7 @@ const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 
 /**
  * Serialises `value` as JSON text, with `JSON.stringify`'s contract: an
- * `undefined` value (a tool that returns nothing) has no JSON text, so it
- * stays `undefined` and its key is left off the serialised request body.
+ * `undefined` value (a tool that returns nothing) has no JSON text, so it is `None` and its key is left off the serialised request body.
  */
-export const stringifyJson = (value: unknown): string | undefined =>
-  P.isUndefined(value) ? undefined : encodeJson(value);
+export const stringifyJson = (value: unknown): Option.Option<string> =>
+  P.isUndefined(value) ? Option.none() : Option.some(encodeJson(value));

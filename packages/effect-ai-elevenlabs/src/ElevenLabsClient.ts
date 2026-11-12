@@ -23,7 +23,7 @@
  * @copyright Thomas Foster
  */
 
-import type * as Config from "effect/Config";
+import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import { identity } from "effect/Function";
@@ -31,6 +31,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import * as Redacted from "effect/Redacted";
+import * as Struct from "effect/Struct";
 import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
 import type * as AiError from "effect/ai/AiError";
@@ -62,7 +63,7 @@ const SPEECH_TO_SPEECH_PATH = "/v1/speech-to-speech";
 /** Raw audio bytes paired with the response's declared content type (if any). */
 export interface AudioResult {
   readonly audio: Uint8Array;
-  readonly contentType: string | undefined;
+  readonly contentType: Option.Option<string>;
 }
 
 /**
@@ -70,7 +71,7 @@ export interface AudioResult {
  */
 export interface AudioRequestOptions {
   /** The ElevenLabs `output_format` query value (e.g. `mp3_44100_128`). */
-  readonly outputFormat?: string | undefined;
+  readonly outputFormat?: string;
 }
 
 /**
@@ -143,18 +144,18 @@ export interface Options {
    * setups (e.g. a gateway that injects the credential) or tests — requests
    * then carry no `xi-api-key` header.
    */
-  readonly apiKey?: Redacted.Redacted | undefined;
+  readonly apiKey?: Redacted.Redacted;
   /**
    * The base URL for the API. Override to target a proxy or gateway route.
    *
    * @default "https://api.elevenlabs.io"
    */
-  readonly apiUrl?: string | undefined;
+  readonly apiUrl?: string;
   /**
    * Optional transformer for the underlying `HttpClient` (middleware, logging,
    * custom retry, etc.).
    */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined;
+  readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient;
 }
 
 // =============================================================================
@@ -170,11 +171,10 @@ const speechToSpeechPath = (voiceId: string): string =>
   `${SPEECH_TO_SPEECH_PATH}/${encodeURIComponent(voiceId)}`;
 
 /** Reads the response's content type, stripping any `; charset=…` parameters. */
-const contentTypeOf = (response: HttpClientResponse.HttpClientResponse): string | undefined =>
+const contentTypeOf = (response: HttpClientResponse.HttpClientResponse): Option.Option<string> =>
   Headers.get(response.headers, "content-type").pipe(
     Option.map((raw) => raw.split(";")[0].trim()),
     Option.filter(Str.isNonEmpty),
-    Option.getOrUndefined,
   );
 
 /** Reads a completed audio response into bytes + declared content type. */
@@ -191,7 +191,7 @@ const readAudio = (
 /** Adds the `output_format` query parameter when one is requested. */
 const withOutputFormat = (
   request: HttpClientRequest.HttpClientRequest,
-  options: AudioRequestOptions | undefined,
+  options?: AudioRequestOptions,
 ): HttpClientRequest.HttpClientRequest =>
   P.isNotUndefined(options?.outputFormat)
     ? HttpClientRequest.setUrlParam(request, "output_format", options.outputFormat)
@@ -318,15 +318,14 @@ export const layer = (
  * when one cannot be read.
  */
 export const layerConfig = (options?: {
-  readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined;
-  readonly apiUrl?: Config.Config<string> | undefined;
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined;
+  readonly apiKey?: Config.Config<Redacted.Redacted>;
+  readonly apiUrl?: Config.Config<string>;
+  readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient;
 }): Layer.Layer<ElevenLabsClient, Config.ConfigError, HttpClient.HttpClient> =>
   Layer.effect(
     ElevenLabsClient,
     Effect.gen(function* () {
-      const apiKey = P.isNotUndefined(options?.apiKey) ? yield* options.apiKey : undefined;
-      const apiUrl = P.isNotUndefined(options?.apiUrl) ? yield* options.apiUrl : undefined;
-      return yield* make({ apiKey, apiUrl, transformClient: options?.transformClient });
+      const settings = yield* Config.all(Struct.pick(options ?? {}, ["apiKey", "apiUrl"]));
+      return yield* make({ ...settings, ...Struct.pick(options ?? {}, ["transformClient"]) });
     }),
   );

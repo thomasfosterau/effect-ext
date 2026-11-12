@@ -45,11 +45,11 @@ import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 interface Captured {
   readonly url: string;
   readonly method: string;
-  readonly apiKey: string | null;
-  readonly contentType: string | null;
-  readonly outputFormat: string | null;
+  readonly apiKey: Option.Option<string>;
+  readonly contentType: Option.Option<string>;
+  readonly outputFormat: Option.Option<string>;
   readonly request: Request;
-  readonly signal: AbortSignal | null;
+  readonly signal: Option.Option<AbortSignal>;
 }
 
 const makeFetch = (respond: (captured: Captured) => Response) => {
@@ -60,11 +60,11 @@ const makeFetch = (respond: (captured: Captured) => Response) => {
     const captured: Captured = {
       url: request.url,
       method: request.method,
-      apiKey: request.headers.get("xi-api-key"),
-      contentType: request.headers.get("content-type"),
-      outputFormat: url.searchParams.get("output_format"),
+      apiKey: Option.fromNullishOr(request.headers.get("xi-api-key")),
+      contentType: Option.fromNullishOr(request.headers.get("content-type")),
+      outputFormat: Option.fromNullishOr(url.searchParams.get("output_format")),
       request: request.clone(),
-      signal: init?.signal ?? null,
+      signal: Option.fromNullishOr(init?.signal),
     };
     calls.push(captured);
     return respond(captured);
@@ -84,11 +84,17 @@ const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 const httpLayer = (fetch: typeof globalThis.fetch) =>
   FetchHttpClient.layer.pipe(Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch)));
 
-// `null` omits the content-type header entirely (undici adds none for a byte body).
-const audioResponse = (bytes: Uint8Array, contentType: string | null = "audio/mpeg"): Response =>
+// `None` omits the content-type header entirely (undici adds none for a byte body).
+const audioResponse = (
+  bytes: Uint8Array,
+  contentType: Option.Option<string> = Option.some("audio/mpeg"),
+): Response =>
   new Response(bytes as BodyInit, {
     status: 200,
-    headers: contentType === null ? {} : { "content-type": contentType },
+    headers: Option.match(contentType, {
+      onNone: () => ({}),
+      onSome: (type) => ({ "content-type": type }),
+    }),
   });
 
 const jsonResponse = (body: unknown, status = 200): Response => Response.json(body, { status });
@@ -97,10 +103,8 @@ const bytes = (...values: ReadonlyArray<number>): Uint8Array => Uint8Array.from(
 
 // ── Layers ────────────────────────────────────────────────────────────
 
-const clientLayer = (fetch: typeof globalThis.fetch, apiKey: string | undefined = "test-key") =>
-  ElevenLabsClient.layer({
-    apiKey: apiKey === undefined ? undefined : Redacted.make(apiKey),
-  }).pipe(Layer.provide(httpLayer(fetch)));
+const clientLayer = (fetch: typeof globalThis.fetch, apiKey = "test-key") =>
+  ElevenLabsClient.layer({ apiKey: Redacted.make(apiKey) }).pipe(Layer.provide(httpLayer(fetch)));
 
 const speechLayer = (fetch: typeof globalThis.fetch, settings?: ElevenLabsSpeechModel.Settings) =>
   ElevenLabsSpeechModel.layer(settings).pipe(Layer.provide(clientLayer(fetch)));
@@ -141,7 +145,7 @@ describe("ElevenLabsSpeechModel.generate", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/text-to-speech/voice_1");
     expect(calls[0]?.method).toBe("POST");
-    expect(calls[0]?.apiKey).toBe("test-key");
+    expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
 
     const body = (await firstRequest(calls).json()) as Record<string, unknown>;
     expect(body.text).toBe("hello world");
@@ -167,7 +171,7 @@ describe("ElevenLabsSpeechModel.generate", () => {
   });
 
   it("derives output_format from neutral format + sampleRate and its media type", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1), null));
+    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
 
     const response = await generate(
       fetch,
@@ -175,9 +179,43 @@ describe("ElevenLabsSpeechModel.generate", () => {
       { voiceId: "voice_1" },
     );
 
-    expect(calls[0]?.outputFormat).toBe("pcm_24000");
+    expect(calls[0]?.outputFormat).toEqual(Option.some("pcm_24000"));
     // No content-type header on the response → media type derived from format.
     expect(response.mediaType).toBe("audio/pcm");
+  });
+
+  it("sends no output_format for a bare mp3 and falls back to the mpeg media type", async () => {
+    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
+
+    const response = await generate(fetch, { text: "hi", format: "mp3" }, { voiceId: "voice_1" });
+
+    expect(calls[0]?.outputFormat).toEqual(Option.none());
+    expect(response.mediaType).toBe("audio/mpeg");
+  });
+
+  it("derives mp3_<rate>_128 from an mp3 format with a sample rate", async () => {
+    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
+
+    await generate(fetch, { text: "hi", format: "mp3", sampleRate: 22050 }, { voiceId: "v" });
+
+    expect(calls[0]?.outputFormat).toEqual(Option.some("mp3_22050_128"));
+  });
+
+  it("uses the bare codec when no sample rate is given", async () => {
+    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
+
+    const response = await generate(fetch, { text: "hi", format: "ulaw" }, { voiceId: "v" });
+
+    expect(calls[0]?.outputFormat).toEqual(Option.some("ulaw"));
+    expect(response.mediaType).toBe("audio/basic");
+  });
+
+  it("omits optional body fields that are not configured", async () => {
+    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
+
+    await generate(fetch, { text: "hi" }, { voiceId: "v" });
+
+    expect(await firstRequest(calls).json()).toEqual({ text: "hi" });
   });
 
   it("passes an explicit model output_format through unchanged", async () => {
@@ -185,7 +223,7 @@ describe("ElevenLabsSpeechModel.generate", () => {
 
     await generate(fetch, { text: "hi" }, { voiceId: "v", outputFormat: "mp3_22050_32" });
 
-    expect(calls[0]?.outputFormat).toBe("mp3_22050_32");
+    expect(calls[0]?.outputFormat).toEqual(Option.some("mp3_22050_32"));
   });
 
   it("fails with an AiError when no voice id is available", async () => {
@@ -232,7 +270,7 @@ describe("ElevenLabsSpeechModel.generate", () => {
       ).pipe(Effect.provide(ElevenLabsSpeechModel.layer().pipe(Layer.provide(keylessClient)))),
     );
 
-    expect(calls[0]?.apiKey).toBeNull();
+    expect(calls[0]?.apiKey).toEqual(Option.none());
   });
 });
 
@@ -283,6 +321,17 @@ describe("ElevenLabsSpeechModel.stream", () => {
     expect(received.length).toBeGreaterThanOrEqual(2);
     const flat = received.flatMap((chunk) => Array.from(chunk));
     expect(flat).toEqual([1, 1, 2, 2, 3, 3]);
+  });
+
+  it("fails the stream with an AiError when no voice id is available", async () => {
+    const { fetch } = makeFetch(() => audioResponse(bytes(1)));
+
+    await expectFailureInstanceOf(
+      Effect.flatMap(SpeechModel.SpeechModel, (model) =>
+        Stream.runDrain(model.stream({ text: "hi" })),
+      ).pipe(Effect.provide(speechLayer(fetch))),
+      AiError.AiError,
+    );
   });
 
   it("respects backpressure — a partial consumer does not drain the whole body", async () => {
@@ -338,12 +387,12 @@ describe("ElevenLabsSpeechModel.stream", () => {
         );
         yield* Deferred.await(latch);
         yield* Fiber.interrupt(fiber);
-        return calls[0]?.signal ?? null;
+        return calls[0]?.signal ?? Option.none();
       }).pipe(Effect.provide(speechLayer(fetch))),
     );
 
     // Interrupting the Effect aborted the in-flight HTTP request…
-    expect(signal?.aborted).toBe(true);
+    expect(Option.map(signal, (aborted) => aborted.aborted)).toEqual(Option.some(true));
     // …and cancelled the response body stream.
     expect(state.cancelled).toBe(true);
   });
@@ -374,8 +423,10 @@ describe("ElevenLabsTranscriptionModel.transcribe", () => {
     );
 
     expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/speech-to-text");
-    expect(calls[0]?.apiKey).toBe("test-key");
-    expect(calls[0]?.contentType).toMatch(/^multipart\/form-data/);
+    expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
+    expect(Option.getOrElse(calls[0]?.contentType ?? Option.none(), () => "")).toMatch(
+      /^multipart\/form-data/,
+    );
 
     const form = await firstRequest(calls).formData();
     expect(form.get("model_id")).toBe("scribe_v1");
@@ -495,8 +546,10 @@ describe("ElevenLabsVoiceConversionModel.convert", () => {
     );
 
     expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/speech-to-speech/target_voice");
-    expect(calls[0]?.apiKey).toBe("test-key");
-    expect(calls[0]?.contentType).toMatch(/^multipart\/form-data/);
+    expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
+    expect(Option.getOrElse(calls[0]?.contentType ?? Option.none(), () => "")).toMatch(
+      /^multipart\/form-data/,
+    );
 
     const form = await firstRequest(calls).formData();
     expect(form.get("model_id")).toBe("eleven_multilingual_sts_v2");
@@ -519,7 +572,7 @@ describe("ElevenLabsVoiceConversionModel.convert", () => {
       ).pipe(Effect.provide(voiceConversionLayer(fetch, { voiceSettings: { stability: 0.3 } }))),
     );
 
-    expect(calls[0]?.outputFormat).toBe("mp3_44100_128");
+    expect(calls[0]?.outputFormat).toEqual(Option.some("mp3_44100_128"));
     const form = await firstRequest(calls).formData();
     expect(form.get("voice_settings")).toBe(encodeJson({ stability: 0.3 }));
   });
@@ -534,7 +587,7 @@ describe("ElevenLabsVoiceConversionModel.convert", () => {
   ])(
     "derives the media type from output_format %s when the response has no content type",
     async (format, mediaType) => {
-      const { fetch } = makeFetch(() => audioResponse(bytes(1), null));
+      const { fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
 
       const response = await runTest(
         Effect.flatMap(VoiceConversionModel.VoiceConversionModel, (model) =>
@@ -581,7 +634,7 @@ describe("ElevenLabsClient", () => {
     );
 
     expect(calls[0]?.url).toBe("https://gateway.example/eleven/v1/text-to-speech/v");
-    expect(calls[0]?.apiKey).toBe("cfg-key");
+    expect(calls[0]?.apiKey).toEqual(Option.some("cfg-key"));
   });
 
   it("applies a transformClient to outgoing requests", async () => {

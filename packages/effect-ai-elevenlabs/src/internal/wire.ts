@@ -53,16 +53,16 @@ export interface TextToSpeechRequest {
  * The `multipart/form-data` fields of a `/v1/speech-to-text` request. `file`
  * is the source audio; the remaining fields tune Scribe. Sent as a
  * `FormData` body — `Blob`/primitive values are appended directly, and an
- * `undefined` field is left out. A type alias rather than an interface, so
+ * absent field is an omitted key. A type alias rather than an interface, so
  * it is assignable to `HttpBody.FormDataInput`'s index signature.
  */
 export type SpeechToTextForm = {
   readonly file: Blob;
   readonly model_id: string;
-  readonly language_code?: string | undefined;
-  readonly timestamps_granularity?: string | undefined;
-  readonly diarize?: boolean | undefined;
-  readonly tag_audio_events?: boolean | undefined;
+  readonly language_code?: string;
+  readonly timestamps_granularity?: string;
+  readonly diarize?: boolean;
+  readonly tag_audio_events?: boolean;
 };
 
 // ── Speech-to-speech form (multipart/form-data) ───────────────────────
@@ -70,15 +70,15 @@ export type SpeechToTextForm = {
 /**
  * The `multipart/form-data` fields of a `/v1/speech-to-speech/{voice_id}`
  * request. `audio` is the source audio to re-voice; `voice_settings` is a
- * JSON-encoded {@link VoiceSettings} string when present. An `undefined`
- * field is left out of the body, as for {@link SpeechToTextForm}.
+ * JSON-encoded {@link VoiceSettings} string when present. An absent
+ * field is an omitted key, as for {@link SpeechToTextForm}.
  */
 export type SpeechToSpeechForm = {
   readonly audio: Blob;
-  readonly model_id?: string | undefined;
-  readonly voice_settings?: string | undefined;
-  readonly remove_background_noise?: boolean | undefined;
-  readonly seed?: number | undefined;
+  readonly model_id?: string;
+  readonly voice_settings?: string;
+  readonly remove_background_noise?: boolean;
+  readonly seed?: number;
 };
 
 // ── Speech-to-text response (JSON body) ───────────────────────────────

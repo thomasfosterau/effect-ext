@@ -54,6 +54,7 @@ import * as Tool from "effect/ai/Tool";
 import type * as HttpClientResponse from "effect/http/HttpClientResponse";
 import { MistralClient } from "./MistralClient";
 import * as Errors from "./internal/errors";
+import { optionalField } from "./internal/fields";
 import * as Wire from "./internal/wire";
 
 const MODULE = "MistralLanguageModel";
@@ -84,14 +85,14 @@ export type Model =
  * {@link make}, {@link layer}, or {@link model}.
  */
 export interface ConfigService {
-  readonly model?: string | undefined;
-  readonly temperature?: number | undefined;
-  readonly topP?: number | undefined;
-  readonly maxTokens?: number | undefined;
-  readonly randomSeed?: number | undefined;
-  readonly stop?: string | ReadonlyArray<string> | undefined;
-  readonly presencePenalty?: number | undefined;
-  readonly frequencyPenalty?: number | undefined;
+  readonly model?: string;
+  readonly temperature?: number;
+  readonly topP?: number;
+  readonly maxTokens?: number;
+  readonly randomSeed?: number;
+  readonly stop?: string | ReadonlyArray<string>;
+  readonly presencePenalty?: number;
+  readonly frequencyPenalty?: number;
 }
 
 /**
@@ -116,7 +117,7 @@ export class Config extends Context.Service<Config, ConfigService>()(
  */
 export const model = (
   modelName: (string & Record<never, never>) | Model,
-  config?: Omit<ConfigService, "model">,
+  config: Omit<ConfigService, "model"> = {},
 ): AiModel.Model<"mistral", LanguageModel.LanguageModel, MistralClient> =>
   AiModel.make("mistral", modelName, layer({ model: modelName, config }));
 
@@ -133,7 +134,7 @@ export const make = Effect.fnUntraced(function* ({
   config: providerConfig,
 }: {
   readonly model: (string & Record<never, never>) | Model;
-  readonly config?: Omit<ConfigService, "model"> | undefined;
+  readonly config?: Omit<ConfigService, "model">;
 }): Effect.fn.Return<LanguageModel.LanguageModel, never, MistralClient> {
   const client = yield* MistralClient;
 
@@ -171,7 +172,7 @@ export const make = Effect.fnUntraced(function* ({
         frequency_penalty: config.frequencyPenalty,
         tools,
         tool_choice: toolChoice,
-        response_format: responseFormat,
+        response_format: Option.getOrUndefined(responseFormat),
       }) as Wire.ChatCompletionRequest;
     });
 
@@ -219,7 +220,7 @@ export const make = Effect.fnUntraced(function* ({
  */
 export const layer = (options: {
   readonly model: (string & Record<never, never>) | Model;
-  readonly config?: Omit<ConfigService, "model"> | undefined;
+  readonly config?: Omit<ConfigService, "model">;
 }): Layer.Layer<LanguageModel.LanguageModel, never, MistralClient> =>
   Layer.effect(LanguageModel.LanguageModel, make(options));
 
@@ -330,7 +331,10 @@ const convertAssistantMessage = (
           {
             id: part.id,
             type: "function",
-            function: { name: part.name, arguments: Wire.stringifyJson(part.params) },
+            function: {
+              name: part.name,
+              ...optionalField("arguments", Wire.stringifyJson(part.params)),
+            },
           },
         ]
       : [],
@@ -351,7 +355,10 @@ const convertToolMessage = (message: Prompt.ToolMessage): Array<Wire.ToolMessage
             role: "tool",
             tool_call_id: part.id,
             name: part.name,
-            content: P.isString(part.result) ? part.result : Wire.stringifyJson(part.result),
+            ...optionalField(
+              "content",
+              P.isString(part.result) ? Option.some(part.result) : Wire.stringifyJson(part.result),
+            ),
           },
         ]
       : [],
@@ -471,14 +478,14 @@ const prepareTools = (
   options: LanguageModel.ProviderOptions,
 ): Effect.Effect<
   {
-    readonly tools: ReadonlyArray<Wire.ToolRequest> | undefined;
-    readonly toolChoice: Wire.ToolChoiceRequest | undefined;
+    readonly tools?: ReadonlyArray<Wire.ToolRequest>;
+    readonly toolChoice?: Wire.ToolChoiceRequest;
   },
   AiError.AiError
 > =>
   Effect.gen(function* () {
     if (Arr.isReadonlyArrayEmpty(options.tools)) {
-      return { tools: undefined, toolChoice: undefined };
+      return {};
     }
     const tools = yield* Effect.forEach(options.tools, (tool) => buildToolRequest(tool), {
       concurrency: 1,
@@ -492,11 +499,11 @@ const prepareTools = (
 
 const prepareResponseFormat = (
   options: LanguageModel.ProviderOptions,
-): Effect.Effect<Wire.ResponseFormatRequest | undefined, AiError.AiError> =>
+): Effect.Effect<Option.Option<Wire.ResponseFormatRequest>, AiError.AiError> =>
   Effect.gen(function* () {
     const responseFormat = options.responseFormat;
     if (responseFormat.type !== "json") {
-      return undefined;
+      return Option.none();
     }
     const schema = yield* Effect.try({
       try: () => Tool.getJsonSchemaFromSchema(responseFormat.schema),
@@ -508,18 +515,18 @@ const prepareResponseFormat = (
           }),
         ),
     });
-    return {
+    return Option.some({
       type: "json_schema",
       json_schema: { name: responseFormat.objectName, schema, strict: true },
-    };
+    });
   });
 
 // =============================================================================
 // Shared Response Helpers
 // =============================================================================
 
-const mapFinishReason = (reason: string | null | undefined): Response.FinishReason =>
-  Match.value(reason).pipe(
+const mapFinishReason = (reason: Option.Option<string>): Response.FinishReason =>
+  Match.value(Option.getOrUndefined(reason)).pipe(
     Match.when("stop", (): Response.FinishReason => "stop"),
     Match.when(Match.is("length", "model_length"), (): Response.FinishReason => "length"),
     Match.when("tool_calls", (): Response.FinishReason => "tool-calls"),
@@ -596,7 +603,7 @@ const makeResponse = (
       }
       parts.push({
         type: "finish",
-        reason: mapFinishReason(choice.finish_reason),
+        reason: mapFinishReason(Option.fromNullishOr(choice.finish_reason)),
         usage: makeUsage(body.usage),
         response: responseDetails,
       });
@@ -671,19 +678,19 @@ const emitResponseMetadata = (
 };
 
 const handleTextDelta = (
-  content: string | null | undefined,
+  content: Option.Option<string>,
   state: StreamState,
   context: StreamContext,
   out: Array<Response.StreamPartEncoded>,
 ): void => {
-  if (P.isNullish(content) || Str.isEmpty(content)) {
+  if (Option.isNone(content) || Str.isEmpty(content.value)) {
     return;
   }
   if (!state.textStarted) {
     state.textStarted = true;
     out.push({ type: "text-start", id: context.textId });
   }
-  out.push({ type: "text-delta", id: context.textId, delta: content });
+  out.push({ type: "text-delta", id: context.textId, delta: content.value });
 };
 
 /**
@@ -752,7 +759,7 @@ const handleChunk = (
     return out;
   }
 
-  handleTextDelta(choice.delta.content, state, context, out);
+  handleTextDelta(Option.fromNullishOr(choice.delta.content), state, context, out);
 
   const toolCalls = choice.delta.tool_calls;
   if (P.isNotNullish(toolCalls)) {
@@ -806,7 +813,7 @@ const finalize = (
 
   out.push({
     type: "finish",
-    reason: mapFinishReason(finishReason),
+    reason: mapFinishReason(Option.some(finishReason)),
     usage: makeUsage(chunk.usage),
     response: context.response,
   });

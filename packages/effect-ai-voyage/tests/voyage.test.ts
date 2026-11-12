@@ -33,7 +33,7 @@ import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 
 interface CapturedRequest {
   readonly url: string;
-  readonly authorization: string | null;
+  readonly authorization: Option.Option<string>;
   readonly headers: Record<string, string>;
   readonly body: Record<string, unknown>;
 }
@@ -48,7 +48,7 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
       .catch(() => ({}))) as Record<string, unknown>;
     const captured: CapturedRequest = {
       url: request.url,
-      authorization: request.headers.get("authorization"),
+      authorization: Option.fromNullishOr(request.headers.get("authorization")),
       headers: R.fromEntries(request.headers),
       body,
     };
@@ -139,7 +139,7 @@ describe("VoyageEmbeddingModel", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe("https://api.voyageai.com/v1/embeddings");
-    expect(calls[0]?.authorization).toBe("Bearer test-key");
+    expect(calls[0]?.authorization).toEqual(Option.some("Bearer test-key"));
     expect(calls[0]?.body.model).toBe("voyage-3-large");
     expect(calls[0]?.body.input).toEqual(["a", "b"]);
     expect(response.embeddings.map((e) => e.vector)).toEqual([
@@ -227,7 +227,7 @@ describe("VoyageEmbeddingModel", () => {
       ),
     );
 
-    expect(calls[0]?.authorization).toBeNull();
+    expect(calls[0]?.authorization).toEqual(Option.none());
   });
 
   it("maps a non-2xx status to an AiError", async () => {
@@ -285,7 +285,7 @@ describe("VoyageClient apiUrl override", () => {
     );
 
     expect(calls[0]?.url).toBe("https://gateway.example/voyage/v1/embeddings");
-    expect(calls[0]?.authorization).toBe("Bearer gw-key");
+    expect(calls[0]?.authorization).toEqual(Option.some("Bearer gw-key"));
   });
 
   it("loads apiUrl and apiKey through a Config-driven client layer", async () => {
@@ -310,7 +310,7 @@ describe("VoyageClient apiUrl override", () => {
     );
 
     expect(calls[0]?.url).toBe("https://proxy.example/v1/rerank");
-    expect(calls[0]?.authorization).toBe("Bearer cfg-key");
+    expect(calls[0]?.authorization).toEqual(Option.some("Bearer cfg-key"));
   });
 });
 
@@ -460,8 +460,8 @@ describe("VoyageEmbeddingModel.EMBEDDING_MODELS", () => {
     },
   );
 
-  it("resolves a known model's default dimension and undefined for an unknown id", async () => {
-    expect(VoyageEmbeddingModel.defaultDimension("voyage-3-large")).toBe(1024);
-    expect(VoyageEmbeddingModel.defaultDimension("nonexistent-model")).toBeUndefined();
+  it("resolves a known model's default dimension and none for an unknown id", async () => {
+    expect(VoyageEmbeddingModel.defaultDimension("voyage-3-large")).toEqual(Option.some(1024));
+    expect(VoyageEmbeddingModel.defaultDimension("nonexistent-model")).toEqual(Option.none());
   });
 });

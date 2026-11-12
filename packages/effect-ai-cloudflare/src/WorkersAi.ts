@@ -58,9 +58,9 @@ export interface CloudflareClientOptions {
    * (`https://api.cloudflare.com/client/v4` by default), for a proxy or a
    * test stub.
    */
-  readonly apiUrl?: string | undefined;
+  readonly apiUrl?: string;
   /** Customises the HTTP client, after the gateway headers are set. */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined;
+  readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient;
 }
 
 /**

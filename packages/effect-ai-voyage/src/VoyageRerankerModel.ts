@@ -52,7 +52,7 @@ export interface Options {
    * Whether Voyage truncates over-length inputs (`true`) instead of failing
    * the request. Voyage defaults to `true`.
    */
-  readonly truncation?: boolean | undefined;
+  readonly truncation?: boolean;
 }
 
 // =============================================================================

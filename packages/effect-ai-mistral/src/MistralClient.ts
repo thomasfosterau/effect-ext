@@ -18,13 +18,14 @@
  * @copyright Thomas Foster
  */
 
-import type * as Config from "effect/Config";
+import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import { identity } from "effect/Function";
 import * as Layer from "effect/Layer";
 import * as P from "effect/Predicate";
 import * as Redacted from "effect/Redacted";
+import * as Struct from "effect/Struct";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import type * as AiError from "effect/ai/AiError";
@@ -106,19 +107,19 @@ export interface Options {
    * (e.g. a gateway that injects the credential) or tests — requests then
    * carry no `authorization` header.
    */
-  readonly apiKey?: Redacted.Redacted | undefined;
+  readonly apiKey?: Redacted.Redacted;
   /**
    * The base URL for the API. Override to target a proxy or another
    * OpenAI-compatible endpoint.
    *
    * @default "https://api.mistral.ai"
    */
-  readonly apiUrl?: string | undefined;
+  readonly apiUrl?: string;
   /**
    * Optional transformer for the underlying `HttpClient` (middleware,
    * logging, custom retry, etc.).
    */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined;
+  readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient;
 }
 
 // =============================================================================
@@ -239,15 +240,14 @@ export const layer = (options: Options): Layer.Layer<MistralClient, never, HttpC
  * when one cannot be read.
  */
 export const layerConfig = (options?: {
-  readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined;
-  readonly apiUrl?: Config.Config<string> | undefined;
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined;
+  readonly apiKey?: Config.Config<Redacted.Redacted>;
+  readonly apiUrl?: Config.Config<string>;
+  readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient;
 }): Layer.Layer<MistralClient, Config.ConfigError, HttpClient.HttpClient> =>
   Layer.effect(
     MistralClient,
     Effect.gen(function* () {
-      const apiKey = P.isNotUndefined(options?.apiKey) ? yield* options.apiKey : undefined;
-      const apiUrl = P.isNotUndefined(options?.apiUrl) ? yield* options.apiUrl : undefined;
-      return yield* make({ apiKey, apiUrl, transformClient: options?.transformClient });
+      const settings = yield* Config.all(Struct.pick(options ?? {}, ["apiKey", "apiUrl"]));
+      return yield* make({ ...settings, ...Struct.pick(options ?? {}, ["transformClient"]) });
     }),
   );
