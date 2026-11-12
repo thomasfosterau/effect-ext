@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import { fields, fromOption, optionalKey } from "@thomasfosterau/effect-ext/OptionalKey";
+import {
+  fields,
+  fromOption,
+  optionalKey,
+  presentFields,
+} from "@thomasfosterau/effect-ext/OptionalKey";
 
 const introduce = (name: string, nickname?: string) => ({
   name,
@@ -73,5 +78,23 @@ describe("fields", () => {
       collection: "posts",
       limit: 10,
     });
+  });
+});
+
+describe("presentFields", () => {
+  it("drops null and undefined members, leaving no own key", () => {
+    const present = presentFields({ a: null, b: undefined, c: 1 });
+    expect(present).toStrictEqual({ c: 1 });
+    expect("a" in present).toBe(false);
+    expect("b" in present).toBe(false);
+  });
+
+  it("keeps falsy but present values", () => {
+    expect(presentFields({ a: "", b: 0, c: false })).toStrictEqual({ a: "", b: 0, c: false });
+  });
+
+  it("differs from fields on null", () => {
+    expect(fields({ a: null })).toStrictEqual({ a: null });
+    expect(presentFields({ a: null })).toStrictEqual({});
   });
 });
