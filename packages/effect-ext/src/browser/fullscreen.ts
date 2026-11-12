@@ -119,7 +119,7 @@ export class Fullscreen extends Context.Service<
 const unsupported = (): Fullscreen["Service"] =>
   Fullscreen.of({
     supported: false,
-    element: Effect.succeed(Option.none()),
+    element: Effect.succeedNone,
     changes: Stream.make(Option.none()),
     enter: () => Effect.fail(fullscreenError("Unsupported", undefined)),
   });

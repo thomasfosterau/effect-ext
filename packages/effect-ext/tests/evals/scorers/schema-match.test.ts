@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Cause from "effect/Cause";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Schema from "effect/Schema";
@@ -94,7 +95,7 @@ describe("SchemaMatch.schemaMatchValue", () => {
   it("never round-trips through JSON.stringify — a value with a non-serializable field still decodes", async () => {
     const WithDate = Schema.Struct({ name: Schema.String, seenAt: Schema.Unknown });
     const scorer = SchemaMatch.schemaMatchValue(WithDate);
-    const nonSerializable = { name: "Alice", seenAt: new Date() };
+    const nonSerializable = { name: "Alice", seenAt: DateTime.toDateUtc(DateTime.makeUnsafe(0)) };
     const score = await runTest(scorer.evaluate({ output: nonSerializable }));
     expect(score).toEqual({ score: 1 });
   });

@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Cause from "effect/Cause";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import { Cache } from "../../src/evals/index.ts";
@@ -46,11 +47,19 @@ describe("Cache.hashKey", () => {
   it("keeps the digest of a varied golden pinned, so existing cache entries stay addressable", async () => {
     const golden = {
       b: 2,
-      a: [1, "x", null, undefined, () => 1, Symbol("s"), new Date(0)],
+      a: [
+        1,
+        "x",
+        null,
+        undefined,
+        () => 1,
+        Symbol("s"),
+        DateTime.toDateUtc(DateTime.makeUnsafe(0)),
+      ],
       m: new Map<unknown, unknown>([["k", { z: 1, y: [new Set([1, 2])] }]]),
       f: () => 2,
       u: undefined,
-      n: { d: new Date(86400000), e: true },
+      n: { d: DateTime.toDateUtc(DateTime.makeUnsafe(86400000)), e: true },
     };
     expect(
       await hash({ golden, taskId: "t@v1", trial: 2, metric: "m", judgeModelId: undefined }),
@@ -89,8 +98,8 @@ describe("Cache.hashKey", () => {
   });
 
   it("distinguishes goldens that differ only by a Date field", async () => {
-    expect(await hash(withDate(new Date("2026-01-01")))).not.toBe(
-      await hash(withDate(new Date("2026-07-16"))),
+    expect(await hash(withDate(DateTime.toDateUtc(DateTime.makeUnsafe("2026-01-01"))))).not.toBe(
+      await hash(withDate(DateTime.toDateUtc(DateTime.makeUnsafe("2026-07-16")))),
     );
   });
 

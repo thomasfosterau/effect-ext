@@ -192,7 +192,7 @@ const REPLAY = 64;
 const unsupported = (): Notifications["Service"] =>
   Notifications.of({
     supported: false,
-    permission: Effect.succeed(Option.none()),
+    permission: Effect.succeedNone,
     requestPermission: Effect.fail(notificationError("Unsupported", undefined)),
     show: () => Effect.fail(notificationError("Unsupported", undefined)),
   });
