@@ -20,7 +20,7 @@ Seven families share the package; the AI abstractions and the evals toolkit, the
 | `LiteralExact` | Schema | Literal tuples checked to cover a union exactly |
 | `Ast` | Schema | Schema introspection by AST and behavioural decode probe |
 | `Url` | Schema | Absolute URLs (WHATWG serialisation) branded with the components they were checked against: scheme, hostname / domain, port, credentials, path |
-| `OptionalKey` | objects | `optionalKey` / `fromOption` / `fields`: optional keys for object construction under `exactOptionalPropertyTypes` |
+| `OptionalKey` | objects | `optionalKey` / `fromOption` / `fields` / `presentFields`: optional keys for object construction under `exactOptionalPropertyTypes` |
 | `Web` | web | Framework-neutral request / response utilities: header policies, cache control, `Vary`, cross-origin and client-IP checks, sessions, `siteBase`, the JSON:API error document and the Fetch adapters |
 | `Net` | web | The lexical SSRF host block list and the redirect-revalidating fetch (SEC-SSRF-003) |
 | `Observability` | web | The structured JSON-line sink, the allow-listed span logger, the event trio, the auth-outcome signal and per-request metrics |
