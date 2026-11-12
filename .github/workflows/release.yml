@@ -48,16 +48,16 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Setup pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-      - name: Setup Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      # Vite+, Node and the `packageManager` pnpm, then the install with no
+      # lifecycle scripts.
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1.22.0
         with:
-          node-version: 22.x
-          check-latest: true
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+          node-version: "22"
+          version-file: pnpm-workspace.yaml
+          cache: true
+          run-install: |
+            - args: ["--frozen-lockfile", "--ignore-scripts"]
       # `version`, `publish` or `none`. For `publish` it reads the registry
       # (no credentials needed) to find the versions not yet on npm.
       - name: Select mode
@@ -87,16 +87,16 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Setup pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-      - name: Setup Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      # Vite+, Node and the `packageManager` pnpm, then the install with no
+      # lifecycle scripts.
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1.22.0
         with:
-          node-version: 22.x
-          check-latest: true
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+          node-version: "22"
+          version-file: pnpm-workspace.yaml
+          cache: true
+          run-install: |
+            - args: ["--frozen-lockfile", "--ignore-scripts"]
       - name: Create or update the version PR
         uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
@@ -143,22 +143,21 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # Installs the pnpm version pinned by the package.json "packageManager"
-      # field. Must run before setup-node so its pnpm cache can find the store.
-      - name: Setup pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      # A pinned major (the `engines.node` floor CI also tests), never
-      # `latest`: setup-node resolves `latest` to the first nodejs.org index
-      # entry, pre-releases included, which would publish from an alpha Node
-      # (effect-svelte#214).
-      - name: Setup Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      # Vite+, Node and the `packageManager` pnpm. A pinned major, never
+      # `latest` (which could resolve to a pre-release, effect-svelte#214).
+      # Node 24's bundled npm is 11.x, at least the 11.5.1 that npm's OIDC
+      # trusted publishing needs; the npm pin below still decides the exact
+      # version. No `registry-url`: trusted publishing needs no `.npmrc`
+      # token entry, and npm's default registry is npmjs.org. Dependencies
+      # are installed below, after the npm upgrade, with no lifecycle
+      # scripts, so nothing installs here.
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1.22.0
         with:
-          node-version: 22.x
-          check-latest: true
-          cache: pnpm
-          registry-url: https://registry.npmjs.org
+          node-version: "24"
+          version-file: pnpm-workspace.yaml
+          cache: true
+          run-install: false
 
       # scripts/release.sh publishes each `pnpm pack` tarball with the npm CLI
       # (`npm publish`), and npm's own OIDC trusted publishing needs

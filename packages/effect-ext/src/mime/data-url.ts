@@ -6,6 +6,7 @@
  */
 import * as Option from "effect/Option";
 import * as Str from "effect/String";
+import { parseUrl } from "../internal/url.ts";
 import { parse as parseMimeType, type MimeType } from "./mime-type.ts";
 
 /**
@@ -106,8 +107,9 @@ export const forgivingBase64Decode = (input: string): Option.Option<Uint8Array> 
  * @category parsing
  */
 export const process = (input: string | URL): Option.Option<DataUrl> => {
-  const url = URL.parse(input);
-  if (url === null || url.protocol !== "data:") return Option.none();
+  const parsed = Option.filter(parseUrl(input), (candidate) => candidate.protocol === "data:");
+  if (Option.isNone(parsed)) return Option.none();
+  const url = parsed.value;
   const serialised = url.href.split("#")[0] ?? "";
   const rest = serialised.slice("data:".length);
   const comma = rest.indexOf(",");

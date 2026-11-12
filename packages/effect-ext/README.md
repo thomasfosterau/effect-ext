@@ -18,7 +18,7 @@ Extensions to the [Effect](https://effect.website) standard library and to its A
 pnpm add @thomasfosterau/effect-ext effect
 ```
 
-Peer: `effect` `^4.0.0`. Two optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `^4.0.0` (`Browser`, `BrowserTesting`) and `@thomasfosterau/effect-parse` `^0.4.1 || ^0.5.0` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. A third optional peer, `@effect/platform-node` `^4.0.0`, is needed only by the `effect-evals` CLI (see [CLI](#cli)). Node.js 22.18 or later (the binary-data modules use `ArrayBuffer.prototype.transfer`; the CLI type-strips `*.eval.ts` files, on by default from 22.18). ESM only, `"sideEffects": false`; every module is also its own entry point:
+Peer: `effect` `^4.0.0`. Two optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `^4.0.0` (`Browser`, `BrowserTesting`) and `@thomasfosterau/effect-parse` `^0.4.1 || ^0.5.0` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. A third optional peer, `@effect/platform-node` `^4.0.0`, is needed only by the `effect-evals` CLI (see [CLI](#cli)). Node.js 22 or later for the library; the `effect-evals` CLI needs 22.18 or later (it type-strips `*.eval.ts` files, on by default from 22.18) and says so when started on an older Node. ESM only, `"sideEffects": false`; every module is also its own entry point:
 
 ```ts
 import { Vec, TriState } from "@thomasfosterau/effect-ext";
@@ -1835,7 +1835,7 @@ Effect-native LLM evaluation: goldens, scorers, thresholds, and a runner with tr
 
 #### Requirements
 
-Requires Node `>=22.18`: the CLI loads `*.eval.ts` files with Node's type stripping, on by default from 22.18.0, and its resolution hook uses `module.registerHooks()` (22.15+). `effect` (`^4.0.0`) is a peer dependency. The package also ships the `effect-evals` CLI for discovering and running `*.eval.ts` suites — see [CLI](#cli) below. The CLI additionally needs the **optional** peer `@effect/platform-node` (`^4.0.0`): install it at the same version as `effect`, and pin `@effect/platform-node-shared` to that version too (a direct dependency or an `overrides` entry). Upstream's `^` range otherwise floats it to the newest rc, whose own `effect` peer rejects an older `effect`.
+The CLI requires Node `>=22.18` (the library itself needs only Node 22, its `engines.node` floor; the bin checks the version at start-up and exits with a message below 22.18): it loads `*.eval.ts` files with Node's type stripping, on by default from 22.18.0, and its resolution hook uses `module.registerHooks()` (22.15+). `effect` (`^4.0.0`) is a peer dependency. The package also ships the `effect-evals` CLI for discovering and running `*.eval.ts` suites — see [CLI](#cli) below. The CLI additionally needs the **optional** peer `@effect/platform-node` (`^4.0.0`): install it at the same version as `effect`, and pin `@effect/platform-node-shared` to that version too (a direct dependency or an `overrides` entry). Upstream's `^` range otherwise floats it to the newest rc, whose own `effect` peer rejects an older `effect`.
 
 ```sh
 pnpm add @effect/platform-node@<your effect version> @effect/platform-node-shared@<your effect version>

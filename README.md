@@ -38,7 +38,7 @@ pnpm add effect @thomasfosterau/effect-ext
 pnpm add effect @thomasfosterau/effect-ext @thomasfosterau/effect-ai-voyage
 ```
 
-The published peer range is `effect ^4.0.0`. Node 22.18 or later, or any runtime with `fetch` (Cloudflare Workers included) for the AI packages.
+The published peer range is `effect ^4.0.0`. Node 22 or later (22.18 for the `effect-evals` CLI), or any runtime with `fetch` (Cloudflare Workers included) for the AI packages.
 
 ## Examples
 
