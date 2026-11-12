@@ -94,7 +94,7 @@ export interface Options<Min extends number, Max extends number> {
   readonly min: Min;
   readonly max: Max;
   /** Name used in error messages and schema annotations. */
-  readonly name?: string | undefined;
+  readonly name?: string;
 }
 
 /**

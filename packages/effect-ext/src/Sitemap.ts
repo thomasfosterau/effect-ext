@@ -350,9 +350,7 @@ export interface FeedEntry {
   readonly updatedAt: string;
   /** ISO 8601 datetime of the earliest version — the item's `date_published`. */
   readonly publishedAt: string;
-  // oxlint-disable-next-line effect/prefer-option-over-null -- a wire shape: the JSON Feed row as SQL produces it (an absent `MAX(text_high)` arrives as NULL) and as `buildJsonFeed` consumes it.
   readonly title?: string | null;
-  // oxlint-disable-next-line effect/prefer-option-over-null -- same wire contract as `title`.
   readonly summary?: string | null;
 }
 

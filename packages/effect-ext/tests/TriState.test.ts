@@ -19,7 +19,6 @@
  * @module tests/TriState
  */
 
-/* oxlint-disable effect/prefer-option-over-null -- the `null` / `undefined` arms ARE the tri-state under test */
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";

@@ -213,11 +213,6 @@ export default defineConfig({
           // fires on every `as`, including the narrowings the Fetch / Workers
           // types structurally require. Stays visible as a warning.
           "effect/casting-awareness": "warn",
-          // `prefer-option-over-null` also fires on `?: T | undefined`, the
-          // ONLY spelling of an optional member `exactOptionalPropertyTypes`
-          // lets a caller forward an optional of its own into. A bare `null` /
-          // `undefined` in a return type is still a finding to read.
-          "effect/prefer-option-over-null": "warn",
           // `unknown` is the honest type at the boundaries these libraries sit
           // on: a caught failure handed to an error tracker or a log line, and
           // the free-form fields of a structured log event.
@@ -399,6 +394,47 @@ export default defineConfig({
           "effect/require-effect-concurrency": "warn",
         },
       },
+      // ---- `effect/prefer-option-over-null`: where the nullable spelling is the contract ----
+      // The rule is at error everywhere else (#17, #31). These files spell
+      // absence as `null` / `undefined` because something outside the
+      // package fixes that spelling; each group says what.
+      {
+        // The `*Like` interfaces mirror platform objects (`NetworkInformation`,
+        // `UserActivation`, `Lock`, `Document.fullscreenElement`,
+        // `IdleDetector`, `PermissionStatus.onchange`, `sendBeacon`'s body),
+        // whose members really are `null` / `undefined`: the DOM object must
+        // stay assignable, so the mirror keeps the platform's spelling, and
+        // the adapter converts each one to `Option` at the boundary. The
+        // `BrowserTesting` doubles implement the same mirrors.
+        files: [
+          "packages/effect-ext/src/browser/{fullscreen,idle-detection,locks,navigator}.ts",
+          "packages/effect-ext/src/browser-testing/{fullscreen,idle-detection,locks,navigator,permissions}.ts",
+        ],
+        rules: { "effect/prefer-option-over-null": "off" },
+      },
+      {
+        // Wire and row shapes: Cohere's and Mistral's chat APIs send an
+        // explicit `content: null` beside tool calls, and `Sitemap.FeedEntry`
+        // is the SQL row a nullable column produces.
+        files: [
+          "packages/effect-ai-{cohere,mistral}/src/internal/wire.ts",
+          "packages/effect-ext/src/Sitemap.ts",
+        ],
+        rules: { "effect/prefer-option-over-null": "off" },
+      },
+      {
+        // Spec and encoding contracts: RFC 6570 §2.3 makes `null` /
+        // `undefined` undefined variables that `UriTemplate.expand` must
+        // accept, and the tri-state's nullable encoding (`TriState`'s
+        // `*NullOr` readers and their tests) is `null` / `undefined` by
+        // definition.
+        files: [
+          "packages/effect-ext/src/uri-template/uri-template.ts",
+          "packages/effect-ext/src/TriState.ts",
+          "packages/effect-ext/tests/TriState.{test,types}.ts",
+        ],
+        rules: { "effect/prefer-option-over-null": "off" },
+      },
       // ---- effect-ext's web modules: the rule set they arrived with ----
       // Merged in from thomasfosterau/effect-web, whose own lint config these
       // lines carry over unchanged (its reasons, abridged). Unifying them
@@ -407,10 +443,6 @@ export default defineConfig({
       {
         files: webModules,
         rules: {
-          // Fires on `?: T | undefined`, the only optional-member spelling
-          // a caller can forward an optional of its own into under
-          // `exactOptionalPropertyTypes`.
-          "effect/prefer-option-over-null": "warn",
           // Narrowings the Fetch / DOM types structurally require; each
           // assertion carries a `SAFETY:` comment.
           "effect/casting-awareness": "warn",
@@ -525,17 +557,6 @@ export default defineConfig({
           "effect/avoid-any": "off",
           "effect/no-chained-type-assertions": "off",
           "typescript/no-unnecessary-type-parameters": "off",
-        },
-      },
-      // `Clamped.Options.name` is an optional member of a plain options bag,
-      // spelled `?: string | undefined` (the only spelling a caller can
-      // forward an optional of its own into under
-      // `exactOptionalPropertyTypes`); an `Option` there would make every
-      // caller wrap a string. Unifying option members is #17.
-      {
-        files: ["packages/effect-ext/src/Clamped.ts"],
-        rules: {
-          "effect/prefer-option-over-null": "off",
         },
       },
       // These schemas decode IEEE 754 values, NaN and ±Infinity included, by
