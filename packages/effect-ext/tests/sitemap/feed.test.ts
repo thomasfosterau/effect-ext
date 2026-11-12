@@ -74,7 +74,11 @@ describe("buildJsonFeed", () => {
     Arr.forEach(
       [
         makeEntry({ title: null, summary: null }),
-        makeEntry({ title: undefined, summary: undefined }),
+        {
+          path: `/posts/${NODE_ID}`,
+          publishedAt: FIXED_DATE_PUBLISHED,
+          updatedAt: FIXED_DATE_MODIFIED,
+        },
       ],
       (entry) => {
         const item = buildJsonFeed(options, [entry]).items[0] ?? {};
@@ -88,7 +92,11 @@ describe("buildJsonFeed", () => {
     const items = buildJsonFeed(options, [
       makeEntry(),
       makeEntry({ summary: null }),
-      makeEntry({ title: null, summary: undefined }),
+      {
+        path: `/posts/${NODE_ID}`,
+        publishedAt: FIXED_DATE_PUBLISHED,
+        updatedAt: FIXED_DATE_MODIFIED,
+      },
     ]).items;
     expect(Arr.map(items, (item) => item.content_text)).toStrictEqual([
       "A summary.",

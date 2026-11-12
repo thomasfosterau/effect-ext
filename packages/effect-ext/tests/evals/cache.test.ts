@@ -6,12 +6,10 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
-import * as Exit from "effect/Exit";
 import { Cache } from "../../src/evals/index.ts";
-import { runTest, runTestExit } from "./helpers/effect.ts";
+import { runTest } from "./helpers/effect.ts";
 
 const hash = (input: Cache.CacheKeyInput) => runTest(Cache.hashKey(input));
 
@@ -20,7 +18,6 @@ describe("Cache.hashKey", () => {
     golden: { input: "Bonjour" },
     taskId: "translate@v1",
     metric: "exact-match",
-    judgeModelId: undefined,
     trial: 1,
   };
 
@@ -37,11 +34,12 @@ describe("Cache.hashKey", () => {
     expect(await hash(base)).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("dies on a golden JSON cannot serialise (a BigInt): a caller bug, not a cache miss", async () => {
-    const exit = await runTestExit(Cache.hashKey({ ...base, golden: { input: 1n } }));
-    expect(Exit.isFailure(exit)).toBe(true);
-    if (!Exit.isFailure(exit)) return;
-    expect(Cause.hasDies(exit.cause)).toBe(true);
+  it("keys a BigInt as its digits, where JSON.stringify would throw, distinct from the number and the string", async () => {
+    const big = await hash({ ...base, golden: { input: 1n } });
+    expect(big).toMatch(/^[0-9a-f]{64}$/);
+    expect(big).toBe(await hash({ ...base, golden: { input: 1n } }));
+    expect(big).not.toBe(await hash({ ...base, golden: { input: 1 } }));
+    expect(big).not.toBe(await hash({ ...base, golden: { input: "1" } }));
   });
 
   it("keeps the digest of a varied golden pinned, so existing cache entries stay addressable", async () => {
@@ -61,9 +59,9 @@ describe("Cache.hashKey", () => {
       u: undefined,
       n: { d: DateTime.toDateUtc(DateTime.makeUnsafe(86400000)), e: true },
     };
-    expect(
-      await hash({ golden, taskId: "t@v1", trial: 2, metric: "m", judgeModelId: undefined }),
-    ).toBe("a8b2f547bbad801e410ff90962419c384ff47772926185330d6a4f3f704fe37f");
+    expect(await hash({ golden, taskId: "t@v1", trial: 2, metric: "m" })).toBe(
+      "a8b2f547bbad801e410ff90962419c384ff47772926185330d6a4f3f704fe37f",
+    );
   });
 
   it("is deterministic for identical inputs", async () => {
@@ -74,7 +72,6 @@ describe("Cache.hashKey", () => {
     const reordered = {
       trial: 1,
       metric: "exact-match",
-      judgeModelId: undefined,
       taskId: "translate@v1",
       golden: { input: "Bonjour" },
     };

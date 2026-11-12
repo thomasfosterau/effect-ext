@@ -15,7 +15,7 @@ import {
 } from "@thomasfosterau/effect-ext/LangtagRegistry";
 
 const tag = (value: string): LanguageTag.LanguageTag =>
-  Schema.decodeUnknownSync(LanguageTag.LanguageTagFromString)(value);
+  Schema.decodeSync(LanguageTag.LanguageTagFromString)(value);
 
 describe("registryDate", () => {
   it("is the snapshot's File-Date", () => {

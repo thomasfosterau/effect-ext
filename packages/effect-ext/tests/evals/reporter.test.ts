@@ -8,6 +8,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as FileSystem from "effect/FileSystem";
 import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
@@ -15,6 +16,8 @@ import { Reporter, Result } from "../../src/evals/index.ts";
 import { runTest } from "./helpers/effect.ts";
 
 const parseJson = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
+
+const passingSummary = { mean: 0.9, variance: 0.01, stddev: 0.1, min: 0.8, max: 1 };
 
 const passingResult: Result.SuiteResult = {
   suite: "greetings",
@@ -32,7 +35,7 @@ const passingResult: Result.SuiteResult = {
           metric: "exact-match",
           passed: true,
           errorCount: 0,
-          summary: { mean: 0.9, variance: 0.01, stddev: 0.1, min: 0.8, max: 1 },
+          summary: Option.some(passingSummary),
           trials: [
             { _tag: "Scored", trial: 1, cached: false, score: { score: 0.8, reason: "close" } },
             { _tag: "Scored", trial: 2, cached: true, score: { score: 1, reason: "exact" } },
@@ -69,7 +72,7 @@ describe("Reporter.formatTerminalTable", () => {
               metric: "exact-match",
               passed: false,
               errorCount: 1,
-              summary: undefined,
+              summary: Option.none(),
               trials: [{ _tag: "Errored", trial: 1, cached: false, error: "judge unavailable" }],
             },
           ],
@@ -97,11 +100,11 @@ describe("Reporter.terminal", () => {
 
 describe("Reporter.json", () => {
   it("writes the result as JSON to the given path", async () => {
-    let written: { path: string; content: string } | undefined;
+    const written: Array<{ path: string; content: string }> = [];
     const testFs = FileSystem.layerNoop({
       writeFileString: (path, content) =>
         Effect.sync(() => {
-          written = { path: path, content };
+          written.push({ path, content });
         }),
     });
 
@@ -109,8 +112,19 @@ describe("Reporter.json", () => {
       Reporter.json("./results.json").report(passingResult).pipe(Effect.provide(testFs)),
     );
 
-    expect(written?.path).toBe("./results.json");
-    expect(parseJson(written?.content ?? "{}")).toEqual(passingResult);
+    expect(written.map((file) => file.path)).toEqual(["./results.json"]);
+    // The summary is written as the summary itself, not as an `Option` envelope.
+    expect(written.map((file) => parseJson(file.content))).toEqual([
+      {
+        ...passingResult,
+        cases: [
+          {
+            ...passingResult.cases[0],
+            metrics: [{ ...passingResult.cases[0]?.metrics[0], summary: passingSummary }],
+          },
+        ],
+      },
+    ]);
   });
 
   it("writes an all-errored metric's summary as null, not an omitted key", async () => {
@@ -130,7 +144,7 @@ describe("Reporter.json", () => {
               metric: "exact-match",
               passed: false,
               errorCount: 1,
-              summary: undefined,
+              summary: Option.none(),
               trials: [{ _tag: "Errored", trial: 1, cached: false, error: "judge unavailable" }],
             },
           ],

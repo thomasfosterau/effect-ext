@@ -17,6 +17,7 @@
 import * as Arr from "effect/Array";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { AiError } from "effect/ai";
 
@@ -44,7 +45,7 @@ export class ImageModel extends Context.Service<ImageModel, Service>()(
  *
  * **Details**
  *
- * `inputTokens` is `undefined` when the provider does not report usage.
+ * `inputTokens` is `Option.none()` when the provider does not report usage.
  *
  * @category models
  *
@@ -53,7 +54,7 @@ export class ImageModel extends Context.Service<ImageModel, Service>()(
 export class ImageUsage extends Schema.Class<ImageUsage>(
   "@thomasfosterau/effect-ext/ImageModel/ImageUsage",
 )({
-  inputTokens: Schema.UndefinedOr(Schema.Finite),
+  inputTokens: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
 /**
@@ -100,11 +101,11 @@ export interface ImageOptions {
   /** The prompt describing the image to generate. */
   readonly prompt: string;
   /** Desired image size (e.g. `1024x1024`); provider default when omitted. */
-  readonly size?: string | undefined;
+  readonly size?: string;
   /** Desired image format (e.g. `png`, `jpeg`, `webp`). */
-  readonly format?: string | undefined;
+  readonly format?: string;
   /** Number of images to generate. */
-  readonly count?: number | undefined;
+  readonly count?: number;
 }
 
 /**
@@ -116,9 +117,9 @@ export interface ImageOptions {
  */
 export interface ProviderOptions {
   readonly prompt: string;
-  readonly size: string | undefined;
-  readonly format: string | undefined;
-  readonly count: number | undefined;
+  readonly size?: string;
+  readonly format?: string;
+  readonly count?: number;
 }
 
 /**
@@ -133,7 +134,7 @@ export interface ProviderResponse {
     readonly data: Uint8Array | string;
     readonly mediaType: string;
   }>;
-  readonly usage: { readonly inputTokens: number | undefined };
+  readonly usage: { readonly inputTokens: Option.Option<number> };
 }
 
 /**
@@ -155,8 +156,8 @@ const invalidProviderResponse = (description: string): AiError.AiError =>
   });
 
 const mapProviderResponse = (
-  count: number | undefined,
   response: ProviderResponse,
+  count?: number,
 ): Effect.Effect<ImageResponse, AiError.AiError> => {
   if (Arr.isReadonlyArrayEmpty(response.images)) {
     return Effect.fail(invalidProviderResponse("Provider returned no images"));
@@ -202,16 +203,9 @@ export const make = (params: {
   Effect.sync(() =>
     ImageModel.of({
       generate: (options) =>
-        params
-          .generate({
-            prompt: options.prompt,
-            size: options.size,
-            format: options.format,
-            count: options.count,
-          })
-          .pipe(
-            Effect.flatMap((response) => mapProviderResponse(options.count, response)),
-            Effect.withSpan("ImageModel.generate"),
-          ),
+        params.generate(options).pipe(
+          Effect.flatMap((response) => mapProviderResponse(response, options.count)),
+          Effect.withSpan("ImageModel.generate"),
+        ),
     }),
   );

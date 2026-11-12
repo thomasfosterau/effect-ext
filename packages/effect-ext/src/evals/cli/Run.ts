@@ -74,7 +74,7 @@ const describeError = (error: unknown): string => {
 
 const buildRunnerOptions = (
   config: RunConfig,
-  fileOptions: Runner.RunnerOptions | undefined,
+  fileOptions?: Runner.RunnerOptions,
 ): Runner.RunnerOptions => {
   const options: Types.Mutable<Runner.RunnerOptions> = { ...fileOptions };
   if (Option.isSome(config.trials)) options.trials = config.trials.value;
@@ -142,7 +142,7 @@ type ProcessedFile = FileOutcome | { readonly _tag: "NoMatch" };
 const processFile = (
   file: string,
   config: RunConfig,
-  filterSubstring: string | undefined,
+  filterSubstring?: string,
 ): Effect.Effect<ProcessedFile, never, Cache.KeyValueStore.KeyValueStore | Path.Path> =>
   Effect.gen(function* () {
     const loaded = yield* Effect.result(loadEvalFile(file));

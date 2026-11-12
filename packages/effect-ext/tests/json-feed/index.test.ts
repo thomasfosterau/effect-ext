@@ -136,8 +136,8 @@ describe("buildJsonFeedItem", () => {
     });
   });
 
-  it("omits explicitly undefined members rather than carrying the key", () => {
-    const item = buildJsonFeedItem(BASE, { path: "/p", contentText: "x", title: undefined });
+  it("omits absent members rather than carrying the key", () => {
+    const item = buildJsonFeedItem(BASE, { path: "/p", contentText: "x" });
     expect("title" in item).toBe(false);
   });
 });

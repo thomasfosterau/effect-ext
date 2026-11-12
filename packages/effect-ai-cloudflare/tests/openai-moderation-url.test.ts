@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
 import { AiError } from "effect/ai";
@@ -102,7 +103,7 @@ describe("makeOpenAiModerationModelFromUrl", () => {
     expect(calls[0]?.authorizationHeader).toBeNull();
     expect(calls[0]?.body).toEqual({ model: OPENAI_MODERATION_MODEL, input: ["hello"] });
     expect(response.results[0]).toMatchObject({ isFlagged: false, categories: { hate: 0.01 } });
-    expect(response.usage.inputTokens).toBeUndefined();
+    expect(response.usage.inputTokens).toStrictEqual(Option.none());
   });
 
   it("sends the caller's own key as a bearer token alongside the gateway token", async () => {
@@ -261,9 +262,9 @@ describe("makeOpenAiModerationModelFromUrl", () => {
     expect(response.results[0]).toMatchObject({
       isFlagged: true,
       categories: { violence: 0.8 },
-      flags: { violence: true },
+      flags: Option.some({ violence: true }),
     });
-    expect(response.modelId).toBe("omni-moderation-2024-09-26");
+    expect(response.modelId).toStrictEqual(Option.some("omni-moderation-2024-09-26"));
   });
 
   it("reports each HTTP call's status and timing to onCall", async () => {

@@ -38,11 +38,13 @@ import * as Arr from "effect/Array";
 import { ConfigError } from "effect/Config";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import * as R from "effect/Record";
 import * as EffectResult from "effect/Result";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
+import * as Struct from "effect/Struct";
 import { AiError } from "effect/ai";
 import * as Cache from "./Cache.ts";
 import * as Dataset from "./Dataset.ts";
@@ -215,9 +217,8 @@ const defaultRetrySchedule = Schedule.max([
   Schedule.recurs(3),
 ]).pipe(Schedule.jittered);
 
-type ResolvedConfig = Required<Omit<RunnerOptions, "reporters" | "judgeModelId">> & {
-  readonly judgeModelId: string | undefined;
-};
+type ResolvedConfig = Required<Omit<RunnerOptions, "reporters" | "judgeModelId">> &
+  Pick<RunnerOptions, "judgeModelId">;
 
 /** Retries only on a retryable `AiError`; any other failure (or a non-retryable `AiError`) surfaces immediately. */
 const retryAiErrors = <A, E, RIn>(
@@ -241,28 +242,27 @@ const encodeCacheEntry = Schema.encodeEffect(CacheEntryJson);
 const cacheKeyFor = (
   config: ResolvedConfig,
   input: Cache.CacheKeyInput,
-): Effect.Effect<string | undefined> =>
-  config.bypassCache ? Effect.succeed(undefined) : Cache.hashKey(input);
+): Effect.Effect<Option.Option<string>> =>
+  config.bypassCache ? Effect.succeedNone : Effect.asSome(Cache.hashKey(input));
 
 const cacheGetJson = <A>(
   key: string,
-): Effect.Effect<A | undefined, never, Cache.KeyValueStore.KeyValueStore> =>
+): Effect.Effect<Option.Option<A>, never, Cache.KeyValueStore.KeyValueStore> =>
   Effect.gen(function* () {
     const kv = yield* Cache.KeyValueStore.KeyValueStore;
-    const raw: string | undefined = yield* kv
-      .get(key)
-      .pipe(
-        Effect.catch((error) =>
-          Effect.logWarning("effect-evals cache read failed", error).pipe(Effect.as(undefined)),
-        ),
-      );
-    if (raw === undefined) return undefined;
+    const raw = yield* kv.get(key).pipe(
+      Effect.map(Option.fromUndefinedOr),
+      Effect.catch((error) =>
+        Effect.logWarning("effect-evals cache read failed", error).pipe(Effect.as(Option.none())),
+      ),
+    );
+    if (Option.isNone(raw)) return Option.none();
     // An unparseable entry is a cache miss (#98).
-    return yield* decodeCacheEntry(raw).pipe(
+    return yield* decodeCacheEntry(raw.value).pipe(
       // SAFETY: the entry under this content-hash key was written by
       // `cacheSetJson` from a value of type `A`.
-      Effect.map((entry) => entry as A),
-      Effect.catchTag("SchemaError", () => Effect.succeed<A | undefined>(undefined)),
+      Effect.map((entry) => Option.some(entry as A)),
+      Effect.catchTag("SchemaError", () => Effect.succeedNone),
     );
   });
 
@@ -293,10 +293,15 @@ const runTaskTrial = <Golden, Output, TaskE, TaskR>(
   Effect.gen(function* () {
     const cacheKey = yield* cacheKeyFor(config, { golden, taskId: task.id, trial });
 
-    if (cacheKey !== undefined) {
-      const cached = yield* cacheGetJson<Output>(cacheKey);
-      if (cached !== undefined) {
-        return { _tag: "Succeeded" as const, output: cached, durationMillis: 0, cached: true };
+    if (Option.isSome(cacheKey)) {
+      const cached = yield* cacheGetJson<Output>(cacheKey.value);
+      if (Option.isSome(cached)) {
+        return {
+          _tag: "Succeeded" as const,
+          output: cached.value,
+          durationMillis: 0,
+          cached: true,
+        };
       }
     }
 
@@ -309,8 +314,8 @@ const runTaskTrial = <Golden, Output, TaskE, TaskR>(
     }
 
     const [duration, output] = timedResult.success;
-    if (cacheKey !== undefined) {
-      yield* cacheSetJson(cacheKey, output);
+    if (Option.isSome(cacheKey)) {
+      yield* cacheSetJson(cacheKey.value, output);
     }
 
     return {
@@ -338,16 +343,16 @@ const runMetricTrial = <Golden, Output, MetricE, MetricR>(
       golden: evalCase.golden,
       taskId,
       metric: metric.name,
-      judgeModelId: config.judgeModelId,
+      ...Struct.pick(config, ["judgeModelId"]),
       trial,
     });
 
-    if (cacheKey !== undefined) {
-      const cached = yield* cacheGetJson<Score>(cacheKey);
-      if (cached !== undefined) {
+    if (Option.isSome(cacheKey)) {
+      const cached = yield* cacheGetJson<Score>(cacheKey.value);
+      if (Option.isSome(cached)) {
         return {
           metric: metric.name,
-          outcome: { _tag: "Scored" as const, trial, score: cached, cached: true },
+          outcome: { _tag: "Scored" as const, trial, score: cached.value, cached: true },
         };
       }
     }
@@ -363,8 +368,8 @@ const runMetricTrial = <Golden, Output, MetricE, MetricR>(
       };
     }
 
-    if (cacheKey !== undefined) {
-      yield* cacheSetJson(cacheKey, evaluated.success.score);
+    if (Option.isSome(cacheKey)) {
+      yield* cacheSetJson(cacheKey.value, evaluated.success.score);
     }
 
     return {
@@ -464,10 +469,11 @@ const runCase = <Golden, Output, TaskE, TaskR, MetricE, MetricR>(
           : EffectResult.failVoid,
       );
       const errorCount = outcomes.length - scores.length;
-      const summary = Arr.isReadonlyArrayNonEmpty(scores) ? Result.summarize(scores) : undefined;
+      const summary = Arr.isReadonlyArrayNonEmpty(scores)
+        ? Option.some(Result.summarize(scores))
+        : Option.none();
       const passed =
-        summary !== undefined &&
-        Threshold.passes(metric.threshold, summary.mean) &&
+        Option.exists(summary, (spread) => Threshold.passes(metric.threshold, spread.mean)) &&
         (config.ignoreErrors || errorCount === 0);
       return { metric: metric.name, trials: outcomes, summary, errorCount, passed };
     });
@@ -524,7 +530,7 @@ export const runSuite = <
       metricConcurrency: options.metricConcurrency ?? DEFAULT_METRIC_CONCURRENCY,
       ignoreErrors: options.ignoreErrors ?? false,
       bypassCache: options.bypassCache ?? false,
-      judgeModelId: options.judgeModelId,
+      ...Struct.pick(options, ["judgeModelId"]),
       taskRetrySchedule: options.taskRetrySchedule ?? defaultRetrySchedule,
       metricRetrySchedule: options.metricRetrySchedule ?? defaultRetrySchedule,
     };
@@ -572,7 +578,7 @@ export interface RetrievalGolden {
   /** Handle → grade; see {@link Ranking.GradedRelevance}. */
   readonly relevant: Ranking.GradedRelevance;
   /** A stable name for the case within its dataset, for reports. */
-  readonly name?: string | undefined;
+  readonly name?: string;
 }
 
 /**
@@ -628,7 +634,7 @@ export interface RetrievalSuite<
   /** Page size, and the `k` every cutoff metric uses. */
   readonly k: number;
   /** Which ranking metrics to score, and any pass/fail thresholds. Default: all four, never failing. */
-  readonly metrics?: Ranking.MetricsAtKOptions | undefined;
+  readonly metrics?: Ranking.MetricsAtKOptions;
 }
 
 /**
