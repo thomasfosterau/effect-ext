@@ -87,7 +87,7 @@ describe("pageLimit / PageOffset", () => {
   });
 
   it("has no default page cap", () => {
-    // packages/effect-ext/CLAUDE.md: a page cap is a parameter, never a default.
+    // packages/effect-ext/AGENTS.md: a page cap is a parameter, never a default.
     expect(R.keys(Bounded)).not.toContain("PageLimit");
     expect(R.keys(Bounded)).not.toContain("MAX_PAGE_LIMIT");
   });
