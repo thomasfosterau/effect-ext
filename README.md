@@ -27,7 +27,7 @@ Five repositories were merged into this one before or after their packages were 
 | [`@thomasfosterau/effect-ai-elevenlabs`](packages/effect-ai-elevenlabs) | ElevenLabs provider: text-to-speech, speech-to-text, voice conversion | `effect` |
 | [`@thomasfosterau/effect-ai-cloudflare`](packages/effect-ai-cloudflare) | Extends `@effect/ai-cloudflare`: its Workers AI decision models, routed through a Cloudflare AI Gateway, plus `@effect/ai-anthropic` and gateway-native Cohere / OpenAI moderation through the gateway (Worker binding or public HTTPS endpoint), bring-your-own-key. Formerly `@thomasfosterau/effect-ai-gateway` | `effect` and `@effect/ai-cloudflare` (`^4.0.6`), `@effect/ai-anthropic`, optional `@cloudflare/workers-types` |
 
-Each package's README is its API reference, and each published package's `CHANGELOG.md` is written by Changesets. Every package is ESM with declarations and `"sideEffects": false`.
+Each package's README is a short landing page, its exports' doc comments (and, for `effect-ext`, `packages/effect-ext/guides/`) are the reference, and each published package's `CHANGELOG.md` is written by Changesets. Every package is ESM with declarations and `"sideEffects": false`.
 
 ## Install
 
@@ -84,7 +84,7 @@ Swapping in Cohere (`CohereRerankerModel`) or `effect-ai-cloudflare`'s AI Gatewa
 
 ## Documentation
 
-- The package READMEs — the API reference, module by module.
+- The package READMEs — what each package is, how to install it and its entry points; the exported doc comments are the per-export reference, and [`packages/effect-ext/guides/`](packages/effect-ext/guides) holds the topic guides.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — setup, the branch model, hooks and the commands.
 - [AGENTS.md](AGENTS.md) — repository conventions and the verification gates.
 - [PUBLISHING.md](PUBLISHING.md) — the changesets release flow and its one-time setup.

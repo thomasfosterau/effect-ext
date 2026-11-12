@@ -39,7 +39,7 @@ CI ([ci.yml](.github/workflows/ci.yml)) runs on Node 22 and 24 (each a pinned ma
 
 1. The gates in [AGENTS.md § Verification](AGENTS.md#verification), in order.
 2. `git fetch origin trunk && git rebase origin/trunk`
-3. Docs: the package `README.md` for any exported change; the package `AGENTS.md` for a new term or invariant.
+3. Docs: the exported doc comments for any exported change, the package `README.md` entry-point table for a new module, and the family's guide in `packages/effect-ext/guides/` for narrative; the package `AGENTS.md` for a new term or invariant.
 
 ## Commands
 
