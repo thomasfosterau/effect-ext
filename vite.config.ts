@@ -696,6 +696,25 @@ export default defineConfig({
   },
   run: {
     tasks: {
+      // The whole CI gate, in CI's order: `vp run ci` locally is exactly what
+      // `.github/workflows/ci.yml` runs on every matrix Node version. Each
+      // nested `vp run` is inlined as its own tasks (with its own cache
+      // settings), and an array runs its entries in order, stopping at the
+      // first failure. Gates 2–9 of AGENTS.md § Verification; `pnpm audit`
+      // needs the network.
+      ci: {
+        command: [
+          "vp check",
+          "vp run --concurrency-limit 2 check",
+          "vp run -r test:unit",
+          "vp run -r test:coverage",
+          "vp run -r build",
+          "vp run check:dist",
+          "vp run docgen",
+          "pnpm audit --audit-level high",
+        ],
+        cache: false,
+      },
       // The CI typecheck gate, as one task: the package's `check` (`src`
       // under tsconfig.json, the type-level tests under tsconfig.test.json),
       // plus the dist-consumer check that type-checks a consumer fixture
