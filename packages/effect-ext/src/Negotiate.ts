@@ -1,47 +1,46 @@
 /**
- * The content-negotiation **dispatch verdict** a web front door makes for a
- * URL space shared between rendered pages and a JSON:API surface: whether a
- * request is served as HTML, dispatched to the JSON:API, or answered with the
- * alternate Markdown representation (DISC-009) — decided from the request
- * line and headers alone, and nowhere else.
+ * The content-negotiation **verdict** a web front door makes for a URL space
+ * shared between several representations (rendered pages, a JSON API, an
+ * alternate Markdown form): which of the representations the server can
+ * produce a request selects, decided from the request line and headers alone,
+ * and nowhere else.
  *
- * Only the verdict lives here. The JSON:API §5/§6 media-type rules (which
- * parameters a JSON:API instance may carry, which `ext` URIs are supported)
- * are **adopted** from `@thomasfosterau/effect-jsonapi`'s `Middleware`
- * rather than re-implemented: a write negotiates through
- * `Middleware.negotiate` directly, and each
- * `Accept` instance's cleanliness through `Middleware.contentTypeIsAcceptable`
- * (the positional media-type-parameter rule is the same for both headers).
- * What stays local is the *ranking* — whether the JSON:API (or Markdown)
- * instance outranks every other media type the client offered — which
- * `Middleware.negotiate` has no notion of, because a JSON:API-only server
- * never has to choose between representations.
+ * The caller describes what it can serve as {@link Representation}s: a media
+ * type, optionally the paths it is served at and the media-type parameters
+ * it accepts. Nothing about any particular media type is built in, so a
+ * profile such as JSON:API's (only `ext` / `profile` parameters, declared
+ * `ext` URIs) is a caller's `acceptsParameters`, not a default here.
+ * {@link negotiateRepresentation} answers with a {@link Negotiation}:
+ * `Selected` (serve that representation), `Fallback` (serve the default,
+ * typically HTML), or a refusal (`NotAcceptable` for a read,
+ * `UnsupportedMediaType` for a write) when the client named a served media
+ * type but every instance carried parameters the representation rejects.
+ *
+ * Reads (`GET` / `HEAD`) negotiate on `Accept`, trying `options.accept` in
+ * priority order: a representation is selected when an acceptable (`q > 0`)
+ * instance of its media type outranks (≥) every other media type the client
+ * offered. Writes (`POST` / `PUT` / `PATCH` / `DELETE`) negotiate on
+ * `Content-Type` against `options.contentType`. Anything else is `Fallback`.
  *
  * Media types are compared as WHATWG MIME types (MIME Sniffing §4), by
  * `@thomasfosterau/effect-ext/Mime`'s `MimeType`: an `Accept` instance or a
  * `Content-Type` is parsed and matched on its essence (`type/subtype`, ASCII
  * lower-cased), so case and HTTP whitespace never decide a verdict, and a
- * `Content-Type` that is not a MIME type at all carries no media type.
- *
- * Two consequences, both spec-correct: an `ext` URI the api does not
- * declare in `options.extensions` makes the instance unacceptable (JSON:API
- * §5); and the §6 error documents carry effect-jsonapi's `code` values
- * (`not_acceptable`, `unsupported_media_type`).
+ * `Content-Type` that is not a MIME type at all carries no media type. The
+ * parameters handed to `acceptsParameters` are those before `q` (RFC 9110
+ * §12.4.2: `q` ends the media type's parameter list, so what follows it is
+ * an accept-extension, never a media-type parameter).
  *
  * @since 0.1.0
  */
 import * as Arr from "effect/Array";
+import * as Data from "effect/Data";
 import * as Option from "effect/Option";
 import * as Record from "effect/Record";
 import * as Headers from "effect/http/Headers";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
-import { Middleware } from "@thomasfosterau/effect-jsonapi";
 import { MimeType } from "./Mime.ts";
-import {
-  isMutatingMethod,
-  JSONAPI_MEDIA_TYPE,
-  type NegotiationError,
-} from "./web/jsonapi-error.ts";
+import { isMutatingMethod } from "./web/jsonapi-error.ts";
 
 /**
  * The media type of the Markdown representation served to agents on
@@ -53,97 +52,84 @@ import {
 export const MARKDOWN_MEDIA_TYPE = "text/markdown";
 
 /**
- * The representations a URL can resolve to. This is the normalized `Accept`
- * token the negotiation verdict produces — never the raw `Accept` header —
- * so a cache keyed on it holds at most one entry per representation
- * regardless of how many distinct `Accept` strings clients send.
+ * One representation the server can produce for a URL: a media type, where
+ * it is served and which media-type parameters it accepts. A caller's own
+ * value (for instance a Markdown form, or a JSON API with its parameter
+ * rules); the verdict only ever returns the very value it was given.
  *
  * @since 0.1.0
  * @category models
  */
-export type Representation = "text/html" | typeof JSONAPI_MEDIA_TYPE | typeof MARKDOWN_MEDIA_TYPE;
-
-/**
- * The outcome of negotiating one request.
- *
- * @since 0.1.0
- * @category models
- */
-export interface Negotiation {
+export interface Representation {
+  /** Its media type's essence, lower-case `type/subtype` (e.g. `"text/markdown"`). */
+  readonly mediaType: string;
+  /** Whether this representation is served at a request path. Omitted → every path. */
+  readonly servesPath?: (pathname: string) => boolean;
   /**
-   * Normalized cache-key representation token, never the raw `Accept`
-   * header (PERF-CACHE-005). Meaningful for `GET`/`HEAD`.
+   * Whether a requested instance of this media type, with its media-type
+   * parameters (those before `q`, RFC 9110 §12.4.2), is acceptable. Omitted →
+   * any parameters.
    */
-  readonly representation: Representation;
-  /** `true` → serve this request from the JSON:API. */
-  readonly dispatch: boolean;
-  /** `true` → serve this request as the Markdown representation. */
-  readonly markdown?: boolean | undefined;
-  /** A JSON:API §6 negotiation error to emit instead of dispatching. */
-  readonly error?: NegotiationError | undefined;
+  readonly acceptsParameters?: (mediaType: MimeType.MimeType) => boolean;
 }
 
 /**
- * What the verdict needs to know about the application: which paths are
- * JSON:API endpoints, which (if any) are Markdown-able content detail pages,
- * and which JSON:API extensions the api declares.
+ * What the verdict needs to know about the application: the representations
+ * a read may select on `Accept` and those a write may select on
+ * `Content-Type`.
  *
  * @since 0.1.0
  * @category models
  */
 export interface NegotiationOptions {
-  /** Whether a request path matches a known JSON:API endpoint — see {@link makeApiPathMatcher}. */
-  readonly isApiPath: (pathname: string) => boolean;
-  /** Whether a request path is a content detail page that serves Markdown — see {@link makeMarkdownPathMatcher}. Defaults to none. */
-  readonly isMarkdownPath?: ((pathname: string) => boolean) | undefined;
-  /** The JSON:API extension URIs the api supports (`Middleware.NegotiationOptions["extensions"]`). Defaults to none. */
-  readonly extensions?: ReadonlyArray<string> | undefined;
+  /** Representations a read (`GET` / `HEAD`) may select on `Accept`, in priority order. */
+  readonly accept: ReadonlyArray<Representation>;
+  /** Representations a write (`POST` / `PUT` / `PATCH` / `DELETE`) may select on `Content-Type`. Omitted → none. */
+  readonly contentType?: ReadonlyArray<Representation>;
 }
 
-const HTML: Negotiation = { representation: "text/html", dispatch: false };
-const DISPATCH: Negotiation = { representation: JSONAPI_MEDIA_TYPE, dispatch: true };
-const MARKDOWN: Negotiation = {
-  representation: MARKDOWN_MEDIA_TYPE,
-  dispatch: false,
-  markdown: true,
-};
-
 /**
- * The 406 the verdict emits when the `Accept` header carried the JSON:API
- * media type but every instance was modified with media-type parameters
- * other than `ext` / `profile` (or an unsupported `ext`) — JSON:API §6.3.2.
- * `status` / `code` / `title` are effect-jsonapi's `ApiError.NotAcceptable`
- * wire values (pinned by a test against `ApiError.toDocument`); `detail`
- * names the rule the instance broke.
+ * The outcome of negotiating one request.
+ *
+ * - `Selected` — serve this representation.
+ * - `Fallback` — no representation applies; serve the default (e.g. HTML).
+ * - `NotAcceptable` — a read: the client asked for this media type at a path
+ *   it is served on, but every instance carried rejected parameters.
+ * - `UnsupportedMediaType` — a write: the `Content-Type` is this media type
+ *   at a served path, with rejected parameters.
  *
  * @since 0.1.0
- * @category constants
+ * @category models
  */
-export const NOT_ACCEPTABLE: NegotiationError = {
-  status: 406,
-  code: "not_acceptable",
-  title: "Not Acceptable",
-  detail:
-    "The Accept header carried the JSON:API media type, but every instance was modified with media-type parameters other than `ext` or `profile` (JSON:API §6.3.2).",
-};
+export type Negotiation = Data.TaggedEnum<{
+  Selected: { readonly representation: Representation };
+  Fallback: object;
+  NotAcceptable: { readonly representation: Representation };
+  UnsupportedMediaType: { readonly representation: Representation };
+}>;
 
 /**
- * The 415 the verdict emits when a write's `Content-Type` carried the
- * JSON:API media type with media-type parameters other than `ext` / `profile`
- * (or an unsupported `ext`) — JSON:API §6.3.1. Wire values from
- * effect-jsonapi's `ApiError.UnsupportedMediaType`, as for
- * {@link NOT_ACCEPTABLE}.
+ * Constructors, `$is` guards and `$match` for {@link Negotiation}.
  *
- * @since 0.1.0
- * @category constants
+ * @example
+ * ```ts
+ * import { Negotiation } from "@thomasfosterau/effect-ext/Negotiate"
+ *
+ * const markdown = { mediaType: "text/markdown" }
+ * const verdict = Negotiation.Selected({ representation: markdown })
+ * Negotiation.$is("Selected")(verdict) // true
+ * Negotiation.$match(verdict, {
+ *   Selected: ({ representation }) => representation.mediaType,
+ *   Fallback: () => "text/html",
+ *   NotAcceptable: () => "406",
+ *   UnsupportedMediaType: () => "415",
+ * }) // "text/markdown"
+ * ```
+ *
+ * @since 0.3.0
+ * @category constructors
  */
-export const UNSUPPORTED_MEDIA_TYPE: NegotiationError = {
-  status: 415,
-  code: "unsupported_media_type",
-  title: "Unsupported Media Type",
-  detail:
-    "The Content-Type header carried the JSON:API media type with media-type parameters other than `ext` or `profile` (JSON:API §6.3.1).",
-};
+export const Negotiation = /* @__PURE__ */ Data.taggedEnum<Negotiation>();
 
 // ── Known-endpoint path matching ────────────────────────────────────
 
@@ -168,7 +154,7 @@ const routePatternToRegExp = (path: string): Option.Option<RegExp> => {
 };
 
 /**
- * Builds the `isApiPath` predicate from the api's endpoint paths (`/posts`,
+ * Builds a path predicate (a representation's `servesPath`) from the api's endpoint paths (`/posts`,
  * `/posts/:id`, `/lists/:id/items`, …): a request path matches when it
  * matches any of them, so adding an endpoint updates the predicate with no
  * second list of paths to maintain. Derive the list from the served `HttpApi`
@@ -220,7 +206,7 @@ export const endpointPaths = (
   );
 
 /**
- * Builds the `isMarkdownPath` predicate from the content **route** segments
+ * Builds a path predicate (a representation's `servesPath`) from the content **route** segments
  * that serve a Markdown representation: a single `<segment>/<id>` path whose
  * segment is in the list, so the Markdown is served from the page's own URL
  * (DISC-009). An empty list matches nothing, so `text/markdown` always falls
@@ -253,59 +239,47 @@ export const makeMarkdownPathMatcher = (
 
 /**
  * One `Accept` instance: its media range's essence (`None` when the range is
- * not a MIME type: it then matches no target, but still competes as another
- * media type), the entry (media type, `q` and any accept-extension
- * parameters, each part trimmed and empty `;` parts dropped) and its weight.
+ * not a MIME type: it then matches no representation, but still competes as
+ * another media type), its media type with the parameters before `q` (parsed
+ * as a MIME type) and its weight.
  */
 interface AcceptInstance {
-  readonly essence: Option.Option<string>;
-  readonly entry: string;
+  readonly mediaType: Option.Option<MimeType.MimeType>;
   readonly weight: number;
 }
-
-/** The essence (`type/subtype`) of a media type, by effect-mime's §4.4 parse; `None` when it is not one. */
-const essenceOf = (mediaType: string): Option.Option<string> =>
-  Option.map(MimeType.parse(mediaType), MimeType.essence);
 
 /** Whether an `Accept` instance's media range is exactly `mediaType`. */
 const isEssence =
   (mediaType: string) =>
   (instance: AcceptInstance): boolean =>
-    Option.contains(instance.essence, mediaType);
+    Option.contains(Option.map(instance.mediaType, MimeType.essence), mediaType);
 
 const paramName = (param: string): string => (param.split("=")[0] ?? "").trim().toLowerCase();
+
+const isQ = (param: string): boolean => paramName(param) === "q";
 
 /**
  * The weight of an `Accept` instance: its first `q`, which defaults to `1`
  * when absent AND when unparsable. This module's choice, pinned by its tests:
  * a client that mangles its `q` still ties rather than being read as
  * refusing, because a malformed weight is a client bug, not a statement that
- * the representation is unacceptable. Local because effect-jsonapi exports no
- * per-entry weight: its entry parser is `@internal`, and
- * `Middleware.acceptIsAcceptable` reads an unparsable `q` as a refusal.
+ * the representation is unacceptable.
  */
 const weightOf = (params: ReadonlyArray<string>): number =>
-  Option.match(
-    Arr.findFirst(params, (param) => paramName(param) === "q"),
-    {
-      onNone: () => 1,
-      onSome: (param) => {
-        const value = Number.parseFloat(param.split("=")[1] ?? "");
-        return Number.isFinite(value) ? value : 1;
-      },
+  Option.match(Arr.findFirst(params, isQ), {
+    onNone: () => 1,
+    onSome: (param) => {
+      const value = Number.parseFloat(param.split("=")[1] ?? "");
+      return Number.isFinite(value) ? value : 1;
     },
-  );
+  });
 
 /**
- * Splits an `Accept` header into its instances. The media-type / `q` split
- * (RFC 9110 §12.4.2: `q` ends the media type's parameter list, so what
- * follows it is an accept-extension, never a media-type parameter) is
- * effect-jsonapi's: the entry goes to `Middleware.contentTypeIsAcceptable`,
- * which splits positionally at `q` (since 0.16.1, the peer floor). Only the
- * weight is read here — see `weightOf`. Each part is trimmed and empty `;`
- * parts (a trailing `;`) are dropped first, so a stray separator is
- * harmless: effect-jsonapi would read one as a nameless media-type parameter
- * and refuse the instance.
+ * Splits an `Accept` header into its instances. Each part is trimmed and
+ * empty `;` parts (a trailing `;`) are dropped first, so a stray separator is
+ * harmless. The media type is the prefix before the first `q` parameter
+ * (RFC 9110 §12.4.2: what follows `q` is an accept-extension, never a
+ * media-type parameter); the weight is the first `q`.
  */
 const parseAccept = (header: Option.Option<string>): ReadonlyArray<AcceptInstance> =>
   Option.match(header, {
@@ -319,9 +293,10 @@ const parseAccept = (header: Option.Option<string>): ReadonlyArray<AcceptInstanc
             .filter((part) => part !== "");
           const [type, ...params] = parts;
           if (type === undefined) return Option.none();
+          const qIndex = params.findIndex(isQ);
+          const mediaParams = qIndex === -1 ? params : params.slice(0, qIndex);
           return Option.some({
-            essence: essenceOf(type),
-            entry: parts.join(";"),
+            mediaType: MimeType.parse([type, ...mediaParams].join(";")),
             weight: weightOf(params),
           });
         }),
@@ -361,6 +336,12 @@ const pathnameOf = (request: HttpServerRequest.HttpServerRequest): string =>
   // only satisfies the parser and is never observable.
   new URL(request.url, "http://localhost").pathname;
 
+const servesPath = (representation: Representation, pathname: string): boolean =>
+  representation.servesPath?.(pathname) ?? true;
+
+const acceptsParameters = (representation: Representation, mediaType: MimeType.MimeType): boolean =>
+  representation.acceptsParameters?.(mediaType) ?? true;
+
 /** Negotiate a read (`GET` / `HEAD`) on `Accept`. */
 const negotiateRead = (
   request: HttpServerRequest.HttpServerRequest,
@@ -368,35 +349,28 @@ const negotiateRead = (
 ): Negotiation => {
   const path = pathnameOf(request);
   const accept = parseAccept(Headers.get(request.headers, "accept"));
-  // Markdown (DISC-009) is negotiated first: it applies to content detail
-  // pages, an orthogonal media type / path set from the JSON:API surface.
-  if (
-    options.isMarkdownPath?.(path) === true &&
-    winsAccept(accept, isEssence(MARKDOWN_MEDIA_TYPE))
-  ) {
-    return MARKDOWN;
-  }
-  const jsonapi = accept.filter(isEssence(JSONAPI_MEDIA_TYPE));
-  if (Arr.isReadonlyArrayEmpty(jsonapi) || !options.isApiPath(path)) return HTML;
-  // §6.3.2 through effect-jsonapi: an instance is clean iff its media-type
-  // parameters (the ones before `q`; effect-jsonapi makes that split) are
-  // only `ext` / `profile` with supported extension URIs — the same rule for
-  // both headers.
-  const isClean = (instance: AcceptInstance): boolean =>
-    Middleware.contentTypeIsAcceptable(instance.entry, {
-      extensions: options.extensions ?? [],
-    });
-  if (!jsonapi.some(isClean)) {
-    return { representation: "text/html", dispatch: false, error: NOT_ACCEPTABLE };
-  }
-  // A clean, acceptable (q > 0) instance must outrank every other media type;
-  // a `q=0` clean instance is an explicit refusal, not a §6 parameterisation.
-  return winsAccept(
-    accept,
-    (instance) => isEssence(JSONAPI_MEDIA_TYPE)(instance) && isClean(instance),
-  )
-    ? DISPATCH
-    : HTML;
+  // The first representation, in priority order, that decides the verdict.
+  const verdict = Arr.findFirst(options.accept, (representation): Option.Option<Negotiation> => {
+    if (!servesPath(representation, path)) return Option.none();
+    const instances = accept.filter(isEssence(representation.mediaType));
+    if (Arr.isReadonlyArrayEmpty(instances)) return Option.none();
+    // An instance is clean iff its media-type parameters are accepted.
+    const isClean = (instance: AcceptInstance): boolean =>
+      Option.exists(instance.mediaType, (mediaType) =>
+        acceptsParameters(representation, mediaType),
+      );
+    if (!instances.some(isClean)) return Option.some(Negotiation.NotAcceptable({ representation }));
+    // A clean, acceptable (q > 0) instance must outrank every other media
+    // type; a `q=0` clean instance is an explicit refusal, not a
+    // parameterisation.
+    return winsAccept(
+      accept,
+      (instance) => isEssence(representation.mediaType)(instance) && isClean(instance),
+    )
+      ? Option.some(Negotiation.Selected({ representation }))
+      : Option.none();
+  });
+  return Option.getOrElse(verdict, () => Negotiation.Fallback());
 };
 
 /** Negotiate a write (`POST` / `PUT` / `PATCH` / `DELETE`) on `Content-Type`. */
@@ -404,47 +378,50 @@ const negotiateWrite = (
   request: HttpServerRequest.HttpServerRequest,
   options: NegotiationOptions,
 ): Negotiation => {
-  const contentType = Headers.get(request.headers, "content-type");
-  if (
-    !Option.contains(Option.flatMap(contentType, essenceOf), JSONAPI_MEDIA_TYPE) ||
-    !options.isApiPath(pathnameOf(request))
-  ) {
-    return HTML;
-  }
-  // §6.3.1 through effect-jsonapi's own negotiator (the `Accept` side is
-  // left undefined, which it treats as acceptable).
-  const error = Middleware.negotiate(
-    { contentType: Option.getOrUndefined(contentType) },
-    { extensions: options.extensions ?? [] },
-  );
-  return error === undefined
-    ? DISPATCH
-    : { representation: "text/html", dispatch: false, error: UNSUPPORTED_MEDIA_TYPE };
+  const path = pathnameOf(request);
+  const contentType = Option.flatMap(Headers.get(request.headers, "content-type"), MimeType.parse);
+  return Option.match(contentType, {
+    onNone: () => Negotiation.Fallback(),
+    onSome: (mediaType) =>
+      Option.match(
+        Arr.findFirst(
+          options.contentType ?? [],
+          (representation) =>
+            representation.mediaType === MimeType.essence(mediaType) &&
+            servesPath(representation, path),
+        ),
+        {
+          onNone: () => Negotiation.Fallback(),
+          onSome: (representation) =>
+            acceptsParameters(representation, mediaType)
+              ? Negotiation.Selected({ representation })
+              : Negotiation.UnsupportedMediaType({ representation }),
+        },
+      ),
+  });
 };
 
 /**
  * Negotiates a single request into a {@link Negotiation}. Pure and
  * dependency-free beyond `options` (it reads only the request line and
  * headers), so a cache handle and a dispatch handle can share one verdict.
- * Reads (`GET` / `HEAD`) negotiate on `Accept`, trying `text/markdown`
- * first on a Markdown path so the page's own URL serves it (DISC-009);
- * mutating methods negotiate on `Content-Type`; anything else (`OPTIONS`,
- * …) is HTML. The JSON:API surface is chosen by its media type, never a
- * path prefix, and a disallowed media-type parameter answers 406 / 415
- * (JSONAPI-NEG-001 / JSONAPI-NEG-002).
+ * Reads (`GET` / `HEAD`) negotiate on `Accept` against `options.accept`, in
+ * priority order; mutating methods negotiate on `Content-Type` against
+ * `options.contentType`; anything else (`OPTIONS`, …) is `Fallback`.
  *
  * @example
  * ```ts
  * import * as HttpServerRequest from "effect/http/HttpServerRequest"
- * import { makeApiPathMatcher, negotiateRepresentation } from "@thomasfosterau/effect-ext/Negotiate"
+ * import { MARKDOWN_MEDIA_TYPE, Negotiation, negotiateRepresentation } from "@thomasfosterau/effect-ext/Negotiate"
  *
- * const options = { isApiPath: makeApiPathMatcher(["/posts", "/posts/:id"]) }
- * const request = (accept: string) =>
- *   HttpServerRequest.fromWeb(new Request("https://example.com/posts", { headers: { accept } }))
+ * const markdown = { mediaType: MARKDOWN_MEDIA_TYPE, servesPath: (path: string) => path.startsWith("/posts/") }
+ * const options = { accept: [markdown] }
+ * const request = (path: string, accept: string) =>
+ *   HttpServerRequest.fromWeb(new Request(`https://example.com${path}`, { headers: { accept } }))
  *
- * negotiateRepresentation(request("application/vnd.api+json"), options).dispatch // true
- * negotiateRepresentation(request("text/html,*\/*;q=0.8"), options).representation // "text/html"
- * negotiateRepresentation(request("application/vnd.api+json;version=1"), options).error?.status // 406
+ * negotiateRepresentation(request("/posts/1", "text/markdown"), options)._tag // "Selected"
+ * negotiateRepresentation(request("/posts/1", "text/html,*\/*;q=0.8"), options)._tag // "Fallback"
+ * negotiateRepresentation(request("/about", "text/markdown"), options)._tag // "Fallback"
  * ```
  *
  * @since 0.1.0
@@ -456,7 +433,7 @@ export const negotiateRepresentation = (
 ): Negotiation => {
   if (request.method === "GET" || request.method === "HEAD") return negotiateRead(request, options);
   if (isMutatingMethod(request.method)) return negotiateWrite(request, options);
-  return HTML;
+  return Negotiation.Fallback();
 };
 
 /**
@@ -465,10 +442,10 @@ export const negotiateRepresentation = (
  *
  * @example
  * ```ts
- * import { makeApiPathMatcher, negotiateWebRequest } from "@thomasfosterau/effect-ext/Negotiate"
+ * import { negotiateWebRequest } from "@thomasfosterau/effect-ext/Negotiate"
  *
- * const options = { isApiPath: makeApiPathMatcher(["/posts"]) }
- * negotiateWebRequest(new Request("https://example.com/posts", { headers: { accept: "application/vnd.api+json" } }), options).dispatch // true
+ * const options = { accept: [{ mediaType: "text/markdown" }] }
+ * negotiateWebRequest(new Request("https://example.com/posts/1", { headers: { accept: "text/markdown" } }), options)._tag // "Selected"
  * ```
  *
  * @since 0.1.0

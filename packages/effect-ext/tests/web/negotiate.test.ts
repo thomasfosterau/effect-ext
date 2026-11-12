@@ -1,19 +1,22 @@
 /**
- * Unit tests for the content-negotiation dispatch verdict: which requests
- * dispatch to the JSON:API surface, the normalized cache-key representation
- * token (PERF-CACHE-005), the JSON:API §6 negotiation statuses
- * (JSONAPI-NEG-001/002), the path-match that keeps a page-only URL out of
- * the JSON:API namespace, and the Markdown representation (DISC-009).
+ * Unit tests for the content-negotiation verdict: which representation a
+ * request selects (`Selected`), the fall-through (`Fallback`) and the two
+ * refusals (`NotAcceptable` / `UnsupportedMediaType`), the path-match that
+ * keeps a page-only URL out of the JSON API's namespace, and the Markdown
+ * representation (DISC-009).
  *
- * The route table a consuming application derives from its `HttpApi` groups
- * is a literal path list here (collections, `:id`, the §7.4 related-resource
- * fetches), and the Markdown segments are a fixed fixture list.
+ * The module carries no media type's rules, so the JSON:API-like
+ * representation here is a local fixture: only `ext` / `profile` parameters,
+ * every `ext` URI in a declared list (the rule effect-jsonapi supplies in
+ * production). The route table a consuming application derives from its
+ * `HttpApi` groups is a literal path list, and the Markdown segments are a
+ * fixed fixture list.
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
+import type { MimeType } from "@thomasfosterau/effect-ext/Mime";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
-import { ApiError } from "@thomasfosterau/effect-jsonapi";
 import {
   CROSS_ORIGIN_REJECTED,
   isMutatingMethod,
@@ -27,13 +30,12 @@ import {
   makeApiPathMatcher,
   makeMarkdownPathMatcher,
   MARKDOWN_MEDIA_TYPE,
-  type Negotiation,
+  Negotiation,
   negotiateRepresentation,
   negotiateWebRequest,
-  NOT_ACCEPTABLE,
+  type Representation,
   requestForRouter,
   requestForRouterWeb,
-  UNSUPPORTED_MEDIA_TYPE,
 } from "@thomasfosterau/effect-ext/Negotiate";
 
 const ORIGIN = "https://thomasfoster.au";
@@ -68,7 +70,24 @@ const isMarkdownPath = makeMarkdownPathMatcher([
   "books",
   "consumption-log",
 ]);
-const options = { isApiPath, isMarkdownPath, extensions: ["atomic"] };
+
+const EXTENSIONS = ["atomic"];
+
+/** The JSON:API-like fixture: `ext` (every URI declared) and `profile` parameters only. */
+const acceptsJsonApiParameters = (mediaType: MimeType.MimeType): boolean =>
+  mediaType.parameters.every(
+    ([name, value]) =>
+      name === "profile" ||
+      (name === "ext" && value.split(" ").every((uri) => EXTENSIONS.includes(uri))),
+  );
+
+const markdown: Representation = { mediaType: MARKDOWN_MEDIA_TYPE, servesPath: isMarkdownPath };
+const jsonApi: Representation = {
+  mediaType: JSONAPI_MEDIA_TYPE,
+  servesPath: isApiPath,
+  acceptsParameters: acceptsJsonApiParameters,
+};
+const options = { accept: [markdown, jsonApi], contentType: [jsonApi] };
 
 const get = (path: string, accept?: string): Request =>
   new Request(`${ORIGIN}${path}`, {
@@ -84,66 +103,35 @@ const write = (method: string, path: string, contentType?: string): Request =>
 
 const negotiate = (request: Request): Negotiation => negotiateWebRequest(request, options);
 
-/**
- * Assert a non-read verdict (a write, `OPTIONS`, …) is a clean fall-through:
- * no dispatch, no Markdown, no §6 error. `representation` is not pinned, as
- * for {@link expectWriteDispatch}: `Negotiation` documents the token as
- * meaningful for `GET`/`HEAD` only.
- */
+/** Assert a verdict is the fall-through (serve the default, HTML). */
 const expectFallthrough = (n: Negotiation): void => {
-  expect(n.dispatch).toBe(false);
-  expect(n.markdown ?? false).toBe(false);
-  expect(n.error).toBeUndefined();
+  expect(n._tag).toBe("Fallback");
 };
 
-/** Assert a read verdict is a clean fall-through, keyed as HTML. */
-const expectHtmlFallthrough = (n: Negotiation): void => {
-  expectFallthrough(n);
-  expect(n.representation).toBe("text/html");
+const expectHtmlFallthrough = expectFallthrough;
+
+/** Assert a verdict selects exactly this representation. */
+const expectSelected = (n: Negotiation, representation: Representation): void => {
+  expect(n._tag).toBe("Selected");
+  expect(Negotiation.$is("Selected")(n) && n.representation === representation).toBe(true);
 };
 
-/**
- * Assert a write verdict dispatches to the JSON:API (no Markdown, no §6
- * error). `representation` is not pinned: `Negotiation` documents the token
- * as meaningful for `GET`/`HEAD` only.
- */
-const expectWriteDispatch = (n: Negotiation): void => {
-  expect(n.dispatch).toBe(true);
-  expect(n.markdown ?? false).toBe(false);
-  expect(n.error).toBeUndefined();
-};
+/** Assert a verdict dispatches to the JSON API. */
+const expectWriteDispatch = (n: Negotiation): void => expectSelected(n, jsonApi);
+const expectDispatch = expectWriteDispatch;
 
-/** Assert a read verdict dispatches to the JSON:API, keyed under its media type. */
-const expectDispatch = (n: Negotiation): void => {
-  expectWriteDispatch(n);
-  expect(n.representation).toBe(JSONAPI_MEDIA_TYPE);
-};
+/** Assert a verdict serves the Markdown representation. */
+const expectMarkdown = (n: Negotiation): void => expectSelected(n, markdown);
 
-/** Assert a verdict serves the Markdown representation (no dispatch, no §6 error). */
-const expectMarkdown = (n: Negotiation): void => {
-  expect(n.dispatch).toBe(false);
-  expect(n.representation).toBe(MARKDOWN_MEDIA_TYPE);
-  expect(n.markdown).toBe(true);
-  expect(n.error).toBeUndefined();
+/** Assert a verdict is the given refusal, carrying the JSON API representation. */
+const expectRefusal = (n: Negotiation, tag: "NotAcceptable" | "UnsupportedMediaType"): void => {
+  expect(n._tag).toBe(tag);
+  expect(
+    (Negotiation.$is("NotAcceptable")(n) || Negotiation.$is("UnsupportedMediaType")(n)) &&
+      n.representation === jsonApi,
+  ).toBe(true);
 };
-
-/**
- * Assert a write verdict is the given §6 refusal: no dispatch, no Markdown.
- * `representation` is not pinned, as for {@link expectWriteDispatch}. The
- * error is compared structurally: no doc comment promises that the verdict
- * carries the exported constant itself.
- */
-const expectWriteRefusal = (n: Negotiation, error: NonNullable<Negotiation["error"]>): void => {
-  expect(n.dispatch).toBe(false);
-  expect(n.markdown ?? false).toBe(false);
-  expect(n.error).toStrictEqual(error);
-};
-
-/** Assert a read verdict is the given §6 refusal, keyed as HTML. */
-const expectRefusal = (n: Negotiation, error: NonNullable<Negotiation["error"]>): void => {
-  expectWriteRefusal(n, error);
-  expect(n.representation).toBe("text/html");
-};
+const expectWriteRefusal = expectRefusal;
 
 describe("makeApiPathMatcher / endpointPaths", () => {
   it("matches known endpoint paths", () => {
@@ -207,7 +195,7 @@ describe("negotiateRepresentation — reads (Accept)", () => {
     const b = negotiate(get("/posts", "text/html,application/xml;q=0.9"));
     expectHtmlFallthrough(a);
     expectHtmlFallthrough(b);
-    expect(b.representation).toBe(a.representation);
+    expect(b._tag).toBe(a._tag);
   });
 
   it("never matches application/json or the wildcard range", () => {
@@ -229,20 +217,17 @@ describe("negotiateRepresentation — reads (Accept)", () => {
     expectDispatch(negotiate(get("/posts", `${JSONAPI_MEDIA_TYPE};ext="atomic"`)));
   });
 
-  it("§5 (adopted from effect-jsonapi): an ext the api does not declare is not a clean instance", () => {
-    // effect-jsonapi checks the `ext` URIs against `options.extensions`, per
-    // the spec, so an undeclared extension is refused rather than accepted.
+  it("§5: an ext the api does not declare is not a clean instance", () => {
+    // The fixture checks the `ext` URIs against its declared list, per the
+    // spec, so an undeclared extension is refused rather than accepted.
     expectRefusal(
       negotiate(get("/posts", `${JSONAPI_MEDIA_TYPE};ext="https://example.com/unknown"`)),
-      NOT_ACCEPTABLE,
+      "NotAcceptable",
     );
   });
 
-  it("§6: 406 when every JSON:API instance is parameterised", () => {
-    const n = negotiate(get("/posts", `${JSONAPI_MEDIA_TYPE};version=1`));
-    expectRefusal(n, NOT_ACCEPTABLE);
-    expect(n.error?.status).toBe(406);
-    expect(NOT_ACCEPTABLE.code).toBe("not_acceptable");
+  it("§6: NotAcceptable when every JSON:API instance is parameterised", () => {
+    expectRefusal(negotiate(get("/posts", `${JSONAPI_MEDIA_TYPE};version=1`)), "NotAcceptable");
   });
 
   it("does not 406 on a page-only path even if parameterised", () => {
@@ -276,11 +261,11 @@ describe("negotiateRepresentation — writes (Content-Type)", () => {
     expectFallthrough(negotiate(write("POST", "/posts", "application/json")));
   });
 
-  it("§6: 415 when the write Content-Type carries a disallowed parameter", () => {
-    const n = negotiate(write("PATCH", `/posts/${UUID}`, `${JSONAPI_MEDIA_TYPE};charset=utf-8`));
-    expectWriteRefusal(n, UNSUPPORTED_MEDIA_TYPE);
-    expect(n.error?.status).toBe(415);
-    expect(UNSUPPORTED_MEDIA_TYPE.code).toBe("unsupported_media_type");
+  it("§6: UnsupportedMediaType when the write Content-Type carries a disallowed parameter", () => {
+    expectWriteRefusal(
+      negotiate(write("PATCH", `/posts/${UUID}`, `${JSONAPI_MEDIA_TYPE};charset=utf-8`)),
+      "UnsupportedMediaType",
+    );
   });
 
   it("allows profile and a supported ext on a write Content-Type", () => {
@@ -380,16 +365,14 @@ describe("Markdown negotiation (DISC-009)", () => {
     expectMarkdown(negotiate(get(`/posts/${UUID}`, MARKDOWN_MEDIA_TYPE)));
   });
 
-  it("keys Markdown as its own cache representation (≤3 entries/URL)", () => {
+  it("selects Markdown, JSON:API and the fall-through apart", () => {
     const html = negotiate(get(`/posts/${UUID}`, "text/html"));
     const md = negotiate(get(`/posts/${UUID}`, MARKDOWN_MEDIA_TYPE));
     const api = negotiate(get(`/posts/${UUID}`, JSONAPI_MEDIA_TYPE));
     expectHtmlFallthrough(html);
     expectMarkdown(md);
     expectDispatch(api);
-    expect(Arr.dedupe([html.representation, md.representation, api.representation])).toHaveLength(
-      3,
-    );
+    expect(Arr.dedupe([html._tag, md._tag, api._tag])).toHaveLength(2);
   });
 
   it("falls through to HTML for a browser Accept (html outranks markdown)", () => {
@@ -405,9 +388,9 @@ describe("Markdown negotiation (DISC-009)", () => {
     expectHtmlFallthrough(negotiate(get("/about", MARKDOWN_MEDIA_TYPE)));
   });
 
-  it("does not serve Markdown at all when no matcher is configured", () => {
+  it("does not serve Markdown when it is not among the representations", () => {
     expectHtmlFallthrough(
-      negotiateWebRequest(get(`/posts/${UUID}`, MARKDOWN_MEDIA_TYPE), { isApiPath }),
+      negotiateWebRequest(get(`/posts/${UUID}`, MARKDOWN_MEDIA_TYPE), { accept: [jsonApi] }),
     );
   });
 
@@ -445,7 +428,7 @@ describe("the Accept q split is positional (RFC 9110 §12.4.2)", () => {
   it("still 406s a disallowed media-type parameter positioned before q", () => {
     expectRefusal(
       negotiate(get("/posts", `${JSONAPI_MEDIA_TYPE};version=1;q=0.9`)),
-      NOT_ACCEPTABLE,
+      "NotAcceptable",
     );
   });
 
@@ -492,20 +475,79 @@ describe("media types are compared as WHATWG MIME types (effect-mime)", () => {
   });
 });
 
-describe("the §6 errors are effect-jsonapi's, on the wire", () => {
-  it("carries ApiError.NotAcceptable's and ApiError.UnsupportedMediaType's status / code / title", () => {
-    const [notAcceptable] = ApiError.toDocument(new ApiError.NotAcceptable()).errors;
-    expect([notAcceptable.status, notAcceptable.code, notAcceptable.title]).toStrictEqual([
-      String(NOT_ACCEPTABLE.status),
-      NOT_ACCEPTABLE.code,
-      NOT_ACCEPTABLE.title,
-    ]);
-    const [unsupported] = ApiError.toDocument(new ApiError.UnsupportedMediaType()).errors;
-    expect([unsupported.status, unsupported.code, unsupported.title]).toStrictEqual([
-      String(UNSUPPORTED_MEDIA_TYPE.status),
-      UNSUPPORTED_MEDIA_TYPE.code,
-      UNSUPPORTED_MEDIA_TYPE.title,
-    ]);
+const anywhere = (accept: string): Negotiation =>
+  negotiateWebRequest(get("/anywhere", accept), { accept: [{ mediaType: "text/markdown" }] });
+
+describe("Representation defaults and priority", () => {
+  it("serves every path when servesPath is omitted", () => {
+    expect(anywhere("text/markdown")._tag).toBe("Selected");
+    expect(
+      negotiateWebRequest(get("/", "text/markdown"), { accept: [{ mediaType: "text/markdown" }] })
+        ._tag,
+    ).toBe("Selected");
+  });
+
+  it("accepts any parameters when acceptsParameters is omitted", () => {
+    expect(anywhere("text/markdown;variant=GFM;charset=utf-8")._tag).toBe("Selected");
+  });
+
+  it("passes the parameters before q to acceptsParameters, and none after it", () => {
+    const seen: Array<ReadonlyArray<readonly [string, string]>> = [];
+    const spy: Representation = {
+      mediaType: "text/markdown",
+      acceptsParameters: (mediaType) => {
+        seen.push(mediaType.parameters);
+        return true;
+      },
+    };
+    negotiateWebRequest(get("/", "text/markdown;variant=gfm;q=0.5;ext=1"), { accept: [spy] });
+    expect(seen.length).toBeGreaterThan(0);
+    seen.forEach((parameters) => expect(parameters).toStrictEqual([["variant", "gfm"]]));
+  });
+
+  it("selects nothing on a write when contentType is omitted", () => {
+    expectFallthrough(
+      negotiateWebRequest(write("POST", "/posts", JSONAPI_MEDIA_TYPE), { accept: [jsonApi] }),
+    );
+  });
+
+  it("tries the representations in priority order, and the verdict carries the given value", () => {
+    const first: Representation = { mediaType: "application/json" };
+    const second: Representation = { mediaType: "text/csv" };
+    const accept = "application/json, text/csv";
+    expectSelected(negotiateWebRequest(get("/", accept), { accept: [first, second] }), first);
+    expectSelected(negotiateWebRequest(get("/", accept), { accept: [second, first] }), second);
+  });
+
+  it("falls through to the next representation when a higher-priority one loses the ranking", () => {
+    const json: Representation = { mediaType: "application/json" };
+    const csv: Representation = { mediaType: "text/csv" };
+    expectSelected(
+      negotiateWebRequest(get("/", "application/json;q=0.2, text/csv"), { accept: [json, csv] }),
+      csv,
+    );
+  });
+
+  it("picks the first write representation whose media type and path match", () => {
+    const a: Representation = { mediaType: "application/json", servesPath: () => false };
+    const b: Representation = { mediaType: "application/json" };
+    expectSelected(
+      negotiateWebRequest(write("PUT", "/x", "application/json"), {
+        accept: [],
+        contentType: [a, b],
+      }),
+      b,
+    );
+  });
+
+  it("is Negotiation.$match-able", () => {
+    const label = Negotiation.$match(negotiate(get("/posts", JSONAPI_MEDIA_TYPE)), {
+      Selected: ({ representation }) => representation.mediaType,
+      Fallback: () => "fallback",
+      NotAcceptable: () => "406",
+      UnsupportedMediaType: () => "415",
+    });
+    expect(label).toBe(JSONAPI_MEDIA_TYPE);
   });
 });
 
