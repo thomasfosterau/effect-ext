@@ -45,13 +45,13 @@ jobs:
       pnpm_config_verify_deps_before_run: "false"
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Setup pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        uses: pnpm/action-setup@v6.1.1
       - name: Setup Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 22.x
           check-latest: true
@@ -62,7 +62,7 @@ jobs:
       # (no credentials needed) to find the versions not yet on npm.
       - name: Select mode
         id: mode
-        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        uses: changesets/action/select-mode@v2.1.2
 
   version:
     name: Version packages
@@ -83,14 +83,14 @@ jobs:
       # The version sub-action commits and pushes through the GitHub API (not
       # the git CLI), so the checkout keeps no credentials.
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Setup pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        uses: pnpm/action-setup@v6.1.1
       - name: Setup Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 22.x
           check-latest: true
@@ -98,7 +98,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Create or update the version PR
-        uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        uses: changesets/action/version@v2.1.2
         with:
           script: pnpm run version
           commit-message: "chore: version packages"
@@ -138,7 +138,7 @@ jobs:
       # The publish sub-action pushes tags through the GitHub API, so the
       # checkout keeps no credentials.
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -146,14 +146,14 @@ jobs:
       # Installs the pnpm version pinned by the package.json "packageManager"
       # field. Must run before setup-node so its pnpm cache can find the store.
       - name: Setup pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        uses: pnpm/action-setup@v6.1.1
 
       # A pinned major (the `engines.node` floor CI also tests), never
       # `latest`: setup-node resolves `latest` to the first nodejs.org index
       # entry, pre-releases included, which would publish from an alpha Node
       # (effect-svelte#214).
       - name: Setup Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 22.x
           check-latest: true
@@ -195,6 +195,6 @@ jobs:
       # `--provenance` is read by the npm CLI and makes the publish FAIL from
       # a private repository.
       - name: Publish to npm
-        uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        uses: changesets/action/publish@v2.1.2
         with:
           script: pnpm run release
