@@ -46,5 +46,5 @@ vp fmt                                               # oxfmt, writing fixes
 vp run --filter ./packages/effect-ext check    # one package's own type gate
 vp test run tests/Str.test.ts                        # single file (from inside the package)
 vp run -r test:coverage                              # the per-package coverage floors
-vp run check:dist                                    # built entries load and type-check; the effect-evals bin runs
+vp run check:dist                                    # built entries load and type-check; optional peers stay behind their subpaths; the effect-evals bin runs
 ```
