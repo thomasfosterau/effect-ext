@@ -22,6 +22,7 @@
 // oxlint-disable-next-line effect/avoid-node-imports -- `AsyncLocalStorage` is the scoping bridge documented above: the count is taken synchronously inside a `Proxy` trap with no Effect context to thread, and effect has no equivalent primitive. Node, Deno, Bun and Workers (`nodejs_compat`) all provide it.
 import { AsyncLocalStorage } from "node:async_hooks";
 import * as Context from "effect/Context";
+import * as HashSet from "effect/HashSet";
 import * as Metric from "effect/Metric";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
@@ -165,8 +166,10 @@ export const currentRequestMetrics = (): Option.Option<RequestMetrics> =>
  * or passes to a callback (a transaction's inner client).
  *
  * `methodNames` is the caller's: which methods begin a query is the
- * client's vocabulary. Hoist the set to module scope; the per-call cost is
- * one `Set#has`, plus one `updateUnsafe` when a scope is live.
+ * client's vocabulary. Any iterable of names will do (an array, a `HashSet`,
+ * a `Set`); it is read once, into a `HashSet`, when the proxy is made, so
+ * the per-call cost is one `HashSet.has`, plus one `updateUnsafe` when a
+ * scope is live.
  *
  * @example
  * ```ts
@@ -179,8 +182,7 @@ export const currentRequestMetrics = (): Option.Option<RequestMetrics> =>
  *   }
  * }
  *
- * const QUERY_METHODS: ReadonlySet<string> = new Set(["select"])
- * const client = countingProxy(new Client(), QUERY_METHODS)
+ * const client = countingProxy(new Client(), ["select"])
  * await withRequestMetrics(
  *   async () => client.select(), // ["row"]
  *   (metrics) => console.log(metrics.count), // 1
@@ -190,12 +192,13 @@ export const currentRequestMetrics = (): Option.Option<RequestMetrics> =>
  * @since 0.2.0
  * @category request metrics
  */
-export const countingProxy = <T extends object>(client: T, methodNames: ReadonlySet<string>): T =>
-  new Proxy(client, {
+export const countingProxy = <T extends object>(client: T, methodNames: Iterable<string>): T => {
+  const counted = HashSet.fromIterable(methodNames);
+  return new Proxy(client, {
     get(target, property) {
       // oxlint-disable-next-line effect/no-reflect-get -- a `Proxy` trap over an arbitrary client: the property is whatever the caller reads, and the real client is the receiver so its accessors never see the proxy as `this`.
       const value: unknown = Reflect.get(target, property, target);
-      if (!Predicate.isString(property) || !methodNames.has(property)) return value;
+      if (!Predicate.isString(property) || !HashSet.has(counted, property)) return value;
       if (!Predicate.isFunction(value)) return value;
       // oxlint-disable-next-line effect/no-unknown-returns -- the wrapper stands in for the client's own method, so it returns exactly what that method returns; the proxy's `T` restores the type at the call site.
       return (...args: ReadonlyArray<unknown>): unknown => {
@@ -205,3 +208,4 @@ export const countingProxy = <T extends object>(client: T, methodNames: Readonly
       };
     },
   });
+};
