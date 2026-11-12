@@ -25,6 +25,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
+import { parseUrl } from "./internal/url.ts";
 
 /** Matches IPv4 dotted-quad literals (loose — value range checked separately). */
 const IPV4_PATTERN = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
@@ -197,10 +198,11 @@ export class UnsafeUrl extends Schema.TaggedError<UnsafeUrl>()("UnsafeUrl", {
  * @category validation
  */
 export const checkUrl = (url: string): Result.Result<URL, UnsafeUrl> => {
-  const parsed = URL.parse(url);
-  if (parsed === null) {
+  const parsedUrl = parseUrl(url);
+  if (Option.isNone(parsedUrl)) {
     return Result.fail(new UnsafeUrl({ url, reason: "invalid", message: `invalid URL '${url}'` }));
   }
+  const parsed = parsedUrl.value;
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return Result.fail(
       new UnsafeUrl({ url, reason: "scheme", message: `unsupported scheme '${parsed.protocol}'` }),
@@ -405,15 +407,15 @@ export const followRedirects = (
       }
       // Relative redirects resolve against the current URL; the next hop
       // validates the resolved host before fetching it.
-      const next = URL.parse(location.value, currentUrl);
-      if (next === null) {
+      const next = parseUrl(location.value, currentUrl);
+      if (Option.isNone(next)) {
         return yield* new RedirectRejected({
           url: currentUrl,
           reason: "invalid-target",
           message: `invalid redirect target '${location.value}'`,
         });
       }
-      return yield* hop(next.toString(), remaining - 1);
+      return yield* hop(next.value.toString(), remaining - 1);
     });
   return hop(url, maxHops);
 };

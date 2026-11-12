@@ -46,7 +46,6 @@ import * as AiModel from "effect/ai/Model";
 import type * as Prompt from "effect/ai/Prompt";
 import type * as Response from "effect/ai/Response";
 import * as Tool from "effect/ai/Tool";
-import type * as HttpClientRequest from "effect/http/HttpClientRequest";
 import type * as HttpClientResponse from "effect/http/HttpClientResponse";
 import { MistralClient } from "./MistralClient";
 import * as Errors from "./internal/errors";
@@ -191,7 +190,6 @@ export const make = Effect.fnUntraced(function* ({
           const context: StreamContext = {
             textId,
             timestamp,
-            request: buildRequestDetails(response.request),
             response: buildResponseDetails(response),
           };
           const state: StreamState = {
@@ -539,16 +537,6 @@ const makeUsage = (usage: Wire.ChatCompletionResponse["usage"]): typeof Response
   },
 });
 
-const buildRequestDetails = (
-  request: HttpClientRequest.HttpClientRequest,
-): typeof Response.HttpRequestDetails.Encoded => ({
-  method: request.method,
-  url: request.url,
-  urlParams: Array.from(request.urlParams),
-  hash: request.hash._tag === "Some" ? request.hash.value : undefined,
-  headers: Errors.redactHeaders(request.headers),
-});
-
 const buildResponseDetails = (
   response: HttpClientResponse.HttpClientResponse,
 ): typeof Response.HttpResponseDetails.Encoded => ({
@@ -574,7 +562,6 @@ const makeResponse = (
       id: body.id,
       modelId: body.model,
       timestamp: DateTime.formatIso(now),
-      request: buildRequestDetails(response.request),
     });
 
     const choice = body.choices[0];
@@ -631,7 +618,6 @@ const generateId = (): Effect.Effect<string, never, IdGenerator.IdGenerator> =>
 interface StreamContext {
   readonly textId: string;
   readonly timestamp: string;
-  readonly request: typeof Response.HttpRequestDetails.Encoded;
   readonly response: typeof Response.HttpResponseDetails.Encoded;
 }
 
@@ -676,7 +662,6 @@ const emitResponseMetadata = (
     id: chunk.id,
     modelId: chunk.model,
     timestamp: context.timestamp,
-    request: context.request,
   });
 };
 
