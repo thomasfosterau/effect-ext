@@ -408,10 +408,6 @@ export default defineConfig({
       {
         files: webModules,
         rules: {
-          // Fires on `?: T | undefined`, the only optional-member spelling
-          // a caller can forward an optional of its own into under
-          // `exactOptionalPropertyTypes`.
-          "effect/prefer-option-over-null": "warn",
           // Narrowings the Fetch / DOM types structurally require; each
           // assertion carries a `SAFETY:` comment.
           "effect/casting-awareness": "warn",
@@ -526,17 +522,6 @@ export default defineConfig({
           "effect/avoid-any": "off",
           "effect/no-chained-type-assertions": "off",
           "typescript/no-unnecessary-type-parameters": "off",
-        },
-      },
-      // `Clamped.Options.name` is an optional member of a plain options bag,
-      // spelled `?: string | undefined` (the only spelling a caller can
-      // forward an optional of its own into under
-      // `exactOptionalPropertyTypes`); an `Option` there would make every
-      // caller wrap a string. Unifying option members is #17.
-      {
-        files: ["packages/effect-ext/src/Clamped.ts"],
-        rules: {
-          "effect/prefer-option-over-null": "off",
         },
       },
       // These schemas decode IEEE 754 values, NaN and ±Infinity included, by

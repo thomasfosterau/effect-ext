@@ -134,6 +134,7 @@ export interface UriTemplate {
  * @category models
  */
 export type Value =
+  // oxlint-disable-next-line effect/prefer-option-over-null -- RFC 6570 §2.3: `null` and `undefined` are undefined variables, which `expand` must accept as input
   | string
   | number
   | boolean

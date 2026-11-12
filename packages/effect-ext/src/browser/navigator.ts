@@ -37,10 +37,15 @@ import { ambientEventTarget, ambientNavigator } from "../internal/web/globals.ts
  * @category models
  */
 export interface NetworkInformationLike extends Stream.EventListener {
+  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   readonly type?: string | undefined;
+  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   readonly effectiveType?: string | undefined;
+  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   readonly downlink?: number | undefined;
+  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   readonly rtt?: number | undefined;
+  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   readonly saveData?: boolean | undefined;
 }
 
@@ -79,12 +84,13 @@ export interface NavigatorLike {
   readonly globalPrivacyControl?: boolean;
   readonly connection?: NetworkInformationLike;
   readonly userActivation?:
-    | { readonly isActive: boolean; readonly hasBeenActive: boolean }
-    | undefined;
+    // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
+    { readonly isActive: boolean; readonly hasBeenActive: boolean } | undefined;
   readonly storage?: StorageManagerLike;
   share?(data?: ShareData): Promise<void>;
   canShare?(data?: ShareData): boolean;
   vibrate?(pattern: VibratePattern): boolean;
+  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `null`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   sendBeacon?(url: string | URL, data?: BodyInit | null): boolean;
 }
 

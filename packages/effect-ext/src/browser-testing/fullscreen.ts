@@ -92,6 +92,7 @@ class TestDocument extends EventTarget {
     this.#state = state;
     this.fullscreenEnabled = enabled;
   }
+  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `null`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   get fullscreenElement(): TestElement | null {
     return Option.getOrNull(this.#state.element);
   }

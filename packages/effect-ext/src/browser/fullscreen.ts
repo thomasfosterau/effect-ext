@@ -46,6 +46,7 @@ export interface FullscreenElementLike {
  * @category models
  */
 export interface DocumentFullscreenLike extends Stream.EventListener {
+  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `null`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   readonly fullscreenElement: FullscreenElementLike | null;
   readonly fullscreenEnabled?: boolean;
   exitFullscreen?(): Promise<void>;
