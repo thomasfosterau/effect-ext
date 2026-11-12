@@ -24,6 +24,7 @@ import { SpeechModel, TranscriptionModel, VoiceConversionModel } from "@thomasfo
 import * as Config from "effect/Config";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
@@ -148,7 +149,7 @@ describe("ElevenLabsSpeechModel.generate", () => {
 
     expect(Array.from(response.audio)).toEqual([1, 2, 3, 4]);
     expect(response.mediaType).toBe("audio/mpeg");
-    expect(response.usage.inputCharacters).toBe("hello world".length);
+    expect(response.usage.inputCharacters).toStrictEqual(Option.some("hello world".length));
   });
 
   it("sends voice settings and a per-call voice override", async () => {
@@ -386,11 +387,15 @@ describe("ElevenLabsTranscriptionModel.transcribe", () => {
     expect(form.has("tag_audio_events")).toBe(false);
 
     expect(response.text).toBe("hello world");
-    expect(response.language).toBe("en");
+    expect(response.language).toStrictEqual(Option.some("en"));
     // Only spoken `word` tokens become segments (the spacing token is dropped).
-    expect(response.segments?.map((segment) => segment.text)).toEqual(["hello", "world"]);
-    expect(response.segments?.[0]).toMatchObject({ start: 0, end: 0.5 });
-    expect(response.usage.durationSeconds).toBe(1.0);
+    expect(
+      Option.map(response.segments, (segments) => segments.map((segment) => segment.text)),
+    ).toStrictEqual(Option.some(["hello", "world"]));
+    expect(Option.map(response.segments, (segments) => segments[0])).toMatchObject(
+      Option.some({ start: 0, end: 0.5 }),
+    );
+    expect(response.usage.durationSeconds).toStrictEqual(Option.some(1.0));
   });
 
   it("leaves segments and duration unset for a transcript with no timed words", async () => {
@@ -411,8 +416,8 @@ describe("ElevenLabsTranscriptionModel.transcribe", () => {
     );
 
     expect(response.text).toBe("hi");
-    expect(response.segments).toBeUndefined();
-    expect(response.usage.durationSeconds).toBeUndefined();
+    expect(response.segments).toStrictEqual(Option.none());
+    expect(response.usage.durationSeconds).toStrictEqual(Option.none());
   });
 
   it("collects a streamed audio input into the upload", async () => {

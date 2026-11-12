@@ -93,7 +93,7 @@ describe("line grammar", () => {
 
   it("decodes any string without a schema issue", () => {
     Arr.forEach(["\u0000", "#", "\n\n\n", ":::", "\uD800", "\r\r\n#\n:"], (input) => {
-      expect(Schema.decodeUnknownSync(RobotsTxtFromString)(input)).toBeInstanceOf(RobotsTxt);
+      expect(Schema.decodeSync(RobotsTxtFromString)(input)).toBeInstanceOf(RobotsTxt);
     });
   });
 

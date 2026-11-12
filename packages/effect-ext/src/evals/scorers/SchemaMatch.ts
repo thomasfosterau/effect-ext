@@ -45,8 +45,7 @@ export const schemaMatch = <S extends Schema.Top>(
 
   return Scorer.makeScorer({
     name: "schema-match",
-    evaluate: (evalCase) =>
-      scoreDecodeResult(Schema.decodeUnknownEffect(fromJsonString)(evalCase.output)),
+    evaluate: (evalCase) => scoreDecodeResult(Schema.decodeEffect(fromJsonString)(evalCase.output)),
   });
 };
 

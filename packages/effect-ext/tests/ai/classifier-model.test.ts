@@ -11,6 +11,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
 import {
   ClassScore,
@@ -23,7 +24,7 @@ import {
 import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 import { failingLanguageModel, stubLanguageModel } from "./helpers/language-model";
 
-const noUsage = { inputTokens: undefined } as const;
+const noUsage = { inputTokens: Option.none() } as const;
 
 const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
   const failure = await expectFailureInstanceOf(program, AiError.AiError);
@@ -68,7 +69,7 @@ describe("ClassifierModel", () => {
                 ],
               },
             ],
-            usage: { inputTokens: 11 },
+            usage: { inputTokens: Option.some(11) },
           }),
         });
         return yield* model.classify({ inputs: ["hello"] });
@@ -79,7 +80,7 @@ describe("ClassifierModel", () => {
       new ClassScore({ label: "ham", score: 0.8 }),
       new ClassScore({ label: "spam", score: 0.2 }),
     ]);
-    expect(response.usage.inputTokens).toBe(11);
+    expect(response.usage.inputTokens).toStrictEqual(Option.some(11));
   });
 
   it("passes normalised provider options through (multiLabel defaults to false)", async () => {
@@ -96,16 +97,14 @@ describe("ClassifierModel", () => {
       }),
     );
 
-    expect(calls).toEqual([
-      { inputs: ["x"], labels: ["a", "b"], multiLabel: false, examples: undefined },
-    ]);
+    expect(calls).toEqual([{ inputs: ["x"], labels: ["a", "b"], multiLabel: false }]);
   });
 
   it("returns an empty response for empty inputs without calling the provider", async () => {
     const { response, callCount } = await runTest(
       Effect.gen(function* () {
         const { model, calls } = yield* makeStub({
-          respond: () => ({ classifications: [], usage: { inputTokens: 1 } }),
+          respond: () => ({ classifications: [], usage: { inputTokens: Option.some(1) } }),
         });
         const result = yield* model.classify({ inputs: [] });
         return { response: result, callCount: calls.length };
@@ -113,7 +112,7 @@ describe("ClassifierModel", () => {
     );
 
     expect(response.classifications).toEqual([]);
-    expect(response.usage.inputTokens).toBeUndefined();
+    expect(response.usage.inputTokens).toStrictEqual(Option.none());
     expect(callCount).toBe(0);
   });
 
@@ -175,7 +174,7 @@ describe("ClassifierModel", () => {
 
   describe("fromLanguageModel", () => {
     it("classifies via structured output and reuses the validation path", async () => {
-      let captured: { readonly prompt: unknown; readonly objectName: unknown } | undefined;
+      const captured: Array<{ readonly prompt: unknown; readonly objectName: unknown }> = [];
       const response = await runTest(
         Effect.gen(function* () {
           const model = yield* fromLanguageModel;
@@ -197,7 +196,7 @@ describe("ClassifierModel", () => {
                 ],
               },
               (request) => {
-                captured = request;
+                captured.push(request);
               },
             ),
           ),
@@ -207,12 +206,14 @@ describe("ClassifierModel", () => {
       expect(response.classifications[0].classes[0]).toEqual(
         new ClassScore({ label: "positive", score: 0.9 }),
       );
-      expect(captured?.objectName).toBe("classification");
-      expect(String(captured?.prompt)).toContain("positive, negative");
+      expect(captured.map((request) => request.objectName)).toEqual(["classification"]);
+      expect(captured.map((request) => String(request.prompt)).join("\n")).toContain(
+        "positive, negative",
+      );
     });
 
     it("quotes each few-shot example in the prompt as JSON", async () => {
-      let captured: { readonly prompt: unknown; readonly objectName: unknown } | undefined;
+      const captured: Array<{ readonly prompt: unknown; readonly objectName: unknown }> = [];
       await runTest(
         Effect.gen(function* () {
           const model = yield* fromLanguageModel;
@@ -225,14 +226,16 @@ describe("ClassifierModel", () => {
             stubLanguageModel(
               { classifications: [{ classes: [{ label: "neutral", score: 0.6 }] }] },
               (request) => {
-                captured = request;
+                captured.push(request);
               },
             ),
           ),
         ),
       );
 
-      expect(String(captured?.prompt)).toContain('Examples:\n- "said \\"great\\"" => positive');
+      expect(captured.map((request) => String(request.prompt)).join("\n")).toContain(
+        'Examples:\n- "said \\"great\\"" => positive',
+      );
     });
 
     it("surfaces a language-model failure as AiError", async () => {

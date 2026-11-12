@@ -20,7 +20,7 @@ Seven families share the package; the AI abstractions and the evals toolkit, the
 | `LiteralExact` | Schema | Literal tuples checked to cover a union exactly |
 | `Ast` | Schema | Schema introspection by AST and behavioural decode probe |
 | `Url` | Schema | Absolute URLs (WHATWG serialisation) branded with the components they were checked against: scheme, hostname / domain, port, credentials, path |
-| `OptionalKey` | objects | `optionalKey` / `fromOption` / `fields`: optional keys for object construction under `exactOptionalPropertyTypes` |
+| `OptionalKey` | objects | `optionalKey` / `fromOption` / `fields` / `presentFields`: optional keys for object construction under `exactOptionalPropertyTypes` |
 | `Web` | web | Framework-neutral request / response utilities: header policies, cache control, `Vary`, cross-origin and client-IP checks, sessions, `siteBase`, the JSON:API error document and the Fetch adapters |
 | `Net` | web | The lexical SSRF host block list and the redirect-revalidating fetch (SEC-SSRF-003) |
 | `Observability` | web | The structured JSON-line sink, the allow-listed span logger, the event trio, the auth-outcome signal and per-request metrics |
@@ -330,7 +330,7 @@ Carried over from each effect-web package's own guidance, with paths and names r
 
 ## AI service abstractions
 
-Merged in from `@thomasfosterau/effect-ai-ext` (published to 0.5.1, then deprecated). They keep the AI conventions in the root AGENTS.md ("The AI packages": `?: T | undefined` option members, extensionless relative imports, the scoped lint relaxations in the root `vite.config.ts`) until someone unifies them with the rest of the package; their exports carry `@since 0.1.0`, the effect-ext release they first ship in. Their tests are `tests/ai/`.
+Merged in from `@thomasfosterau/effect-ai-ext` (published to 0.5.1, then deprecated). They keep the AI conventions in the root AGENTS.md ("The AI packages": extensionless relative imports, the scoped lint relaxations in the root `vite.config.ts`) until someone unifies them with the rest of the package, but not its option members, which follow the package rule (#17): options-object settings are `x?: T`, and `ProviderResponse` fields and response-model fields a provider may not report are `Option.Option<T>` (`Schema.OptionFromOptionalKey` in the `Schema.Class` models), required, never optional; their exports carry `@since 0.1.0`, the effect-ext release they first ship in. Their tests are `tests/ai/`.
 
 The provider-neutral half of the AI family: the AI service abstractions `effect/ai` lacks (`RerankerModel`, `ClassifierModel`, `SpeechModel`, `TranscriptionModel`, `ImageModel`, `ModerationModel`, `VoiceConversionModel`), each written as if it could merge into `effect/ai`. No HTTP, no provider code.
 
@@ -348,7 +348,7 @@ The seven `src/<Module>.ts` files (`aiModules` in `vite.config.ts`, `aiModuleFil
 
 ## Evals
 
-Merged in from `@thomasfosterau/effect-evals` (published to 0.5.1, then deprecated). It keeps the AI conventions in the root AGENTS.md until someone unifies them, as the AI abstractions do; its exports carry `@since 0.1.0`. Its tests are `tests/evals/`.
+Merged in from `@thomasfosterau/effect-evals` (published to 0.5.1, then deprecated). It keeps the AI conventions in the root AGENTS.md until someone unifies them, as the AI abstractions do, except the option members (#17): `x?: T` in options objects, `Option.Option<T>` in results (`Result.MetricAggregate.summary`, `ExtractThenClassify.Verdict.reason`). Types that mirror a wire schema's decoded type (`GEvalCase`, `RagCase`) are `Pick`s of it rather than hand-written `| undefined` members; its exports carry `@since 0.1.0`. Its tests are `tests/evals/`.
 
 The Effect-native LLM evaluation toolkit: goldens, eval cases, scorers, thresholds and metrics; a runner with trials, bounded concurrency, retry and a content-hashed cache; reporters; ranking, G-Eval and RAG metrics; and the `effect-evals` CLI that discovers and runs `*.eval.ts` files.
 
@@ -362,7 +362,7 @@ Everything under `src/evals/` (one subpath per module under `./evals/`, listed i
 - **The bin is a flagless launcher with exactly one hop**: `bin/effect-evals.js` re-execs `node --disable-warning=ExperimentalWarning --import <loader.mjs> dist/evals/cli/main.js …argv`, flags as literal argv, never `NODE_OPTIONS` or tsx. The CLI runs as built JavaScript because Node refuses to type-strip under `node_modules`; only the consumer's own `*.eval.ts` files are type-stripped. Never `--no-warnings` (it hides every warning, #81). `bin/**` and `src/evals/cli/loader.mjs` (shipped in `files`) run before any Effect runtime exists, hence their lint override.
 - **Credential gating**: an eval file whose `layer` fails with a `Config.ConfigError` is reported as skipped, never failed (`Runner.isConfigError`). The CLI sets `process.exitCode = 1` only when an executed suite misses its threshold.
 - **Retry only a retryable `AiError`** (`isRetryable`); any other failure is a typed trial error. A metric that fails is `Errored`, distinct from a `Scored` miss; `ignoreErrors` decides whether it drops out of the aggregate or fails the case.
-- **The cache key is data, never code**: a SHA-256 (`crypto.subtle`) of the canonicalised golden, task `id`, metric name, `judgeModelId` and trial. Changing a task's or metric's behaviour means bumping its `id` / name.
+- **The cache key is data, never code**: a SHA-256 (`crypto.subtle`) of the canonicalised golden, task `id`, metric name, `judgeModelId` and trial. Canonicalising yields `Schema.Json` with sorted keys and writes what `JSON.stringify` would (a value JSON cannot spell is an omitted key, or `null` in an array), plus explicit `__date` / `__map` / `__set` / `__bigint` forms; the pinned-digest test guards existing keys. Changing a task's or metric's behaviour means bumping its `id` / name.
 - **A reporter never fails the run**: `terminal` and `json` catch their own errors and log a warning.
 - **A failed retrieval query is not a zero**: it lands in `taskFailures` and is excluded from every mean; `runRetrievalSuite` is sequential by default and truncates an over-returning port to `k`.
 

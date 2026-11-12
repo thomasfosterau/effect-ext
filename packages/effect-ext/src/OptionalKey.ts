@@ -8,7 +8,9 @@
  * names the intent instead: spread `optionalKey("key", value)` and the key is
  * present exactly when the value is.
  *
- * {@link fields} does the same for a whole object of optional values at once.
+ * {@link fields} does the same for a whole object of optional values at once,
+ * and {@link presentFields} also drops `null` (a nullable column becoming an
+ * optional key).
  *
  * Only `undefined` means absent: `null`, `""`, `0` and `false` are values and
  * keep their key. Pass `x ?? undefined` to drop a `null`, or use
@@ -24,6 +26,7 @@
  */
 
 import * as Option from "effect/Option";
+import * as P from "effect/Predicate";
 import * as R from "effect/Record";
 
 /**
@@ -47,6 +50,20 @@ export type Defined<T> = {
   readonly [K in keyof T as undefined extends T[K] ? K : never]?: Exclude<T[K], undefined>;
 } & {
   readonly [K in keyof T as undefined extends T[K] ? never : K]: T[K];
+};
+
+/**
+ * The object {@link presentFields} returns: each member whose type admits
+ * `null` or `undefined` becomes optional with both excluded; every other
+ * member is kept as it is.
+ *
+ * @since 0.3.0
+ * @category models
+ */
+export type Present<T> = {
+  readonly [K in keyof T as [T[K]] extends [NonNullable<T[K]>] ? K : never]: T[K];
+} & {
+  readonly [K in keyof T as [T[K]] extends [NonNullable<T[K]>] ? never : K]?: NonNullable<T[K]>;
 };
 
 const EMPTY = /* @__PURE__ */ Object.freeze({});
@@ -126,4 +143,28 @@ export const fromOption = <const K extends string, A>(
 export function fields<T extends object>(input: T): Defined<T>;
 export function fields<T extends object>(input: T): Readonly<Record<string, T[keyof T]>> {
   return R.filter(input, (value) => value !== undefined);
+}
+
+/**
+ * Copies the members of `input` whose value is neither `null` nor
+ * `undefined`: {@link fields} for the row-to-resource boundary, where a
+ * nullable column becomes an optional key. Keep {@link fields} for a
+ * tri-state update input, where `null` means "clear" and must survive.
+ *
+ * @example
+ * ```ts
+ * import { presentFields } from "@thomasfosterau/effect-ext/OptionalKey"
+ *
+ * const row = { id: 1, title: "Hello", summary: null, draft: false }
+ *
+ * console.log(presentFields(row))
+ * // → { id: 1, title: 'Hello', draft: false }
+ * ```
+ *
+ * @since 0.3.0
+ * @category constructors
+ */
+export function presentFields<T extends object>(input: T): Present<T>;
+export function presentFields<T extends object>(input: T): Readonly<Record<string, T[keyof T]>> {
+  return R.filter(input, P.isNotNullish);
 }

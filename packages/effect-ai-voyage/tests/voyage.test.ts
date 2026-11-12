@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
 import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
@@ -339,7 +340,7 @@ describe("VoyageRerankerModel", () => {
     expect(calls[0]?.body.top_k).toBe(2);
     expect(response.results.map((r) => r.index)).toEqual([2, 0]);
     expect(response.results[0]?.relevanceScore).toBe(0.9);
-    expect(response.usage.inputTokens).toBe(26);
+    expect(response.usage.inputTokens).toStrictEqual(Option.some(26));
   });
 
   it("omits top_k when topN is unset", async () => {
