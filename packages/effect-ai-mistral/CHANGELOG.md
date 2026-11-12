@@ -1,5 +1,24 @@
 # @thomasfosterau/effect-ai-mistral
 
+## 0.5.0
+
+### Minor Changes
+
+- [#96](https://github.com/thomasfosterau/effect-ext/pull/96) [`1ed5c76`](https://github.com/thomasfosterau/effect-ext/commit/1ed5c768a53bb715343af16763f18784e9d74371) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Raise the `effect` peer floor from `^4.0.0` to `^4.1.0`. Effect 4.1 removed the request details from `AiError`'s `NetworkError` and HTTP context, and from `Response`'s response-metadata part, so errors this package returns no longer carry them (the status, response headers and body are kept).
+
+- [#123](https://github.com/thomasfosterau/effect-ext/pull/123) [`93a05ba`](https://github.com/thomasfosterau/effect-ext/commit/93a05ba9ec262d894b06e8e99264d7635edc9e15) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Absence is spelled the way the rest of the workspace spells it ([#17](https://github.com/thomasfosterau/effect-ext/issues/17)): options-object members are `x?: T` (no `| undefined`), and the mapper converts the wire's `null` / omitted values to `Option` at the boundary. Breaking on 0.x.
+  
+  - `MistralClient.Options` (`apiKey`, `apiUrl`, `transformClient`) and `MistralLanguageModel.ConfigService` members: `x?: T | undefined` is now `x?: T`. A caller holding `undefined` omits the key or uses `Struct.pick`.
+  - `MistralClient.layerConfig`'s `apiKey`: `Config.Config<Redacted | undefined>` is now `Config.Config<Redacted>`; omit the setting for no key.
+  - `MistralLanguageModel.model(name, config?)` and the `layer` / `make` `config` member: `config?: T | undefined` is now `config?: T` (and `model`'s defaults to `{}`).
+  - The wire request interfaces' tool-call `arguments` and tool-message `content` are omitted keys (`x?: string`) rather than `string | undefined`; the JSON sent is unchanged.
+
+### Patch Changes
+
+- [#110](https://github.com/thomasfosterau/effect-ext/pull/110) [`c88e834`](https://github.com/thomasfosterau/effect-ext/commit/c88e834ae130b24fab8f22b5af4fce65b7b21385) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - The response decoder reads Mistral's numeric fields (token usage, choice `index`, `created`) as `Schema.Finite` instead of `Schema.Number`. JSON cannot carry `NaN` or an infinity, so no valid response decodes differently.
+
+- [#108](https://github.com/thomasfosterau/effect-ext/pull/108) [`06f7c84`](https://github.com/thomasfosterau/effect-ext/commit/06f7c848c95dd299eb47b56c35849af585923270) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Move the details from the README into the exported doc comments.
+
 ## 0.4.1
 
 ### Patch Changes

@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/package",
   "name": "@thomasfosterau/effect-ext",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Extensions to the Effect standard library: Allocator-backed binary data (layouts, buffer structs, vectors, struct-of-arrays, Rust-style UTF-8 strings), Schema helpers (the update tri-state, issue → RFC 6901 JSON Pointer, bounded codecs, ids, exact literal tuples, introspection, typed URLs), and web-platform building blocks (request/response policies, SSRF-safe fetch, content negotiation, service workers, browser APIs as services, robots.txt, sitemaps, RSS / Atom / JSON Feed, URI Templates, BCP 47 language tags, CSS parsing, WHATWG encodings and MIME types), Rust-style numeric types (fixed-width integers with checked, wrapping, saturating and overflowing arithmetic, clamped ranges, floats, rationals, complex numbers, num-traits type classes), parsers for time formats (RFC 3339, RFC 9557, ISO 8601 durations, POSIX TZ, cron, RRULE, IANA time zones, TZif), the provider-neutral AI service abstractions effect/ai lacks (reranker, classifier, text-to-speech, speech-to-text, image, moderation, voice conversion) and an LLM evaluation toolkit (goldens, scorers, G-Eval, RAG and retrieval-ranking metrics, a caching runner and the effect-evals CLI).",
   "keywords": [
     "ai",
