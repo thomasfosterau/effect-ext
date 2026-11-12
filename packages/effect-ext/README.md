@@ -209,7 +209,7 @@ TriState.toNullOr(input.summary); // null  — a clear, not a carry-forward
 
 **Folding readers** — for side effects only (insert a document only when one is _set_, re-check a slug only when it changes):
 
-- `TriState.suppliedValue(field: Option<A> | undefined): Option<A>` — the `Option` encoding.
+- `TriState.suppliedValue(field?: Option<A>): Option<A>` — the `Option` encoding.
 - `TriState.suppliedNullOr(field: A | null | undefined): Option<A>` — the nullable encoding.
 
 Both map "absent" and "clear" to `Option.none()`. Never use them to compute a column value.
