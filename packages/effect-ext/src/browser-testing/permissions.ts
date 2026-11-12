@@ -39,7 +39,6 @@ export class Control extends Context.Service<
 /** A permission status whose `state` reads the double's live table. */
 class TestPermissionStatus<Name extends PermissionName> extends EventTarget {
   readonly name: Name;
-  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `null`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   onchange: ((this: PermissionStatus, event: Event) => void) | null = null;
   readonly #read: () => PermissionState;
   constructor(name: Name, read: () => PermissionState) {

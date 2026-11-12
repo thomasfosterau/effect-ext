@@ -189,7 +189,6 @@ export interface LockManagerLike {
   request(
     name: string,
     options: LockManagerRequestOptions,
-    // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `null`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
     callback: (lock: { readonly name: string; readonly mode: LockMode } | null) => Promise<void>,
   ): Promise<void>;
   query(): Promise<{

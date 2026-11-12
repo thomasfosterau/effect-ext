@@ -30,9 +30,7 @@ import { ambientIdleDetector } from "../internal/web/globals.ts";
  * @category models
  */
 export interface IdleDetectorInstanceLike extends Stream.EventListener {
-  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `null`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   readonly userState: "active" | "idle" | null;
-  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `null`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   readonly screenState: "locked" | "unlocked" | null;
   start(options: { readonly threshold: number; readonly signal: AbortSignal }): Promise<void>;
 }

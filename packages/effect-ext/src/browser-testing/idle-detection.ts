@@ -124,11 +124,9 @@ export const make = (options?: Options): Fixture => {
       if (state.permission === "prompt") state.permission = state.answer;
       return Promise.resolve(state.permission === "granted" ? "granted" : "denied");
     }
-    // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `null`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
     get userState(): IdleState["user"] | null {
       return this.#started ? state.user : null;
     }
-    // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `null`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
     get screenState(): IdleState["screen"] | null {
       return this.#started ? state.screen : null;
     }

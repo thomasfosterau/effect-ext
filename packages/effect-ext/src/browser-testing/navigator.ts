@@ -135,31 +135,26 @@ class TestConnection extends EventTarget {
     super();
     this.#read = read;
   }
-  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   get type(): string | undefined {
     return Option.getOrUndefined(
       Option.flatMap(this.#read(), (init) => Option.fromUndefinedOr(init.type)),
     );
   }
-  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   get effectiveType(): string | undefined {
     return Option.getOrUndefined(
       Option.flatMap(this.#read(), (init) => Option.fromUndefinedOr(init.effectiveType)),
     );
   }
-  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   get downlink(): number | undefined {
     return Option.getOrUndefined(
       Option.flatMap(this.#read(), (init) => Option.fromUndefinedOr(init.downlink)),
     );
   }
-  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   get rtt(): number | undefined {
     return Option.getOrUndefined(
       Option.flatMap(this.#read(), (init) => Option.fromUndefinedOr(init.rtt)),
     );
   }
-  // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `undefined`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
   get saveData(): boolean | undefined {
     return Option.getOrUndefined(
       Option.flatMap(this.#read(), (init) => Option.fromUndefinedOr(init.saveData)),

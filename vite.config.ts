@@ -394,6 +394,47 @@ export default defineConfig({
           "effect/require-effect-concurrency": "warn",
         },
       },
+      // ---- `effect/prefer-option-over-null`: where the nullable spelling is the contract ----
+      // The rule is at error everywhere else (#17, #31). These files spell
+      // absence as `null` / `undefined` because something outside the
+      // package fixes that spelling; each group says what.
+      {
+        // The `*Like` interfaces mirror platform objects (`NetworkInformation`,
+        // `UserActivation`, `Lock`, `Document.fullscreenElement`,
+        // `IdleDetector`, `PermissionStatus.onchange`, `sendBeacon`'s body),
+        // whose members really are `null` / `undefined`: the DOM object must
+        // stay assignable, so the mirror keeps the platform's spelling, and
+        // the adapter converts each one to `Option` at the boundary. The
+        // `BrowserTesting` doubles implement the same mirrors.
+        files: [
+          "packages/effect-ext/src/browser/{fullscreen,idle-detection,locks,navigator}.ts",
+          "packages/effect-ext/src/browser-testing/{fullscreen,idle-detection,locks,navigator,permissions}.ts",
+        ],
+        rules: { "effect/prefer-option-over-null": "off" },
+      },
+      {
+        // Wire and row shapes: Cohere's and Mistral's chat APIs send an
+        // explicit `content: null` beside tool calls, and `Sitemap.FeedEntry`
+        // is the SQL row a nullable column produces.
+        files: [
+          "packages/effect-ai-{cohere,mistral}/src/internal/wire.ts",
+          "packages/effect-ext/src/Sitemap.ts",
+        ],
+        rules: { "effect/prefer-option-over-null": "off" },
+      },
+      {
+        // Spec and encoding contracts: RFC 6570 §2.3 makes `null` /
+        // `undefined` undefined variables that `UriTemplate.expand` must
+        // accept, and the tri-state's nullable encoding (`TriState`'s
+        // `*NullOr` readers and their tests) is `null` / `undefined` by
+        // definition.
+        files: [
+          "packages/effect-ext/src/uri-template/uri-template.ts",
+          "packages/effect-ext/src/TriState.ts",
+          "packages/effect-ext/tests/TriState.{test,types}.ts",
+        ],
+        rules: { "effect/prefer-option-over-null": "off" },
+      },
       // ---- effect-ext's web modules: the rule set they arrived with ----
       // Merged in from thomasfosterau/effect-web, whose own lint config these
       // lines carry over unchanged (its reasons, abridged). Unifying them

@@ -277,7 +277,6 @@ export const match =
  * @since 0.1.0
  * @category converters
  */
-// oxlint-disable-next-line effect/prefer-option-over-null -- converting between the two tri-state encodings: the nullable side IS the target shape
 export const toNullOr = <A>(field?: Option.Option<A>): A | null | undefined =>
   field === undefined ? undefined : Option.getOrNull(field);
 
@@ -288,7 +287,6 @@ export const toNullOr = <A>(field?: Option.Option<A>): A | null | undefined =>
  * @since 0.1.0
  * @category models
  */
-// oxlint-disable-next-line effect/prefer-option-over-null -- the nullable encoding IS the target shape
 export type NullOrValue<V> = V extends Option.Option<infer A> ? A | null : V;
 
 /**

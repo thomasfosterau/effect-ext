@@ -34,7 +34,6 @@ interface Request {
   readonly mode: LockMode;
   readonly clientId: string;
   readonly callback: (
-    // oxlint-disable-next-line effect/prefer-option-over-null -- the platform object spells this member with `null`; this mirror keeps the real object assignable, and the adapter converts it to `Option` at the boundary
     lock: { readonly name: string; readonly mode: LockMode } | null,
   ) => Promise<void>;
   readonly resolve: () => void;
