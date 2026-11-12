@@ -1,5 +1,15 @@
 # @thomasfosterau/effect-ai-voyage
 
+## 0.4.1
+
+### Patch Changes
+
+- [#81](https://github.com/thomasfosterau/effect-ext/pull/81) [`ff06937`](https://github.com/thomasfosterau/effect-ext/commit/ff06937db249eda44fe49be614d219be428a4469) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Internal lint clean-up of the AI providers and the evals toolkit ([#24](https://github.com/thomasfosterau/effect-ext/issues/24)). Behaviour is unchanged. Some emitted declarations now omit type arguments equal to their defaults (`Redacted.Redacted` for `Redacted.Redacted<string>`, `Schedule.Schedule<unknown>` for `Schedule.Schedule<unknown, unknown>`); they denote the same types.
+
+- [#77](https://github.com/thomasfosterau/effect-ext/pull/77) [`5ed07b2`](https://github.com/thomasfosterau/effect-ext/commit/5ed07b280c68a39f4722a5994a9e8d15f5093238) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - The published tarball now includes `CHANGELOG.md`, so the release notes can be read from `node_modules` ([#72](https://github.com/thomasfosterau/effect-ext/issues/72)).
+- Updated dependencies [[`ff06937`](https://github.com/thomasfosterau/effect-ext/commit/ff06937db249eda44fe49be614d219be428a4469), [`5b8cbd8`](https://github.com/thomasfosterau/effect-ext/commit/5b8cbd8eadcb6de5202890f1e0f4dc254a23fee9), [`6354c4b`](https://github.com/thomasfosterau/effect-ext/commit/6354c4bd06786e7d1dba236d47f7e4b196563e09), [`16c15fd`](https://github.com/thomasfosterau/effect-ext/commit/16c15fd2a93c9c0ed1d294d3a781354666f37f5d), [`2c387ee`](https://github.com/thomasfosterau/effect-ext/commit/2c387ee9c878a9b8debb3c47cfba72b32e1b53ec), [`dd58f51`](https://github.com/thomasfosterau/effect-ext/commit/dd58f515b3a572c5e81fa5fda62c5672dbdf7b88), [`5ed07b2`](https://github.com/thomasfosterau/effect-ext/commit/5ed07b280c68a39f4722a5994a9e8d15f5093238), [`38f447e`](https://github.com/thomasfosterau/effect-ext/commit/38f447e6331bf995b8029e62e1cf5b407e382e6c)]:
+  - @thomasfosterau/effect-ext@0.2.0
+
 ## 0.4.0
 
 ### Minor Changes
