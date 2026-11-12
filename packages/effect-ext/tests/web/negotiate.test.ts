@@ -176,6 +176,26 @@ describe("makeApiPathMatcher / endpointPaths", () => {
 });
 
 describe("negotiateRepresentation — reads (Accept)", () => {
+  // #103 (gardeneria#1459's differential test): JSON:API §6.3.2 answers 406
+  // only when EVERY instance carries a disallowed parameter, and RFC 9110
+  // §12.5.1 ranks the clean instance against every other media type by q.
+  it("dispatches when one JSON:API instance is parameterised but another is clean (#103)", () => {
+    expectDispatch(
+      negotiate(get("/posts", `${JSONAPI_MEDIA_TYPE};version=1, ${JSONAPI_MEDIA_TYPE}`)),
+    );
+  });
+
+  it("falls through to HTML when the client ranks HTML above JSON:API by q (#103)", () => {
+    expectHtmlFallthrough(negotiate(get("/posts", `${JSONAPI_MEDIA_TYPE};q=0.5, text/html;q=0.9`)));
+  });
+
+  it("answers NotAcceptable only when every JSON:API instance is parameterised (#103)", () => {
+    expect(
+      negotiate(get("/posts", `${JSONAPI_MEDIA_TYPE};version=1, ${JSONAPI_MEDIA_TYPE};foo=bar`))
+        ._tag,
+    ).toBe("NotAcceptable");
+  });
+
   it("dispatches when the JSON:API media type wins on an API path", () => {
     expectDispatch(negotiate(get("/posts", JSONAPI_MEDIA_TYPE)));
   });
