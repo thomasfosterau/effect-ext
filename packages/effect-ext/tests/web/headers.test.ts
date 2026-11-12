@@ -175,6 +175,34 @@ describe("the Fetch adapter", () => {
     expect(headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
   });
 
+  it("applyToWebHeaders deletes a header the policy removes (#93)", () => {
+    const headers = new globalThis.Headers({ vary: "Cookie", "x-kept": "1" });
+    applyToWebHeaders(headers, (h) => Headers.remove(h, "vary"));
+    expect(headers.get("vary")).toBeNull();
+    expect(headers.get("x-kept")).toBe("1");
+  });
+
+  it("applyToWebHeaders replaces an upstream Vary a policy strips and re-derives (#93)", () => {
+    // website#2362: Paraglide adds `Vary: Cookie` to every response; a
+    // locale-invariant asset's policy drops it and states its own.
+    const asset = new globalThis.Headers({ vary: "Cookie" });
+    applyToWebHeaders(asset, (h) => responseVary(Headers.remove(h, "vary"), "locale-invariant"));
+    expect(asset.get("vary")).toBeNull();
+
+    const image = new globalThis.Headers({ vary: "Cookie" });
+    applyToWebHeaders(image, (h) => responseVary(Headers.remove(h, "vary"), "format-negotiated"));
+    expect(image.get("vary")).toBe("Accept");
+  });
+
+  it("updateWebHeaders clones and drops a header the policy removes (#93)", () => {
+    const upstream = new Response("x", { headers: { vary: "Cookie", "x-kept": "1" } });
+    const stripped = updateWebHeaders(upstream, (h) => Headers.remove(h, "vary"));
+    expect(stripped).not.toBe(upstream);
+    expect(stripped.headers.get("vary")).toBeNull();
+    expect(stripped.headers.get("x-kept")).toBe("1");
+    expect(upstream.headers.get("vary")).toBe("Cookie");
+  });
+
   describe("header-name spelling", () => {
     afterEach(() => {
       vi.restoreAllMocks();
