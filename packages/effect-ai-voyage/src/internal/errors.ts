@@ -21,7 +21,6 @@ import type * as Schema from "effect/Schema";
 import * as AiError from "effect/ai/AiError";
 import type * as HttpClientError from "effect/http/HttpClientError";
 import type * as Headers from "effect/http/Headers";
-import type * as HttpClientRequest from "effect/http/HttpClientRequest";
 
 const MODULE = "VoyageClient";
 
@@ -35,16 +34,6 @@ const redactHeaders = (headers: Headers.Headers): Record<string, string | Redact
   // result maps each header name to its string value, or to that value
   // wrapped in `Redacted` for a sensitive header.
   Redactable.redact(headers) as Record<string, string | Redacted.Redacted>;
-
-const buildRequestDetails = (
-  request: HttpClientRequest.HttpClientRequest,
-): (typeof AiError.HttpContext.Type)["request"] => ({
-  method: request.method,
-  url: request.url,
-  urlParams: Array.from(request.urlParams),
-  hash: Option.getOrUndefined(request.hash),
-  headers: redactHeaders(request.headers),
-});
 
 /** Wraps a schema decode failure as an `InvalidOutputError`. */
 export const mapSchemaError = dual<
@@ -77,11 +66,7 @@ export const mapHttpClientError = dual<
         AiError.make({
           module: MODULE,
           method,
-          reason: new AiError.NetworkError({
-            reason: reason._tag,
-            description: reason.description,
-            request: buildRequestDetails(reason.request),
-          }),
+          reason: AiError.NetworkError.fromRequestError(reason),
         }),
       ),
     ),
@@ -105,14 +90,13 @@ const mapStatusCodeError = Effect.fnUntraced(function* (
   error: HttpClientError.StatusCodeError,
   method: string,
 ) {
-  const { request, response } = error;
+  const { response } = error;
   const bodyOption = yield* Effect.option(response.text);
   const body = Option.getOrUndefined(bodyOption);
   const reason = AiError.reasonFromHttpStatus({
     status: response.status,
     body,
     http: {
-      request: buildRequestDetails(request),
       response: {
         status: response.status,
         headers: redactHeaders(response.headers),
