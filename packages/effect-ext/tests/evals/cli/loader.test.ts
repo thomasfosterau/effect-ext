@@ -8,7 +8,7 @@
  *
  * Each child gets the bin's one warning flag,
  * `--disable-warning=ExperimentalWarning`: Node 23.x and early 24.x, inside
- * the `>=22.18` engines range, print a type-stripping `ExperimentalWarning`
+ * the CLI's `>=22.18` range, print a type-stripping `ExperimentalWarning`
  * on every run (#83). That flag hides only that warning type, so a
  * `DeprecationWarning` such as DEP0205 still fails the empty-stderr checks.
  * Never `--no-warnings`: Node ignores its value and hides every warning.
