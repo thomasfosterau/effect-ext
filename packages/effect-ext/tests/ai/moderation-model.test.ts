@@ -292,7 +292,6 @@ describe("ModerationModel", () => {
                 id: undefined,
                 modelId: "lm-2026-01-01",
                 timestamp: undefined,
-                request: undefined,
               }),
             ]),
           ),

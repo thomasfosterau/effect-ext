@@ -470,17 +470,19 @@ describe("Runner.runSuite — caching", () => {
 
   it("treats a failing cache store as a miss on read and a no-op on write, never failing the run", async () => {
     let taskCalls = 0;
+    // Not an object literal at the call, so no excess-property check: effect
+    // 4.1's store also lists `keys`, which 4.0 (the peer floor) does not know.
+    const failingOptions = {
+      get: () => storeFailure("get"),
+      set: () => storeFailure("set"),
+      remove: () => storeFailure("remove"),
+      clear: storeFailure("clear"),
+      size: storeFailure("size"),
+      keys: storeFailure("keys"),
+    };
     const failingStore: Layer.Layer<Cache.KeyValueStore.KeyValueStore> = Layer.succeed(
       Cache.KeyValueStore.KeyValueStore,
-    )(
-      Cache.KeyValueStore.makeStringOnly({
-        get: () => storeFailure("get"),
-        set: () => storeFailure("set"),
-        remove: () => storeFailure("remove"),
-        clear: storeFailure("clear"),
-        size: storeFailure("size"),
-      }),
-    );
+    )(Cache.KeyValueStore.makeStringOnly(failingOptions));
     const countingTask = Runner.makeTask<string, string>({
       id: "store-down@v1",
       run: (golden) =>

@@ -48,7 +48,7 @@ CI ([ci.yml](.github/workflows/ci.yml)) runs on Node 22 and 24 (each a pinned ma
 - `vp run -r test:unit` — unit tests (pure code; nothing here needs a database, a network or a credential).
 - `vp run -r build` — `vp pack` → `dist/`.
 - `vp run docgen` — compiles and runs each `@example` against `dist/`, writes the (git-ignored) API reference under `packages/*/docs/`.
-- `vp run check:dist` — builds every package, then imports every built entry and subpath under Node ESM and fails if a value export the bundled `.d.ts` declares is missing at runtime, type-checks every bundled `dist/**/*.d.ts` with `skipLibCheck: false`, compiles a Worker-shaped probe against effect-ai-cloudflare's built `.d.ts` with workers-types loaded, and launches the `effect-evals` bin from a packed tarball under `node_modules`. It replays the cached `build`, which overwrites a hand edit to `dist/`, so a dist-level mutation proof runs `node scripts/check-dist.mjs` directly after the build.
+- `vp run check:dist` — builds every package, then imports every built entry and subpath under Node ESM and fails if a value export the bundled `.d.ts` declares is missing at runtime, type-checks every bundled `dist/**/*.d.ts` with `skipLibCheck: false`, fails if a subpath's built module graph reaches an optional peer it is not listed for (or a listed one no longer does), compiles a Worker-shaped probe against effect-ai-cloudflare's built `.d.ts` with workers-types loaded, and launches the `effect-evals` bin from a packed tarball under `node_modules`. It replays the cached `build`, which overwrites a hand edit to `dist/`, so a dist-level mutation proof runs `node scripts/check-dist.mjs` directly after the build.
 - `vp run -r test:coverage` — the coverage ratchet: each package's suite measured with only its own tests against the `coverageFloor` its `vite.config.ts` exports (the shared target is `vite.package.ts`'s 90 / 85 / 90 / 90). When a change raises a package's coverage, raise its floor in the same PR; never lower a floor or exclude files to get a change through. A new package adds its floor to `coverageFloors` in the root `vite.config.ts`.
 - `vp run test:coverage` — every package's unit suite under one Istanbul map at `coverage/coverage-final.json`, which `fallow audit` reads for exact per-function CRAP scores.
 - `pnpm changeset` — add a changeset (see [Branches and pull requests](#branches-and-pull-requests)).
@@ -65,5 +65,5 @@ vp fmt                                               # oxfmt, writing fixes
 vp run --filter ./packages/effect-ext check    # one package's own type gate
 vp test run tests/Str.test.ts                        # single file (from inside the package)
 vp run -r test:coverage                              # the per-package coverage floors
-vp run check:dist                                    # built entries load and type-check; the effect-evals bin runs
+vp run check:dist                                    # built entries load and type-check; optional peers stay behind their subpaths; the effect-evals bin runs
 ```

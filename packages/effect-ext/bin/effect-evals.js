@@ -12,10 +12,16 @@
  * nothing downstream can lose them.
  *
  * `--disable-warning=ExperimentalWarning` hides only that warning type: on
- * Node 23.x and early 24.x, inside the `>=22.18` engines range,
+ * Node 23.x and early 24.x, inside the CLI's `>=22.18` range,
  * `fs.promises.glob` and type stripping each still print one on every run.
  * Never `--no-warnings=…`: Node ignores its value and hides every warning,
  * `DeprecationWarning`s included (#81).
+ *
+ * The library's `engines.node` floor is 22.0, but the CLI needs 22.18: type
+ * stripping is on by default from 22.18, and the loader hook uses
+ * `module.registerHooks()` (22.15). `engines` cannot be set per entry point,
+ * so the bin checks the version itself, before it spawns anything, and exits
+ * with a message that names the requirement (#71).
  *
  * Run `vp run -r build` before using the bin from the workspace.
  *
@@ -27,6 +33,16 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+/** The oldest Node the CLI runs on: `[major, minor]`. */
+const NODE_FLOOR = [22, 18];
+const [major = 0, minor = 0] = process.versions.node.split(".").map(Number);
+if (major < NODE_FLOOR[0] || (major === NODE_FLOOR[0] && minor < NODE_FLOOR[1])) {
+  console.error(
+    `effect-evals: needs Node ${NODE_FLOOR.join(".")} or later (it type-strips *.eval.ts files), but this is Node ${process.versions.node}.`,
+  );
+  process.exit(1);
+}
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const loader = path.join(dir, "..", "src", "evals", "cli", "loader.mjs");
