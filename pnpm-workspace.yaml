@@ -88,7 +88,7 @@ catalog:
   "@enfect/oxlint": 0.10.0
   # Optional peer of effect-ext: the `Robots` line grammar is an
   # effect-parse parser, decoded through its `ParserSchema` (effect-web#113).
-  "@thomasfosterau/effect-parse": ^0.5.0
+  "@thomasfosterau/effect-parse": ^0.6.0
   "@types/node": ^26.6.6
   # Must match `vitest` below (its peer is the exact vitest version).
   "@vitest/coverage-istanbul": 5.1.0
@@ -159,9 +159,9 @@ catalogs:
     "@effect/platform-node": ^4.0.0
     # Carets, not `>=`: on 0.x a minor release may break the combinator API
     # the robots grammar and the time parsers are written against. Each
-    # minor in the union is one the gates passed on: 0.4.1 (the floor) and
-    # 0.5.0 (the dev pin above, from the effect-parse 0.5.0 release).
-    "@thomasfosterau/effect-parse": ^0.4.1 || ^0.5.0
+    # minor in the union is one the gates passed on: 0.4.1 (the floor),
+    # 0.5.0 (the effect-parse 0.5.0 release) and 0.6.0 (the dev pin above).
+    "@thomasfosterau/effect-parse": ^0.4.1 || ^0.5.0 || ^0.6.0
     effect: ^4.0.0
   # effect-ai-cloudflare only. It peers on `@effect/ai-cloudflare` and builds
   # on its `CloudflareClient` with the `gatewayId` option, which first shipped
