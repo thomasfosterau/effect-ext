@@ -23,7 +23,11 @@ import {
   type RedirectRejected,
   type UnsafeUrl,
 } from "@thomasfosterau/effect-ext/Net";
-import { type Negotiation, negotiateRepresentation } from "@thomasfosterau/effect-ext/Negotiate";
+import {
+  type Negotiation,
+  negotiateRepresentation,
+  type Representation,
+} from "@thomasfosterau/effect-ext/Negotiate";
 import { spanTracer } from "@thomasfosterau/effect-ext/Observability";
 
 /** A compile-time assertion: `T` must be exactly `true`. */
@@ -53,14 +57,15 @@ export const rejection: Option.Option<HttpServerResponse.HttpServerResponse> =
     "https://example.com",
   );
 
-// The verdict's optional members are absent-or-value, never null.
+// The verdict is a closed tagged union over the caller's representations.
+const markdown: Representation = { mediaType: "text/markdown" };
 export const verdict: Negotiation = negotiateRepresentation(
   HttpServerRequest.fromWeb(new Request("https://example.com/posts")),
-  { isApiPath: () => true },
+  { accept: [markdown] },
 );
 const bare = HttpServerRequest.fromWeb(new Request("https://example.com/"));
-// @ts-expect-error -- `isApiPath` is required: the verdict cannot know the api's routes
-export const noRoutes = negotiateRepresentation(bare, {});
+// @ts-expect-error -- `accept` is required: the verdict cannot know what the server produces
+export const noRepresentations = negotiateRepresentation(bare, {});
 
 // The tracer takes the allow-list; it is not a constant.
 // @ts-expect-error -- the allow-list is a required parameter
@@ -74,7 +79,10 @@ export type Checks = [
   /** _routeClassIsClosed */ Assert<
     Equals<RouteVaryClass, "locale-invariant" | "format-negotiated" | "negotiated">
   >,
-  /** _verdictMarkdownIsOptionalBoolean */ Assert<
-    Equals<Negotiation["markdown"], boolean | undefined>
+  /** _verdictIsClosed */ Assert<
+    Equals<Negotiation["_tag"], "Selected" | "Fallback" | "NotAcceptable" | "UnsupportedMediaType">
+  >,
+  /** _selectedCarriesRepresentation */ Assert<
+    Equals<Extract<Negotiation, { _tag: "Selected" }>["representation"], Representation>
   >,
 ];

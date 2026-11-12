@@ -29,8 +29,8 @@ import * as Order from "effect/Order";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as Equal from "effect/Equal";
+import * as P from "effect/Predicate";
+import * as Eq from "effect/Equal";
 import type { ToolCall } from "../EvalCase.ts";
 import * as Scorer from "../Scorer.ts";
 
@@ -71,7 +71,7 @@ export interface ToolCallCorrectnessOptions {
 }
 
 const normalizeExpected = (entry: string | ExpectedToolCall): ExpectedToolCall =>
-  Predicate.isString(entry) ? { name: entry } : entry;
+  P.isString(entry) ? { name: entry } : entry;
 
 /**
  * `matchParams` only applies when the expected call actually declares
@@ -84,7 +84,7 @@ const normalizeExpected = (entry: string | ExpectedToolCall): ExpectedToolCall =
  */
 const callMatches = (expected: ExpectedToolCall, actual: ToolCall, matchParams: boolean): boolean =>
   expected.name === actual.name &&
-  (!matchParams || expected.params === undefined || Equal.equals(expected.params, actual.params));
+  (!matchParams || expected.params === undefined || Eq.equals(expected.params, actual.params));
 
 interface MatchResult {
   readonly matchedCount: number;

@@ -24,7 +24,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import * as Context from "effect/Context";
 import * as Metric from "effect/Metric";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 
 /**
  * What a request scope counted, as {@link withRequestMetrics} hands it to
@@ -195,8 +195,8 @@ export const countingProxy = <T extends object>(client: T, methodNames: Readonly
     get(target, property) {
       // oxlint-disable-next-line effect/no-reflect-get -- a `Proxy` trap over an arbitrary client: the property is whatever the caller reads, and the real client is the receiver so its accessors never see the proxy as `this`.
       const value: unknown = Reflect.get(target, property, target);
-      if (!Predicate.isString(property) || !methodNames.has(property)) return value;
-      if (!Predicate.isFunction(value)) return value;
+      if (!P.isString(property) || !methodNames.has(property)) return value;
+      if (!P.isFunction(value)) return value;
       // oxlint-disable-next-line effect/no-unknown-returns -- the wrapper stands in for the client's own method, so it returns exactly what that method returns; the proxy's `T` restores the type at the call site.
       return (...args: ReadonlyArray<unknown>): unknown => {
         incrementRequestMetric();

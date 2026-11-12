@@ -1,7 +1,7 @@
 /**
  * `runSuite` — the engine every execution surface (the vite-plus/test
  * adapter, website#929, and the CLI, website#930) sits on: for each golden,
- * run the task (the system-under-test) with its own `R` flowing through,
+ * run the task (the system-under-test) with its own `RIn` flowing through,
  * build the resulting
  * {@link EvaluatedCase}, run every {@link Metric.Metric} against it, and
  * aggregate. No test-framework coupling — this module returns the typed
@@ -39,8 +39,8 @@ import { ConfigError } from "effect/Config";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as EffectRecord from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as EffectResult from "effect/Result";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
@@ -73,9 +73,9 @@ export const isConfigError = (error: unknown): error is ConfigError => error ins
  *
  * @since 0.1.0
  */
-export interface TaskDefinition<Golden, Output, E = never, R = never> {
+export interface TaskDefinition<Golden, Output, E = never, RIn = never> {
   readonly id: string;
-  readonly run: (golden: Golden) => Effect.Effect<Output, E, R>;
+  readonly run: (golden: Golden) => Effect.Effect<Output, E, RIn>;
 }
 
 /**
@@ -83,9 +83,9 @@ export interface TaskDefinition<Golden, Output, E = never, R = never> {
  *
  * @since 0.1.0
  */
-export const makeTask = <Golden, Output, E = never, R = never>(
-  options: TaskDefinition<Golden, Output, E, R>,
-): TaskDefinition<Golden, Output, E, R> => options;
+export const makeTask = <Golden, Output, E = never, RIn = never>(
+  options: TaskDefinition<Golden, Output, E, RIn>,
+): TaskDefinition<Golden, Output, E, RIn> => options;
 
 /**
  * A golden enriched with the task's output and run duration.
@@ -119,7 +119,7 @@ export interface Suite<
   readonly metrics: ReadonlyArray<Metric.Metric<EvaluatedCase<Golden, Output>, MetricE, MetricR>>;
 }
 
-/** Any {@link Metric.Metric} over a given case, `E`/`R` left open — the constraint `makeSuite`'s heterogeneous `metrics` tuple parameter is bounded by. */
+/** Any {@link Metric.Metric} over a given case, `E`/`RIn` left open — the constraint `makeSuite`'s heterogeneous `metrics` tuple parameter is bounded by. */
 type AnyMetric<Case> = Metric.Metric<Case, any, any>;
 
 /**
@@ -127,7 +127,7 @@ type AnyMetric<Case> = Metric.Metric<Case, any, any>;
  * instead of `makeSuite` fixing it from the first element — the same
  * `T[number] extends ... ? ... : never` pattern `effect`'s own
  * `Effect.All.ReturnTuple` uses for the equivalent problem (an array of
- * `Effect`s with different `E`/`R`). Requires `Metrics` to be inferred as a
+ * `Effect`s with different `E`/`RIn`). Requires `Metrics` to be inferred as a
  * literal tuple rather than widened to `AnyMetric<Case>[]` — see `makeSuite`'s
  * `const Metrics` type parameter.
  */
@@ -137,17 +137,17 @@ type MetricErrorOf<Metrics extends ReadonlyArray<AnyMetric<any>>> = Metrics[numb
     ? E
     : never;
 
-/** The `R` counterpart of {@link MetricErrorOf}. */
+/** The `RIn` counterpart of {@link MetricErrorOf}. */
 type MetricRequirementOf<Metrics extends ReadonlyArray<AnyMetric<any>>> =
   Metrics[number] extends never
     ? never
-    : Metrics[number] extends Metric.Metric<any, any, infer R>
-      ? R
+    : Metrics[number] extends Metric.Metric<any, any, infer RIn>
+      ? RIn
       : never;
 
 /**
  * Constructs a {@link Suite} from its name, dataset, task, and metrics. The
- * `metrics` array may freely mix metrics with different `E`/`R` — a G-Eval
+ * `metrics` array may freely mix metrics with different `E`/`RIn` — a G-Eval
  * judge (`GEvalError`/`LanguageModel`) alongside an `embeddingSimilarity`
  * metric (`AiError`/`EmbeddingModel`), say — without an explicit array type
  * annotation at the call site: `Metrics` is inferred as a literal tuple (the
@@ -221,10 +221,10 @@ type ResolvedConfig = Required<Omit<RunnerOptions, "reporters" | "judgeModelId">
   Pick<RunnerOptions, "judgeModelId">;
 
 /** Retries only on a retryable `AiError`; any other failure (or a non-retryable `AiError`) surfaces immediately. */
-const retryAiErrors = <A, E, R>(
-  effect: Effect.Effect<A, E, R>,
+const retryAiErrors = <A, E, RIn>(
+  effect: Effect.Effect<A, E, RIn>,
   schedule: Schedule.Schedule<unknown>,
-): Effect.Effect<A, E, R> =>
+): Effect.Effect<A, E, RIn> =>
   effect.pipe(
     Effect.retry({ schedule, while: (error) => AiError.isAiError(error) && error.isRetryable }),
   );
@@ -399,7 +399,7 @@ const runTrial = <Golden, Output, TaskE, TaskR, MetricE, MetricR>(
   Effect.gen(function* () {
     const taskOutcome = yield* runTaskTrial(task, golden, trial, config);
 
-    if (Predicate.isTagged(taskOutcome, "Failed")) {
+    if (P.isTagged(taskOutcome, "Failed")) {
       return { _tag: "TaskFailed" as const, trial, error: taskOutcome.error };
     }
 
@@ -448,7 +448,7 @@ const runCase = <Golden, Output, TaskE, TaskR, MetricE, MetricR>(
     const [successes, taskFailures] = Arr.partition(
       trialRuns,
       (run): EffectResult.Result<TaskSucceededRun<Output>, Result.TaskTrialFailure> =>
-        Predicate.isTagged(run, "TaskFailed")
+        P.isTagged(run, "TaskFailed")
           ? EffectResult.fail({ trial: run.trial, error: run.error })
           : EffectResult.succeed(run),
     );
@@ -456,17 +456,15 @@ const runCase = <Golden, Output, TaskE, TaskR, MetricE, MetricR>(
     // One name → outcome map per successful trial, so aggregating below is
     // O(trials × metrics) instead of an O(trials × metrics²) linear scan.
     const outcomesByMetric = successes.map((run) =>
-      EffectRecord.fromEntries(
-        run.metricOutcomes.map((entry) => [entry.metric, entry.outcome] as const),
-      ),
+      R.fromEntries(run.metricOutcomes.map((entry) => [entry.metric, entry.outcome] as const)),
     );
 
     const metricAggregates = metrics.map((metric): Result.MetricAggregate => {
       const outcomes = Arr.getSomes(
-        outcomesByMetric.map((byMetric) => EffectRecord.get(byMetric, metric.name)),
+        outcomesByMetric.map((byMetric) => R.get(byMetric, metric.name)),
       );
       const scores = Arr.filterMap(outcomes, (outcome) =>
-        Predicate.isTagged(outcome, "Scored")
+        P.isTagged(outcome, "Scored")
           ? EffectResult.succeed(outcome.score.score)
           : EffectResult.failVoid,
       );
@@ -602,7 +600,7 @@ export interface RetrievalGolden {
  */
 export interface RetrievalPort<
   E = never,
-  R = never,
+  RIn = never,
   Golden extends RetrievalGolden = RetrievalGolden,
 > {
   readonly id: string;
@@ -614,7 +612,7 @@ export interface RetrievalPort<
   readonly retrieve: (
     query: string,
     options: { readonly limit: number; readonly golden: Golden },
-  ) => Effect.Effect<ReadonlyArray<string>, E, R>;
+  ) => Effect.Effect<ReadonlyArray<string>, E, RIn>;
 }
 
 /**

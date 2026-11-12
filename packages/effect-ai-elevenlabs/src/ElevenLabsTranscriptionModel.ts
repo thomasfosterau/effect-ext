@@ -20,7 +20,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import { ElevenLabsClient } from "./ElevenLabsClient";
 import { collectBytes, toBlob } from "./internal/audio";
 import type * as Wire from "./internal/wire";
@@ -61,9 +61,7 @@ interface Segment {
  * to `None`.
  */
 const toSegment = (word: Wire.TranscriptWord): Option.Option<Segment> =>
-  (Predicate.isNullish(word.type) || word.type === "word") &&
-  Predicate.isNumber(word.start) &&
-  Predicate.isNumber(word.end)
+  (P.isNullish(word.type) || word.type === "word") && P.isNumber(word.start) && P.isNumber(word.end)
     ? Option.some({ text: word.text ?? "", start: word.start, end: word.end })
     : Option.none();
 
@@ -72,7 +70,7 @@ const latestEnd = (words: ReadonlyArray<Wire.TranscriptWord>): Option.Option<num
   Arr.match(
     Arr.filter(
       Arr.map(words, (word) => word.end),
-      Predicate.isNumber,
+      P.isNumber,
     ),
     {
       onEmpty: () => Option.none(),

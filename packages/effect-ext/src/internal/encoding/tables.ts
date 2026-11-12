@@ -4,7 +4,7 @@
  * encoder.
  */
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import type { Name as EncodingName } from "./labels.ts";
 import { SINGLE_BYTE } from "./single-byte.ts";
 
@@ -14,4 +14,4 @@ import { SINGLE_BYTE } from "./single-byte.ts";
  * `ISO-8859-8-I` shares `ISO-8859-8`'s index.
  */
 export const singleByteHigh = (encoding: EncodingName): Option.Option<string> =>
-  Record.get<string, string>(SINGLE_BYTE, encoding === "ISO-8859-8-I" ? "ISO-8859-8" : encoding);
+  R.get<string, string>(SINGLE_BYTE, encoding === "ISO-8859-8-I" ? "ISO-8859-8" : encoding);

@@ -15,7 +15,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as MutableHashMap from "effect/MutableHashMap";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import { type MatchMediaLike, make as makeMediaQuery, MediaQuery } from "../browser/media-query.ts";
 
 /**
@@ -74,7 +74,7 @@ class TestMediaQueryList extends EventTarget {
  * @category constructors
  */
 export const make = (initial?: Readonly<Record<string, boolean>>): Fixture => {
-  const matching = MutableHashMap.fromIterable(Record.toEntries(initial ?? {}));
+  const matching = MutableHashMap.fromIterable(R.toEntries(initial ?? {}));
   const matchesNow = (query: string) =>
     Option.getOrElse(MutableHashMap.get(matching, query), () => false);
   const lists: Array<{ readonly query: string; readonly list: EventTarget }> = [];

@@ -7,7 +7,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import * as Str from "effect/String";
 
 /**
@@ -18,7 +18,7 @@ import * as Str from "effect/String";
  * @since 0.1.0
  * @category models
  */
-export type ExtensionTable = Record.ReadonlyRecord<string, string>;
+export type ExtensionTable = R.ReadonlyRecord<string, string>;
 
 /**
  * The curated default table.
@@ -129,7 +129,7 @@ const extensionOf = (nameOrExtension: string): string => {
 export const mimeTypeFor = (
   nameOrExtension: string,
   table: ExtensionTable = DEFAULT_EXTENSIONS,
-): Option.Option<string> => Record.get(table, extensionOf(nameOrExtension));
+): Option.Option<string> => R.get(table, extensionOf(nameOrExtension));
 
 /**
  * The preferred extension (without the dot) for a MIME type essence: the
@@ -152,7 +152,7 @@ export const extensionFor = (
 ): Option.Option<string> => {
   const wanted = Str.toLowerCase(mimeType.split(";")[0]?.trim() ?? "");
   return Option.map(
-    Arr.findFirst(Record.toEntries(table), ([, type]) => type === wanted),
+    Arr.findFirst(R.toEntries(table), ([, type]) => type === wanted),
     ([extension]) => extension,
   );
 };
@@ -174,9 +174,9 @@ export const extensionFor = (
  * @category tables
  */
 export const extend = (
-  entries: Record.ReadonlyRecord<string, string>,
+  entries: R.ReadonlyRecord<string, string>,
   base: ExtensionTable = DEFAULT_EXTENSIONS,
 ): ExtensionTable => ({
   ...base,
-  ...Record.mapKeys(entries, (extension) => Str.toLowerCase(extension.replace(/^\./, ""))),
+  ...R.mapKeys(entries, (extension) => Str.toLowerCase(extension.replace(/^\./, ""))),
 });

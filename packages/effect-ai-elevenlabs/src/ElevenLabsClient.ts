@@ -29,7 +29,7 @@ import * as Effect from "effect/Effect";
 import { identity } from "effect/Function";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Redacted from "effect/Redacted";
 import * as Stream from "effect/Stream";
 import * as Str from "effect/String";
@@ -193,7 +193,7 @@ const withOutputFormat = (
   request: HttpClientRequest.HttpClientRequest,
   options: AudioRequestOptions | undefined,
 ): HttpClientRequest.HttpClientRequest =>
-  Predicate.isNotUndefined(options?.outputFormat)
+  P.isNotUndefined(options?.outputFormat)
     ? HttpClientRequest.setUrlParam(request, "output_format", options.outputFormat)
     : request;
 
@@ -213,14 +213,12 @@ export const make = Effect.fnUntraced(function* (
     HttpClient.mapRequest((request) =>
       request.pipe(
         HttpClientRequest.prependUrl(clientOptions.apiUrl ?? defaultApiUrl),
-        Predicate.isNotUndefined(clientOptions.apiKey)
+        P.isNotUndefined(clientOptions.apiKey)
           ? HttpClientRequest.setHeader("xi-api-key", Redacted.value(clientOptions.apiKey))
           : identity,
       ),
     ),
-    Predicate.isNotUndefined(clientOptions.transformClient)
-      ? clientOptions.transformClient
-      : identity,
+    P.isNotUndefined(clientOptions.transformClient) ? clientOptions.transformClient : identity,
   );
 
   const httpClientOk = HttpClient.filterStatusOk(httpClient);
@@ -326,8 +324,8 @@ export const layerConfig = (options?: {
   Layer.effect(
     ElevenLabsClient,
     Effect.gen(function* () {
-      const apiKey = Predicate.isNotUndefined(options?.apiKey) ? yield* options.apiKey : undefined;
-      const apiUrl = Predicate.isNotUndefined(options?.apiUrl) ? yield* options.apiUrl : undefined;
+      const apiKey = P.isNotUndefined(options?.apiKey) ? yield* options.apiKey : undefined;
+      const apiUrl = P.isNotUndefined(options?.apiUrl) ? yield* options.apiUrl : undefined;
       return yield* make({ apiKey, apiUrl, transformClient: options?.transformClient });
     }),
   );

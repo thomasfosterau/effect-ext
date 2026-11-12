@@ -37,8 +37,8 @@ import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as Predicate from "effect/Predicate";
-import * as EffectRecord from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Schema from "effect/Schema";
 import { KeyValueStore } from "effect/persistence";
 
@@ -98,16 +98,11 @@ export interface CacheKeyInput {
  *   `JSON.stringify` does.
  */
 const canonicalize = (value: unknown): Option.Option<Schema.Json> => {
-  if (
-    Predicate.isString(value) ||
-    Predicate.isNumber(value) ||
-    Predicate.isBoolean(value) ||
-    Predicate.isNull(value)
-  ) {
+  if (P.isString(value) || P.isNumber(value) || P.isBoolean(value) || P.isNull(value)) {
     return Option.some(value);
   }
-  if (Predicate.isBigInt(value)) return Option.some({ __bigint: value.toString() });
-  if (!Predicate.isObjectOrArray(value)) return Option.none();
+  if (P.isBigInt(value)) return Option.some({ __bigint: value.toString() });
+  if (!P.isObjectOrArray(value)) return Option.none();
   if (value instanceof Date) return Option.some({ __date: value.toISOString() });
   if (value instanceof Map) {
     return Option.some({
@@ -118,9 +113,9 @@ const canonicalize = (value: unknown): Option.Option<Schema.Json> => {
     return Option.some({ __set: Array.from(value, (item) => slot(canonicalize(item))) });
   if (Array.isArray(value)) return Option.some(value.map((item) => slot(canonicalize(item))));
   return Option.some(
-    EffectRecord.fromEntries(
+    R.fromEntries(
       Arr.getSomes(
-        Arr.map(Arr.sort(EffectRecord.keys(value), Order.String), (key) =>
+        Arr.map(Arr.sort(R.keys(value), Order.String), (key) =>
           Option.map(canonicalize(value[key]), (json) => [key, json] as const),
         ),
       ),

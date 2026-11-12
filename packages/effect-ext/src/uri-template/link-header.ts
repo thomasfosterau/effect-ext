@@ -13,7 +13,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
 import { pctEncode } from "../internal/uri-template/encoding.ts";
@@ -108,7 +108,7 @@ export const make = (target: string, options?: LinkOptions): Link => {
     rel:
       rel === undefined
         ? []
-        : Predicate.isString(rel)
+        : P.isString(rel)
           ? relsOf(rel)
           : Arr.dedupe(Arr.map(rel, normaliseRel)),
     anchor: Option.fromUndefinedOr(options?.anchor),
@@ -116,7 +116,7 @@ export const make = (target: string, options?: LinkOptions): Link => {
     media: Option.fromUndefinedOr(options?.media),
     title: Option.fromUndefinedOr(options?.title),
     titleStar: Option.map(Option.fromUndefinedOr(titleStar), (value) =>
-      Predicate.isString(value) ? { value, language: Option.none() } : value,
+      P.isString(value) ? { value, language: Option.none() } : value,
     ),
     hreflang: options?.hreflang ?? [],
     params: options?.params ?? [],
@@ -329,9 +329,7 @@ export type LinkHeaderFromString = typeof LinkHeaderFromString.Type;
 
 const isLinks = (input: unknown): input is ReadonlyArray<Link> =>
   Array.isArray(input) &&
-  input.every(
-    (link) => Predicate.hasProperty(link, "target") && Predicate.hasProperty(link, "rel"),
-  );
+  input.every((link) => P.hasProperty(link, "target") && P.hasProperty(link, "rel"));
 
 /**
  * A `Link` header value as a schema: decodes by {@link parse} (with no

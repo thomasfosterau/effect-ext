@@ -15,7 +15,7 @@
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
 import { VoyageClient } from "./VoyageClient";
 import type * as Wire from "./internal/wire";
@@ -79,8 +79,8 @@ export const make = Effect.fnUntraced(function* (
           model: options.model,
           query,
           documents,
-          ...(Predicate.isNotUndefined(topN) ? { top_k: topN } : undefined),
-          ...(Predicate.isNotUndefined(options.truncation)
+          ...(P.isNotUndefined(topN) ? { top_k: topN } : undefined),
+          ...(P.isNotUndefined(options.truncation)
             ? { truncation: options.truncation }
             : undefined),
         })

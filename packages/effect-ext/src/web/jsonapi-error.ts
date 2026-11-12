@@ -1,9 +1,7 @@
 /**
  * The JSON:API error responses a web front door emits at its seam — the
  * guard statuses (403 cross-origin, 503 no runtime) and their serialiser.
- * Dependency-free: the §6 negotiation errors themselves come from
- * `@thomasfosterau/effect-jsonapi` through the `Negotiate` module, which
- * builds on this module.
+ * Dependency-free; the `Negotiate` module builds on it.
  *
  * @since 0.1.0
  */

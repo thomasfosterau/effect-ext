@@ -21,7 +21,7 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import { identity } from "effect/Function";
 import * as Layer from "effect/Layer";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Queue from "effect/Queue";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
@@ -147,7 +147,7 @@ export class Broadcast extends Context.Service<
 const forwardTo =
   (queue: Queue.Queue<unknown, Cause.Done>) =>
   (event: unknown): void => {
-    Queue.offerUnsafe(queue, Predicate.hasProperty(event, "data") ? event.data : undefined);
+    Queue.offerUnsafe(queue, P.hasProperty(event, "data") ? event.data : undefined);
   };
 
 /**

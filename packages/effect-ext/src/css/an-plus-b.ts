@@ -8,7 +8,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Str from "effect/String";
 import { parseComponentValueList } from "./syntax.ts";
 import type { ComponentValue } from "./token.ts";
@@ -25,13 +25,13 @@ export type AnPlusB = readonly [a: number, b: number];
 /** After the `An` part: nothing more, a `-` already read (`n-`), or an optional `±B`. */
 type Tail = "-" | "±";
 
-const isWhitespace = (value: ComponentValue): boolean => Predicate.isTagged(value, "Whitespace");
+const isWhitespace = (value: ComponentValue): boolean => P.isTagged(value, "Whitespace");
 
 const integer = (
   value: Option.Option<ComponentValue>,
 ): Option.Option<{ value: number; signed: boolean }> =>
   Option.flatMap(value, (token) =>
-    Predicate.isTagged(token, "Number") && token.isInteger
+    P.isTagged(token, "Number") && token.isInteger
       ? Option.some({
           value: token.value,
           signed: token.representation.startsWith("+") || token.representation.startsWith("-"),
@@ -67,10 +67,10 @@ const head = (
   readonly used: number;
 }> => {
   const [first, second] = values;
-  if (Predicate.isTagged(first, "Dimension") && first.isInteger) {
+  if (P.isTagged(first, "Dimension") && first.isInteger) {
     return Option.map(nPart(first.value, first.unit), (part) => ({ ...part, used: 1 }));
   }
-  if (Predicate.isTagged(first, "Ident")) {
+  if (P.isTagged(first, "Ident")) {
     const name = Str.toLowerCase(first.value);
     return name.startsWith("-")
       ? Option.map(nPart(-1, name.slice(1)), (part) => ({ ...part, used: 1 }))
@@ -78,9 +78,9 @@ const head = (
   }
   // `+n…`: a `+` delim directly followed (no whitespace) by an ident not starting with `-`.
   if (
-    Predicate.isTagged(first, "Delim") &&
+    P.isTagged(first, "Delim") &&
     first.value === "+" &&
-    Predicate.isTagged(second, "Ident") &&
+    P.isTagged(second, "Ident") &&
     !second.value.startsWith("-")
   ) {
     return Option.map(nPart(1, second.value), (part) => ({ ...part, used: 2 }));
@@ -104,7 +104,7 @@ const offsetAfter = (rest: ReadonlyArray<ComponentValue>, tail: Tail): Option.Op
       int.signed ? Option.some(int.value) : Option.none(),
     );
   }
-  if (!Arr.isReadonlyArrayEmpty(more) || !Predicate.isTagged(first, "Delim")) return Option.none();
+  if (!Arr.isReadonlyArrayEmpty(more) || !P.isTagged(first, "Delim")) return Option.none();
   const sign = first.value === "+" ? 1 : first.value === "-" ? -1 : 0;
   return sign === 0
     ? Option.none()
@@ -133,12 +133,12 @@ const offsetAfter = (rest: ReadonlyArray<ComponentValue>, tail: Tail): Option.Op
  * @category parsing
  */
 export const parse = (input: string | ReadonlyArray<ComponentValue>): Option.Option<AnPlusB> => {
-  const values = Predicate.isString(input) ? parseComponentValueList(input) : input;
+  const values = P.isString(input) ? parseComponentValueList(input) : input;
   const start = values.findIndex((value) => !isWhitespace(value));
   const end = values.findLastIndex((value) => !isWhitespace(value));
   const trimmed = start < 0 ? [] : values.slice(start, end + 1);
   const [only] = trimmed;
-  if (trimmed.length === 1 && Predicate.isTagged(only, "Ident")) {
+  if (trimmed.length === 1 && P.isTagged(only, "Ident")) {
     const keyword = Str.toLowerCase(only.value);
     if (keyword === "odd") return Option.some([2, 1]);
     if (keyword === "even") return Option.some([2, 0]);

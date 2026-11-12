@@ -16,7 +16,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { Cache, Dataset, Result, Runner, Threshold } from "../../src/evals/index.ts";
@@ -88,7 +88,7 @@ describe("Runner.runRetrievalSuite", () => {
       "recall@10",
       "ndcg@10",
     ]);
-    expect(Arr.sort(Record.keys(result.aggregate.metrics), Order.String)).toEqual([
+    expect(Arr.sort(R.keys(result.aggregate.metrics), Order.String)).toEqual([
       "ndcg@10",
       "recall@10",
     ]);

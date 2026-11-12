@@ -26,7 +26,7 @@ import * as SpeechModel from "@thomasfosterau/effect-ext/SpeechModel";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
-import * as EffectRecord from "effect/Record";
+import * as R from "effect/Record";
 import * as Stream from "effect/Stream";
 import * as AiError from "effect/ai/AiError";
 import { ElevenLabsClient } from "./ElevenLabsClient";
@@ -83,7 +83,7 @@ const missingVoice = (method: string): AiError.AiError =>
 const compact = <T extends Record<string, unknown>>(record: T): T =>
   // SAFETY: only keys whose value is `undefined` are dropped; every other key
   // keeps the value, and so the type, it had in `record`.
-  EffectRecord.filter(record, (value) => value !== undefined) as T;
+  R.filter(record, (value) => value !== undefined) as T;
 
 const buildBody = (
   options: SpeechModel.ProviderOptions,
