@@ -287,7 +287,6 @@ export default defineConfig({
           "effect/avoid-try-catch": "off",
           "effect/prefer-arr-sort": "off",
           "effect/no-service-constructor-imports": "off",
-          "effect/no-conditional-empty-object-spread": "off",
           // No Schema or tagged-error runtime is loaded here: the dist guard
           // reports through a thrown `Error` and reads `package.json` and
           // `tsc`'s output with `JSON.parse`, as plain Node does.
