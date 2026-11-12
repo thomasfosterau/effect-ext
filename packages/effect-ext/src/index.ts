@@ -21,8 +21,7 @@
  * namespaces (the fixed-width integer and `F32` modules as their one
  * value: `I8`, …, `U128`, `F32`), except the modules that import an
  * optional peer — `Browser` and `BrowserTesting`
- * (`@effect/platform-browser`), `Negotiate`
- * (`@thomasfosterau/effect-jsonapi`), and `Robots` and the time parsers
+ * (`@effect/platform-browser`), and `Robots` and the time parsers
  * `Rfc3339`, `Rfc9557`, `IsoDuration`, `PosixTz`, `CronExpression`,
  * `RRule`, `IanaTimeZone` and `Tzif` (`@thomasfosterau/effect-parse`) —
  * which are subpaths only, so importing the barrel never needs a peer the
@@ -278,6 +277,13 @@ export * as Mime from "./Mime.ts";
 export * as ModerationModel from "./ModerationModel.ts";
 
 /**
+ * Content negotiation: the verdict over the representations a server can produce.
+ *
+ * @since 0.1.0
+ */
+export * as Negotiate from "./Negotiate.ts";
+
+/**
  * The SSRF host block list and a redirect-revalidating fetch.
  *
  * @since 0.1.0
@@ -297,6 +303,13 @@ export * as Num from "./Num.ts";
  * @since 0.1.0
  */
 export * as Observability from "./Observability.ts";
+
+/**
+ * Optional keys for object construction under `exactOptionalPropertyTypes`.
+ *
+ * @since 0.3.0
+ */
+export * as OptionalKey from "./OptionalKey.ts";
 
 /**
  * Overflowing arithmetic type class and instances.

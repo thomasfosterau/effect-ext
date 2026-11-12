@@ -8,7 +8,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import {
   ARCHIVE,
   AUDIO_VIDEO,
@@ -121,7 +121,7 @@ const isWebm = (bytes: Uint8Array): boolean => {
   while (iter < bytes.length && iter < 38) {
     const step =
       bytes[iter] === 0x42 && bytes[iter + 1] === 0x82 ? webmCandidate(bytes, iter) : iter + 1;
-    if (Predicate.isBoolean(step)) return step;
+    if (P.isBoolean(step)) return step;
     iter = step;
   }
   return false;
@@ -278,23 +278,23 @@ const isBinaryDataByte = (byte: number): boolean =>
  */
 export interface SniffOptions {
   /** The type the resource was supplied with (a `Content-Type`, say). */
-  readonly supplied?: string | undefined;
+  readonly supplied?: string;
   /** `X-Content-Type-Options: nosniff`: the supplied type stands. Defaults to `false`. */
-  readonly noSniff?: boolean | undefined;
+  readonly noSniff?: boolean;
   /**
    * Whether HTML, XML and PDF may be detected in an unknown resource (the
    * specification's "sniff-scriptable flag"). Defaults to `true`; a
    * browser clears it where a scriptable type would be unsafe. `noSniff`
    * clears it too, as §7 requires.
    */
-  readonly scriptable?: boolean | undefined;
+  readonly scriptable?: boolean;
   /**
    * Extra signatures for an unknown resource, tried in order where the
    * standard's patterns found nothing specific: over a generic
    * `application/zip` match (so a detector that looks inside the archive
    * can name OOXML, ODF or EPUB), and before the text-or-binary fallback.
    */
-  readonly signatures?: ReadonlyArray<Signature> | undefined;
+  readonly signatures?: ReadonlyArray<Signature>;
   /**
    * Whether to apply the specification's check-for-apache-bug flag (§5.1):
    * when `supplied` is exactly `text/plain`, `text/plain; charset=ISO-8859-1`,
@@ -305,7 +305,7 @@ export interface SniffOptions {
    * type. The specification sets the flag for a resource fetched over HTTP;
    * set this when `supplied` is a `Content-Type` header. Defaults to `false`.
    */
-  readonly checkForApacheBug?: boolean | undefined;
+  readonly checkForApacheBug?: boolean;
 }
 
 /** The exact `Content-Type` values that set the check-for-apache-bug flag (§5.1). */
@@ -439,7 +439,7 @@ export const sniff = (bytes: Uint8Array, options: SniffOptions = {}): MimeType =
                 essence(mimeType) === "application/ogg"
               ? matchAudioOrVideo
               : undefined;
-        return Predicate.isUndefined(pattern)
+        return P.isUndefined(pattern)
           ? mimeType
           : Option.getOrElse(Option.map(pattern(header), computed), () => mimeType);
       },

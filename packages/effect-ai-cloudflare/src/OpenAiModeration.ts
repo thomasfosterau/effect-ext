@@ -68,8 +68,8 @@ import type * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Base64 from "effect/encoding/Base64";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as EffectRecord from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 import { AiError, type Prompt } from "effect/ai";
@@ -143,14 +143,13 @@ const OmniModerationResponse = Schema.Struct({
  */
 const definedScores = (
   scores: Readonly<Record<string, number | null>> | undefined,
-): Record<string, number> =>
-  scores === undefined ? {} : EffectRecord.filter(scores, Predicate.isNotNull);
+): Record<string, number> => (scores === undefined ? {} : R.filter(scores, P.isNotNull));
 
 /** The provider's per-category verdicts, `null` ("not assessed") dropped. */
 const definedFlags = (
   flags: Readonly<Record<string, boolean | null>> | undefined,
-): Record<string, boolean> | undefined =>
-  flags === undefined ? undefined : EffectRecord.filter(flags, Predicate.isNotNull);
+): Option.Option<Record<string, boolean>> =>
+  Option.map(Option.fromUndefinedOr(flags), (verdicts) => R.filter(verdicts, P.isNotNull));
 
 /** One part of a multimodal moderations input, as OpenAI's wire carries it. */
 type WireContentPart =
@@ -187,7 +186,7 @@ const dataUrl = (data: FileData, mediaType: string): string => {
   if (data instanceof URL) {
     return data.href;
   }
-  if (Predicate.isString(data)) {
+  if (P.isString(data)) {
     return data.startsWith("data:") || data.startsWith("http")
       ? data
       : `data:${mediaType};base64,${data}`;
@@ -197,7 +196,7 @@ const dataUrl = (data: FileData, mediaType: string): string => {
   }
   // The tagged JSON forms an encoded prompt carries for a byte array or a URL
   // (effect 4.0.6 and later).
-  return Predicate.isTagged(data, "URL") ? data.href : `data:${mediaType};base64,${data.base64}`;
+  return P.isTagged(data, "URL") ? data.href : `data:${mediaType};base64,${data.base64}`;
 };
 
 /** An image file part's `data` as a URL OpenAI fetches or decodes itself. */
@@ -227,12 +226,12 @@ const toWirePart = (
 const wireInputs = (
   inputs: ReadonlyArray<ModerationModel.ModerationInput>,
 ): Effect.Effect<ReadonlyArray<WireInput>, AiError.AiError> =>
-  Arr.every(inputs, Predicate.isString)
+  Arr.every(inputs, P.isString)
     ? Effect.succeed([inputs])
     : Effect.forEach(
         inputs,
         (input) =>
-          Predicate.isString(input)
+          P.isString(input)
             ? Effect.succeed<WireInput>([input])
             : Effect.forEach(input, toWirePart, { concurrency: 1 }),
         { concurrency: 1 },
@@ -267,10 +266,8 @@ const mapModerationResponse = (
       flags: definedFlags(result.categories),
     })),
   ),
-  usage: { inputTokens: undefined },
-  modelId: Option.getOrUndefined(
-    Arr.findFirst(responses, (response) => Option.fromUndefinedOr(response.model)),
-  ),
+  usage: { inputTokens: Option.none() },
+  modelId: Arr.findFirst(responses, (response) => Option.fromUndefinedOr(response.model)),
 });
 
 /**

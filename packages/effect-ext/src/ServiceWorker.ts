@@ -34,7 +34,7 @@ import * as Context from "effect/Context";
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import { reasonOf } from "./internal/web/dom.ts";
@@ -125,7 +125,7 @@ export class CacheMiss extends Schema.TaggedError<CacheMiss>()("CacheMiss", {
  */
 export class PrecacheRejected extends Schema.TaggedError<PrecacheRejected>()("PrecacheRejected", {
   url: Schema.String,
-  status: Schema.Number,
+  status: Schema.Int,
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -377,7 +377,7 @@ export const cacheNames: Effect.Effect<
 export const deleteCachesExcept = (
   keep: ReadonlyArray<string> | ((name: string) => boolean),
 ): Effect.Effect<ReadonlyArray<string>, CacheError> => {
-  const kept = Predicate.isFunction(keep) ? keep : (name: string) => keep.includes(name);
+  const kept = P.isFunction(keep) ? keep : (name: string) => keep.includes(name);
   return Effect.flatMap(cacheNames, (names) =>
     Effect.filter(
       names.filter((name) => !kept(name)),

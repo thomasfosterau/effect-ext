@@ -8,7 +8,7 @@
  * @since 0.1.0
  */
 /* oxlint-disable effect/avoid-direct-tag-checks, effect/prefer-match-over-switch -- CSS Syntax 3 §9 serialises token by token: one token-type dispatch per token, as the tokenizer and parser do (see syntax.ts). */
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Str from "effect/String";
 import type { AtRule, Declaration, QualifiedRule, SyntaxError } from "./syntax.ts";
 import type { ComponentValue } from "./token.ts";
@@ -282,16 +282,14 @@ const tokenEdge = (value: ComponentValue): Edge => {
 };
 
 const firstEdge = (value: ComponentValue): Edge => {
-  if (Predicate.isTagged(value, "Func")) return "function";
-  if (Predicate.isTagged(value, "Block")) return value.associated === "(" ? "(" : "other";
+  if (P.isTagged(value, "Func")) return "function";
+  if (P.isTagged(value, "Block")) return value.associated === "(" ? "(" : "other";
   return tokenEdge(value);
 };
 
 /** A function or block ends in its closing token. */
 const lastEdge = (value: ComponentValue): Edge =>
-  Predicate.isTagged(value, "Func") || Predicate.isTagged(value, "Block")
-    ? "other"
-    : tokenEdge(value);
+  P.isTagged(value, "Func") || P.isTagged(value, "Block") ? "other" : tokenEdge(value);
 
 const IDENT_LIKE: ReadonlyArray<Edge> = ["ident", "function", "url"];
 const NUMERIC: ReadonlyArray<Edge> = ["number", "percentage", "dimension"];
@@ -362,8 +360,8 @@ export const componentValues = (values: ReadonlyArray<ComponentValue>): string =
     .join("");
 
 const trimWhitespace = (values: ReadonlyArray<ComponentValue>): ReadonlyArray<ComponentValue> => {
-  const start = values.findIndex((value) => !Predicate.isTagged(value, "Whitespace"));
-  const end = values.findLastIndex((value) => !Predicate.isTagged(value, "Whitespace"));
+  const start = values.findIndex((value) => !P.isTagged(value, "Whitespace"));
+  const end = values.findLastIndex((value) => !P.isTagged(value, "Whitespace"));
   return start < 0 ? [] : values.slice(start, end + 1);
 };
 
@@ -413,5 +411,5 @@ export const declarationList = (
   values: ReadonlyArray<Declaration | AtRule | QualifiedRule | SyntaxError>,
 ): string =>
   values
-    .flatMap((value) => (Predicate.isTagged(value, "Declaration") ? [declaration(value)] : []))
+    .flatMap((value) => (P.isTagged(value, "Declaration") ? [declaration(value)] : []))
     .join(" ");

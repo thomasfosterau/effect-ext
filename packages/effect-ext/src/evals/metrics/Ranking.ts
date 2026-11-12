@@ -49,7 +49,7 @@ import * as Match from "effect/Match";
 import * as Order from "effect/Order";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as EffectRecord from "effect/Record";
+import * as R from "effect/Record";
 import * as Metric from "../Metric.ts";
 import type { Score } from "../Score.ts";
 import * as Scorer from "../Scorer.ts";
@@ -155,7 +155,7 @@ export const ndcg = (evidence: Evidence): number => {
   const actual = dcg(topK(evidence).map((handle) => gradeOf(evidence, handle)));
   const ideal = dcg(
     Arr.sort(
-      EffectRecord.values(evidence.relevant).filter((grade) => grade > 0),
+      R.values(evidence.relevant).filter((grade) => grade > 0),
       Order.flip(Order.Number),
     ).slice(0, evidence.k),
   );
@@ -170,7 +170,7 @@ export const ndcg = (evidence: Evidence): number => {
  * @since 0.1.0
  */
 export const recall = (evidence: Evidence): number => {
-  const total = EffectRecord.values(evidence.relevant).filter((grade) => grade > 0).length;
+  const total = R.values(evidence.relevant).filter((grade) => grade > 0).length;
   if (total === 0) return 0;
   const found = topK(evidence).filter((handle) => gradeOf(evidence, handle) > 0).length;
   return found / total;
@@ -227,7 +227,7 @@ export const scoreCase = (
   evidence: Evidence,
   metrics: ReadonlyArray<RankingMetricName> = ALL_METRICS,
 ): Record<string, number> =>
-  EffectRecord.fromIterableWith(metrics, (metric) => [
+  R.fromIterableWith(metrics, (metric) => [
     metricKey(metric, evidence.k),
     metricFunctions[metric](evidence),
   ]);
@@ -236,7 +236,7 @@ export const scoreCase = (
 const describe = (metric: RankingMetricName, evidence: Evidence, value: number): string => {
   const page = topK(evidence);
   const relevantOnPage = page.filter((handle) => gradeOf(evidence, handle) > 0).length;
-  const relevantTotal = EffectRecord.values(evidence.relevant).filter((grade) => grade > 0).length;
+  const relevantTotal = R.values(evidence.relevant).filter((grade) => grade > 0).length;
   const first = page.findIndex((handle) => gradeOf(evidence, handle) > 0);
   return Match.value(metric).pipe(
     Match.when(
@@ -330,9 +330,9 @@ export const metricAtK = (
  */
 export interface MetricsAtKOptions {
   /** Which metrics to include, in report order. Default: {@link ALL_METRICS}. */
-  readonly metrics?: ReadonlyArray<RankingMetricName> | undefined;
+  readonly metrics?: ReadonlyArray<RankingMetricName>;
   /** Per-metric thresholds; a metric without one never fails a case. */
-  readonly thresholds?: Partial<Readonly<Record<RankingMetricName, Threshold>>> | undefined;
+  readonly thresholds?: Partial<Readonly<Record<RankingMetricName, Threshold>>>;
 }
 
 /**

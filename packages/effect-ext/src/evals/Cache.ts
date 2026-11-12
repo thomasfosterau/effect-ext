@@ -33,11 +33,12 @@
  * @since 0.1.0
  */
 
+import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as Predicate from "effect/Predicate";
-import * as EffectRecord from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Schema from "effect/Schema";
 import { KeyValueStore } from "effect/persistence";
 
@@ -79,46 +80,52 @@ export interface CacheKeyInput {
   readonly taskId: string;
   readonly trial: number;
   readonly metric?: string;
-  readonly judgeModelId?: string | undefined;
+  readonly judgeModelId?: string;
 }
 
-/** A value `canonicalize` hands to `JSON.stringify` as it came. */
-type CanonicalLeaf = string | number | boolean | bigint | symbol | null | undefined;
-
-/** {@link canonicalize}'s output: leaves, and arrays and key-sorted records of them. */
-type Canonical = CanonicalLeaf | ReadonlyArray<Canonical> | { readonly [key: string]: Canonical };
-
-/** Every value but an object or a function is a {@link CanonicalLeaf}. */
-const isCanonicalLeaf = (value: unknown): value is CanonicalLeaf =>
-  !Predicate.isObjectKeyword(value);
-
 /**
- * Normalises a value into a plain JSON-compatible shape with every object's
- * keys sorted, so `JSON.stringify` afterwards is stable across key
- * insertion order. Handles `Date`/`Map`/`Set` explicitly — left to
- * `JSON.stringify` directly, all three serialise to `{}` (none exposes its
- * value as an enumerable own property), which would collide two otherwise-
- * distinct cache keys that differ only in one of these fields.
+ * Normalises a value into `Schema.Json` with every object's keys sorted, so
+ * the JSON it encodes to is stable across key insertion order. It writes
+ * exactly what `JSON.stringify` would for the input, so existing cache keys
+ * keep their digests, with three additions:
+ *
+ * - `Date`, `Map` and `Set` are spelled out (`{ __date }`, `{ __map }`,
+ *   `{ __set }`): left to `JSON.stringify`, all three become `{}`, which would
+ *   collide two keys that differ only in one of them.
+ * - A `bigint` is `{ __bigint: "<digits>" }`, where `JSON.stringify` throws.
+ * - A value JSON has no spelling for (`undefined`, a function, a symbol) is
+ *   `None`: an object omits its key and an array slot reads `null`, as
+ *   `JSON.stringify` does.
  */
-const canonicalize = (value: unknown): Canonical => {
-  if (isCanonicalLeaf(value)) return value;
-  if (value instanceof Date) return { __date: value.toISOString() };
-  if (value instanceof Map)
-    return { __map: Array.from(value, ([k, v]) => [canonicalize(k), canonicalize(v)]) };
-  if (value instanceof Set) return { __set: Array.from(value, canonicalize) };
-  if (Array.isArray(value)) return value.map(canonicalize);
-  if (Predicate.isObject(value)) {
-    return EffectRecord.fromEntries(
-      Arr.map(Arr.sort(EffectRecord.keys(value), Order.String), (key) => [
-        key,
-        canonicalize(value[key]),
-      ]),
-    );
+const canonicalize = (value: unknown): Option.Option<Schema.Json> => {
+  if (P.isString(value) || P.isNumber(value) || P.isBoolean(value) || P.isNull(value)) {
+    return Option.some(value);
   }
-  // Only a function is left. `JSON.stringify` drops one exactly as it drops
-  // `undefined` (an omitted key, a `null` array slot), so the key is unchanged.
-  return undefined;
+  if (P.isBigInt(value)) return Option.some({ __bigint: value.toString() });
+  if (!P.isObjectOrArray(value)) return Option.none();
+  if (value instanceof Date) return Option.some({ __date: value.toISOString() });
+  if (value instanceof Map) {
+    return Option.some({
+      __map: Array.from(value, ([k, v]) => [slot(canonicalize(k)), slot(canonicalize(v))]),
+    });
+  }
+  if (value instanceof Set)
+    return Option.some({ __set: Array.from(value, (item) => slot(canonicalize(item))) });
+  if (Array.isArray(value)) return Option.some(value.map((item) => slot(canonicalize(item))));
+  return Option.some(
+    R.fromEntries(
+      Arr.getSomes(
+        Arr.map(Arr.sort(R.keys(value), Order.String), (key) =>
+          Option.map(canonicalize(value[key]), (json) => [key, json] as const),
+        ),
+      ),
+    ),
+  );
 };
+
+/** An array slot's JSON: `null` where {@link canonicalize} found no spelling, as `JSON.stringify` writes. */
+const slot = (json: Option.Option<Schema.Json>): Schema.Json =>
+  Option.getOrElse(json, (): Schema.Json => null);
 
 /** `JSON.stringify` as a codec, for the canonical form of a cache key's inputs. */
 const encodeCanonicalJson = Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown));
@@ -137,7 +144,7 @@ const toHex = (bytes: ArrayBuffer): string =>
  * @since 0.1.0
  */
 export const hashKey = (input: CacheKeyInput): Effect.Effect<string> =>
-  encodeCanonicalJson(canonicalize(input)).pipe(
+  encodeCanonicalJson(slot(canonicalize(input))).pipe(
     Effect.flatMap((json) =>
       Effect.tryPromise({
         try: () => crypto.subtle.digest("SHA-256", encoder.encode(json)),

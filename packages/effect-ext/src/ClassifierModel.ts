@@ -58,7 +58,7 @@ export class ClassifierModel extends Context.Service<ClassifierModel, Service>()
  *
  * **Details**
  *
- * `inputTokens` is `undefined` when the provider does not report usage or when
+ * `inputTokens` is `Option.none()` when the provider does not report usage or when
  * the empty input short-circuit bypassed the provider.
  *
  * @category models
@@ -68,7 +68,7 @@ export class ClassifierModel extends Context.Service<ClassifierModel, Service>()
 export class ClassifierUsage extends Schema.Class<ClassifierUsage>(
   "@thomasfosterau/effect-ext/ClassifierModel/ClassifierUsage",
 )({
-  inputTokens: Schema.UndefinedOr(Schema.Finite),
+  inputTokens: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
 /**
@@ -149,11 +149,11 @@ export interface ClassifyOptions {
   /** The texts to classify. */
   readonly inputs: ReadonlyArray<string>;
   /** Restrict classification to this label set (open-set when omitted). */
-  readonly labels?: ReadonlyArray<string> | undefined;
+  readonly labels?: ReadonlyArray<string>;
   /** Allow more than one label per input when `true`. */
-  readonly multiLabel?: boolean | undefined;
+  readonly multiLabel?: boolean;
   /** Example-shot pairs guiding the classification. */
-  readonly examples?: ReadonlyArray<ClassifyExample> | undefined;
+  readonly examples?: ReadonlyArray<ClassifyExample>;
 }
 
 /**
@@ -165,9 +165,9 @@ export interface ClassifyOptions {
  */
 export interface ProviderOptions {
   readonly inputs: ReadonlyArray<string>;
-  readonly labels: ReadonlyArray<string> | undefined;
+  readonly labels?: ReadonlyArray<string>;
   readonly multiLabel: boolean;
-  readonly examples: ReadonlyArray<ClassifyExample> | undefined;
+  readonly examples?: ReadonlyArray<ClassifyExample>;
 }
 
 /**
@@ -181,7 +181,7 @@ export interface ProviderResponse {
   readonly classifications: ReadonlyArray<{
     readonly classes: ReadonlyArray<{ readonly label: string; readonly score: number }>;
   }>;
-  readonly usage: { readonly inputTokens: number | undefined };
+  readonly usage: { readonly inputTokens: Option.Option<number> };
 }
 
 /**
@@ -205,7 +205,7 @@ const invalidProviderResponse = (description: string): AiError.AiError =>
 const emptyResponse = (): ClassifyResponse =>
   new ClassifyResponse({
     classifications: [],
-    usage: new ClassifierUsage({ inputTokens: undefined }),
+    usage: new ClassifierUsage({ inputTokens: Option.none() }),
   });
 
 /** Highest-scoring class first. */
@@ -219,7 +219,7 @@ const byScoreDescending: Order.Order<ClassScore> = Order.flip(
  */
 const mapProviderResponse = (
   inputCount: number,
-  labels: ReadonlyArray<string> | undefined,
+  labels: Option.Option<ReadonlyArray<string>>,
   response: ProviderResponse,
 ): Effect.Effect<ClassifyResponse, AiError.AiError> => {
   if (response.classifications.length !== inputCount) {
@@ -233,7 +233,7 @@ const mapProviderResponse = (
     Arr.findFirst(classification.classes, (cls) =>
       !Number.isFinite(cls.score)
         ? Option.some(`Provider returned a non-finite score ${cls.score} for label '${cls.label}'`)
-        : labels !== undefined && !Arr.contains(labels, cls.label)
+        : Option.exists(labels, (allowed) => !Arr.contains(allowed, cls.label))
           ? Option.some(
               `Provider returned label '${cls.label}' which is not in the requested label set`,
             )
@@ -292,15 +292,14 @@ export const make = (params: {
         (Arr.isReadonlyArrayEmpty(options.inputs)
           ? Effect.succeed(emptyResponse())
           : params
-              .classify({
-                inputs: options.inputs,
-                labels: options.labels,
-                multiLabel: options.multiLabel ?? false,
-                examples: options.examples,
-              })
+              .classify({ ...options, multiLabel: options.multiLabel ?? false })
               .pipe(
                 Effect.flatMap((response) =>
-                  mapProviderResponse(options.inputs.length, options.labels, response),
+                  mapProviderResponse(
+                    options.inputs.length,
+                    Option.fromUndefinedOr(options.labels),
+                    response,
+                  ),
                 ),
               )
         ).pipe(Effect.withSpan("ClassifierModel.classify")),
@@ -392,7 +391,7 @@ export const fromLanguageModel: Effect.Effect<Service, never, LanguageModel.Lang
             .pipe(
               Effect.map((response): ProviderResponse => ({
                 classifications: response.value.classifications,
-                usage: { inputTokens: undefined },
+                usage: { inputTokens: Option.none() },
               })),
             ),
       }),

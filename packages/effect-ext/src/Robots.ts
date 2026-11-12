@@ -27,7 +27,7 @@ import * as Data from "effect/Data";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
 import * as Str from "effect/String";
@@ -1048,7 +1048,7 @@ export const LOW_CHURN_CACHE_CONTROL =
  * @category predicates
  */
 export const isRobotsBody = (value: string): boolean =>
-  Predicate.isString(value) &&
+  P.isString(value) &&
   value !== ROBOTS_NO_RESTRICTIONS &&
   value !== ROBOTS_UNAVAILABLE_SENTINEL &&
   value !== ROBOTS_REFUSED_SENTINEL;

@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
 import {
   ImagePart,
@@ -17,7 +18,7 @@ import {
 } from "@thomasfosterau/effect-ext/ImageModel";
 import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 
-const noUsage = { inputTokens: undefined } as const;
+const noUsage = { inputTokens: Option.none() } as const;
 
 const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
   const failure = await expectFailureInstanceOf(program, AiError.AiError);
@@ -59,7 +60,7 @@ describe("ImageModel", () => {
               { data: "aGVsbG8=", mediaType: "image/png" },
               { data: bytes, mediaType: "image/jpeg" },
             ],
-            usage: { inputTokens: 3 },
+            usage: { inputTokens: Option.some(3) },
           }),
         });
         const result = yield* model.generate({ prompt: "a cat", size: "512x512", count: 2 });
@@ -71,8 +72,8 @@ describe("ImageModel", () => {
       new ImagePart({ data: "aGVsbG8=", mediaType: "image/png" }),
       new ImagePart({ data: bytes, mediaType: "image/jpeg" }),
     ]);
-    expect(response.usage.inputTokens).toBe(3);
-    expect(calls).toEqual([{ prompt: "a cat", size: "512x512", format: undefined, count: 2 }]);
+    expect(response.usage.inputTokens).toStrictEqual(Option.some(3));
+    expect(calls).toEqual([{ prompt: "a cat", size: "512x512", count: 2 }]);
   });
 
   it("fails with AiError when the provider returns no images", async () => {

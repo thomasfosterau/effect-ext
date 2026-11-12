@@ -6,8 +6,8 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import * as Predicate from "effect/Predicate";
-import * as Record from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { UriTemplate } from "@thomasfosterau/effect-ext/UriTemplate";
@@ -17,7 +17,7 @@ import specExamplesBySection from "./fixtures/uritemplate-test/spec-examples-by-
 import specExamples from "./fixtures/uritemplate-test/spec-examples.json" with { type: "json" };
 
 /** The suite's JSON: groups of variables and `[template, expected]` cases. */
-const Primitive = Schema.Union([Schema.String, Schema.Number, Schema.Boolean]);
+const Primitive = Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]);
 const Suite = Schema.Record(
   Schema.String,
   Schema.Struct({
@@ -53,14 +53,13 @@ const outcome = (template: string, variables: UriTemplate.Variables): string | f
   );
 
 const cases = (suite: unknown) =>
-  Record.toEntries(Schema.decodeUnknownSync(Suite)(suite)).flatMap(
-    ([group, { variables, testcases }]) =>
-      testcases.map(([template, expected]) => ({
-        group,
-        template,
-        acceptable: expected === false || Predicate.isString(expected) ? [expected] : expected,
-        variables,
-      })),
+  R.toEntries(Schema.decodeUnknownSync(Suite)(suite)).flatMap(([group, { variables, testcases }]) =>
+    testcases.map(([template, expected]) => ({
+      group,
+      template,
+      acceptable: expected === false || P.isString(expected) ? [expected] : expected,
+      variables,
+    })),
   );
 
 describe.each([

@@ -12,7 +12,7 @@ import * as Stream from "effect/Stream";
 import { Broadcast } from "@thomasfosterau/effect-ext/Browser";
 import { TestBroadcast } from "@thomasfosterau/effect-ext/BrowserTesting";
 
-const Ping = Schema.Struct({ type: Schema.Literal("ping"), at: Schema.Number });
+const Ping = Schema.Struct({ type: Schema.Literal("ping"), at: Schema.Finite });
 
 describe("Broadcast.channel", () => {
   it("delivers a published value to every other channel of the same name, never to itself", async () => {
@@ -95,7 +95,7 @@ describe("Broadcast.channel", () => {
   });
 
   it("encodes through the schema before posting", async () => {
-    const Counted = Schema.Struct({ count: Schema.NumberFromString });
+    const Counted = Schema.Struct({ count: Schema.FiniteFromString });
     const posted = await Effect.runPromise(
       Effect.provide(
         Effect.scoped(

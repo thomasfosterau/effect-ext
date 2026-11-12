@@ -8,8 +8,8 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as Record from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Result from "effect/Result";
 import type { Operator, Part, VariableSpec } from "../../uri-template/uri-template.ts";
 import { encodeReserved } from "./encoding.ts";
@@ -43,7 +43,7 @@ type Read = Option.Option<Option.Option<Value>>;
 interface Reader {
   readonly name: string;
   readonly groups: number;
-  readonly read: (groups: ReadonlyArray<string | undefined>) => Read;
+  readonly read: (groups: ReadonlyArray<Option.Option<string>>) => Read;
 }
 
 interface Step {
@@ -69,31 +69,40 @@ const decodeAll = (values: ReadonlyArray<string>): Option.Option<Value> =>
   Option.all(Arr.map(values, decode));
 
 /** A `U` capture: absent, a string, or (with a raw `,`) a list; decoded. */
-const readUnreserved = (value: string | undefined): Read =>
-  value === undefined
-    ? absent()
-    : present(value.includes(",") ? decodeAll(value.split(",")) : decode(value));
+const readUnreserved = (value: Option.Option<string>): Read =>
+  Option.match(value, {
+    onNone: absent,
+    onSome: (text) => present(text.includes(",") ? decodeAll(text.split(",")) : decode(text)),
+  });
+
+/** A capture that is absent when it did not take part in the match or is empty. */
+const nonEmpty = (value: Option.Option<string>): Option.Option<string> =>
+  Option.filter(value, (text) => text !== "");
 
 /** A `+` capture, kept as written; absent when empty (as `{+x}` expands an undefined `x`). */
-const readReserved = (value: string | undefined): Read =>
-  value === undefined || value === "" ? absent() : Option.some(Option.some(value));
+const readReserved = (value: Option.Option<string>): Read =>
+  Option.match(nonEmpty(value), {
+    onNone: absent,
+    onSome: (text) => Option.some(Option.some(text)),
+  });
 
 /** A `#` capture, kept as written: `#` alone is an empty value, no `#` an absent one. */
-const readFragment = (value: string | undefined): Read =>
-  value === undefined ? absent() : Option.some(Option.some(value));
+const readFragment = (value: Option.Option<string>): Read =>
+  Option.match(value, { onNone: absent, onSome: (text) => Option.some(Option.some(text)) });
 
 /** An exploded list, separated (and introduced) by `separator`. */
 const readExploded =
   (separator: string) =>
-  (value: string | undefined): Read =>
-    value === undefined || value === ""
-      ? absent()
-      : present(decodeAll(value.slice(1).split(separator)));
+  (value: Option.Option<string>): Read =>
+    Option.match(nonEmpty(value), {
+      onNone: absent,
+      onSome: (text) => present(decodeAll(text.slice(1).split(separator))),
+    });
 
 const step = (
   spec: VariableSpec,
   source: string,
-  read: (value: string | undefined) => Read,
+  read: (value: Option.Option<string>) => Read,
 ): Step => ({
   source,
   readers: [{ name: spec.name, groups: 1, read: ([value]) => read(value) }],
@@ -109,12 +118,12 @@ const UNNAMED = {
   ".": [`(?:\\.(${U_NO_DOT}*))?`, readUnreserved],
   "/": [`(?:/(${U}*))?`, readUnreserved],
   // An empty simple expansion reads as undefined, never as `""`.
-  "": [`(${U}*)`, (value: string | undefined) => readUnreserved(value === "" ? undefined : value)],
+  "": [`(${U}*)`, (value: Option.Option<string>) => readUnreserved(nonEmpty(value))],
   ";": [`(${U}*)`, readUnreserved],
   "?": [`(${U}*)`, readUnreserved],
   "&": [`(${U}*)`, readUnreserved],
 } satisfies {
-  readonly [operator in Operator]: readonly [string, (value: string | undefined) => Read];
+  readonly [operator in Operator]: readonly [string, (value: Option.Option<string>) => Read];
 };
 
 /** The step for one unnamed, single-variable expression. */
@@ -136,12 +145,16 @@ const pathStyle = (expression: Expression): Step => ({
   readers: Arr.map(expression.variables, (spec) => ({
     name: spec.name,
     groups: 2,
-    read: ([name, value]) => (name === undefined ? absent() : readUnreserved(value ?? "")),
+    read: ([name = Option.none(), value = Option.none()]) =>
+      Option.match(name, {
+        onNone: absent,
+        onSome: () => readUnreserved(Option.some(Option.getOrElse(value, () => ""))),
+      }),
   })),
 });
 
 const toStep = (part: Part): Step => {
-  if (Predicate.isTagged(part, "Literal"))
+  if (P.isTagged(part, "Literal"))
     return { source: escape(encodeReserved(part.text)), readers: [] };
   if (part.operator === ";") return pathStyle(part);
   // `refuseExpression` has left exactly one variable in an unnamed expression.
@@ -151,7 +164,7 @@ const toStep = (part: Part): Step => {
   });
 };
 
-const isExpression = (part: Part): part is Expression => Predicate.isTagged(part, "Expression");
+const isExpression = (part: Part): part is Expression => P.isTagged(part, "Expression");
 const isQuery = (part: Part): part is Expression =>
   isExpression(part) && (part.operator === "?" || part.operator === "&");
 
@@ -272,7 +285,7 @@ const leftovers = (
   return present(
     Option.map(
       Option.all(Arr.map(unclaimed, ([key, value]) => Option.all([decode(key), decode(value)]))),
-      (entries) => Record.fromEntries(entries),
+      (entries) => R.fromEntries(entries),
     ),
   );
 };
@@ -290,7 +303,7 @@ const readQueryVariable = (
 ): Read => {
   const values = valuesNamed(pairs, spec.name);
   if (Arr.isReadonlyArrayNonEmpty(values)) {
-    return spec.explode ? present(decodeAll(values)) : readUnreserved(values[0]);
+    return spec.explode ? present(decodeAll(values)) : readUnreserved(Option.some(values[0]));
   }
   const takesLeftovers = Option.exists(
     Arr.findFirst(
@@ -330,8 +343,8 @@ export const compile = (parts: ReadonlyArray<Part>): Result.Result<Compiled, Ref
   return Result.succeed({
     match: (url) =>
       Option.flatMap(Option.fromNullishOr(pattern.exec(url)), (found) => {
-        const groups = found.slice(1);
-        const pairs = pairsOf(groups[groupCount] ?? "");
+        const groups = Arr.map(found.slice(1), Option.fromUndefinedOr);
+        const pairs = pairsOf(Option.getOrElse(groups[groupCount] ?? Option.none(), () => ""));
         const reads = [
           ...Arr.map(readers, (reader, index) => {
             const start = offsets[index] ?? 0;
@@ -341,9 +354,7 @@ export const compile = (parts: ReadonlyArray<Part>): Result.Result<Compiled, Ref
             entry(spec.name, readQueryVariable(pairs, querySpecs, spec)),
           ),
         ];
-        return Option.map(Option.all(reads), (entries) =>
-          Record.fromEntries(Arr.getSomes(entries)),
-        );
+        return Option.map(Option.all(reads), (entries) => R.fromEntries(Arr.getSomes(entries)));
       }),
   });
 };

@@ -15,8 +15,10 @@
 
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as EffectRecord from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
+import * as Schema from "effect/Schema";
+import type * as SchemaGetter from "effect/SchemaGetter";
 import type { Score } from "./Score.ts";
 
 /**
@@ -76,10 +78,29 @@ export const summarize = (scores: ReadonlyArray<number>): Summary => {
 export interface MetricAggregate {
   readonly metric: string;
   readonly trials: ReadonlyArray<MetricTrialOutcome>;
-  readonly summary: Summary | undefined;
+  readonly summary: Option.Option<Summary>;
   readonly errorCount: number;
   readonly passed: boolean;
 }
+
+/** The shapes `JSON.stringify` gives an `Option` (its `toJSON`). */
+const isSomeJson = Schema.is(
+  Schema.TaggedStruct("Some", { _id: Schema.Literal("Option"), value: Schema.Unknown }),
+);
+const isNoneJson = Schema.is(Schema.TaggedStruct("None", { _id: Schema.Literal("Option") }));
+
+/**
+ * A `JSON.stringify` replacer that writes a metric's `summary` the way the
+ * JSON reports document it: the {@link Summary} itself, or `null` when every
+ * trial errored, rather than an `Option`'s `{ _id, _tag }` envelope.
+ *
+ * @since 0.1.0
+ */
+export const summaryReplacer: SchemaGetter.JsonReplacer = (key, value) => {
+  if (key !== "summary") return value;
+  if (isSomeJson(value)) return value.value;
+  return isNoneJson(value) ? null : value;
+};
 
 // ── Outcome-explaining / rendering seam ──────────────────────────────
 //
@@ -105,15 +126,13 @@ const NO_SCORED_TRIALS = "no scored trials";
  */
 export const lastReason = (metric: MetricAggregate): string =>
   Arr.findLast(metric.trials, (trial) =>
-    Predicate.isTagged(trial, "Scored")
+    P.isTagged(trial, "Scored")
       ? Option.some(trial.score.reason ?? NO_REASON_GIVEN)
       : Option.none(),
   ).pipe(
     Option.orElse(() =>
       Arr.findLast(metric.trials, (trial) =>
-        Predicate.isTagged(trial, "Errored")
-          ? Option.some(`error: ${String(trial.error)}`)
-          : Option.none(),
+        P.isTagged(trial, "Errored") ? Option.some(`error: ${String(trial.error)}`) : Option.none(),
       ),
     ),
     Option.getOrElse(() => NO_TRIALS_RECORDED),
@@ -124,10 +143,12 @@ export const lastReason = (metric: MetricAggregate): string =>
  *
  * @since 0.1.0
  */
-export const formatSpread = (summary: Summary | undefined): string =>
-  summary === undefined
-    ? NO_SCORED_TRIALS
-    : `mean=${summary.mean.toFixed(3)} stddev=${summary.stddev.toFixed(3)} [${summary.min.toFixed(3)}, ${summary.max.toFixed(3)}]`;
+export const formatSpread = (summary: Option.Option<Summary>): string =>
+  Option.match(summary, {
+    onNone: () => NO_SCORED_TRIALS,
+    onSome: (spread) =>
+      `mean=${spread.mean.toFixed(3)} stddev=${spread.stddev.toFixed(3)} [${spread.min.toFixed(3)}, ${spread.max.toFixed(3)}]`,
+  });
 
 /**
  * A task (system-under-test) trial that failed to produce an output.
@@ -232,25 +253,25 @@ export const aggregate = (result: SuiteResult): Aggregate => {
     result.cases,
     (caseResult) =>
       caseResult.taskFailures.length < caseResult.trials ||
-      caseResult.metrics.some((metric) => metric.summary !== undefined),
+      caseResult.metrics.some((metric) => Option.isSome(metric.summary)),
   ).length;
   const sums = Arr.reduce(
     Arr.flatMap(result.cases, (caseResult) => caseResult.metrics),
-    EffectRecord.empty<string, { readonly sum: number; readonly cases: number }>(),
+    R.empty<string, { readonly sum: number; readonly cases: number }>(),
     (acc, metric) => {
-      if (metric.summary === undefined) return acc;
-      const { mean } = metric.summary;
-      return EffectRecord.set(
+      if (Option.isNone(metric.summary)) return acc;
+      const { mean } = metric.summary.value;
+      return R.set(
         acc,
         metric.metric,
-        Option.match(EffectRecord.get(acc, metric.metric), {
+        Option.match(R.get(acc, metric.metric), {
           onNone: () => ({ sum: mean, cases: 1 }),
           onSome: (entry) => ({ sum: entry.sum + mean, cases: entry.cases + 1 }),
         }),
       );
     },
   );
-  const metrics = EffectRecord.map(sums, ({ sum, cases }): MetricAggregateAcrossCases => ({
+  const metrics = R.map(sums, ({ sum, cases }): MetricAggregateAcrossCases => ({
     mean: sum / cases,
     cases,
   }));

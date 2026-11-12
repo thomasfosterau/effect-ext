@@ -8,8 +8,8 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as Record from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Str from "effect/String";
 import { evaluate } from "../internal/css/calc.ts";
 import { parseComponentValue } from "./syntax.ts";
@@ -94,16 +94,13 @@ export interface Length {
 }
 
 const isUnit = (unit: string): unit is AbsoluteUnit | RelativeUnit =>
-  Record.has<string, number>(ABSOLUTE_UNITS, unit) ||
+  R.has<string, number>(ABSOLUTE_UNITS, unit) ||
   RELATIVE_UNITS.some((relative) => relative === unit);
 
 /** A length unit's canonical unit and factor in `calc()`: an absolute unit becomes `px`. */
 const canonical = (unit: string): Option.Option<readonly [string, number]> =>
   Option.orElse(
-    Option.map(
-      Record.get<string, number>(ABSOLUTE_UNITS, unit),
-      (pixels) => ["px", pixels] as const,
-    ),
+    Option.map(R.get<string, number>(ABSOLUTE_UNITS, unit), (pixels) => ["px", pixels] as const),
     () => (isUnit(unit) ? Option.some([unit, 1] as const) : Option.none()),
   );
 
@@ -154,15 +151,15 @@ export type Sum = ReadonlyArray<Length>;
  * @category parsing
  */
 export const parseSum = (input: string | ComponentValue): Option.Option<Sum> => {
-  const value = Predicate.isString(input) ? parseComponentValue(input) : input;
-  if (!Predicate.isTagged(value, "Func") || Str.toLowerCase(value.name) !== "calc") {
+  const value = P.isString(input) ? parseComponentValue(input) : input;
+  if (!P.isTagged(value, "Func") || Str.toLowerCase(value.name) !== "calc") {
     return Option.map(parsePlain(value), (length) => [length]);
   }
   return Option.flatMap(evaluate(value.value, canonical), (terms) =>
-    Record.has(terms, "")
+    R.has(terms, "")
       ? Option.none()
       : Option.some(
-          Record.toEntries(terms)
+          R.toEntries(terms)
             .flatMap(([unit, coefficient]): ReadonlyArray<Length> =>
               unit === "%" || isUnit(unit) ? [{ value: coefficient, unit }] : [],
             )
@@ -227,13 +224,12 @@ export const parse = (input: string | ComponentValue): Option.Option<Length> =>
 
 /** A plain `<length-percentage>`: a length dimension, a percentage or a unitless zero. */
 const parsePlain = (value: ReturnType<typeof parseComponentValue>): Option.Option<Length> => {
-  if (Predicate.isTagged(value, "Dimension")) {
+  if (P.isTagged(value, "Dimension")) {
     const unit = Str.toLowerCase(value.unit);
     return isUnit(unit) ? Option.some({ value: value.value, unit }) : Option.none();
   }
-  if (Predicate.isTagged(value, "Percentage"))
-    return Option.some({ value: value.value, unit: "%" });
-  if (Predicate.isTagged(value, "Number") && value.value === 0)
+  if (P.isTagged(value, "Percentage")) return Option.some({ value: value.value, unit: "%" });
+  if (P.isTagged(value, "Number") && value.value === 0)
     return Option.some({ value: 0, unit: "px" });
   return Option.none();
 };
@@ -254,10 +250,7 @@ const parsePlain = (value: ReturnType<typeof parseComponentValue>): Option.Optio
  * @category converting
  */
 export const toPixels = (length: Length): Option.Option<number> =>
-  Option.map(
-    Record.get<string, number>(ABSOLUTE_UNITS, length.unit),
-    (pixels) => length.value * pixels,
-  );
+  Option.map(R.get<string, number>(ABSOLUTE_UNITS, length.unit), (pixels) => length.value * pixels);
 
 /**
  * Converts a length to another absolute unit; `None` when the length is

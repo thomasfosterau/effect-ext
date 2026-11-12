@@ -10,7 +10,7 @@
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import type { JsonFeed, JsonFeedAttachment, JsonFeedAuthor, JsonFeedItem } from "../JsonFeed.ts";
@@ -73,8 +73,8 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
   /** A string member; `null` reads as absent, any other non-string is dropped. */
   const string = (members: Members, key: string, path: string): string | undefined => {
     const value = members[key];
-    if (Predicate.isNullish(value)) return undefined;
-    if (Predicate.isString(value)) return value;
+    if (P.isNullish(value)) return undefined;
+    if (P.isString(value)) return value;
     report(`${path}.${key}`, "not a string; ignored");
     return undefined;
   };
@@ -82,16 +82,16 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
   /** A finite, non-negative number member. */
   const count = (members: Members, key: string, path: string): number | undefined => {
     const value = members[key];
-    if (Predicate.isNullish(value)) return undefined;
-    if (Predicate.isNumber(value) && Number.isFinite(value) && value >= 0) return value;
+    if (P.isNullish(value)) return undefined;
+    if (P.isNumber(value) && Number.isFinite(value) && value >= 0) return value;
     report(`${path}.${key}`, "not a non-negative number; ignored");
     return undefined;
   };
 
   const boolean = (members: Members, key: string, path: string): boolean | undefined => {
     const value = members[key];
-    if (Predicate.isNullish(value)) return undefined;
-    if (Predicate.isBoolean(value)) return value;
+    if (P.isNullish(value)) return undefined;
+    if (P.isBoolean(value)) return value;
     report(`${path}.${key}`, "not a boolean; ignored");
     return undefined;
   };
@@ -104,7 +104,7 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
     read: (value: unknown, path: string) => Option.Option<A>,
   ): ReadonlyArray<A> | undefined => {
     const value = members[key];
-    if (Predicate.isNullish(value)) return undefined;
+    if (P.isNullish(value)) return undefined;
     if (!Array.isArray(value)) {
       report(`${path}.${key}`, "not an array; ignored");
       return undefined;
@@ -115,13 +115,13 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
   };
 
   const object = (value: unknown, path: string): Option.Option<Members> => {
-    if (Predicate.isObject(value)) return Option.some(value);
+    if (P.isObject(value)) return Option.some(value);
     report(path, "not an object; dropped");
     return Option.none();
   };
 
   const tag = (value: unknown, path: string): Option.Option<string> => {
-    if (Predicate.isString(value)) return Option.some(value);
+    if (P.isString(value)) return Option.some(value);
     report(path, "not a string; dropped");
     return Option.none();
   };
@@ -142,7 +142,7 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
   const authors = (members: Members, path: string): ReadonlyArray<JsonFeedAuthor> | undefined => {
     const many = list(members, "authors", path, author);
     if (many !== undefined) return many;
-    if (Predicate.isNullish(members["author"])) return undefined;
+    if (P.isNullish(members["author"])) return undefined;
     return Option.match(author(members["author"], `${path}.author`), {
       onNone: () => undefined,
       onSome: (one) => [one],
@@ -171,13 +171,13 @@ const makeReader = (diagnostics: Array<JsonFeedDiagnostic>) => {
   /** An item's `id`: a string, a number as its decimal string, else the item's `url`. */
   const id = (members: Members, path: string): Option.Option<string> => {
     const value = members["id"];
-    if (Predicate.isString(value) && value !== "") return Option.some(value);
-    if (Predicate.isNumber(value) && Number.isFinite(value)) {
+    if (P.isString(value) && value !== "") return Option.some(value);
+    if (P.isNumber(value) && Number.isFinite(value)) {
       report(`${path}.id`, "a number; read as its string");
       return Option.some(String(value));
     }
     const url = members["url"];
-    if (Predicate.isString(url) && url !== "") {
+    if (P.isString(url) && url !== "") {
       report(`${path}.id`, "missing or invalid; the item's url used instead");
       return Option.some(url);
     }
@@ -252,11 +252,11 @@ const parseError = (reason: JsonFeedParseError["reason"], message: string): Json
 export const decodeJsonFeed = (
   input: unknown,
 ): Result.Result<ParsedJsonFeed, JsonFeedParseError> => {
-  if (!Predicate.isObject(input)) {
+  if (!P.isObject(input)) {
     return Result.fail(parseError("NotAnObject", "A JSON Feed is a JSON object"));
   }
   const version = input["version"];
-  if (!Predicate.isString(version) || !VERSION.test(version)) {
+  if (!P.isString(version) || !VERSION.test(version)) {
     return Result.fail(
       parseError("NotAJsonFeed", "No https://jsonfeed.org/version/… version: not a JSON Feed"),
     );

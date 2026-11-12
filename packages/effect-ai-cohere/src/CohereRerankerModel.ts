@@ -7,7 +7,8 @@
  * The pinned model (`rerank-v3.5`) lives here as the single source of truth.
  * The abstraction's `make` validates and normalises the provider results (see
  * `@thomasfosterau/effect-ext/RerankerModel`), so this module only maps
- * Cohere's wire response into the provider-response contract.
+ * Cohere's wire response into the provider-response contract. Cohere bills
+ * reranking in search units; they are reported as `usage.inputTokens`.
  *
  * @module CohereRerankerModel
  *
@@ -15,6 +16,7 @@
  */
 
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
 import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
 import { CohereClient } from "./CohereClient";
@@ -58,7 +60,9 @@ export const make = (
                 index: entry.index,
                 relevanceScore: entry.relevance_score,
               })),
-              usage: { inputTokens: response.meta?.billed_units?.search_units },
+              usage: {
+                inputTokens: Option.fromUndefinedOr(response.meta?.billed_units?.search_units),
+              },
             })),
           ),
     });

@@ -5,7 +5,7 @@
  * input of the vendored css-parsing-tests suite.
  */
 import { describe, expect, it } from "vite-plus/test";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import { Serialize, Syntax, type Token } from "@thomasfosterau/effect-ext/Css";
 
 type ComponentValue = Token.ComponentValue;
@@ -16,9 +16,9 @@ import stylesheet from "./fixtures/css-parsing-tests/stylesheet.json" with { typ
 
 /** The suite's inputs: the even entries of its alternating input / expected list. */
 const inputs = (fixture: ReadonlyArray<unknown>): ReadonlyArray<string> =>
-  fixture.filter((input, index): input is string => index % 2 === 0 && Predicate.isString(input));
+  fixture.filter((input, index): input is string => index % 2 === 0 && P.isString(input));
 
-const isWhitespace = (value: ComponentValue): boolean => Predicate.isTagged(value, "Whitespace");
+const isWhitespace = (value: ComponentValue): boolean => P.isTagged(value, "Whitespace");
 
 /**
  * Component values as serialisation keeps them: the `unterminated` flags
@@ -32,10 +32,10 @@ const terminated = (values: ReadonlyArray<ComponentValue>): ReadonlyArray<Compon
       return !(isWhitespace(value) && previous !== undefined && isWhitespace(previous));
     })
     .map((value): ComponentValue => {
-      if (Predicate.isTagged(value, "String") || Predicate.isTagged(value, "Url")) {
+      if (P.isTagged(value, "String") || P.isTagged(value, "Url")) {
         return { ...value, unterminated: false };
       }
-      if (Predicate.isTagged(value, "Func") || Predicate.isTagged(value, "Block")) {
+      if (P.isTagged(value, "Func") || P.isTagged(value, "Block")) {
         return { ...value, value: terminated(value.value) };
       }
       return value;
@@ -137,7 +137,7 @@ describe("Serialize.declaration", () => {
 // The suite's parser edition keeps the whitespace around a value; the serialiser trims it.
 const declarations = (css: string) =>
   Syntax.parseDeclarationList(css).flatMap((one) =>
-    Predicate.isTagged(one, "Declaration") ? [{ ...one, value: terminated(trim(one.value)) }] : [],
+    P.isTagged(one, "Declaration") ? [{ ...one, value: terminated(trim(one.value)) }] : [],
   );
 
 describe("round trip over css-parsing-tests", () => {

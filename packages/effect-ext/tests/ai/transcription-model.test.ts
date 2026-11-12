@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
 import {
   make,
@@ -54,12 +55,12 @@ describe("TranscriptionModel", () => {
         const { model, calls: stubCalls } = yield* makeStub({
           respond: () => ({
             text: "hello world",
-            segments: [
+            segments: Option.some([
               { text: "hello", start: 0, end: 0.5 },
               { text: "world", start: 0.5, end: 1 },
-            ],
-            language: "en",
-            usage: { durationSeconds: 1 },
+            ]),
+            language: Option.some("en"),
+            usage: { durationSeconds: Option.some(1) },
           }),
         });
         const result = yield* model.transcribe({ audio, mediaType: "audio/wav", language: "en" });
@@ -68,29 +69,31 @@ describe("TranscriptionModel", () => {
     );
 
     expect(response.text).toBe("hello world");
-    expect(response.segments?.length).toBe(2);
-    expect(response.language).toBe("en");
-    expect(response.usage.durationSeconds).toBe(1);
+    expect(Option.map(response.segments, (segments) => segments.length)).toStrictEqual(
+      Option.some(2),
+    );
+    expect(response.language).toStrictEqual(Option.some("en"));
+    expect(response.usage.durationSeconds).toStrictEqual(Option.some(1));
     expect(calls).toEqual([{ audio, mediaType: "audio/wav", language: "en" }]);
   });
 
-  it("returns undefined segments and language when the provider omits them", async () => {
+  it("returns no segments or language when the provider omits them", async () => {
     const response = await runTest(
       Effect.gen(function* () {
         const { model } = yield* makeStub({
           respond: () => ({
             text: "bare",
-            segments: undefined,
-            language: undefined,
-            usage: { durationSeconds: undefined },
+            segments: Option.none(),
+            language: Option.none(),
+            usage: { durationSeconds: Option.none() },
           }),
         });
         return yield* model.transcribe({ audio });
       }),
     );
 
-    expect(response.segments).toBeUndefined();
-    expect(response.language).toBeUndefined();
+    expect(response.segments).toStrictEqual(Option.none());
+    expect(response.language).toStrictEqual(Option.none());
   });
 
   it("fails with AiError when a segment ends before it starts", async () => {
@@ -99,9 +102,9 @@ describe("TranscriptionModel", () => {
         const { model } = yield* makeStub({
           respond: () => ({
             text: "x",
-            segments: [{ text: "x", start: 1, end: 0.5 }],
-            language: undefined,
-            usage: { durationSeconds: undefined },
+            segments: Option.some([{ text: "x", start: 1, end: 0.5 }]),
+            language: Option.none(),
+            usage: { durationSeconds: Option.none() },
           }),
         });
         return yield* model.transcribe({ audio });
@@ -117,9 +120,9 @@ describe("TranscriptionModel", () => {
         const { model } = yield* makeStub({
           respond: () => ({
             text: "x",
-            segments: [{ text: "x", start: 0, end: Number.NaN }],
-            language: undefined,
-            usage: { durationSeconds: undefined },
+            segments: Option.some([{ text: "x", start: 0, end: Number.NaN }]),
+            language: Option.none(),
+            usage: { durationSeconds: Option.none() },
           }),
         });
         return yield* model.transcribe({ audio });

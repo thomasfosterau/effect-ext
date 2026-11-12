@@ -11,8 +11,8 @@
 import * as Arr from "effect/Array";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as Record from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Str from "effect/String";
 import * as Mix from "../internal/css/mix.ts";
 import { NAMED_COLORS } from "../internal/css/named-colors.ts";
@@ -221,8 +221,8 @@ const spaceArgs = (
   args: ReadonlyArray<Arg>,
   count: number,
 ): Option.Option<{ channels: ReadonlyArray<Arg>; alpha: Option.Option<Arg> }> => {
-  if (args.some((arg) => Predicate.isTagged(arg, "Comma"))) return Option.none();
-  const slash = args.findIndex((arg) => Predicate.isTagged(arg, "Delim") && arg.value === "/");
+  if (args.some((arg) => P.isTagged(arg, "Comma"))) return Option.none();
+  const slash = args.findIndex((arg) => P.isTagged(arg, "Delim") && arg.value === "/");
   const channels = slash < 0 ? args : args.slice(0, slash);
   const rest = slash < 0 ? [] : args.slice(slash + 1);
   if (channels.length !== count || (slash >= 0 && rest.length !== 1)) return Option.none();
@@ -236,7 +236,7 @@ const commaArgs = (
 ): Option.Option<{ channels: ReadonlyArray<Arg>; alpha: Option.Option<Arg> }> => {
   const values = args.filter((_, index) => index % 2 === 0);
   const commas = args.filter((_, index) => index % 2 === 1);
-  if (!commas.every((arg) => Predicate.isTagged(arg, "Comma"))) return Option.none();
+  if (!commas.every((arg) => P.isTagged(arg, "Comma"))) return Option.none();
   if (values.length < count || values.length > count + 1 || args.length !== values.length * 2 - 1) {
     return Option.none();
   }
@@ -247,7 +247,7 @@ const commaArgs = (
 };
 
 const isNone = (arg: Arg): boolean =>
-  Predicate.isTagged(arg, "Ident") && Str.toLowerCase(arg.value) === "none";
+  P.isTagged(arg, "Ident") && Str.toLowerCase(arg.value) === "none";
 
 /** A `<number>` or `<percentage>` (scaled by `percent` per 1%), or `none` when allowed. */
 const numberOrPercentage = (
@@ -255,13 +255,13 @@ const numberOrPercentage = (
   percent: number,
   allowNone: boolean,
 ): Option.Option<Channel> => {
-  if (Predicate.isTagged(arg, "Number")) return Option.some(arg.value);
-  if (Predicate.isTagged(arg, "Percentage")) return Option.some(arg.value * percent);
+  if (P.isTagged(arg, "Number")) return Option.some(arg.value);
+  if (P.isTagged(arg, "Percentage")) return Option.some(arg.value * percent);
   if (allowNone && isNone(arg)) return Option.some("none");
   return Option.none();
 };
 
-const ANGLE_UNITS: Readonly<Record<string, number>> = {
+const ANGLE_UNITS: R.ReadonlyRecord<string, number> = {
   deg: 1,
   grad: 360 / 400,
   rad: 180 / Math.PI,
@@ -270,13 +270,10 @@ const ANGLE_UNITS: Readonly<Record<string, number>> = {
 
 /** A `<hue>` in degrees, normalised to [0, 360), or `none` when allowed. */
 const hueChannel = (arg: Arg, allowNone: boolean): Option.Option<Channel> => {
-  const degrees = Predicate.isTagged(arg, "Number")
+  const degrees = P.isTagged(arg, "Number")
     ? Option.some(arg.value)
-    : Predicate.isTagged(arg, "Dimension")
-      ? Option.map(
-          Record.get(ANGLE_UNITS, Str.toLowerCase(arg.unit)),
-          (factor) => arg.value * factor,
-        )
+    : P.isTagged(arg, "Dimension")
+      ? Option.map(R.get(ANGLE_UNITS, Str.toLowerCase(arg.unit)), (factor) => arg.value * factor)
       : Option.none();
   if (Option.isNone(degrees) && allowNone && isNone(arg)) return Option.some("none");
   return Option.map(degrees, (value) => ((value % 360) + 360) % 360);
@@ -304,7 +301,7 @@ const zero = (channel: Channel): number => (channel === "none" ? 0 : channel);
 const toRgb = (
   color: ({ readonly _tag: "Hsl" } & HslChannels) | ({ readonly _tag: "Hwb" } & HwbChannels),
 ) =>
-  Predicate.isTagged(color, "Hsl")
+  P.isTagged(color, "Hsl")
     ? srgbColor(
         Spaces.hslToSrgb([
           zero(color.hue),
@@ -337,8 +334,7 @@ const parseRgb = (args: ReadonlyArray<Arg>): Option.Option<Color> => {
     all([...channels.map((arg) => numberOrPercentage(arg, 2.55, true)), alphaOf(alpha, true)]),
   );
   const legacy = Option.flatMap(commaArgs(args), ({ channels, alpha }) => {
-    const allOf = (tag: "Number" | "Percentage") =>
-      channels.every((arg) => Predicate.isTagged(arg, tag));
+    const allOf = (tag: "Number" | "Percentage") => channels.every((arg) => P.isTagged(arg, tag));
     if (!allOf("Number") && !allOf("Percentage")) return Option.none();
     return all([
       ...channels.map((arg) => numberOrPercentage(arg, 2.55, false)),
@@ -382,11 +378,7 @@ const parseHsl = (args: ReadonlyArray<Arg>): Option.Option<Color> => {
   });
   const legacy = Option.flatMap(commaArgs(args), ({ channels, alpha }) => {
     const [h, s, l] = channels;
-    if (
-      h === undefined ||
-      !Predicate.isTagged(s, "Percentage") ||
-      !Predicate.isTagged(l, "Percentage")
-    )
+    if (h === undefined || !P.isTagged(s, "Percentage") || !P.isTagged(l, "Percentage"))
       return Option.none();
     return all([
       hueChannel(h, false),
@@ -490,7 +482,7 @@ const parseLchLike = (
     }),
   );
 
-const SPACES: Readonly<Record<string, PredefinedSpace>> = {
+const SPACES: R.ReadonlyRecord<string, PredefinedSpace> = {
   srgb: "srgb",
   "srgb-linear": "srgb-linear",
   "display-p3": "display-p3",
@@ -505,11 +497,11 @@ const SPACES: Readonly<Record<string, PredefinedSpace>> = {
 
 const parseColorFunction = (args: ReadonlyArray<Arg>): Option.Option<Color> => {
   const [first, ...rest] = args;
-  if (!Predicate.isTagged(first, "Ident")) return Option.none();
+  if (!P.isTagged(first, "Ident")) return Option.none();
   if (first.value.startsWith("--") && first.value.length > 2) {
     return parseCustomColor(first.value, rest);
   }
-  return Option.flatMap(Record.get(SPACES, Str.toLowerCase(first.value)), (space) =>
+  return Option.flatMap(R.get(SPACES, Str.toLowerCase(first.value)), (space) =>
     Option.map(
       Option.flatMap(spaceArgs(rest, 3), ({ channels, alpha }) =>
         all([...channels.map((arg) => numberOrPercentage(arg, 0.01, true)), alphaOf(alpha, true)]),
@@ -537,7 +529,7 @@ const parseDeviceCmyk = (args: ReadonlyArray<Arg>): Option.Option<Color> => {
     all([...channels.map((arg) => numberOrPercentage(arg, 0.01, true)), alphaOf(alpha, true)]),
   );
   const legacy = Option.flatMap(commaArgs(args, 4), ({ channels, alpha }) =>
-    channels.every((arg) => Predicate.isTagged(arg, "Number"))
+    channels.every((arg) => P.isTagged(arg, "Number"))
       ? all([...channels.map((arg) => numberOrPercentage(arg, 1, false)), alphaOf(alpha, false)])
       : Option.none(),
   );
@@ -559,7 +551,7 @@ const parseDeviceCmyk = (args: ReadonlyArray<Arg>): Option.Option<Color> => {
  * then one or more numbers or percentages (or `none`), as written.
  */
 const parseCustomColor = (space: string, rest: ReadonlyArray<Arg>): Option.Option<Color> => {
-  const slash = rest.findIndex((arg) => Predicate.isTagged(arg, "Delim") && arg.value === "/");
+  const slash = rest.findIndex((arg) => P.isTagged(arg, "Delim") && arg.value === "/");
   const count = slash < 0 ? rest.length : slash;
   if (count === 0) return Option.none();
   return Option.map(
@@ -575,7 +567,7 @@ const parseCustomColor = (space: string, rest: ReadonlyArray<Arg>): Option.Optio
 
 /** The arguments split at top-level commas, each without surrounding whitespace. */
 const commaSeparated = (args: ReadonlyArray<Arg>): ReadonlyArray<ReadonlyArray<Arg>> => {
-  const commas = args.flatMap((arg, index) => (Predicate.isTagged(arg, "Comma") ? [index] : []));
+  const commas = args.flatMap((arg, index) => (P.isTagged(arg, "Comma") ? [index] : []));
   return [-1, ...commas].map((start, group) => args.slice(start + 1, commas[group] ?? args.length));
 };
 
@@ -599,11 +591,11 @@ const HUE_METHODS: ReadonlyArray<HueMethod> = ["shorter", "longer", "increasing"
 /** The lowercased identifier at `index` in `group`, if there is one. */
 const keywordAt = (group: ReadonlyArray<Arg>, index: number): Option.Option<string> =>
   Option.flatMap(Arr.get(group, index), (arg) =>
-    Predicate.isTagged(arg, "Ident") ? Option.some(Str.toLowerCase(arg.value)) : Option.none(),
+    P.isTagged(arg, "Ident") ? Option.some(Str.toLowerCase(arg.value)) : Option.none(),
   );
 
 const interpolationSpace = (name: string): Option.Option<InterpolationSpace> =>
-  Option.orElse(Record.get(SPACES, name), () => Arr.findFirst(MIX_SPACES, (one) => one === name));
+  Option.orElse(R.get(SPACES, name), () => Arr.findFirst(MIX_SPACES, (one) => one === name));
 
 const hueMethod = (name: string): Option.Option<HueMethod> =>
   Arr.findFirst(HUE_METHODS, (one) => one === name);
@@ -626,7 +618,7 @@ const interpolationMethod = (
 
 /** A percentage from 0% to 100%. */
 const mixPercentage = (arg: Arg): Option.Option<number> =>
-  Predicate.isTagged(arg, "Percentage") && arg.value >= 0 && arg.value <= 100
+  P.isTagged(arg, "Percentage") && arg.value >= 0 && arg.value <= 100
     ? Option.some(arg.value)
     : Option.none();
 
@@ -636,7 +628,7 @@ const mixComponent = (group: ReadonlyArray<Arg>): Option.Option<MixComponent> =>
   if (first === undefined || Arr.isReadonlyArrayNonEmpty(rest)) return Option.none();
   if (second === undefined)
     return Option.map(parse(first), (color) => ({ color, percentage: Option.none() }));
-  const leading = Predicate.isTagged(first, "Percentage");
+  const leading = P.isTagged(first, "Percentage");
   return Option.map(
     Option.all([parse(leading ? second : first), mixPercentage(leading ? first : second)]),
     ([color, percentage]) => ({ color, percentage: Option.some(percentage) }),
@@ -666,7 +658,7 @@ const parseColorMix = (args: ReadonlyArray<Arg>): Option.Option<Color> => {
   }));
 };
 
-const FUNCTIONS: Readonly<Record<string, (args: ReadonlyArray<Arg>) => Option.Option<Color>>> = {
+const FUNCTIONS: R.ReadonlyRecord<string, (args: ReadonlyArray<Arg>) => Option.Option<Color>> = {
   rgb: parseRgb,
   rgba: parseRgb,
   hsl: parseHsl,
@@ -700,7 +692,7 @@ const parseKeyword = (value: string): Option.Option<Color> => {
     return Option.some({ _tag: "Named", name, red: 0, green: 0, blue: 0, alpha: 0 });
   if (name === "currentcolor") return Option.some({ _tag: "CurrentColor" });
   return Option.map(
-    Record.get<string, readonly [number, number, number]>(NAMED_COLORS, name),
+    R.get<string, readonly [number, number, number]>(NAMED_COLORS, name),
     ([red, green, blue]) => ({ _tag: "Named" as const, name, red, green, blue, alpha: 1 }),
   );
 };
@@ -725,17 +717,16 @@ const parseKeyword = (value: string): Option.Option<Color> => {
  * @category parsing
  */
 export const parse = (input: string | ComponentValue): Option.Option<Color> => {
-  const value = Predicate.isString(input) ? parseComponentValue(input) : input;
-  if (Predicate.isTagged(value, "Ident")) return parseKeyword(value.value);
-  if (Predicate.isTagged(value, "Hash")) return parseHex(value.value);
-  if (!Predicate.isTagged(value, "Func")) return Option.none();
+  const value = P.isString(input) ? parseComponentValue(input) : input;
+  if (P.isTagged(value, "Ident")) return parseKeyword(value.value);
+  if (P.isTagged(value, "Hash")) return parseHex(value.value);
+  if (!P.isTagged(value, "Func")) return Option.none();
   return Option.flatMap(
-    Record.get(
+    R.get(
       FUNCTIONS,
       value.name.replace(/[A-Z]/g, (letter) => letter.toLowerCase()),
     ),
-    (parseFunction) =>
-      parseFunction(value.value.filter((arg) => !Predicate.isTagged(arg, "Whitespace"))),
+    (parseFunction) => parseFunction(value.value.filter((arg) => !P.isTagged(arg, "Whitespace"))),
   );
 };
 
@@ -923,10 +914,10 @@ export interface Srgb {
  * @category converting
  */
 export const toSrgb = (color: Color): Option.Option<Srgb> => {
-  if (Predicate.isTagged(color, "Hsl") || Predicate.isTagged(color, "Hwb")) {
+  if (P.isTagged(color, "Hsl") || P.isTagged(color, "Hwb")) {
     return toSrgb(toRgb(color));
   }
-  if (Predicate.isTagged(color, "Rgb") || Predicate.isTagged(color, "Named")) {
+  if (P.isTagged(color, "Rgb") || P.isTagged(color, "Named")) {
     return Option.some({
       red: color.red / 255,
       green: color.green / 255,
@@ -1090,4 +1081,4 @@ const resolveMix = (mix: {
  * @category converting
  */
 export const resolve = (color: Color): Option.Option<Color> =>
-  Predicate.isTagged(color, "ColorMix") ? resolveMix(color) : Option.some(color);
+  P.isTagged(color, "ColorMix") ? resolveMix(color) : Option.some(color);

@@ -15,8 +15,9 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
-import * as EffectRecord from "effect/Record";
+import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
 import { AiError, EmbeddingModel } from "effect/ai";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/http";
@@ -48,7 +49,7 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
     const captured: CapturedRequest = {
       url: request.url,
       authorization: request.headers.get("authorization"),
-      headers: EffectRecord.fromEntries(request.headers),
+      headers: R.fromEntries(request.headers),
       body,
     };
     calls.push(captured);
@@ -339,7 +340,7 @@ describe("VoyageRerankerModel", () => {
     expect(calls[0]?.body.top_k).toBe(2);
     expect(response.results.map((r) => r.index)).toEqual([2, 0]);
     expect(response.results[0]?.relevanceScore).toBe(0.9);
-    expect(response.usage.inputTokens).toBe(26);
+    expect(response.usage.inputTokens).toStrictEqual(Option.some(26));
   });
 
   it("omits top_k when topN is unset", async () => {
@@ -452,7 +453,7 @@ describe("VoyageEmbeddingModel.EMBEDDING_MODELS", () => {
     expect(VoyageEmbeddingModel.EMBEDDING_MODELS["voyage-3-lite"].defaultDimension).toBe(512);
   });
 
-  it.each(EffectRecord.toEntries(VoyageEmbeddingModel.EMBEDDING_MODELS))(
+  it.each(R.toEntries(VoyageEmbeddingModel.EMBEDDING_MODELS))(
     "lists the %s model's default dimension among its dimensions",
     (_id, info) => {
       expect(info.dimensions).toContain(info.defaultDimension);

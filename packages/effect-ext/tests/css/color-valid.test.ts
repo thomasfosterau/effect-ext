@@ -5,8 +5,8 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as Record from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import { Color } from "@thomasfosterau/effect-ext/Css";
 import vectors from "./fixtures/wpt-color-valid.json" with { type: "json" };
 
@@ -17,12 +17,12 @@ interface Vector {
   readonly epsilon: Option.Option<number>;
 }
 
-const toVector = (entry: ReadonlyArray<string | number | null>): Vector => {
+const toVector = (entry: ReadonlyArray<unknown>): Vector => {
   const [input, expected, epsilon] = entry;
   return {
     input: String(input),
     expected: String(expected),
-    epsilon: Predicate.isNumber(epsilon) ? Option.some(epsilon) : Option.none(),
+    epsilon: P.isNumber(epsilon) ? Option.some(epsilon) : Option.none(),
   };
 };
 
@@ -52,7 +52,7 @@ const fuzzyEqual = (actual: string, expected: string, epsilon: number): boolean 
  * The vectors each file has once the unsupported ones are set aside, all
  * of which pass; a change that drops one fails here.
  */
-const COUNTS: Readonly<Record<string, number>> = {
+const COUNTS: R.ReadonlyRecord<string, number> = {
   "color-valid-color-function": 250,
   "color-valid-hsl": 35,
   "color-valid-hwb": 28,
@@ -61,7 +61,7 @@ const COUNTS: Readonly<Record<string, number>> = {
   "color-valid": 17,
 };
 
-describe.each(Record.toEntries(vectors))("WPT %s", (file, entries) => {
+describe.each(R.toEntries(vectors))("WPT %s", (file, entries) => {
   const valid = entries.map(toVector).filter((vector) => !unsupported(vector));
 
   it("covers every vector without calc()", () => {

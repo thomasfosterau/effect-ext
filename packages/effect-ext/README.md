@@ -18,7 +18,7 @@ Extensions to the [Effect](https://effect.website) standard library and to its A
 pnpm add @thomasfosterau/effect-ext effect
 ```
 
-Peer: `effect` `^4.0.0`. Three optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `^4.0.0` (`Browser`, `BrowserTesting`), `@thomasfosterau/effect-jsonapi` `>=0.16.1` (`Negotiate`) and `@thomasfosterau/effect-parse` `^0.4.1 || ^0.5.0` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. A fourth optional peer, `@effect/platform-node` `^4.0.0`, is needed only by the `effect-evals` CLI (see [CLI](#cli)). Node.js 22 or later for the library; the `effect-evals` CLI needs 22.18 or later (it type-strips `*.eval.ts` files, on by default from 22.18) and says so when started on an older Node. ESM only, `"sideEffects": false`; every module is also its own entry point:
+Peer: `effect` `^4.0.0`. Two optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `^4.0.0` (`Browser`, `BrowserTesting`) and `@thomasfosterau/effect-parse` `^0.4.1 || ^0.5.0` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. A third optional peer, `@effect/platform-node` `^4.0.0`, is needed only by the `effect-evals` CLI (see [CLI](#cli)). Node.js 22 or later for the library; the `effect-evals` CLI needs 22.18 or later (it type-strips `*.eval.ts` files, on by default from 22.18) and says so when started on an older Node. ESM only, `"sideEffects": false`; every module is also its own entry point:
 
 ```ts
 import { Vec, TriState } from "@thomasfosterau/effect-ext";
@@ -42,10 +42,11 @@ import * as Vec from "@thomasfosterau/effect-ext/Vec";
 | `LiteralExact` | Literal tuples checked to cover a union exactly. |
 | `Ast` | Schema field introspection by AST and decode probe. |
 | `Url` | An absolute URL whose scheme, host, port, credentials and path are part of its type. |
+| `OptionalKey` | Optional keys for object construction under `exactOptionalPropertyTypes`. |
 | `Web` | Response-header policies, the cross-origin mutation guard, the trusted client address, the degraded-session report, the canonical site base, the JSON:API guard responses and the Fetch adapters. |
 | `Net` | The SSRF host block list, the URL safety check and the redirect-revalidating fetch. |
 | `Observability` | The structured JSON-line sink, the allow-listed span tracer, the `logEvent` trio, `describeError`, the auth-outcome signal and per-request metrics. |
-| `Negotiate` | The content-negotiation dispatch verdict (HTML / JSON:API / Markdown). Needs `@thomasfosterau/effect-jsonapi`. |
+| `Negotiate` | The content-negotiation verdict over the representations you declare (media type, served paths, accepted parameters). |
 | `ServiceWorker` | Cache Storage as typed effects, the five caching strategies, a route table that becomes a `fetch` listener, and lifecycle listeners whose work runs inside `waitUntil`. |
 | `Browser` | Browser platform APIs as Effect services, and one `layer` with every live service. Needs `@effect/platform-browser`. |
 | `BrowserTesting` | In-memory doubles for every `Browser` service, each with a `Control`; `observe`. Needs `@effect/platform-browser`. |
@@ -338,6 +339,23 @@ Each `@thomasfosterau/effect-web` entry point, and each of its sibling packages,
 
 Two things change beyond the path: the `effect` peer range is `^4.0.0` (effect-web's was `>=4.0.0-rc.118`), and each service's `Context` key moved with it (`@thomasfosterau/effect-web/browser/Locks` is now `@thomasfosterau/effect-ext/Browser/Locks`), so a layer built from the old package does not satisfy a service from the new one. Move every import at once.
 
+## OptionalKey
+
+Under `exactOptionalPropertyTypes` an absent optional key must be omitted, not set to `undefined`. Spread `optionalKey(key, value)` instead of `...(value !== undefined ? { key: value } : {})`:
+
+```ts
+import * as Option from "effect/Option";
+import { fields, fromOption, optionalKey } from "@thomasfosterau/effect-ext/OptionalKey";
+
+const options = { limit: 10, ...optionalKey("cursor", cursor), ...fromOption("filter", filter) };
+const forwarded = { collection, ...fields({ limit, cursor }) };
+```
+
+- `optionalKey(key, value?)` — `{ [key]: value }` unless `value` is `undefined`. `null`, `""`, `0` and `false` keep their key; pass `x ?? undefined` to drop a `null`.
+- `fromOption(key, option)` — the same over an `Option`: the key for `Some`, none for `None`.
+- `fields(input)` — the whole-object form: copies the members of `input` that are not `undefined`. Its type, `Defined<T>`, makes each member that admits `undefined` optional and keeps the rest required.
+- An absent key from `optionalKey` or `fromOption` allocates nothing: every such result is one shared, frozen empty object.
+
 ## Web, Net, Observability, Negotiate, ServiceWorker, Browser, BrowserTesting
 
 Framework-neutral web request/response utilities on `effect/http`: cache-control and security headers, Vary, the cross-origin guard, client IP, an SSRF-guarded fetch, structured logging and an allow-listed span tracer, with no SvelteKit, Alchemy or Cloudflare dependency, so it serves a SvelteKit hook, an `HttpApi` middleware or a bare Worker equally. On the client side, browser platform APIs (Web Locks, `navigator`, page visibility, media queries, the screen wake lock, `BroadcastChannel`, permission state) as Effect services, alongside `@effect/platform-browser`, with in-memory test doubles for every one.
@@ -371,7 +389,10 @@ import {
   endpointPaths,
   makeApiPathMatcher,
   makeMarkdownPathMatcher,
+  MARKDOWN_MEDIA_TYPE,
+  Negotiation,
   negotiateWebRequest,
+  type Representation,
 } from "@thomasfosterau/effect-ext/Negotiate";
 
 /** What the application supplies. */
@@ -385,8 +406,20 @@ interface App {
 }
 
 export const makeHandle = (app: App): Handle => {
-  const isApiPath = makeApiPathMatcher(endpointPaths(app.apiGroups));
-  const isMarkdownPath = makeMarkdownPathMatcher(app.markdownSegments);
+  // What the server can produce, in priority order. Markdown is served from a
+  // content page's own URL; the JSON API at its endpoints, for `ext` / `profile`
+  // parameters only (a JSON:API library supplies its own representation).
+  const markdown: Representation = {
+    mediaType: MARKDOWN_MEDIA_TYPE,
+    servesPath: makeMarkdownPathMatcher(app.markdownSegments),
+  };
+  const jsonApi: Representation = {
+    mediaType: "application/vnd.api+json",
+    servesPath: makeApiPathMatcher(endpointPaths(app.apiGroups)),
+    acceptsParameters: (mediaType) =>
+      mediaType.parameters.every(([name]) => name === "ext" || name === "profile"),
+  };
+  const options = { accept: [markdown, jsonApi], contentType: [jsonApi] };
 
   // Outermost: the post-`resolve` header stamp lands on the final response.
   const applyHeaders: Handle = async ({ event, resolve }) => {
@@ -404,7 +437,15 @@ export const makeHandle = (app: App): Handle => {
   // mutation is refused (already `private, no-store`); anything else gets the
   // CACHE-AUTH-003 safety net, since `cacheControl` below never sees it.
   const forward: Handle = async ({ event, resolve }) => {
-    if (!negotiateWebRequest(event.request, { isApiPath }).dispatch) return resolve(event);
+    const verdict = negotiateWebRequest(event.request, options);
+    if (verdict._tag === "NotAcceptable" || verdict._tag === "UnsupportedMediaType") {
+      return verdict._tag === "NotAcceptable"
+        ? new Response("Not Acceptable", { status: 406 })
+        : new Response("Unsupported Media Type", { status: 415 });
+    }
+    if (!Negotiation.$is("Selected")(verdict) || verdict.representation !== jsonApi) {
+      return resolve(event);
+    }
     const rejected = crossOriginMutationRejectionWeb(event.request);
     if (Option.isSome(rejected)) return rejected.value;
     return updateWebHeaders(await app.forwardJsonApi(event.request), ensureCacheControl);
@@ -419,8 +460,8 @@ export const makeHandle = (app: App): Handle => {
 
   // Innermost: the Markdown representation, or SvelteKit's own render.
   const negotiate: Handle = async ({ event, resolve }) => {
-    const verdict = negotiateWebRequest(event.request, { isApiPath, isMarkdownPath });
-    if (verdict.markdown === true) {
+    const verdict = negotiateWebRequest(event.request, options);
+    if (Negotiation.$is("Selected")(verdict) && verdict.representation === markdown) {
       return chooseNegotiatedResponse(await app.renderMarkdown(event), () => resolve(event));
     }
     return resolve(event);
@@ -430,7 +471,7 @@ export const makeHandle = (app: App): Handle => {
 };
 ```
 
-A response that bypasses the middleware (an auth short-circuit) still gets the safety net: `updateWebHeaders(response, ensureCacheControl)`. A verdict with an `error` (406 / 415) is answered with `jsonApiErrorResponseWeb(verdict.error)`.
+A response that bypasses the middleware (an auth short-circuit) still gets the safety net: `updateWebHeaders(response, ensureCacheControl)`. A `NotAcceptable` / `UnsupportedMediaType` verdict is answered with the error document your API's library defines (the example uses bare 406 / 415 responses).
 
 #### In a browser
 
@@ -518,17 +559,21 @@ Pure `(headers: Headers.Headers) => Headers.Headers` functions; compose them and
 - `spanTracer(trackedSpanNames): Tracer.Tracer` — logs `{ event: "span", name, durationMs, traceId, spanId, ok }` per completed span whose name is in the set, nothing for any other. **The allow-list is a required parameter, never a constant**: it replaces the tracer for the whole per-request layer, where `Effect.withSpan` has hundreds of call sites. Build it once at module scope.
 - `logEvent` / `logWarningEvent` / `logErrorEvent(event, fields?)` — `Effect.logInfo` / `logWarning` / `logError` with `{ event, ...fields }` as log annotations. `describeError(error)` renders a failure as `Tag: message`, `Tag`, `message` or `String(error)`.
 - `deriveAuthOutcome(facts): AuthOutcome` (`"skipped" | "resolved" | "anonymous" | "degraded"`; `"skipped"` is the credential-less fast path, PERF-CACHE-003) and `logAuthOutcome(durationMs, outcome)` — the `read-path.auth` line.
-- `withRequestMetrics(fn, onSettle): Promise<A>` — runs `fn` in a fresh per-request metric scope (its own `Metric.Counter` and `MetricRegistry`, scoped through `AsyncLocalStorage`) and hands `{ count }` to `onSettle` once `fn` settles, resolved or rejected. `incrementRequestMetric(amount = 1)` adds to the active scope from any code, synchronously, and is a no-op outside one; `currentRequestMetrics(): Option<RequestMetrics>` reads it. `countingProxy(client, methodNames: ReadonlySet<string>)` counts each call of a named method on `client`, invoking it with the real client as `this` and returning its result untouched — the per-request query count, an N+1 / waterfall signal. Which methods begin a query is the caller's parameter. Emit the settled count as your own `logStructured` line (`{ event: "read-path.db", dbQueryCount: metrics.count, path }`). On Workers this needs `nodejs_compat` (it imports `node:async_hooks`).
+- `withRequestMetrics(fn, onSettle): Promise<A>` — runs `fn` in a fresh per-request metric scope (its own `Metric.Counter` and `MetricRegistry`, scoped through `AsyncLocalStorage`) and hands `{ count }` to `onSettle` once `fn` settles, resolved or rejected. `incrementRequestMetric(amount = 1)` adds to the active scope from any code, synchronously, and is a no-op outside one; `currentRequestMetrics(): Option<RequestMetrics>` reads it. `countingProxy(client, methodNames: Iterable<string>)` (an array, a `HashSet` or a `Set`, read once) counts each call of a named method on `client`, invoking it with the real client as `this` and returning its result untouched — the per-request query count, an N+1 / waterfall signal. Which methods begin a query is the caller's parameter. Emit the settled count as your own `logStructured` line (`{ event: "read-path.db", dbQueryCount: metrics.count, path }`). On Workers this needs `nodejs_compat` (it imports `node:async_hooks`).
 
-#### `Negotiate` — the dispatch verdict
+#### `Negotiate` — the negotiation verdict
 
-- `negotiateRepresentation(request: HttpServerRequest, options): Negotiation` / `negotiateWebRequest(request: Request, options)` — reads negotiate on `Accept`, trying `text/markdown` first on a Markdown path so the page's own URL serves it (DISC-009); mutating methods on `Content-Type`, anything else is HTML; a disallowed media-type parameter answers 406 / 415 (JSONAPI-NEG-001 / JSONAPI-NEG-002). Media types are matched on their WHATWG essence (`MimeType.parse` from `@thomasfosterau/effect-ext/Mime`), so case and whitespace never decide the verdict, and a `Content-Type` that is not a MIME type falls through as HTML. The verdict: `representation` (`"text/html" | "application/vnd.api+json" | "text/markdown"`, the normalized cache key, never the raw `Accept`: PERF-CACHE-005), `dispatch`, `markdown?`, `error?` (`NOT_ACCEPTABLE` 406 / `UNSUPPORTED_MEDIA_TYPE` 415).
-- `NegotiationOptions`: `isApiPath` (required — build it with `makeApiPathMatcher(endpointPaths(groups))` from the served `HttpApi` groups, so the matcher never drifts from the surface), `isMarkdownPath?` (`makeMarkdownPathMatcher(segments)`: a `<segment>/<id>` page whose segment is listed, DISC-009), `extensions?` (the JSON:API `ext` URIs the api declares).
+Nothing about any one media type is built in: you declare the `Representation`s the server can produce and `negotiateRepresentation` says which one a request selects. A JSON:API library supplies its own `Representation` (its `acceptsParameters` is the `ext` / `profile` rule); the 406 / 415 error documents are its too.
+
+- `negotiateRepresentation(request: HttpServerRequest, options: NegotiationOptions): Negotiation` / `negotiateWebRequest(request: Request, options)` — reads (`GET` / `HEAD`) negotiate on `Accept`, trying `options.accept` in priority order; mutating methods on `Content-Type` against `options.contentType`; anything else is `Fallback`. Media types are matched on their WHATWG essence (`MimeType.parse` from `@thomasfosterau/effect-ext/Mime`), so case and whitespace never decide the verdict, and a `Content-Type` that is not a MIME type is `Fallback`.
+- `Representation`: `mediaType` (lower-case `type/subtype`), `servesPath?(pathname)` (omitted → every path) and `acceptsParameters?(mediaType: MimeType)` (the instance's media-type parameters, those before `q`; omitted → any).
+- `NegotiationOptions`: `accept: ReadonlyArray<Representation>` and `contentType?: ReadonlyArray<Representation>` (omitted → no write selects a representation).
+- `Negotiation` (a `Data.TaggedEnum`, with constructors, `$is` and `$match` on the `Negotiation` value): `Selected` (serve `representation`), `Fallback` (serve the default, e.g. HTML), `NotAcceptable` (a read: the client asked for `representation`'s media type at a path it is served on, but every instance carried rejected parameters) and `UnsupportedMediaType` (a write: the `Content-Type` is that media type at a served path, with rejected parameters).
+- Ranking: a read selects a representation when a clean (parameters accepted), `q > 0` instance of its media type outranks (≥) every other media type the client offered; ties win and an unparsable `q` reads as `1`. Otherwise the next representation is tried, and `Fallback` follows the last.
+- `makeApiPathMatcher(paths)` / `endpointPaths(groups)` / `makeMarkdownPathMatcher(segments)` — build a `servesPath` from the served `HttpApi` groups (so the matcher never drifts from the surface) or from the Markdown route segments (a `<segment>/<id>` page, DISC-009).
 - `requestForRouter(request)` / `requestForRouterWeb(request)` — relabels a dispatched write's `Content-Type` to `application/json` for a router that registers JSON payloads under the default encoding.
 - `chooseNegotiatedResponse(markdown: Option<A>, onHtml: () => B)` — the Markdown response or the framework's render, which runs only on `None`.
-- `MARKDOWN_MEDIA_TYPE`, `Representation`, `Negotiation`.
-
-What is adopted from `@thomasfosterau/effect-jsonapi` and what is not: the JSON:API §5/§6 media-type-parameter rule (`ext` / `profile` only; every `ext` URI must be declared) runs through `Middleware.negotiate` for a write and `Middleware.contentTypeIsAcceptable` per `Accept` instance. The **ranking** — whether the JSON:API or Markdown instance outranks every other media type the client offered (`q`, ties win, an unparsable `q` reads as `1`) — is local, because a JSON:API-only server never chooses between representations. Two consequences: an undeclared `ext` is a 406 / 415 (spec-correct), and the §6 error `code`s are effect-jsonapi's (`not_acceptable`, `unsupported_media_type`).
+- `MARKDOWN_MEDIA_TYPE`.
 
 #### `ServiceWorker` — caching strategies and event listeners
 
@@ -1726,15 +1771,17 @@ No provider code, no HTTP — abstractions only. First-party provider packages (
 
 Each module is also available as a per-module subpath (mirroring how `effect` itself ships), e.g. `@thomasfosterau/effect-ext/RerankerModel`, and a namespace on the root barrel. Every module exports the same set of names: the service tag (`RerankerModel.RerankerModel`, …), its `Service` interface, the caller options, the normalised `ProviderOptions` / `ProviderResponse` a provider implements, the `Schema.Class` response and usage models, and `make`.
 
+Absence follows one rule. An optional setting in an options object (`topN?`, `voice?`, `format?`, …) is an optional key: omit it, and a provider's `ProviderOptions` has the key only when the caller gave it. Anything a provider may not report is an `Option` in `ProviderResponse` and in the response models: `usage.inputTokens`, `usage.inputCharacters`, `usage.durationSeconds`, a transcription's `segments` and `language`, a moderation result's `flags` and a moderation response's `modelId` are each `Option.Option<…>` (`Option.none()` when unreported). A `Schema.Class` response model encodes an `Option` as an omitted key.
+
 | Module | Operation(s) | Caller options | Response | `make` validates |
 | --- | --- | --- | --- | --- |
-| `RerankerModel` | `rerank` | `RerankOptions`: `query`, `documents`, `topN?` | `RerankResponse`: `results` (`RerankedDocument`: `index`, `relevanceScore`), sorted by descending score; `usage.inputTokens` | every `index` names an input document, indices are unique, count ≤ `topN` (or the document count); no documents → empty response, provider not called |
-| `ClassifierModel` | `classify` | `ClassifyOptions`: `inputs`, `labels?`, `multiLabel?`, `examples?` (`ClassifyExample`: `text`, `label`) | `ClassifyResponse`: one `Classification` (`classes`: `ClassScore` `label` / `score`) per input; `usage.inputTokens` | one classification per input, finite scores, labels within `labels` when given; no inputs → empty response |
-| `SpeechModel` | `generate`, `stream` | `SpeechOptions`: `text`, `voice?`, `format?`, `sampleRate?` | `SpeechResponse`: `audio` (`Uint8Array`), `mediaType`, `usage.inputCharacters`; `stream` yields `Uint8Array` chunks | non-empty audio (`generate`); `stream` passes through, traced |
-| `TranscriptionModel` | `transcribe` | `TranscriptionOptions`: `audio` (`Uint8Array` or `Stream<Uint8Array>`), `mediaType?`, `language?` | `TranscriptionResponse`: `text`, `segments?` (`TranscriptionSegment`: `text`, `start`, `end`), `language?`, `usage.durationSeconds` | segment timestamps finite with `end >= start` |
-| `ImageModel` | `generate` | `ImageOptions`: `prompt`, `size?`, `format?`, `count?` | `ImageResponse`: `images` (`ImagePart`: `data` as bytes or base64 string, `mediaType`), `usage.inputTokens` | at least one image, at most `count` |
-| `ModerationModel` | `moderate` | `ModerationOptions`: `inputs` (each a string, or an array of `effect/ai` `Prompt.UserMessagePartEncoded` text / file parts screened as one input) | `ModerationResponse`: one `ModerationResult` (`isFlagged`, `categories`: category → score, `flags?`: the provider's category → fired) per input; `modelId?` (the model that served the call); `usage.inputTokens` | one result per input, scores finite in `[0, 1]`; no inputs → empty response; an empty part list → `InvalidUserInputError` |
-| `VoiceConversionModel` | `convert` | `VoiceConversionOptions`: `audio` (`Uint8Array` or `Stream<Uint8Array>`), `targetVoice`, `format?` | `VoiceConversionResponse`: `audio`, `mediaType`, `usage.durationSeconds` | non-empty audio |
+| `RerankerModel` | `rerank` | `RerankOptions`: `query`, `documents`, `topN?` | `RerankResponse`: `results` (`RerankedDocument`: `index`, `relevanceScore`), sorted by descending score; `usage.inputTokens` (an `Option`) | every `index` names an input document, indices are unique, count ≤ `topN` (or the document count); no documents → empty response, provider not called |
+| `ClassifierModel` | `classify` | `ClassifyOptions`: `inputs`, `labels?`, `multiLabel?`, `examples?` (`ClassifyExample`: `text`, `label`) | `ClassifyResponse`: one `Classification` (`classes`: `ClassScore` `label` / `score`) per input; `usage.inputTokens` (an `Option`) | one classification per input, finite scores, labels within `labels` when given; no inputs → empty response |
+| `SpeechModel` | `generate`, `stream` | `SpeechOptions`: `text`, `voice?`, `format?`, `sampleRate?` | `SpeechResponse`: `audio` (`Uint8Array`), `mediaType`, `usage.inputCharacters` (an `Option`); `stream` yields `Uint8Array` chunks | non-empty audio (`generate`); `stream` passes through, traced |
+| `TranscriptionModel` | `transcribe` | `TranscriptionOptions`: `audio` (`Uint8Array` or `Stream<Uint8Array>`), `mediaType?`, `language?` | `TranscriptionResponse`: `text`, `segments` (`Option` of `TranscriptionSegment`: `text`, `start`, `end`), `language` (`Option`), `usage.durationSeconds` (`Option`) | segment timestamps finite with `end >= start` |
+| `ImageModel` | `generate` | `ImageOptions`: `prompt`, `size?`, `format?`, `count?` | `ImageResponse`: `images` (`ImagePart`: `data` as bytes or base64 string, `mediaType`), `usage.inputTokens` (an `Option`) | at least one image, at most `count` |
+| `ModerationModel` | `moderate` | `ModerationOptions`: `inputs` (each a string, or an array of `effect/ai` `Prompt.UserMessagePartEncoded` text / file parts screened as one input) | `ModerationResponse`: one `ModerationResult` (`isFlagged`, `categories`: category → score, `flags`: an `Option` of the provider's category → fired) per input; `modelId` (an `Option`: the model that served the call); `usage.inputTokens` (an `Option`) | one result per input, scores finite in `[0, 1]`; no inputs → empty response; an empty part list → `InvalidUserInputError` |
+| `VoiceConversionModel` | `convert` | `VoiceConversionOptions`: `audio` (`Uint8Array` or `Stream<Uint8Array>`), `targetVoice`, `format?` | `VoiceConversionResponse`: `audio`, `mediaType`, `usage.durationSeconds` (an `Option`) | non-empty audio |
 
 A result that fails validation fails the call with an `AiError` whose reason is `InvalidOutputError`. Every operation is wrapped in `Effect.withSpan("<Module>.<operation>")`.
 
@@ -1763,7 +1810,7 @@ const program = Effect.gen(function* () {
 Implementing the service in a provider: `make` takes the provider hook and returns the validated service.
 
 ```ts
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Option } from "effect";
 import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
 
 const KeywordReranker = Layer.effect(
@@ -1775,7 +1822,7 @@ const KeywordReranker = Layer.effect(
           index,
           relevanceScore: document.includes(query) ? 1 : 0,
         })),
-        usage: { inputTokens: undefined },
+        usage: { inputTokens: Option.none() },
       }),
   }),
 );
@@ -1930,7 +1977,7 @@ const program = Runner.runSuite(suite, {
 }
 ```
 
-`summary` is `null` when every trial for that metric errored (no scores to summarize). `taskOutputs` holds, per trial whose task produced an output, that output and the task's wall-clock duration (retries included); a trial served from the cache is `cached: true` with a `durationMillis` of `0`, so leave it out of a latency figure. `taskFailures` is empty unless the task itself failed for some trial, in which case that trial contributes to no metric's `trials` array at all (there was no output to score).
+`summary` is `null` in the JSON when every trial for that metric errored (no scores to summarize); in the typed `Result.MetricAggregate` it is an `Option<Summary>`, and `Result.summaryReplacer` is the `JSON.stringify` replacer that writes it this way. `taskOutputs` holds, per trial whose task produced an output, that output and the task's wall-clock duration (retries included); a trial served from the cache is `cached: true` with a `durationMillis` of `0`, so leave it out of a latency figure. `taskFailures` is empty unless the task itself failed for some trial, in which case that trial contributes to no metric's `trials` array at all (there was no output to score).
 
 ### Retrieval ranking metrics
 
@@ -1954,24 +2001,25 @@ The retrieval counterpart of `runSuite`: a dataset of `RetrievalGolden`s (`{ que
 
 ```ts
 import * as Effect from "effect/Effect";
+import * as Struct from "effect/Struct";
 import { Cache, Dataset, Reporter, Runner, Threshold } from "@thomasfosterau/effect-ext/evals";
 
 // The consumer's search operation, returning document handles best first.
 declare const search: (options: {
   readonly query: string;
   readonly limit: number;
-  readonly locale: string | undefined;
+  readonly locale?: string;
 }) => Effect.Effect<ReadonlyArray<{ readonly id: string }>, Error>;
 
 // A golden may carry per-case narrowing; the port receives the whole golden.
 interface SearchGolden extends Runner.RetrievalGolden {
-  readonly locale?: string | undefined;
+  readonly locale?: string;
 }
 
 const port: Runner.RetrievalPort<Error, never, SearchGolden> = {
   id: "search@rerank-v3.5", // the configuration under test; part of the cache key
   retrieve: (query, { limit, golden }) =>
-    search({ query, limit, locale: golden.locale }).pipe(
+    search({ query, limit, ...Struct.pick(golden, ["locale"]) }).pipe(
       Effect.map((rows) => rows.map((row) => row.id)),
     ),
 };
@@ -2100,13 +2148,13 @@ pnpm effect-evals --help                                  # full flag reference
 | [`Dataset`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Dataset.ts) | `Dataset`, `makeDataset`, `fromArray`. |
 | [`EvalFile`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/EvalFile.ts) | The `*.eval.ts` contract shared by every execution surface: `EvalFile`, `AnySuite`. |
 | [`Runner`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Runner.ts) | `Suite`, `makeSuite`, `TaskDefinition`, `makeTask`, `runSuite`, `RunnerOptions`; `RetrievalPort`, `RetrievalGolden`, `RetrievalSuite`, `runRetrievalSuite`; `isConfigError` (the credential-gating test). |
-| [`Result`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Result.ts) | The typed suite → case → trial → metric result model; `summarize`, `aggregate`, `lastReason`, `formatSpread`. |
+| [`Result`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Result.ts) | The typed suite → case → trial → metric result model; `summarize`, `aggregate`, `lastReason`, `formatSpread`, `summaryReplacer`. |
 | [`Cache`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Cache.ts) | `layerMemory` / `layerFileSystem`, `hashKey`. |
 | [`Reporter`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Reporter.ts) | `Reporter`, `makeReporter`, `terminal`, `json`, `formatTerminalTable`. |
 | [`Ranking`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/Ranking.ts) | `ndcg` / `recall` / `mrr` / `precision`, `scoreCase`, `metricKey`; `ndcgAtK` / `recallAtK` / `mrrAtK` / `precisionAtK` (or `scorerAtK`) as scorers, `metricAtK` / `metricsAtK`. |
 | [`GEval`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/GEval.ts) | `gEval`, `gEvalConversational`, `makeRubric`, `defaultTemplate`, `judge`, `renderValue` / `renderTurns`; `MissingEvaluationParamError`, `InvalidGEvalDefinitionError`. |
 | [`RagCase`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/RagCase.ts) | `RagCase` — the case shape the RAG metrics read (`input`, `output`, `expected`, `retrievedContext`); `require…` field lookups, `renderContext`. |
-| [`ExtractThenClassify`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ExtractThenClassify.ts) | The extract → classify → ratio judge primitive the RAG metrics share: `extractStatements`, `classifyStatements`, `extractThenClassifyRatio`, `summarizeVerdicts`, `ratioScore`; `VerdictCountMismatchError`. |
+| [`ExtractThenClassify`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ExtractThenClassify.ts) | The extract → classify → ratio judge primitive the RAG metrics share: `extractStatements`, `classifyStatements`, `extractThenClassifyRatio`, `summarizeVerdicts`, `ratioScore`, `verdictMetadata`; `VerdictCountMismatchError`. |
 | [`Faithfulness`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/Faithfulness.ts) / [`AnswerRelevancy`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/AnswerRelevancy.ts) / [`ContextualPrecision`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ContextualPrecision.ts) / [`ContextualRecall`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ContextualRecall.ts) / [`ContextualRelevancy`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ContextualRelevancy.ts) | Judge-based RAG metrics over `RagCase`: `faithfulness`, `answerRelevancy`, `contextualPrecision` (and its `weightedCumulativePrecision`), `contextualRecall`, `contextualRelevancy`. |
 | [`ExactMatch`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/ExactMatch.ts) / [`Levenshtein`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/Levenshtein.ts) / [`JsonValidity`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/JsonValidity.ts) / [`SchemaMatch`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/SchemaMatch.ts) | Deterministic scorers: `exactMatch` / `normalizedMatch`, `levenshtein` / `levenshteinSimilarity`, `jsonValidity`, `schemaMatch` / `schemaMatchValue`. |
 | [`ToolCallCorrectness`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/ToolCallCorrectness.ts) | `toolCallCorrectness` — a case's actual tool calls against its golden's `expectedTools`. |

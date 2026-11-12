@@ -28,12 +28,13 @@
 
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import { LanguageModel } from "effect/ai";
 import * as Metric from "../../Metric.ts";
 import * as Scorer from "../../Scorer.ts";
 import type { Score } from "../../Score.ts";
 import type { Threshold } from "../../Threshold.ts";
-import { classifyStatements, type Verdict } from "./ExtractThenClassify.ts";
+import { classifyStatements, type Verdict, verdictMetadata } from "./ExtractThenClassify.ts";
 import {
   renderValue,
   requireExpected,
@@ -83,9 +84,10 @@ const summarizePrecisionVerdicts = (verdicts: ReadonlyArray<Verdict>): string =>
     }
     const rank = index + 1;
     irrelevant.push(
-      verdict.reason
-        ? `- [${rank}] ${verdict.statement}: ${verdict.reason}`
-        : `- [${rank}] ${verdict.statement}`,
+      Option.match(verdict.reason, {
+        onNone: () => `- [${rank}] ${verdict.statement}`,
+        onSome: (reason) => `- [${rank}] ${verdict.statement}: ${reason}`,
+      }),
     );
   });
 
@@ -142,7 +144,7 @@ export const contextualPrecision = <Case extends RagCase = RagCase>(
         return {
           score: weightedCumulativePrecision(relevance),
           reason: summarizePrecisionVerdicts(verdicts),
-          metadata: { verdicts },
+          metadata: { verdicts: verdictMetadata(verdicts) },
         };
       }),
   });

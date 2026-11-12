@@ -25,6 +25,7 @@ import {
   Issues,
   Layout,
   LiteralExact,
+  OptionalKey,
   Str,
   String,
   StructOfArrays,
@@ -108,7 +109,20 @@ const ApiUrl = Url.schema({ scheme: "https", hostname: "api.example.com" });
 // @ts-expect-error -- a plain string is not a branded Url after emit
 export const plainUrl: Url.Url<{ readonly scheme: "https" }> = raw;
 
+const nicknameKey = OptionalKey.optionalKey(
+  "nickname",
+  Option.getOrUndefined(Option.some("Countess")),
+);
+const parentKey = OptionalKey.fromOption("parent", Option.none<number>());
+/** `number`, or absent as `undefined` (spelled without writing the union). */
+type MaybeNumber = ReturnType<typeof Option.getOrUndefined<number>>;
+const forwarded = OptionalKey.fields({ limit: Option.getOrUndefined(Option.some(1)), tag: "x" });
+
 export type Checks = [
+  // OptionalKey
+  Assert<Equals<typeof nicknameKey, { readonly nickname?: string }>>,
+  Assert<Equals<typeof parentKey, { readonly parent?: number }>>,
+  Assert<Equals<typeof forwarded, OptionalKey.Defined<{ limit: MaybeNumber; tag: string }>>>,
   // Ids
   Assert<Not<Equals<PersonId, string>>>,
   Assert<Equals<typeof PersonId.Encoded, string>>,
@@ -207,6 +221,13 @@ export type Checks = [
   Assert<Not<IsAny<typeof Robots.isAllowed>>>,
   Assert<Not<IsAny<typeof Browser.Locks.withLock>>>,
   Assert<Not<IsAny<typeof Negotiate.negotiateRepresentation>>>,
+  Assert<Equals<ReturnType<typeof Negotiate.negotiateRepresentation>, Negotiate.Negotiation>>,
+  Assert<
+    Equals<
+      Negotiate.Negotiation["_tag"],
+      "Selected" | "Fallback" | "NotAcceptable" | "UnsupportedMediaType"
+    >
+  >,
   // The modules merged in from effect-numeric and effect-time
   Assert<Not<IsAny<U8>>>,
   Assert<Equals<ReturnType<typeof U8.make>, U8>>,

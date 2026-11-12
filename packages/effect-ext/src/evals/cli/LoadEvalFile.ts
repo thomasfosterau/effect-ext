@@ -15,7 +15,7 @@
  */
 
 import * as Effect from "effect/Effect";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
@@ -40,11 +40,11 @@ export class InvalidEvalFileError extends Schema.TaggedError<InvalidEvalFileErro
 ) {}
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  Predicate.isObjectOrArray(value);
+  P.isObjectOrArray(value);
 
 const isAnySuite = (value: unknown): value is EvalFile.AnySuite =>
   isPlainObject(value) &&
-  Predicate.isString(value.name) &&
+  P.isString(value.name) &&
   isPlainObject(value.dataset) &&
   isPlainObject(value.task) &&
   Array.isArray(value.metrics);

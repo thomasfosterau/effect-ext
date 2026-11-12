@@ -32,7 +32,7 @@
 
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import type * as Path from "effect/Path";
@@ -67,14 +67,14 @@ const describeError = (error: unknown): string => {
   if (error instanceof GlobError) return `glob discovery failed: ${describeError(error.cause)}`;
   if (error instanceof EvalFileImportError) return `import failed: ${describeError(error.cause)}`;
   if (error instanceof InvalidEvalFileError) return error.reason;
-  if (Predicate.isError(error)) return error.message;
-  if (Predicate.isString(error)) return error;
+  if (P.isError(error)) return error.message;
+  if (P.isString(error)) return error;
   return Option.getOrElse(encodeJson(error), () => String(error));
 };
 
 const buildRunnerOptions = (
   config: RunConfig,
-  fileOptions: Runner.RunnerOptions | undefined,
+  fileOptions?: Runner.RunnerOptions,
 ): Runner.RunnerOptions => {
   const options: Types.Mutable<Runner.RunnerOptions> = { ...fileOptions };
   if (Option.isSome(config.trials)) options.trials = config.trials.value;
@@ -142,7 +142,7 @@ type ProcessedFile = FileOutcome | { readonly _tag: "NoMatch" };
 const processFile = (
   file: string,
   config: RunConfig,
-  filterSubstring: string | undefined,
+  filterSubstring?: string,
 ): Effect.Effect<ProcessedFile, never, Cache.KeyValueStore.KeyValueStore | Path.Path> =>
   Effect.gen(function* () {
     const loaded = yield* Effect.result(loadEvalFile(file));
@@ -186,19 +186,13 @@ export const runEvals = (
       { concurrency: 1 },
     );
     const ran = Arr.filterMap(outcomes, (outcome) =>
-      Predicate.isTagged(outcome, "Ran")
-        ? EffectResult.succeed(outcome.result)
-        : EffectResult.failVoid,
+      P.isTagged(outcome, "Ran") ? EffectResult.succeed(outcome.result) : EffectResult.failVoid,
     );
     const skipped = Arr.filterMap(outcomes, (outcome) =>
-      Predicate.isTagged(outcome, "Skipped")
-        ? EffectResult.succeed(outcome.result)
-        : EffectResult.failVoid,
+      P.isTagged(outcome, "Skipped") ? EffectResult.succeed(outcome.result) : EffectResult.failVoid,
     );
     const failed = Arr.filterMap(outcomes, (outcome) =>
-      Predicate.isTagged(outcome, "Failed")
-        ? EffectResult.succeed(outcome.result)
-        : EffectResult.failVoid,
+      P.isTagged(outcome, "Failed") ? EffectResult.succeed(outcome.result) : EffectResult.failVoid,
     );
 
     const passed =

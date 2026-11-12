@@ -19,10 +19,10 @@ export interface ExtensionParts {
 /** A well-formed tag, split by production; every subtag lowercase. */
 export interface Parts {
   readonly kind: "langtag" | "privateuse" | "grandfathered";
-  readonly language: string | undefined;
+  readonly language: Option.Option<string>;
   readonly extlangs: ReadonlyArray<string>;
-  readonly script: string | undefined;
-  readonly region: string | undefined;
+  readonly script: Option.Option<string>;
+  readonly region: Option.Option<string>;
   readonly variants: ReadonlyArray<string>;
   readonly extensions: ReadonlyArray<ExtensionParts>;
   readonly privateUse: ReadonlyArray<string>;
@@ -65,8 +65,8 @@ const GRANDFATHERED: ReadonlyArray<string> = [
 ];
 
 /** The registered form of a grandfathered tag, matched case-insensitively. */
-const grandfathered = (lower: string): string | undefined =>
-  GRANDFATHERED.find((tag) => tag.toLowerCase() === lower);
+const grandfathered = (lower: string): Option.Option<string> =>
+  Arr.findFirst(GRANDFATHERED, (tag) => tag.toLowerCase() === lower);
 
 const ALPHA = /^[a-z]+$/;
 
@@ -83,8 +83,8 @@ const LANGTAG =
 const PRIVATEUSE = /^x(?<privateuse>(?:-[a-z0-9]{1,8})+)$/;
 
 /** `-a-b-c` → `["a", "b", "c"]`; `""` or `undefined` → `[]`. */
-const subtagsOf = (group: string | undefined): ReadonlyArray<string> =>
-  Arr.filter((group ?? "").split("-"), (subtag) => subtag !== "");
+const subtagsOf = (group: Option.Option<string>): ReadonlyArray<string> =>
+  Arr.filter(Option.getOrElse(group, () => "").split("-"), (subtag) => subtag !== "");
 
 /** A singleton: one alphanumeric character other than `x`, which opens private use. */
 const isSingleton = (subtag: string): boolean => subtag.length === 1 && subtag !== "x";
@@ -92,7 +92,7 @@ const isSingleton = (subtag: string): boolean => subtag.length === 1 && subtag !
 const NO_EXTENSIONS: ReadonlyArray<ExtensionParts> = [];
 
 /** `-u-ca-chinese-a-foo` → one entry per singleton, with the subtags after it. */
-const extensionsOf = (group: string | undefined): ReadonlyArray<ExtensionParts> =>
+const extensionsOf = (group: Option.Option<string>): ReadonlyArray<ExtensionParts> =>
   Arr.reduce(subtagsOf(group), NO_EXTENSIONS, (found, subtag) => {
     if (isSingleton(subtag)) return [...found, { singleton: subtag, subtags: [] }];
     const last = Arr.last(found);
@@ -105,36 +105,44 @@ const extensionsOf = (group: string | undefined): ReadonlyArray<ExtensionParts> 
     });
   });
 
+/** One named capture group, absent when it did not take part in the match. */
+const group = (groups: { readonly [name: string]: string }, name: string): Option.Option<string> =>
+  Option.fromUndefinedOr(groups[name]);
+
 const EMPTY: Omit<Parts, "kind"> = {
-  language: undefined,
+  language: Option.none(),
   extlangs: [],
-  script: undefined,
-  region: undefined,
+  script: Option.none(),
+  region: Option.none(),
   variants: [],
   extensions: [],
   privateUse: [],
 };
 
-/** Parses a tag into its {@link Parts}; `undefined` when it is not well-formed. */
-export const parseParts = (tag: string): Parts | undefined => {
+/** Parses a tag into its {@link Parts}; `None` when it is not well-formed. */
+export const parseParts = (tag: string): Option.Option<Parts> => {
   const lower = tag.toLowerCase();
-  if (grandfathered(lower) !== undefined) return { kind: "grandfathered", ...EMPTY };
-  const privateOnly = PRIVATEUSE.exec(lower)?.groups;
-  if (privateOnly !== undefined) {
-    return { kind: "privateuse", ...EMPTY, privateUse: subtagsOf(privateOnly["privateuse"]) };
+  if (Option.isSome(grandfathered(lower))) {
+    return Option.some({ kind: "grandfathered", ...EMPTY });
   }
-  const groups = LANGTAG.exec(lower)?.groups;
-  if (groups === undefined) return undefined;
-  return {
+  const privateOnly = Option.fromNullishOr(PRIVATEUSE.exec(lower)?.groups);
+  if (Option.isSome(privateOnly)) {
+    return Option.some({
+      kind: "privateuse",
+      ...EMPTY,
+      privateUse: subtagsOf(group(privateOnly.value, "privateuse")),
+    });
+  }
+  return Option.map(Option.fromNullishOr(LANGTAG.exec(lower)?.groups), (groups) => ({
     kind: "langtag",
-    language: groups["language"] ?? groups["long"],
-    extlangs: subtagsOf(groups["extlangs"]),
-    script: groups["script"],
-    region: groups["region"],
-    variants: subtagsOf(groups["variants"]),
-    extensions: extensionsOf(groups["extensions"]),
-    privateUse: subtagsOf(groups["privateuse"]),
-  };
+    language: Option.orElse(group(groups, "language"), () => group(groups, "long")),
+    extlangs: subtagsOf(group(groups, "extlangs")),
+    script: group(groups, "script"),
+    region: group(groups, "region"),
+    variants: subtagsOf(group(groups, "variants")),
+    extensions: extensionsOf(group(groups, "extensions")),
+    privateUse: subtagsOf(group(groups, "privateuse")),
+  }));
 };
 
 /** The case of one subtag: uppercase a region, title-case a script, lowercase the rest. */
@@ -156,7 +164,7 @@ const caseSubtag = (subtag: string, index: number, afterSingleton: boolean): str
 export const canonicalCase = (tag: string): string => {
   const lower = tag.toLowerCase();
   const registered = grandfathered(lower);
-  if (registered !== undefined) return registered;
+  if (Option.isSome(registered)) return registered.value;
   let afterSingleton = false;
   return lower
     .split("-")

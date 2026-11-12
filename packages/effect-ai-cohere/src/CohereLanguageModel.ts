@@ -27,6 +27,10 @@
  * newer; on older models (`command-r`, `command-r-plus` and their dated
  * releases) use `"auto"`.
  *
+ * User messages accept image file parts; any other media type fails with an
+ * `AiError`. Every transport, HTTP-status and decoding failure leaves the
+ * model as an `AiError`, its reason derived from the HTTP status.
+ *
  * @module CohereLanguageModel
  *
  * @copyright Thomas Foster
@@ -44,8 +48,8 @@ import * as HashSet from "effect/HashSet";
 import * as Layer from "effect/Layer";
 import * as MutableHashMap from "effect/MutableHashMap";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as EffectRecord from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Stream from "effect/Stream";
 import type * as AiError from "effect/ai/AiError";
 import * as AiErrorNs from "effect/ai/AiError";
@@ -239,12 +243,12 @@ export const layer = (options: {
 export const withConfigOverride: {
   (
     overrides: ConfigService,
-  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>;
-  <A, E, R>(
-    self: Effect.Effect<A, E, R>,
+  ): <A, E, RIn>(self: Effect.Effect<A, E, RIn>) => Effect.Effect<A, E, Exclude<RIn, Config>>;
+  <A, E, RIn>(
+    self: Effect.Effect<A, E, RIn>,
     overrides: ConfigService,
-  ): Effect.Effect<A, E, Exclude<R, Config>>;
-} = dual(2, <A, E, R>(self: Effect.Effect<A, E, R>, overrides: ConfigService) =>
+  ): Effect.Effect<A, E, Exclude<RIn, Config>>;
+} = dual(2, <A, E, RIn>(self: Effect.Effect<A, E, RIn>, overrides: ConfigService) =>
   Effect.flatMap(Effect.serviceOption(Config), (config) =>
     Effect.provideService(self, Config, {
       ...Option.getOrUndefined(config),
@@ -264,7 +268,7 @@ const failure = (method: string, reason: AiError.AiErrorReason): AiError.AiError
 const compact = <T extends Record<string, unknown>>(record: T): T =>
   // SAFETY: only keys whose value is `undefined` are dropped; every other key
   // keeps the value, and so the type, it had in `record`.
-  EffectRecord.filter(record, Predicate.isNotUndefined) as T;
+  R.filter(record, P.isNotUndefined) as T;
 
 const normalizeImageMediaType = (mediaType: string): string =>
   mediaType === "image/*" ? "image/jpeg" : mediaType;
@@ -274,7 +278,7 @@ const fileToImageUrl = (part: Prompt.FilePart): string => {
   if (data instanceof URL) {
     return data.href;
   }
-  if (Predicate.isString(data)) {
+  if (P.isString(data)) {
     return data.startsWith("data:") || data.startsWith("http")
       ? data
       : `data:${normalizeImageMediaType(part.mediaType)};base64,${data}`;
@@ -358,9 +362,7 @@ const convertToolMessage = (message: Prompt.ToolMessage): Array<Wire.ToolMessage
           {
             role: "tool",
             tool_call_id: part.id,
-            content: Predicate.isString(part.result)
-              ? part.result
-              : Wire.stringifyJson(part.result),
+            content: P.isString(part.result) ? part.result : Wire.stringifyJson(part.result),
           },
         ]
       : [],
@@ -412,7 +414,7 @@ const tryToolJsonSchema = (
       failure(
         method,
         new AiErrorNs.UnsupportedSchemaError({
-          description: Predicate.isError(error) ? error.message : String(error),
+          description: P.isError(error) ? error.message : String(error),
         }),
       ),
   });
@@ -436,7 +438,7 @@ const buildToolRequest = (tool: Tool.Any): Effect.Effect<Wire.ToolRequest, AiErr
       function: {
         name,
         parameters,
-        ...(Predicate.isNotUndefined(description) ? { description } : undefined),
+        ...(P.isNotUndefined(description) ? { description } : undefined),
       },
     };
   });
@@ -518,7 +520,7 @@ const prepareResponseFormat = (
         failure(
           "prepareResponseFormat",
           new AiErrorNs.UnsupportedSchemaError({
-            description: Predicate.isError(error) ? error.message : String(error),
+            description: P.isError(error) ? error.message : String(error),
           }),
         ),
     });
@@ -535,7 +537,7 @@ const prepareResponseFormat = (
  * used lowercase (`tool_calls`) in places, so both are accepted.
  */
 const mapFinishReason = (reason: string | null | undefined): Response.FinishReason => {
-  if (Predicate.isNullish(reason)) {
+  if (P.isNullish(reason)) {
     return "unknown";
   }
   return Match.value(reason.toLowerCase()).pipe(
@@ -583,11 +585,11 @@ const buildResponseDetails = (
 // =============================================================================
 
 const collectText = (content: Wire.ChatResponse["message"]["content"]): string => {
-  if (Predicate.isNullish(content)) {
+  if (P.isNullish(content)) {
     return "";
   }
   return Arr.flatMap(content, (part) =>
-    (part.type === undefined || part.type === "text") && Predicate.isNotNullish(part.text)
+    (part.type === undefined || part.type === "text") && P.isNotNullish(part.text)
       ? [part.text]
       : [],
   ).join("");
@@ -616,12 +618,12 @@ const makeResponse = (
     }
 
     const toolCalls = body.message.tool_calls;
-    if (Predicate.isNotNullish(toolCalls)) {
+    if (P.isNotNullish(toolCalls)) {
       const toolCallParts = yield* Effect.forEach(
         toolCalls,
         (toolCall) =>
           Effect.map(
-            Predicate.isNotNullish(toolCall.id) ? Effect.succeed(toolCall.id) : generateId(),
+            P.isNotNullish(toolCall.id) ? Effect.succeed(toolCall.id) : generateId(),
             (id): Response.PartEncoded => ({
               type: "tool-call",
               id,
@@ -716,7 +718,7 @@ const handleTextDelta = (
     state.textStarted = true;
     out.push({ type: "text-start", id: context.textId });
   }
-  if (Predicate.isNotNullish(text) && Str.isNonEmpty(text)) {
+  if (P.isNotNullish(text) && Str.isNonEmpty(text)) {
     out.push({ type: "text-delta", id: context.textId, delta: text });
   }
 };
@@ -730,7 +732,7 @@ const getOrCreateToolAccumulator = (
   const existing = MutableHashMap.get(state.tools, index);
   if (Option.isSome(existing)) {
     const name = toolCall.function?.name;
-    if (Str.isEmpty(existing.value.name) && Predicate.isNotUndefined(name) && name !== null) {
+    if (Str.isEmpty(existing.value.name) && P.isNotUndefined(name) && name !== null) {
       existing.value.name = name;
     }
     return existing.value;
@@ -753,7 +755,7 @@ const handleToolCallDelta = (
   out: Array<Response.StreamPartEncoded>,
 ): void => {
   const toolCalls = event.delta?.message?.tool_calls;
-  if (Predicate.isNullish(toolCalls)) {
+  if (P.isNullish(toolCalls)) {
     return;
   }
   const toolCall = firstToolCall(toolCalls);
@@ -766,7 +768,7 @@ const handleToolCallDelta = (
   }
 
   const argsFragment = toolCall.function?.arguments;
-  if (Predicate.isNotNullish(argsFragment) && Str.isNonEmpty(argsFragment)) {
+  if (P.isNotNullish(argsFragment) && Str.isNonEmpty(argsFragment)) {
     accumulator.args += argsFragment;
     out.push({ type: "tool-params-delta", id: accumulator.id, delta: argsFragment });
   }
@@ -792,7 +794,7 @@ const handleEvent = (
 
   Match.value(event.type).pipe(
     Match.when(Match.is("content-start", "content-delta"), () => {
-      if (Predicate.isNullish(content) || content.type === undefined || content.type === "text") {
+      if (P.isNullish(content) || content.type === undefined || content.type === "text") {
         handleTextDelta(content?.text, state, context, out);
       }
     }),

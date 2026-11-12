@@ -40,10 +40,13 @@ import * as Str from "effect/String";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
+import * as Struct from "effect/Struct";
 import { AiError, LanguageModel } from "effect/ai";
 import * as Prompt from "effect/ai/Prompt";
+import type * as EvalCase from "../EvalCase.ts";
+import type * as Golden from "../Golden.ts";
 import * as Metric from "../Metric.ts";
 import * as Scorer from "../Scorer.ts";
 import type { Score } from "../Score.ts";
@@ -181,9 +184,9 @@ export const makeRubric = (bands: ReadonlyArray<RubricBand>): Rubric => {
  */
 export interface GEvalTemplateParams {
   readonly name: string;
-  readonly criteria?: string | undefined;
-  readonly evaluationSteps?: ReadonlyArray<string> | undefined;
-  readonly rubric?: Rubric | undefined;
+  readonly criteria?: string;
+  readonly evaluationSteps?: ReadonlyArray<string>;
+  readonly rubric?: Rubric;
   readonly fields: ReadonlyArray<{ readonly label: string; readonly value: string }>;
 }
 
@@ -257,9 +260,9 @@ const StepsScoreAndReason = Schema.Struct({
 
 interface JudgeParams {
   readonly name: string;
-  readonly criteria?: string | undefined;
-  readonly evaluationSteps?: ReadonlyArray<string> | undefined;
-  readonly rubric?: Rubric | undefined;
+  readonly criteria?: string;
+  readonly evaluationSteps?: ReadonlyArray<string>;
+  readonly rubric?: Rubric;
   readonly fields: ReadonlyArray<{ readonly label: string; readonly value: string }>;
   readonly template: GEvalTemplate;
 }
@@ -285,13 +288,7 @@ export const judge = (
 ): Effect.Effect<Score, AiError.AiError, LanguageModel.LanguageModel> =>
   Effect.gen(function* () {
     const model = yield* LanguageModel.LanguageModel;
-    const templateParams: GEvalTemplateParams = {
-      name: params.name,
-      criteria: params.criteria,
-      evaluationSteps: params.evaluationSteps,
-      rubric: params.rubric,
-      fields: params.fields,
-    };
+    const templateParams: GEvalTemplateParams = Struct.omit(params, ["template"]);
     const prompt: Prompt.RawInput = [
       { role: "system", content: params.template.system(templateParams) },
       { role: "user", content: params.template.user(templateParams) },
@@ -334,10 +331,9 @@ export const judge = (
   });
 
 /** A metric definition's judging instructions: exactly one of the two is set. */
-interface ResolvedCriteria {
-  readonly criteria: string | undefined;
-  readonly evaluationSteps: ReadonlyArray<string> | undefined;
-}
+type ResolvedCriteria =
+  | { readonly criteria: string }
+  | { readonly evaluationSteps: ReadonlyArray<string> };
 
 /**
  * Normalises `criteria` / `evaluationSteps` (an empty string or empty array
@@ -347,21 +343,25 @@ interface ResolvedCriteria {
  */
 const resolveCriteria = (
   name: string,
-  rawCriteria: string | undefined,
-  rawEvaluationSteps: ReadonlyArray<string> | undefined,
+  rawCriteria?: string,
+  rawEvaluationSteps?: ReadonlyArray<string>,
 ): ResolvedCriteria => {
-  const criteria =
-    rawCriteria !== undefined && Str.isNonEmpty(rawCriteria) ? rawCriteria : undefined;
-  const evaluationSteps =
-    rawEvaluationSteps !== undefined && Arr.isReadonlyArrayNonEmpty(rawEvaluationSteps)
-      ? rawEvaluationSteps
-      : undefined;
-  if ((criteria === undefined) === (evaluationSteps === undefined)) {
+  const criteria = Option.filter(Option.fromUndefinedOr(rawCriteria), Str.isNonEmpty);
+  const evaluationSteps = Option.filter(
+    Option.fromUndefinedOr(rawEvaluationSteps),
+    Arr.isReadonlyArrayNonEmpty,
+  );
+  const resolved: Option.Option<ResolvedCriteria> = Option.match(criteria, {
+    onSome: (given) =>
+      Option.isNone(evaluationSteps) ? Option.some({ criteria: given }) : Option.none(),
+    onNone: () => Option.map(evaluationSteps, (given) => ({ evaluationSteps: given })),
+  });
+  if (Option.isNone(resolved)) {
     throw new InvalidGEvalDefinitionError({
       message: `gEval "${name}": exactly one of "criteria" or "evaluationSteps" must be provided`,
     });
   }
-  return { criteria, evaluationSteps };
+  return resolved.value;
 };
 
 /** `JSON.stringify` as a codec: `None` where it would throw or return `undefined`. */
@@ -377,12 +377,10 @@ const encodeJson = Schema.encodeOption(Schema.fromJsonString(Schema.Unknown));
  * @since 0.1.0
  */
 export const renderValue = (value: unknown): string => {
-  if (Predicate.isString(value)) return value;
+  if (P.isString(value)) return value;
   if (Array.isArray(value)) {
     return value
-      .map((item) =>
-        Predicate.isString(item) ? item : Option.getOrElse(encodeJson(item), () => ""),
-      )
+      .map((item) => (P.isString(item) ? item : Option.getOrElse(encodeJson(item), () => "")))
       .join("\n");
   }
   return Option.getOrElse(encodeJson(value), () => String(value));
@@ -437,14 +435,14 @@ export type EvaluationParam = "input" | "output" | "expected" | "context" | "ret
  *
  * @since 0.1.0
  */
-export interface GEvalCase {
-  readonly golden: {
-    readonly input: unknown;
-    readonly expected?: unknown;
-    readonly context?: ReadonlyArray<string> | undefined;
-  };
-  readonly output: unknown;
-  readonly retrievedContext?: ReadonlyArray<string> | undefined;
+export interface GEvalCase extends Pick<
+  EvalCase.EvalCase<typeof Schema.Unknown, typeof Schema.Unknown>,
+  "output" | "retrievedContext"
+> {
+  readonly golden: Pick<
+    Golden.Golden<typeof Schema.Unknown, typeof Schema.Unknown>,
+    "input" | "expected" | "context"
+  >;
 }
 
 const extractParam = (evalCase: GEvalCase, param: EvaluationParam): Option.Option<string> =>
@@ -484,11 +482,7 @@ export interface GEvalOptions extends GEvalSharedOptions {
 export const gEval = <Case extends GEvalCase = GEvalCase>(
   options: GEvalOptions,
 ): Metric.Metric<Case, GEvalError, LanguageModel.LanguageModel> => {
-  const { criteria, evaluationSteps } = resolveCriteria(
-    options.name,
-    options.criteria,
-    options.evaluationSteps,
-  );
+  const criteria = resolveCriteria(options.name, options.criteria, options.evaluationSteps);
   const template = options.template ?? defaultTemplate;
 
   const scorer = Scorer.makeScorer<Case, GEvalError, LanguageModel.LanguageModel>({
@@ -500,9 +494,8 @@ export const gEval = <Case extends GEvalCase = GEvalCase>(
         );
         return yield* judge({
           name: options.name,
-          criteria,
-          evaluationSteps,
-          rubric: options.rubric,
+          ...criteria,
+          ...Struct.pick(options, ["rubric"]),
           fields,
           template,
         });
@@ -529,12 +522,10 @@ export type ConversationalEvaluationParam = "scenario" | "expectedOutcome" | "co
  *
  * @since 0.1.0
  */
-export interface GEvalConversationalCase {
-  readonly turns: Prompt.Prompt;
-  readonly scenario?: string | undefined;
-  readonly expectedOutcome?: unknown;
-  readonly context?: ReadonlyArray<string> | undefined;
-}
+export type GEvalConversationalCase = Pick<
+  Golden.ConversationalGolden<typeof Schema.Unknown>,
+  "turns" | "scenario" | "expectedOutcome" | "context"
+>;
 
 const renderMessageContent = (message: Prompt.Message): string => {
   if (message.role === "system") return message.content;
@@ -582,11 +573,7 @@ export interface GEvalConversationalOptions extends GEvalSharedOptions {
 export const gEvalConversational = <Case extends GEvalConversationalCase = GEvalConversationalCase>(
   options: GEvalConversationalOptions,
 ): Metric.Metric<Case, GEvalError, LanguageModel.LanguageModel> => {
-  const { criteria, evaluationSteps } = resolveCriteria(
-    options.name,
-    options.criteria,
-    options.evaluationSteps,
-  );
+  const criteria = resolveCriteria(options.name, options.criteria, options.evaluationSteps);
   const template = options.template ?? defaultTemplate;
   const evaluationParams = options.evaluationParams ?? [];
 
@@ -602,9 +589,8 @@ export const gEvalConversational = <Case extends GEvalConversationalCase = GEval
         );
         return yield* judge({
           name: options.name,
-          criteria,
-          evaluationSteps,
-          rubric: options.rubric,
+          ...criteria,
+          ...Struct.pick(options, ["rubric"]),
           fields,
           template,
         });

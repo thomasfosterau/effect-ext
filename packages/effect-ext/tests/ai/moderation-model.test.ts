@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { AiError, Response } from "effect/ai";
 import {
@@ -19,7 +20,8 @@ import {
 import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 import { failingLanguageModel, stubLanguageModel } from "./helpers/language-model";
 
-const noUsage = { inputTokens: undefined } as const;
+const noUsage = { inputTokens: Option.none() } as const;
+const unreported = { usage: noUsage, modelId: Option.none() } as const;
 
 const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
   const failure = await expectFailureInstanceOf(program, AiError.AiError);
@@ -56,8 +58,11 @@ describe("ModerationModel", () => {
       Effect.gen(function* () {
         const { model } = yield* makeStub({
           respond: () => ({
-            results: [{ isFlagged: true, categories: { hate: 0.9, violence: 0.1 } }],
-            usage: { inputTokens: 7 },
+            results: [
+              { isFlagged: true, categories: { hate: 0.9, violence: 0.1 }, flags: Option.none() },
+            ],
+            usage: { inputTokens: Option.some(7) },
+            modelId: Option.none(),
           }),
         });
         return yield* model.moderate({ inputs: ["nasty"] });
@@ -66,14 +71,17 @@ describe("ModerationModel", () => {
 
     expect(response.results[0].isFlagged).toBe(true);
     expect(response.results[0].categories.hate).toBe(0.9);
-    expect(response.usage.inputTokens).toBe(7);
+    expect(response.usage.inputTokens).toStrictEqual(Option.some(7));
   });
 
   it("returns an empty response for empty inputs without calling the provider", async () => {
     const { response, callCount } = await runTest(
       Effect.gen(function* () {
         const { model, calls } = yield* makeStub({
-          respond: () => ({ results: [{ isFlagged: false, categories: {} }], usage: noUsage }),
+          respond: () => ({
+            results: [{ isFlagged: false, categories: {}, flags: Option.none() }],
+            ...unreported,
+          }),
         });
         const result = yield* model.moderate({ inputs: [] });
         return { response: result, callCount: calls.length };
@@ -81,7 +89,7 @@ describe("ModerationModel", () => {
     );
 
     expect(response.results).toEqual([]);
-    expect(response.usage.inputTokens).toBeUndefined();
+    expect(response.usage.inputTokens).toStrictEqual(Option.none());
     expect(callCount).toBe(0);
   });
 
@@ -89,7 +97,7 @@ describe("ModerationModel", () => {
     const message = await expectAiError(
       Effect.gen(function* () {
         const { model } = yield* makeStub({
-          respond: () => ({ results: [], usage: noUsage }),
+          respond: () => ({ results: [], ...unreported }),
         });
         return yield* model.moderate({ inputs: ["one"] });
       }),
@@ -103,8 +111,8 @@ describe("ModerationModel", () => {
       Effect.gen(function* () {
         const { model } = yield* makeStub({
           respond: () => ({
-            results: [{ isFlagged: true, categories: { hate: 1.5 } }],
-            usage: noUsage,
+            results: [{ isFlagged: true, categories: { hate: 1.5 }, flags: Option.none() }],
+            ...unreported,
           }),
         });
         return yield* model.moderate({ inputs: ["x"] });
@@ -130,31 +138,36 @@ describe("ModerationModel", () => {
       Effect.gen(function* () {
         const { model } = yield* makeStub({
           respond: () => ({
-            results: [{ isFlagged: true, categories: { hate: 0.9 }, flags: { hate: true } }],
+            results: [
+              { isFlagged: true, categories: { hate: 0.9 }, flags: Option.some({ hate: true }) },
+            ],
             usage: noUsage,
-            modelId: "omni-moderation-2024-09-26",
+            modelId: Option.some("omni-moderation-2024-09-26"),
           }),
         });
         return yield* model.moderate({ inputs: ["nasty"] });
       }),
     );
 
-    expect(response.results[0].flags).toEqual({ hate: true });
-    expect(response.modelId).toBe("omni-moderation-2024-09-26");
+    expect(response.results[0].flags).toStrictEqual(Option.some({ hate: true }));
+    expect(response.modelId).toStrictEqual(Option.some("omni-moderation-2024-09-26"));
   });
 
-  it("leaves flags and modelId undefined when the provider reports neither", async () => {
+  it("leaves flags and modelId none when the provider reports neither", async () => {
     const response = await runTest(
       Effect.gen(function* () {
         const { model } = yield* makeStub({
-          respond: () => ({ results: [{ isFlagged: false, categories: {} }], usage: noUsage }),
+          respond: () => ({
+            results: [{ isFlagged: false, categories: {}, flags: Option.none() }],
+            ...unreported,
+          }),
         });
         return yield* model.moderate({ inputs: ["fine"] });
       }),
     );
 
-    expect(response.results[0].flags).toBeUndefined();
-    expect(response.modelId).toBeUndefined();
+    expect(response.results[0].flags).toStrictEqual(Option.none());
+    expect(response.modelId).toStrictEqual(Option.none());
   });
 
   it("hands a multimodal input to the provider unchanged, one result per input", async () => {
@@ -163,8 +176,12 @@ describe("ModerationModel", () => {
       Effect.gen(function* () {
         const stub = yield* makeStub({
           respond: (options) => ({
-            results: options.inputs.map(() => ({ isFlagged: false, categories: {} })),
-            usage: noUsage,
+            results: options.inputs.map(() => ({
+              isFlagged: false,
+              categories: {},
+              flags: Option.none(),
+            })),
+            ...unreported,
           }),
         });
         const result = yield* stub.model.moderate({
@@ -182,7 +199,7 @@ describe("ModerationModel", () => {
     const { failure, callCount } = await runTest(
       Effect.gen(function* () {
         const { model, calls } = yield* makeStub({
-          respond: () => ({ results: [], usage: noUsage }),
+          respond: () => ({ results: [], ...unreported }),
         });
         const result = yield* Effect.flip(model.moderate({ inputs: ["x", []] }));
         return { failure: result, callCount: calls.length };
@@ -281,12 +298,12 @@ describe("ModerationModel", () => {
         ),
       );
 
-      expect(response.modelId).toBe("lm-2026-01-01");
-      expect(response.results[0].flags).toBeUndefined();
+      expect(response.modelId).toStrictEqual(Option.some("lm-2026-01-01"));
+      expect(response.results[0].flags).toStrictEqual(Option.none());
     });
 
     it("moderates via structured output and reuses the validation path", async () => {
-      let captured: { readonly prompt: unknown; readonly objectName: unknown } | undefined;
+      const captured: Array<{ readonly prompt: unknown; readonly objectName: unknown }> = [];
       const response = await runTest(
         Effect.gen(function* () {
           const model = yield* fromLanguageModel;
@@ -296,7 +313,7 @@ describe("ModerationModel", () => {
             stubLanguageModel(
               { results: [{ isFlagged: false, categories: { hate: 0.01 } }] },
               (request) => {
-                captured = request;
+                captured.push(request);
               },
             ),
           ),
@@ -305,7 +322,7 @@ describe("ModerationModel", () => {
 
       expect(response.results[0].isFlagged).toBe(false);
       expect(response.results[0].categories.hate).toBe(0.01);
-      expect(captured?.objectName).toBe("moderation");
+      expect(captured.map((request) => request.objectName)).toEqual(["moderation"]);
     });
 
     it("asks the model for the wire name `flagged` and decodes it to `isFlagged`", async () => {

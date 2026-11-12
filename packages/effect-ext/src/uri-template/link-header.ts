@@ -13,7 +13,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
 import { pctEncode } from "../internal/uri-template/encoding.ts";
@@ -66,14 +66,14 @@ export interface Link {
  * @category models
  */
 export interface LinkOptions {
-  readonly rel?: string | ReadonlyArray<string> | undefined;
-  readonly anchor?: string | undefined;
-  readonly type?: string | undefined;
-  readonly media?: string | undefined;
-  readonly title?: string | undefined;
-  readonly titleStar?: string | ExtendedValue | undefined;
-  readonly hreflang?: ReadonlyArray<string> | undefined;
-  readonly params?: ReadonlyArray<readonly [name: string, value: string]> | undefined;
+  readonly rel?: string | ReadonlyArray<string>;
+  readonly anchor?: string;
+  readonly type?: string;
+  readonly media?: string;
+  readonly title?: string;
+  readonly titleStar?: string | ExtendedValue;
+  readonly hreflang?: ReadonlyArray<string>;
+  readonly params?: ReadonlyArray<readonly [name: string, value: string]>;
 }
 
 const normaliseRel = (rel: string): string => (rel.includes(":") ? rel : rel.toLowerCase());
@@ -108,7 +108,7 @@ export const make = (target: string, options?: LinkOptions): Link => {
     rel:
       rel === undefined
         ? []
-        : Predicate.isString(rel)
+        : P.isString(rel)
           ? relsOf(rel)
           : Arr.dedupe(Arr.map(rel, normaliseRel)),
     anchor: Option.fromUndefinedOr(options?.anchor),
@@ -116,7 +116,7 @@ export const make = (target: string, options?: LinkOptions): Link => {
     media: Option.fromUndefinedOr(options?.media),
     title: Option.fromUndefinedOr(options?.title),
     titleStar: Option.map(Option.fromUndefinedOr(titleStar), (value) =>
-      Predicate.isString(value) ? { value, language: Option.none() } : value,
+      P.isString(value) ? { value, language: Option.none() } : value,
     ),
     hreflang: options?.hreflang ?? [],
     params: options?.params ?? [],
@@ -133,7 +133,7 @@ const PARAMETERS = /;\s*([^;,=\s]+)\s*(?:=\s*("(?:[^"\\]|\\.)*"|[^;,\s"]*))?/gu;
 const unquote = (value: string): string =>
   value.startsWith('"') ? value.slice(1, -1).replace(/\\(.)/gu, "$1") : value;
 
-const resolve = (reference: string, base: string | URL | undefined): string =>
+const resolve = (reference: string, base?: string | URL): string =>
   base !== undefined && URL.canParse(reference, base) ? new URL(reference, base).href : reference;
 
 const latin1 = (encoded: string): string =>
@@ -172,7 +172,7 @@ const first = (parameters: ReadonlyArray<Parameter>, name: string): Option.Optio
 
 const SINGLE = ["rel", "anchor", "type", "media", "title", "title*", "hreflang"];
 
-const linkOf = (target: string, rawParameters: string, base: string | URL | undefined): Link => {
+const linkOf = (target: string, rawParameters: string, base?: string | URL): Link => {
   const parameters = Arr.map(
     Arr.fromIterable(rawParameters.matchAll(PARAMETERS)),
     ([, name = "", value = ""]): Parameter => [name.toLowerCase(), unquote(value)],
@@ -329,9 +329,7 @@ export type LinkHeaderFromString = typeof LinkHeaderFromString.Type;
 
 const isLinks = (input: unknown): input is ReadonlyArray<Link> =>
   Array.isArray(input) &&
-  input.every(
-    (link) => Predicate.hasProperty(link, "target") && Predicate.hasProperty(link, "rel"),
-  );
+  input.every((link) => P.hasProperty(link, "target") && P.hasProperty(link, "rel"));
 
 /**
  * A `Link` header value as a schema: decodes by {@link parse} (with no

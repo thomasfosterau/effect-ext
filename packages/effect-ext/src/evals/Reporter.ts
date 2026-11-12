@@ -109,11 +109,11 @@ export const terminal: Reporter = makeReporter({
 
 /**
  * `JSON.stringify` with two-space indentation, as a codec. The replacer writes
- * an absent `summary` as `null` rather than dropping the key.
+ * a metric's `summary` as the summary itself, or `null` when it has none.
  */
 const encodeSuiteResultJson = Schema.encodeEffect(
   Schema.fromJsonString(Schema.Unknown, {
-    replacer: (key, value) => (key === "summary" && value === undefined ? null : value),
+    replacer: Result.summaryReplacer,
     space: 2,
   }),
 );

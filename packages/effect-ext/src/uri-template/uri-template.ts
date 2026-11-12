@@ -17,8 +17,8 @@
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as Record from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as SchemaGetter from "effect/SchemaGetter";
@@ -70,7 +70,7 @@ export class TemplateError extends Schema.TaggedError<TemplateError>()("Template
     "PrefixOnComposite",
     "Unmatchable",
   ]),
-  position: Schema.Number,
+  position: Schema.Int,
   message: Schema.String,
 }) {}
 
@@ -262,9 +262,7 @@ export const parse = (source: string): Result.Result<UriTemplate, TemplateError>
 export const variables = (template: UriTemplate): ReadonlyArray<string> =>
   Arr.dedupe(
     Arr.flatMap(template.parts, (part) =>
-      Predicate.isTagged(part, "Expression")
-        ? Arr.map(part.variables, (variable) => variable.name)
-        : [],
+      P.isTagged(part, "Expression") ? Arr.map(part.variables, (variable) => variable.name) : [],
     ),
   );
 
@@ -369,10 +367,10 @@ const expandVariable = (
         composite(spec, position, () => expandList(behaviour, spec, Arr.map(items, String))),
     });
   }
-  if (!Predicate.isObject(value)) {
+  if (!P.isObject(value)) {
     return Result.succeed(Option.some(expandString(behaviour, spec, String(value))));
   }
-  return Arr.match(Record.toEntries(value), {
+  return Arr.match(R.toEntries(value), {
     onEmpty: () => UNDEFINED,
     onNonEmpty: (pairs) =>
       composite(spec, position, () =>
@@ -386,7 +384,7 @@ const expandVariable = (
 };
 
 const expandPart = (part: Part, values: Variables): Result.Result<string, TemplateError> => {
-  if (Predicate.isTagged(part, "Literal")) return Result.succeed(encodeReserved(part.text));
+  if (P.isTagged(part, "Literal")) return Result.succeed(encodeReserved(part.text));
   const behaviour = BEHAVIOUR[part.operator];
   return Result.map(
     Result.all(
@@ -457,9 +455,9 @@ export const UriTemplateFromString: Schema.Codec<UriTemplate, string> = Schema.S
   Schema.decodeTo(
     Schema.declare(
       (input): input is UriTemplate =>
-        Predicate.hasProperty(input, "source") &&
-        Predicate.isString(input.source) &&
-        Predicate.hasProperty(input, "parts") &&
+        P.hasProperty(input, "source") &&
+        P.isString(input.source) &&
+        P.hasProperty(input, "parts") &&
         Array.isArray(input.parts),
       { expected: "a parsed URI template" },
     ),

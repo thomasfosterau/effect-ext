@@ -7,8 +7,8 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as Record from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Str from "effect/String";
 import type { ComponentValue } from "../../css/token.ts";
 
@@ -19,21 +19,21 @@ export type Terms = Readonly<Record<string, number>>;
 export type Canonical = (unit: string) => Option.Option<readonly [string, number]>;
 
 const isNumber = (terms: Terms): boolean => {
-  const units = Record.keys(terms);
+  const units = R.keys(terms);
   return units.length === 1 && units[0] === "";
 };
 
 const add = (left: Terms, right: Terms, sign: 1 | -1): Option.Option<Terms> => {
   if (isNumber(left) !== isNumber(right)) return Option.none();
   return Option.some(
-    Record.reduce(right, { ...left }, (sum, value, unit) => ({
+    R.reduce(right, { ...left }, (sum, value, unit) => ({
       ...sum,
       [unit]: (sum[unit] ?? 0) + sign * value,
     })),
   );
 };
 
-const scale = (terms: Terms, factor: number): Terms => Record.map(terms, (value) => value * factor);
+const scale = (terms: Terms, factor: number): Terms => R.map(terms, (value) => value * factor);
 
 const multiply = (left: Terms, right: Terms): Option.Option<Terms> => {
   if (isNumber(left)) return Option.some(scale(right, left[""] ?? 0));
@@ -47,7 +47,7 @@ const divide = (left: Terms, right: Terms): Option.Option<Terms> => {
 };
 
 const isDelim = (value: Option.Option<ComponentValue>, delim: string): boolean =>
-  Option.exists(value, (token) => Predicate.isTagged(token, "Delim") && token.value === delim);
+  Option.exists(value, (token) => P.isTagged(token, "Delim") && token.value === delim);
 
 /** A recursive-descent parser over one parenthesised level's values, whitespace removed. */
 const expression = (
@@ -60,17 +60,17 @@ const expression = (
   const leaf = (token: Option.Option<ComponentValue>): Option.Option<Terms> => {
     if (Option.isNone(token)) return Option.none();
     const value = token.value;
-    if (Predicate.isTagged(value, "Number")) return Option.some({ "": value.value });
-    if (Predicate.isTagged(value, "Percentage")) return Option.some({ "%": value.value });
-    if (Predicate.isTagged(value, "Dimension")) {
+    if (P.isTagged(value, "Number")) return Option.some({ "": value.value });
+    if (P.isTagged(value, "Percentage")) return Option.some({ "%": value.value });
+    if (P.isTagged(value, "Dimension")) {
       return Option.map(canonical(Str.toLowerCase(value.unit)), ([unit, factor]) => ({
         [unit]: value.value * factor,
       }));
     }
-    if (Predicate.isTagged(value, "Block") && value.associated === "(") {
+    if (P.isTagged(value, "Block") && value.associated === "(") {
       return evaluate(value.value, canonical);
     }
-    if (Predicate.isTagged(value, "Func") && Str.toLowerCase(value.name) === "calc") {
+    if (P.isTagged(value, "Func") && Str.toLowerCase(value.name) === "calc") {
       return evaluate(value.value, canonical);
     }
     return Option.none();
@@ -113,7 +113,7 @@ export const evaluate = (
   canonical: Canonical,
 ): Option.Option<Terms> => {
   const isSpace = (index: number): boolean =>
-    Option.exists(Arr.get(values, index), (value) => Predicate.isTagged(value, "Whitespace"));
+    Option.exists(Arr.get(values, index), (value) => P.isTagged(value, "Whitespace"));
   const spaced = values.every(
     (value, index) =>
       (!isDelim(Option.some(value), "+") && !isDelim(Option.some(value), "-")) ||
@@ -121,7 +121,7 @@ export const evaluate = (
   );
   if (!spaced) return Option.none();
   return Arr.match(
-    values.filter((value) => !Predicate.isTagged(value, "Whitespace")),
+    values.filter((value) => !P.isTagged(value, "Whitespace")),
     {
       onEmpty: () => Option.none(),
       onNonEmpty: (tokens) => expression(tokens, canonical),

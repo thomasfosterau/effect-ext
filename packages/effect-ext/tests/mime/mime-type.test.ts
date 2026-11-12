@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import { MimeType } from "@thomasfosterau/effect-ext/Mime";
 import generated from "./fixtures/generated-mime-types.json" with { type: "json" };
@@ -18,7 +18,7 @@ const Vectors = Schema.Array(
 
 /** The vectors of a fixture, its section-heading strings left out. */
 const vectors = (fixture: ReadonlyArray<unknown>) =>
-  Schema.decodeUnknownSync(Vectors)(fixture.filter(Predicate.isObject));
+  Schema.decodeUnknownSync(Vectors)(fixture.filter(P.isObject));
 
 describe("parse / serialize (web-platform-tests)", () => {
   it.each([

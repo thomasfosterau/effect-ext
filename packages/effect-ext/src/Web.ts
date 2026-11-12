@@ -13,8 +13,8 @@
  *
  * The other entries: `Net` (the SSRF guard and redirect-following fetch),
  * `Observability` (structured log, allow-listed span tracer, event trio,
- * auth-outcome signal), `Negotiate` (the content-negotiation dispatch
- * verdict, over `@thomasfosterau/effect-jsonapi`).
+ * auth-outcome signal), `Negotiate` (the content-negotiation verdict over
+ * the representations a server can produce).
  *
  * @since 0.1.0
  */

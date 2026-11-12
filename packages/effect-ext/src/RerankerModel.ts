@@ -56,7 +56,7 @@ export class RerankerModel extends Context.Service<RerankerModel, Service>()(
  *
  * **Details**
  *
- * `inputTokens` is `undefined` when the provider does not report usage or when
+ * `inputTokens` is `Option.none()` when the provider does not report usage or when
  * the empty input short-circuit bypassed the provider.
  *
  * @category models
@@ -66,7 +66,7 @@ export class RerankerModel extends Context.Service<RerankerModel, Service>()(
 export class RerankerUsage extends Schema.Class<RerankerUsage>(
   "@thomasfosterau/effect-ext/RerankerModel/RerankerUsage",
 )({
-  inputTokens: Schema.UndefinedOr(Schema.Finite),
+  inputTokens: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
 /**
@@ -121,7 +121,7 @@ export interface RerankOptions {
   /** Candidate documents, referenced by index in the results. */
   readonly documents: ReadonlyArray<string>;
   /** Return at most this many results (all documents when omitted). */
-  readonly topN?: number | undefined;
+  readonly topN?: number;
 }
 
 /**
@@ -134,7 +134,7 @@ export interface RerankOptions {
 export interface ProviderOptions {
   readonly query: string;
   readonly documents: ReadonlyArray<string>;
-  readonly topN: number | undefined;
+  readonly topN?: number;
 }
 
 /**
@@ -149,7 +149,7 @@ export interface ProviderResponse {
     readonly index: number;
     readonly relevanceScore: number;
   }>;
-  readonly usage: { readonly inputTokens: number | undefined };
+  readonly usage: { readonly inputTokens: Option.Option<number> };
 }
 
 /**
@@ -173,7 +173,7 @@ const invalidProviderResponse = (description: string): AiError.AiError =>
 const emptyResponse = (): RerankResponse =>
   new RerankResponse({
     results: [],
-    usage: new RerankerUsage({ inputTokens: undefined }),
+    usage: new RerankerUsage({ inputTokens: Option.none() }),
   });
 
 /** Most relevant document first. */
@@ -187,8 +187,8 @@ const byRelevanceDescending: Order.Order<RerankedDocument> = Order.flip(
  */
 const mapProviderResponse = (
   documentCount: number,
-  topN: number | undefined,
   response: ProviderResponse,
+  topN?: number,
 ): Effect.Effect<RerankResponse, AiError.AiError> => {
   const limit = topN === undefined ? documentCount : Math.min(topN, documentCount);
   if (response.results.length > limit) {
@@ -254,14 +254,10 @@ export const make = (params: {
         (Arr.isReadonlyArrayEmpty(options.documents)
           ? Effect.succeed(emptyResponse())
           : params
-              .rerank({
-                query: options.query,
-                documents: options.documents,
-                topN: options.topN,
-              })
+              .rerank(options)
               .pipe(
                 Effect.flatMap((response) =>
-                  mapProviderResponse(options.documents.length, options.topN, response),
+                  mapProviderResponse(options.documents.length, response, options.topN),
                 ),
               )
         ).pipe(Effect.withSpan("RerankerModel.rerank")),

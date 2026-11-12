@@ -19,7 +19,7 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Logger from "effect/Logger";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as References from "effect/References";
 import * as Schema from "effect/Schema";
 import * as Tracer from "effect/Tracer";
@@ -292,7 +292,7 @@ export const logErrorEvent = (
  * @category logging
  */
 export const describeError = (error: unknown): string => {
-  if (!Predicate.isObjectOrArray(error)) return String(error);
+  if (!P.isObjectOrArray(error)) return String(error);
   // SAFETY: a structural read of three optional members on an arbitrary
   // object or array; each is checked with `Predicate.isString` before use.
   const failure = error as {
@@ -300,9 +300,9 @@ export const describeError = (error: unknown): string => {
     readonly message?: unknown;
     readonly name?: unknown;
   };
-  const tag = Predicate.isString(failure._tag) ? Option.some(failure._tag) : Option.none();
+  const tag = P.isString(failure._tag) ? Option.some(failure._tag) : Option.none();
   const message =
-    Predicate.isString(failure.message) && failure.message !== ""
+    P.isString(failure.message) && failure.message !== ""
       ? Option.some(failure.message)
       : Option.none();
   if (Option.isSome(tag)) {
@@ -312,8 +312,8 @@ export const describeError = (error: unknown): string => {
     });
   }
   if (Option.isSome(message)) return message.value;
-  if (Predicate.isString(failure.message)) {
-    return Predicate.isString(failure.name) ? failure.name : "";
+  if (P.isString(failure.message)) {
+    return P.isString(failure.name) ? failure.name : "";
   }
   return String(error);
 };

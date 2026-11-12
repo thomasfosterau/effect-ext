@@ -13,8 +13,9 @@
  */
 
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
 import { VoyageClient } from "./VoyageClient";
 import type * as Wire from "./internal/wire";
@@ -78,8 +79,8 @@ export const make = Effect.fnUntraced(function* (
           model: options.model,
           query,
           documents,
-          ...(Predicate.isNotUndefined(topN) ? { top_k: topN } : undefined),
-          ...(Predicate.isNotUndefined(options.truncation)
+          ...(P.isNotUndefined(topN) ? { top_k: topN } : undefined),
+          ...(P.isNotUndefined(options.truncation)
             ? { truncation: options.truncation }
             : undefined),
         })
@@ -106,5 +107,5 @@ const mapResponse = (body: Wire.RerankResponse): RerankerModel.ProviderResponse 
     index: datum.index,
     relevanceScore: datum.relevance_score,
   })),
-  usage: { inputTokens: body.usage?.total_tokens },
+  usage: { inputTokens: Option.fromUndefinedOr(body.usage?.total_tokens) },
 });
