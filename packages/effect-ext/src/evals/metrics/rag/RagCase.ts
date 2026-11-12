@@ -17,7 +17,10 @@
 
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import type * as Schema from "effect/Schema";
 import { AiError } from "effect/ai";
+import type * as EvalCase from "../../EvalCase.ts";
+import type * as Golden from "../../Golden.ts";
 import { isMissing, MissingEvaluationParamError, renderValue } from "../GEval.ts";
 import type { VerdictCountMismatchError } from "./ExtractThenClassify.ts";
 
@@ -44,13 +47,14 @@ export {
  *
  * @since 0.1.0
  */
-export interface RagCase {
-  readonly golden: {
-    readonly input: unknown;
-    readonly expected?: unknown;
-  };
-  readonly output: unknown;
-  readonly retrievedContext?: ReadonlyArray<string> | undefined;
+export interface RagCase extends Pick<
+  EvalCase.EvalCase<typeof Schema.Unknown, typeof Schema.Unknown>,
+  "output" | "retrievedContext"
+> {
+  readonly golden: Pick<
+    Golden.Golden<typeof Schema.Unknown, typeof Schema.Unknown>,
+    "input" | "expected"
+  >;
 }
 
 /**

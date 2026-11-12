@@ -16,6 +16,7 @@
 
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import type * as Stream from "effect/Stream";
 import { AiError } from "effect/ai";
@@ -44,7 +45,7 @@ export class VoiceConversionModel extends Context.Service<VoiceConversionModel, 
  *
  * **Details**
  *
- * `durationSeconds` is `undefined` when the provider does not report the
+ * `durationSeconds` is `Option.none()` when the provider does not report the
  * processed audio duration.
  *
  * @category models
@@ -54,7 +55,7 @@ export class VoiceConversionModel extends Context.Service<VoiceConversionModel, 
 export class VoiceConversionUsage extends Schema.Class<VoiceConversionUsage>(
   "@thomasfosterau/effect-ext/VoiceConversionModel/VoiceConversionUsage",
 )({
-  durationSeconds: Schema.UndefinedOr(Schema.Finite),
+  durationSeconds: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
 /**
@@ -89,7 +90,7 @@ export interface VoiceConversionOptions {
   /** Provider voice identifier to convert the audio into. */
   readonly targetVoice: string;
   /** Desired output audio container/codec (e.g. `mp3`, `wav`). */
-  readonly format?: string | undefined;
+  readonly format?: string;
 }
 
 /**
@@ -102,7 +103,7 @@ export interface VoiceConversionOptions {
 export interface ProviderOptions {
   readonly audio: Uint8Array | Stream.Stream<Uint8Array>;
   readonly targetVoice: string;
-  readonly format: string | undefined;
+  readonly format?: string;
 }
 
 /**
@@ -115,7 +116,7 @@ export interface ProviderOptions {
 export interface ProviderResponse {
   readonly audio: Uint8Array;
   readonly mediaType: string;
-  readonly usage: { readonly durationSeconds: number | undefined };
+  readonly usage: { readonly durationSeconds: Option.Option<number> };
 }
 
 /**
@@ -177,11 +178,7 @@ export const make = (params: {
     VoiceConversionModel.of({
       convert: (options) =>
         params
-          .convert({
-            audio: options.audio,
-            targetVoice: options.targetVoice,
-            format: options.format,
-          })
+          .convert(options)
           .pipe(
             Effect.flatMap(mapProviderResponse),
             Effect.withSpan("VoiceConversionModel.convert"),

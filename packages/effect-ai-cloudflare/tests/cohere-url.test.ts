@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
 import { AiError } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
@@ -221,7 +222,7 @@ describe("makeCohereRerankerFromUrl", () => {
       [0, 0.9],
       [1, 0.2],
     ]);
-    expect(response.usage.inputTokens).toBe(1);
+    expect(response.usage.inputTokens).toStrictEqual(Option.some(1));
   });
 
   it("omits top_n when the caller gives none", async () => {

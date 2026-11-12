@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
 import {
   make,
@@ -55,7 +56,7 @@ describe("VoiceConversionModel", () => {
           respond: () => ({
             audio: new Uint8Array([4, 5]),
             mediaType: "audio/mpeg",
-            usage: { durationSeconds: 2 },
+            usage: { durationSeconds: Option.some(2) },
           }),
         });
         const result = yield* model.convert({ audio, targetVoice: "nova", format: "mp3" });
@@ -65,7 +66,7 @@ describe("VoiceConversionModel", () => {
 
     expect(Array.from(response.audio)).toEqual([4, 5]);
     expect(response.mediaType).toBe("audio/mpeg");
-    expect(response.usage.durationSeconds).toBe(2);
+    expect(response.usage.durationSeconds).toStrictEqual(Option.some(2));
     expect(calls).toEqual([{ audio, targetVoice: "nova", format: "mp3" }]);
   });
 
@@ -76,7 +77,7 @@ describe("VoiceConversionModel", () => {
           respond: () => ({
             audio: new Uint8Array([]),
             mediaType: "audio/mpeg",
-            usage: { durationSeconds: undefined },
+            usage: { durationSeconds: Option.none() },
           }),
         });
         return yield* model.convert({ audio, targetVoice: "nova" });

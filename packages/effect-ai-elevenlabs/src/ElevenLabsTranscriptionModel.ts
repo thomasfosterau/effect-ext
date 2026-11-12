@@ -66,15 +66,15 @@ const toSegment = (word: Wire.TranscriptWord): Option.Option<Segment> =>
     : Option.none();
 
 /** The latest end offset any token reports: the transcript's duration. */
-const latestEnd = (words: ReadonlyArray<Wire.TranscriptWord>): number | undefined =>
+const latestEnd = (words: ReadonlyArray<Wire.TranscriptWord>): Option.Option<number> =>
   Arr.match(
     Arr.filter(
       Arr.map(words, (word) => word.end),
       P.isNumber,
     ),
     {
-      onEmpty: () => undefined,
-      onNonEmpty: (ends) => Arr.max(ends, Order.Number),
+      onEmpty: () => Option.none(),
+      onNonEmpty: (ends) => Option.some(Arr.max(ends, Order.Number)),
     },
   );
 
@@ -84,8 +84,8 @@ const mapTranscript = (body: Wire.SpeechToTextResponse): TranscriptionModel.Prov
   const segments = Arr.getSomes(Arr.map(words, toSegment));
   return {
     text: body.text ?? "",
-    segments: Arr.isReadonlyArrayNonEmpty(segments) ? segments : undefined,
-    language: body.language_code ?? undefined,
+    segments: Option.liftPredicate(segments, Arr.isReadonlyArrayNonEmpty),
+    language: Option.fromNullishOr(body.language_code),
     usage: { durationSeconds: latestEnd(words) },
   };
 };

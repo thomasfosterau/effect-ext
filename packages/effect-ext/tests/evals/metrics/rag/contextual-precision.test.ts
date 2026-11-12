@@ -107,6 +107,35 @@ describe("ContextualPrecision.contextualPrecision", () => {
     expect(calls[0]?.user).toContain("3. Paris is the capital of France.");
   });
 
+  it("lists an irrelevant chunk the judge gave no reason for by its text alone, and records verdicts without a reason key", async () => {
+    const metric = ContextualPrecision.contextualPrecision({ threshold: Threshold.minScore(0.5) });
+
+    const { model } = await runTest(
+      makeJudgeStub([
+        () => ({
+          verdicts: [
+            { statement: "The Eiffel Tower is in Paris, France.", verdict: "yes" },
+            { statement: "The Louvre is also in Paris.", verdict: "no", reason: "" },
+            { statement: "Paris is the capital of France.", verdict: "no" },
+          ],
+        }),
+      ]),
+    );
+
+    const result = await runTest(
+      Metric.evaluate(metric, ragCase).pipe(Effect.provide(provideJudge(model))),
+    );
+
+    expect(result.score.reason).toBe(
+      "1/3 retrieved chunks relevant.\n- [2] The Louvre is also in Paris.\n- [3] Paris is the capital of France.",
+    );
+    expect(result.score.metadata?.verdicts).toStrictEqual([
+      { statement: "The Eiffel Tower is in Paris, France.", verdict: "yes" },
+      { statement: "The Louvre is also in Paris.", verdict: "no" },
+      { statement: "Paris is the capital of France.", verdict: "no" },
+    ]);
+  });
+
   it("fails with the typed count-mismatch error, not a corrupted score, when the judge drops a verdict", async () => {
     const metric = ContextualPrecision.contextualPrecision({ threshold: Threshold.minScore(0.5) });
 

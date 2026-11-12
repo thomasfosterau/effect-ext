@@ -14,6 +14,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Redacted from "effect/Redacted";
 import { AiError } from "effect/ai";
 import type { ModerationModel } from "@thomasfosterau/effect-ext";
@@ -88,7 +89,7 @@ describe("makeOpenAiModerationModel", () => {
     expect(response.results).toHaveLength(1);
     expect(response.results[0]?.isFlagged).toBe(false);
     expect(response.results[0]?.categories).toEqual({ hate: 0.01 });
-    expect(response.usage.inputTokens).toBeUndefined();
+    expect(response.usage.inputTokens).toStrictEqual(Option.none());
   });
 
   it("sends the caller's own key as a bearer token when given one", async () => {
@@ -247,8 +248,8 @@ describe("makeOpenAiModerationModel", () => {
 
     const response = await runTest(moderate(ai, ["..."]));
 
-    expect(response.results[0]?.flags).toEqual({ hate: true, violence: false });
-    expect(response.modelId).toBe("omni-moderation-2024-09-26");
+    expect(response.results[0]?.flags).toStrictEqual(Option.some({ hate: true, violence: false }));
+    expect(response.modelId).toStrictEqual(Option.some("omni-moderation-2024-09-26"));
   });
 
   it("leaves flags undefined when the provider sends no categories map", async () => {
@@ -256,7 +257,7 @@ describe("makeOpenAiModerationModel", () => {
 
     const response = await runTest(moderate(ai, ["..."]));
 
-    expect(response.results[0]?.flags).toBeUndefined();
+    expect(response.results[0]?.flags).toStrictEqual(Option.none());
   });
 
   it("sends an image input as an image_url part, one request per input", async () => {
