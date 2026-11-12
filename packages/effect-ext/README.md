@@ -42,6 +42,7 @@ import * as Vec from "@thomasfosterau/effect-ext/Vec";
 | `LiteralExact` | Literal tuples checked to cover a union exactly. |
 | `Ast` | Schema field introspection by AST and decode probe. |
 | `Url` | An absolute URL whose scheme, host, port, credentials and path are part of its type. |
+| `OptionalKey` | Optional keys for object construction under `exactOptionalPropertyTypes`. |
 | `Web` | Response-header policies, the cross-origin mutation guard, the trusted client address, the degraded-session report, the canonical site base, the JSON:API guard responses and the Fetch adapters. |
 | `Net` | The SSRF host block list, the URL safety check and the redirect-revalidating fetch. |
 | `Observability` | The structured JSON-line sink, the allow-listed span tracer, the `logEvent` trio, `describeError`, the auth-outcome signal and per-request metrics. |
@@ -337,6 +338,23 @@ Each `@thomasfosterau/effect-web` entry point, and each of its sibling packages,
 | `@thomasfosterau/effect-mime` | `@thomasfosterau/effect-ext/Mime` |
 
 Two things change beyond the path: the `effect` peer range is `^4.0.0` (effect-web's was `>=4.0.0-rc.118`), and each service's `Context` key moved with it (`@thomasfosterau/effect-web/browser/Locks` is now `@thomasfosterau/effect-ext/Browser/Locks`), so a layer built from the old package does not satisfy a service from the new one. Move every import at once.
+
+## OptionalKey
+
+Under `exactOptionalPropertyTypes` an absent optional key must be omitted, not set to `undefined`. Spread `optionalKey(key, value)` instead of `...(value !== undefined ? { key: value } : {})`:
+
+```ts
+import * as Option from "effect/Option";
+import { fields, fromOption, optionalKey } from "@thomasfosterau/effect-ext/OptionalKey";
+
+const options = { limit: 10, ...optionalKey("cursor", cursor), ...fromOption("filter", filter) };
+const forwarded = { collection, ...fields({ limit, cursor }) };
+```
+
+- `optionalKey(key, value?)` — `{ [key]: value }` unless `value` is `undefined`. `null`, `""`, `0` and `false` keep their key; pass `x ?? undefined` to drop a `null`.
+- `fromOption(key, option)` — the same over an `Option`: the key for `Some`, none for `None`.
+- `fields(input)` — the whole-object form: copies the members of `input` that are not `undefined`. Its type, `Defined<T>`, makes each member that admits `undefined` optional and keeps the rest required.
+- An absent key from `optionalKey` or `fromOption` allocates nothing: every such result is one shared, frozen empty object.
 
 ## Web, Net, Observability, Negotiate, ServiceWorker, Browser, BrowserTesting
 

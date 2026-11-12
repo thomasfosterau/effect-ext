@@ -305,6 +305,13 @@ export * as Num from "./Num.ts";
 export * as Observability from "./Observability.ts";
 
 /**
+ * Optional keys for object construction under `exactOptionalPropertyTypes`.
+ *
+ * @since 0.3.0
+ */
+export * as OptionalKey from "./OptionalKey.ts";
+
+/**
  * Overflowing arithmetic type class and instances.
  *
  * @since 0.1.0

@@ -127,6 +127,7 @@ export default distExportsPackageConfig({
     "Net",
     "Num",
     "Observability",
+    "OptionalKey",
     "Overflowing",
     "PosixTz",
     "Range",
