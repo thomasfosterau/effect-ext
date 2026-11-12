@@ -20,6 +20,7 @@ import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import { LanguageModel } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
 import { anthropicLanguageModelLayerFromUrl } from "@thomasfosterau/effect-ai-cloudflare";
@@ -27,8 +28,8 @@ import { runTest, runTestExit } from "./helpers/effect";
 
 interface CapturedRequest {
   readonly url: string;
-  readonly apiKeyHeader: string | null;
-  readonly cfAigAuthorizationHeader: string | null;
+  readonly apiKeyHeader: Option.Option<string>;
+  readonly cfAigAuthorizationHeader: Option.Option<string>;
   readonly body: unknown;
 }
 
@@ -39,8 +40,8 @@ const stubFetch = (response: { status: number; body: unknown }) => {
     const request = new Request(input, init);
     calls.push({
       url: request.url,
-      apiKeyHeader: request.headers.get("x-api-key"),
-      cfAigAuthorizationHeader: request.headers.get("cf-aig-authorization"),
+      apiKeyHeader: Option.fromNullishOr(request.headers.get("x-api-key")),
+      cfAigAuthorizationHeader: Option.fromNullishOr(request.headers.get("cf-aig-authorization")),
       body: await request.json(),
     });
     return Response.json(response.body, { status: response.status });
@@ -102,9 +103,9 @@ describe("anthropicLanguageModelLayerFromUrl", () => {
     expect(calls[0]?.url).toBe(
       "https://gateway.ai.cloudflare.com/v1/acct/website/anthropic/v1/messages?beta=true",
     );
-    expect(calls[0]?.apiKeyHeader).toBeNull();
-    expect(calls[0]?.cfAigAuthorizationHeader).toBe("Bearer test-token");
-    expect((calls[0]?.body as { model?: string } | undefined)?.model).toBe("claude-sonnet-4-6");
+    expect(calls[0]?.apiKeyHeader).toEqual(Option.none());
+    expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
+    expect(calls[0]?.body).toMatchObject({ model: "claude-sonnet-4-6" });
     expect(response.text).toBe("hello from the URL gateway");
   });
 

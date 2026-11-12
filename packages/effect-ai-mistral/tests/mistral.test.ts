@@ -31,6 +31,7 @@ import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
 import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
+import * as Struct from "effect/Struct";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { AiError, LanguageModel, Tool, Toolkit } from "effect/ai";
@@ -42,7 +43,7 @@ import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 
 interface CapturedRequest {
   readonly url: string;
-  readonly authorization: string | null;
+  readonly authorization: Option.Option<string>;
   readonly headers: Record<string, string>;
   readonly body: RequestBody;
 }
@@ -70,7 +71,7 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
       .catch(() => ({}))) as RequestBody;
     const captured: CapturedRequest = {
       url: request.url,
-      authorization: request.headers.get("authorization"),
+      authorization: Option.fromNullishOr(request.headers.get("authorization")),
       headers: R.fromEntries(request.headers),
       body,
     };
@@ -121,7 +122,10 @@ const modelLayer = (
     readonly config?: Omit<MistralLanguageModel.ConfigService, "model">;
   },
 ) =>
-  MistralLanguageModel.layer({ model: "mistral-large-latest", config: options?.config }).pipe(
+  MistralLanguageModel.layer({
+    model: "mistral-large-latest",
+    ...Struct.pick(options ?? {}, ["config"]),
+  }).pipe(
     Layer.provide(
       MistralClient.layer({
         apiKey: options?.apiKey ?? Redacted.make("test-key"),
@@ -142,7 +146,7 @@ describe("MistralLanguageModel.generateText", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe("https://api.mistral.ai/v1/chat/completions");
-    expect(calls[0]?.authorization).toBe("Bearer test-key");
+    expect(calls[0]?.authorization).toEqual(Option.some("Bearer test-key"));
     expect(calls[0]?.body.model).toBe("mistral-large-latest");
     expect(calls[0]?.body.stream).toBe(false);
     expect(response.text).toBe("Bonjour");
@@ -165,7 +169,7 @@ describe("MistralLanguageModel.generateText", () => {
       ),
     );
 
-    expect(calls[0]?.authorization).toBeNull();
+    expect(calls[0]?.authorization).toEqual(Option.none());
   });
 
   it("translates each prompt message into its Mistral wire form", async () => {
@@ -329,6 +333,32 @@ describe("MistralLanguageModel.generateText", () => {
     expect(messages[2]).toMatchObject({ role: "tool", tool_call_id: "call_1", content: "sunny" });
   });
 
+  it("omits a tool result's content key when the result is undefined", async () => {
+    const { calls, fetch } = makeFetch(() => jsonResponse(completion()));
+
+    await runTest(
+      LanguageModel.generateText({
+        prompt: [
+          {
+            role: "tool",
+            content: [
+              {
+                type: "tool-result",
+                id: "call_1",
+                name: "get_weather",
+                isFailure: false,
+                result: undefined,
+              },
+            ],
+          },
+        ],
+      }).pipe(Effect.provide(modelLayer(fetch))),
+    );
+
+    const message = calls[0]?.body.messages?.[0];
+    expect(message).toEqual({ role: "tool", tool_call_id: "call_1", name: "get_weather" });
+  });
+
   it("maps a success body that is not JSON at all to an InvalidOutputError", async () => {
     const { fetch } = makeFetch(
       () =>
@@ -400,7 +430,7 @@ describe("MistralLanguageModel configuration", () => {
     );
 
     expect(calls[0]?.url).toBe("https://proxy.example/v1/chat/completions");
-    expect(calls[0]?.authorization).toBe("Bearer cfg-key");
+    expect(calls[0]?.authorization).toEqual(Option.some("Bearer cfg-key"));
   });
 
   it("builds an AiModel descriptor that provides the model and its config", async () => {
@@ -695,7 +725,7 @@ describe("MistralLanguageModel.streamText", () => {
 
     const finish = parts.find((part) => part.type === "finish");
     expect(finish).toBeDefined();
-    expect((finish as { reason?: string } | undefined)?.reason).toBe("stop");
+    expect((finish as { reason?: string }).reason).toBe("stop");
   });
 
   it("assembles a streamed tool call across chunks", async () => {
@@ -751,7 +781,7 @@ describe("MistralLanguageModel.streamText", () => {
 
     const toolCall = parts.find((part) => part.type === "tool-call");
     expect(toolCall).toBeDefined();
-    expect((toolCall as { params?: unknown } | undefined)?.params).toEqual({ city: "Nice" });
+    expect((toolCall as { params?: unknown }).params).toEqual({ city: "Nice" });
   });
 
   it("finishes a stream that ends with a usage-only chunk", async () => {
@@ -932,10 +962,10 @@ describe("MistralLanguageModel request construction", () => {
       }).pipe(Effect.provide(modelLayer(fetch))),
     );
 
-    const message = calls[0]?.body.messages?.[0] as
-      | { content: Array<{ image_url: { url: string } }> }
-      | undefined;
-    const content = message?.content ?? [];
+    const message = calls[0]?.body.messages?.[0] as {
+      content: Array<{ image_url: { url: string } }>;
+    };
+    const content = message.content;
     expect(content[0]?.image_url.url).toBe("https://img.example/a.png");
     expect(content[1]?.image_url.url).toBe("https://img.example/b.png");
     expect(content[2]?.image_url.url).toBe("data:image/jpeg;base64,QUJD");

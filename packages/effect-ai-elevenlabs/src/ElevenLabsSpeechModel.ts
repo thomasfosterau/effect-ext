@@ -32,11 +32,16 @@ import * as SpeechModel from "@thomasfosterau/effect-ext/SpeechModel";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
-import * as R from "effect/Record";
 import * as Stream from "effect/Stream";
+import * as Struct from "effect/Struct";
 import * as AiError from "effect/ai/AiError";
 import { ElevenLabsClient } from "./ElevenLabsClient";
-import { mediaTypeForOutputFormat, resolveOutputFormat } from "./internal/audio";
+import {
+  audioRequestOptions,
+  mediaTypeForOutputFormat,
+  resolveOutputFormat,
+} from "./internal/audio";
+import { optionalField } from "./internal/fields";
 import type * as Wire from "./internal/wire";
 
 const MODULE = "ElevenLabsSpeechModel";
@@ -59,20 +64,20 @@ export type Model =
  */
 export interface Settings {
   /** Default ElevenLabs voice id, used when a call omits `voice`. */
-  readonly voiceId?: string | undefined;
+  readonly voiceId?: string;
   /** ElevenLabs model id (e.g. `eleven_multilingual_v2`). */
-  readonly modelId?: (string & Record<never, never>) | Model | undefined;
+  readonly modelId?: (string & Record<never, never>) | Model;
   /**
    * Explicit ElevenLabs `output_format` (e.g. `mp3_44100_128`). Wins over a
    * call's neutral `format` / `sampleRate`.
    */
-  readonly outputFormat?: string | undefined;
+  readonly outputFormat?: string;
   /** ISO language code hint passed to the model. */
-  readonly languageCode?: string | undefined;
+  readonly languageCode?: string;
   /** Default voice-settings block (stability, similarity boost, style, …). */
-  readonly voiceSettings?: Wire.VoiceSettings | undefined;
+  readonly voiceSettings?: Wire.VoiceSettings;
   /** Deterministic sampling seed. */
-  readonly seed?: number | undefined;
+  readonly seed?: number;
 }
 
 const missingVoice = (method: string): AiError.AiError =>
@@ -85,25 +90,16 @@ const missingVoice = (method: string): AiError.AiError =>
     }),
   });
 
-/** Drops keys whose value is `undefined`, preserving the object's type. */
-const compact = <T extends Record<string, unknown>>(record: T): T =>
-  // SAFETY: only keys whose value is `undefined` are dropped; every other key
-  // keeps the value, and so the type, it had in `record`.
-  R.filter(record, (value) => value !== undefined) as T;
-
 const buildBody = (
   options: SpeechModel.ProviderOptions,
   settings: Settings,
-): Wire.TextToSpeechRequest =>
-  // SAFETY: `compact` removes every `undefined` field, so each optional
-  // `TextToSpeechRequest` field is either absent or set, as the wire type requires.
-  compact({
-    text: options.text,
-    model_id: settings.modelId,
-    language_code: settings.languageCode,
-    voice_settings: settings.voiceSettings,
-    seed: settings.seed,
-  }) as Wire.TextToSpeechRequest;
+): Wire.TextToSpeechRequest => ({
+  text: options.text,
+  ...optionalField("model_id", Option.fromUndefinedOr(settings.modelId)),
+  ...optionalField("language_code", Option.fromUndefinedOr(settings.languageCode)),
+  ...optionalField("voice_settings", Option.fromUndefinedOr(settings.voiceSettings)),
+  ...optionalField("seed", Option.fromUndefinedOr(settings.seed)),
+});
 
 /**
  * Constructs a `SpeechModel.Service` backed by {@link ElevenLabsClient}.
@@ -117,42 +113,49 @@ export const make = (
     const client = yield* ElevenLabsClient;
     const config = settings ?? {};
 
-    const resolveVoice = (options: SpeechModel.ProviderOptions): string | undefined =>
-      options.voice ?? config.voiceId;
+    const resolveVoice = (options: SpeechModel.ProviderOptions): Option.Option<string> =>
+      Option.fromUndefinedOr(options.voice ?? config.voiceId);
 
-    const outputFormatFor = (options: SpeechModel.ProviderOptions): string | undefined =>
+    const outputFormatFor = (options: SpeechModel.ProviderOptions): Option.Option<string> =>
       resolveOutputFormat({
-        outputFormat: config.outputFormat,
-        format: options.format,
-        sampleRate: options.sampleRate,
+        ...Struct.pick(config, ["outputFormat"]),
+        ...Struct.pick(options, ["format", "sampleRate"]),
       });
 
     return yield* SpeechModel.make({
       generate: (options) =>
         Effect.gen(function* () {
-          const voice = resolveVoice(options);
-          if (voice === undefined) {
+          const resolved = resolveVoice(options);
+          if (Option.isNone(resolved)) {
             return yield* missingVoice("generate");
           }
+          const voice = resolved.value;
           const outputFormat = outputFormatFor(options);
-          const result = yield* client.textToSpeech(voice, buildBody(options, config), {
-            outputFormat,
-          });
+          const result = yield* client.textToSpeech(
+            voice,
+            buildBody(options, config),
+            audioRequestOptions(outputFormat),
+          );
           return {
             audio: result.audio,
-            mediaType: result.contentType ?? mediaTypeForOutputFormat(outputFormat),
+            mediaType: Option.getOrElse(result.contentType, () =>
+              mediaTypeForOutputFormat(outputFormat),
+            ),
             // ElevenLabs bills per input character; report the submitted length.
             usage: { inputCharacters: Option.some(options.text.length) },
           };
         }),
       stream: (options) => {
-        const voice = resolveVoice(options);
-        if (voice === undefined) {
+        const resolved = resolveVoice(options);
+        if (Option.isNone(resolved)) {
           return Stream.fail(missingVoice("stream"));
         }
-        return client.textToSpeechStream(voice, buildBody(options, config), {
-          outputFormat: outputFormatFor(options),
-        });
+        const voice = resolved.value;
+        return client.textToSpeechStream(
+          voice,
+          buildBody(options, config),
+          audioRequestOptions(outputFormatFor(options)),
+        );
       },
     });
   });
