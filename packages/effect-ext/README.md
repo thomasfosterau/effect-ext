@@ -354,6 +354,7 @@ const forwarded = { collection, ...fields({ limit, cursor }) };
 - `optionalKey(key, value?)` — `{ [key]: value }` unless `value` is `undefined`. `null`, `""`, `0` and `false` keep their key; pass `x ?? undefined` to drop a `null`.
 - `fromOption(key, option)` — the same over an `Option`: the key for `Some`, none for `None`.
 - `fields(input)` — the whole-object form: copies the members of `input` that are not `undefined`. Its type, `Defined<T>`, makes each member that admits `undefined` optional and keeps the rest required.
+- `presentFields(input)` — like `fields`, but drops `null` too, for the row-to-resource boundary (a nullable column becomes an optional key). Its type, `Present<T>`, makes each member that admits `null` or `undefined` optional without them. Keep `fields` for a tri-state update input, where `null` means "clear".
 - An absent key from `optionalKey` or `fromOption` allocates nothing: every such result is one shared, frozen empty object.
 
 ## Web, Net, Observability, Negotiate, ServiceWorker, Browser, BrowserTesting

@@ -116,12 +116,19 @@ const nicknameKey = OptionalKey.optionalKey(
 const parentKey = OptionalKey.fromOption("parent", Option.none<number>());
 /** `number`, or absent as `undefined` (spelled without writing the union). */
 type MaybeNumber = ReturnType<typeof Option.getOrUndefined<number>>;
+/** `string`, or `null` from a nullable column (spelled without writing the union). */
+type NullableString = ReturnType<typeof Option.getOrNull<string>>;
+const presentRow = OptionalKey.presentFields({
+  id: 1,
+  summary: Option.getOrNull(Option.some("x")),
+});
 const forwarded = OptionalKey.fields({ limit: Option.getOrUndefined(Option.some(1)), tag: "x" });
 
 export type Checks = [
   // OptionalKey
   Assert<Equals<typeof nicknameKey, { readonly nickname?: string }>>,
   Assert<Equals<typeof parentKey, { readonly parent?: number }>>,
+  Assert<Equals<typeof presentRow, OptionalKey.Present<{ id: number; summary: NullableString }>>>,
   Assert<Equals<typeof forwarded, OptionalKey.Defined<{ limit: MaybeNumber; tag: string }>>>,
   // Ids
   Assert<Not<Equals<PersonId, string>>>,
