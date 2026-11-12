@@ -8,7 +8,8 @@
  * `input_type` (embed stored documents with `"document"`, search queries with
  * `"query"`) and an optional Matryoshka `output_dimension`. The
  * {@link EMBEDDING_MODELS} matrix documents the current Voyage embedding model
- * ids with their native and selectable dimensions.
+ * ids with their native and selectable dimensions. Embeddings are returned in
+ * input order, whatever order Voyage reports them in.
  *
  * @module VoyageEmbeddingModel
  *
