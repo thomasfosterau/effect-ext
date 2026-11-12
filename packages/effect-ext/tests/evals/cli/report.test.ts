@@ -69,9 +69,7 @@ describe("Report.writeJsonReport", () => {
     expect(created).toEqual([".effect-evals"]);
     expect(written.map((file) => file.path)).toEqual([".effect-evals/results.json"]);
     expect(
-      written.map((file) =>
-        Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))(file.content),
-      ),
+      written.map((file) => Schema.decodeSync(Schema.fromJsonString(Schema.Unknown))(file.content)),
     ).toEqual([passingReport]);
   });
 

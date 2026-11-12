@@ -344,7 +344,7 @@ describe("ModerationModel", () => {
       const [codec] = codecs;
       if (codec === undefined) return;
       const wire = { results: [{ flagged: true, categories: { hate: 0.5 } }] };
-      expect(Schema.decodeUnknownSync(codec)(wire)).toEqual({
+      expect(Schema.decodeSync(codec)(wire)).toEqual({
         results: [{ isFlagged: true, categories: { hate: 0.5 } }],
       });
       expect(

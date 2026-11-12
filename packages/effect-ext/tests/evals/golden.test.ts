@@ -22,7 +22,7 @@ describe("Golden", () => {
       metadata: { locale: "fr" },
     };
 
-    const decoded = await runTest(Schema.decodeUnknownEffect(TranslationGolden)(input));
+    const decoded = await runTest(Schema.decodeEffect(TranslationGolden)(input));
     expect(decoded.input).toBe("Bonjour le monde");
     expect(decoded.expected).toBe("Hello world");
     expect(decoded.context).toEqual(["greeting"]);
@@ -36,9 +36,7 @@ describe("Golden", () => {
   });
 
   it("allows omitting optional fields, dropping their keys rather than encoding `undefined`", async () => {
-    const decoded = await runTest(
-      Schema.decodeUnknownEffect(TranslationGolden)({ input: "Bonjour" }),
-    );
+    const decoded = await runTest(Schema.decodeEffect(TranslationGolden)({ input: "Bonjour" }));
     expect(decoded.input).toBe("Bonjour");
     expect(decoded.expected).toBeUndefined();
 
@@ -65,7 +63,7 @@ describe("ConversationalGolden", () => {
     ]);
 
     const decoded = await runTest(
-      Schema.decodeUnknownEffect(SupportGolden)(
+      Schema.decodeEffect(SupportGolden)(
         await runTest(
           Schema.encodeEffect(SupportGolden)({
             turns: prompt,
@@ -95,7 +93,7 @@ describe("EvalCase", () => {
 
   it("round-trips a golden enriched with actuals", async () => {
     const golden = await runTest(
-      Schema.decodeUnknownEffect(TranslationGolden)({
+      Schema.decodeEffect(TranslationGolden)({
         input: "Bonjour",
         expected: "Hello",
       }),
@@ -112,7 +110,7 @@ describe("EvalCase", () => {
       }),
     );
 
-    const decoded = await runTest(Schema.decodeUnknownEffect(TranslationCase)(encoded));
+    const decoded = await runTest(Schema.decodeEffect(TranslationCase)(encoded));
     expect(decoded.golden.input).toBe("Bonjour");
     expect(decoded.output).toBe("Hi");
     expect(decoded.toolCalls?.[0]?.name).toBe("lookupGlossary");

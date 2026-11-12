@@ -309,7 +309,7 @@ export const parseJsonFeed = (text: string): Effect.Effect<ParsedJsonFeed, JsonF
   Effect.suspend(() =>
     Effect.fromResult(
       Result.flatMap(
-        Result.mapError(Schema.decodeUnknownResult(UnknownFromJson)(text), () =>
+        Result.mapError(Schema.decodeResult(UnknownFromJson)(text), () =>
           parseError("InvalidJson", "Not JSON"),
         ),
         decodeJsonFeed,

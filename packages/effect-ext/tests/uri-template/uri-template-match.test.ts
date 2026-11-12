@@ -38,7 +38,7 @@ const Suite = Schema.Record(
 );
 
 const template = (source: string): UriTemplate.UriTemplate =>
-  Schema.decodeUnknownSync(UriTemplate.UriTemplateFromString)(source);
+  Schema.decodeSync(UriTemplate.UriTemplateFromString)(source);
 
 const matcherOf = (source: string): UriTemplate.Matcher =>
   Result.match(UriTemplate.matcher(template(source)), {

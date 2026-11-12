@@ -80,7 +80,7 @@ describe("accessors", () => {
 
 describe("MimeTypeFromString", () => {
   it("decodes and normalises, and encodes back", () => {
-    const decoded = Schema.decodeUnknownSync(MimeType.MimeTypeFromString)(
+    const decoded = Schema.decodeSync(MimeType.MimeTypeFromString)(
       " Application/JSON ; Charset=UTF-8",
     );
     expect(decoded.subtype).toBe("json");
@@ -90,9 +90,7 @@ describe("MimeTypeFromString", () => {
   });
 
   it("fails on a string that is not a MIME type", () => {
-    expect(() => Schema.decodeUnknownSync(MimeType.MimeTypeFromString)("text")).toThrow(
-      /not a MIME type/,
-    );
+    expect(() => Schema.decodeSync(MimeType.MimeTypeFromString)("text")).toThrow(/not a MIME type/);
   });
 });
 

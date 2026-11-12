@@ -157,7 +157,7 @@ describe("LinkHeader rel queries", () => {
 
 describe("LinkHeader.LinkHeaderFromString", () => {
   it("decodes and encodes a header value", () => {
-    const links = Schema.decodeUnknownSync(LinkHeader.LinkHeaderFromString)(
+    const links = Schema.decodeSync(LinkHeader.LinkHeaderFromString)(
       '<https://example.org/>; rel="up"',
     );
     expect(links[0]?.rel).toStrictEqual(["up"]);
