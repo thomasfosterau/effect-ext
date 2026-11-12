@@ -144,7 +144,7 @@ importers:
   packages/effect-ai-cloudflare:
     dependencies:
       '@thomasfosterau/effect-ext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect-ext
     devDependencies:
       '@cloudflare/workers-types':
@@ -175,7 +175,7 @@ importers:
   packages/effect-ai-cohere:
     dependencies:
       '@thomasfosterau/effect-ext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect-ext
     devDependencies:
       '@effect/language-service':
@@ -197,7 +197,7 @@ importers:
   packages/effect-ai-elevenlabs:
     dependencies:
       '@thomasfosterau/effect-ext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect-ext
     devDependencies:
       '@effect/language-service':
@@ -237,7 +237,7 @@ importers:
   packages/effect-ai-voyage:
     dependencies:
       '@thomasfosterau/effect-ext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect-ext
     devDependencies:
       '@effect/language-service':
