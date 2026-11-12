@@ -488,10 +488,14 @@ describe("route and isNavigationRequest", () => {
 
   it("recognises only navigations", () => {
     expect(isNavigationRequest(new Request(URL_A))).toBe(false);
-    // SAFETY: `isNavigationRequest` reads only `mode`, and the `Request`
-    // constructor rejects `mode: "navigate"`, so a navigation can only be
-    // stood in for structurally.
-    expect(isNavigationRequest({ mode: "navigate" } as Request)).toBe(true);
+    // The `Request` constructor rejects `mode: "navigate"`, so a navigation is
+    // stood in for by a subclass that reports it.
+    class NavigationRequest extends Request {
+      override get mode(): RequestMode {
+        return "navigate";
+      }
+    }
+    expect(isNavigationRequest(new NavigationRequest(URL_A))).toBe(true);
   });
 });
 

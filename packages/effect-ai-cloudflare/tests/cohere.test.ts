@@ -21,6 +21,7 @@ import {
   COHERE_RERANK_MODEL,
   makeCohereEmbeddingModel,
   makeCohereReranker,
+  type GatewayUniversalRequest,
   type WorkersAiBinding,
 } from "@thomasfosterau/effect-ai-cloudflare";
 import { stubAiBinding } from "./helpers/ai";
@@ -37,7 +38,7 @@ const EMBEDDING_DIMENSIONS = 1024;
 
 /** Builds a stub binding whose `gateway(id).run(data)` is canned. */
 const stubAi = (response: { status: number; body: unknown }) => {
-  const calls: unknown[] = [];
+  const calls: GatewayUniversalRequest[] = [];
   const ai = stubAiBinding(() => ({
     run: async (data) => {
       calls.push(data);
@@ -131,7 +132,7 @@ describe("Cohere embeddings", () => {
       }),
     );
 
-    expect((calls[0] as { query: { input_type: string } }).query.input_type).toBe("search_query");
+    expect(calls[0]?.query).toHaveProperty("input_type", "search_query");
   });
 
   it("does not call the provider for an empty input array", async () => {

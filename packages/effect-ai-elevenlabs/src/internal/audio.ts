@@ -45,9 +45,9 @@ export const collectBytes = (
 
 /** Wraps bytes in a `Blob` carrying the given media type (default octet-stream). */
 export const toBlob = (bytes: Uint8Array, mediaType?: string): Blob =>
-  // SAFETY: `Blob` copies the bytes of any `Uint8Array`; the lib typing of
-  // `BlobPart` only rejects one whose buffer may be a `SharedArrayBuffer`.
-  new Blob([bytes as BlobPart], { type: mediaType ?? "application/octet-stream" });
+  // The copy is backed by a plain `ArrayBuffer`, which `BlobPart` requires
+  // (the input's buffer may be a `SharedArrayBuffer`).
+  new Blob([new Uint8Array(bytes)], { type: mediaType ?? "application/octet-stream" });
 
 /**
  * Resolves the neutral speech options into an ElevenLabs `output_format` query

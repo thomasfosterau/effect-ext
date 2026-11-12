@@ -78,10 +78,10 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
   const calls: Array<CapturedRequest> = [];
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
-    const body = (await request
+    const body: RequestBody = await request
       .clone()
       .json()
-      .catch(() => ({}))) as RequestBody;
+      .catch(() => ({}));
     const captured: CapturedRequest = {
       url: request.url,
       authorization: Option.fromNullishOr(request.headers.get("authorization")),
@@ -473,14 +473,14 @@ describe("CohereLanguageModel configuration", () => {
       ),
     );
 
-    const body = calls[0]?.body as Record<string, unknown>;
-    expect(body.p).toBe(0.9);
-    expect(body.k).toBe(20);
-    expect(body.max_tokens).toBe(64);
-    expect(body.seed).toBe(7);
-    expect(body.stop_sequences).toEqual(["STOP"]);
-    expect(body.presence_penalty).toBe(0.5);
-    expect(body.frequency_penalty).toBe(0.25);
+    const body = calls[0]?.body;
+    expect(body?.p).toBe(0.9);
+    expect(body?.k).toBe(20);
+    expect(body?.max_tokens).toBe(64);
+    expect(body?.seed).toBe(7);
+    expect(body?.stop_sequences).toEqual(["STOP"]);
+    expect(body?.presence_penalty).toBe(0.5);
+    expect(body?.frequency_penalty).toBe(0.25);
   });
 
   it("routes requests through an apiUrl override (BYOK contract)", async () => {
@@ -639,7 +639,7 @@ describe("CohereLanguageModel tool calling", () => {
     );
 
     const tools = calls[0]?.body.tools ?? [];
-    expect((tools[0] as { function?: { name?: string } })?.function?.name).toBe("get_weather");
+    expect(tools[0]).toHaveProperty("function.name", "get_weather");
     // "auto" — Cohere expresses it by omitting tool_choice.
     expect(calls[0]?.body.tool_choice).toBeUndefined();
     expect(response.toolCalls).toHaveLength(1);
@@ -912,15 +912,12 @@ describe("CohereLanguageModel.streamText", () => {
     expect(types).toContain("text-start");
     expect(types).toContain("text-end");
 
-    const text = parts
-      .filter((part) => part.type === "text-delta")
-      .map((part) => (part as { delta: string }).delta)
-      .join("");
+    const text = parts.flatMap((part) => (part.type === "text-delta" ? [part.delta] : [])).join("");
     expect(text).toBe("Hello world");
 
-    const finish = parts.find((part) => part.type === "finish");
+    const finish = parts.flatMap((part) => (part.type === "finish" ? [part] : []))[0];
     expect(finish).toBeDefined();
-    expect((finish as { reason?: string }).reason).toBe("stop");
+    expect(finish?.reason).toBe("stop");
   });
 
   it("assembles a streamed tool call across events", async () => {
@@ -972,10 +969,10 @@ describe("CohereLanguageModel.streamText", () => {
     expect(types).toContain("tool-params-start");
     expect(types).toContain("tool-params-end");
 
-    const toolCall = parts.find((part) => part.type === "tool-call");
+    const toolCall = parts.flatMap((part) => (part.type === "tool-call" ? [part] : []))[0];
     expect(toolCall).toBeDefined();
-    expect((toolCall as { params?: unknown }).params).toEqual({ city: "Nice" });
-    expect((toolCall as { name?: string }).name).toBe("get_weather");
+    expect(toolCall?.params).toEqual({ city: "Nice" });
+    expect(toolCall?.name).toBe("get_weather");
   });
 
   it("fails the stream when an event frame carries a non-finite number literal", async () => {

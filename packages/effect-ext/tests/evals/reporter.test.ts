@@ -164,10 +164,7 @@ describe("Reporter.json", () => {
       Reporter.json("./results.json").report(erroredResult).pipe(Effect.provide(testFs)),
     );
 
-    const parsed = parseJson(written) as {
-      cases: Array<{ metrics: Array<Record<string, unknown>> }>;
-    };
-    expect(parsed.cases[0]?.metrics[0]).toHaveProperty("summary", null);
+    expect(parseJson(written)).toHaveProperty("cases[0].metrics[0].summary", null);
   });
 
   it("logs a warning instead of failing when the write fails", async () => {

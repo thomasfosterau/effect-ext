@@ -89,7 +89,7 @@ const audioResponse = (
   bytes: Uint8Array,
   contentType: Option.Option<string> = Option.some("audio/mpeg"),
 ): Response =>
-  new Response(bytes as BodyInit, {
+  new Response(new Uint8Array(bytes), {
     status: 200,
     headers: Option.match(contentType, {
       onNone: () => ({}),
@@ -147,7 +147,7 @@ describe("ElevenLabsSpeechModel.generate", () => {
     expect(calls[0]?.method).toBe("POST");
     expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
 
-    const body = (await firstRequest(calls).json()) as Record<string, unknown>;
+    const body: Record<string, unknown> = await firstRequest(calls).json();
     expect(body.text).toBe("hello world");
     expect(body.model_id).toBe("eleven_multilingual_v2");
 
@@ -166,7 +166,7 @@ describe("ElevenLabsSpeechModel.generate", () => {
     );
 
     expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/text-to-speech/override_voice");
-    const body = (await firstRequest(calls).json()) as { voice_settings?: Record<string, number> };
+    const body: { voice_settings?: Record<string, number> } = await firstRequest(calls).json();
     expect(body.voice_settings).toEqual({ stability: 0.4, similarity_boost: 0.8 });
   });
 
@@ -483,11 +483,10 @@ describe("ElevenLabsTranscriptionModel.transcribe", () => {
     );
 
     const form = await firstRequest(calls).formData();
-    const file = form.get("file") as File;
+    const file = form.get("file");
     expect(file).toBeInstanceOf(Blob);
-    expect(await file.arrayBuffer().then((b) => Array.from(new Uint8Array(b)))).toEqual([
-      1, 2, 3, 4,
-    ]);
+    const sent = file instanceof Blob ? Array.from(new Uint8Array(await file.arrayBuffer())) : [];
+    expect(sent).toEqual([1, 2, 3, 4]);
     // The per-call language overrides the model default.
     expect(form.get("language_code")).toBe("fr");
   });

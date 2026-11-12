@@ -44,11 +44,11 @@ describe("crossOriginMutationRejectionWeb", () => {
     expect(
       Option.map(rejection, (response) => response.headers.get("cache-control")),
     ).toStrictEqual(Option.some("private, no-store"));
-    // SAFETY: the guard's body is the JSON:API error document `jsonApiErrorDocument` emits; the cast names the two members read below.
-    const body = (await Option.getOrElse(
+    // The guard's body is the JSON:API error document `jsonApiErrorDocument` emits.
+    const body: { errors: Array<{ code: string }> } = await Option.getOrElse(
       Option.map(rejection, (response) => response.json()),
       () => Promise.resolve({ errors: [] }),
-    )) as { errors: Array<{ code: string }> };
+    );
     expect(body.errors[0]?.code).toBe("auth.forbidden");
   });
 
@@ -96,10 +96,9 @@ describe("crossOriginMutationRejection (HttpServerRequest)", () => {
     expect(Headers.get(response.headers, "content-type")).toStrictEqual(
       Option.some("application/vnd.api+json"),
     );
-    // SAFETY: the same JSON:API error document as above, read through `toWeb`.
-    const body = (await HttpServerResponse.toWeb(response).json()) as {
-      errors: Array<{ code: string }>;
-    };
+    // The same JSON:API error document as above, read through `toWeb`.
+    const body: { errors: Array<{ code: string }> } =
+      await HttpServerResponse.toWeb(response).json();
     expect(body.errors[0]?.code).toBe("auth.forbidden");
   });
 

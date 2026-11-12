@@ -42,10 +42,10 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
   const calls: Array<CapturedRequest> = [];
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
-    const body = (await request
+    const body: Record<string, unknown> = await request
       .clone()
       .json()
-      .catch(() => ({}))) as Record<string, unknown>;
+      .catch(() => ({}));
     const captured: CapturedRequest = {
       url: request.url,
       authorization: Option.fromNullishOr(request.headers.get("authorization")),

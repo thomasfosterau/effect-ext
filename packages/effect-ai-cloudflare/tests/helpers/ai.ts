@@ -19,11 +19,19 @@ import type { WorkersAiBinding, WorkersAiGateway } from "@thomasfosterau/effect-
 /** The slice of the AI Gateway runtime object a stub implements. */
 export type GatewayStub = Partial<WorkersAiGateway>;
 
-// SAFETY: `WorkersAiBinding` is assignable to
-// `{ gateway: (id: string) => GatewayStub }`, so this is a single narrowing
-// assertion TypeScript checks, not a cast through `unknown`. The code under
-// test calls nothing on the binding but `gateway(id).getUrl` / `.run`, and
-// each test stubs the one it reaches.
-/** Builds a stub binding whose `gateway(gatewayId)` returns `gateway(gatewayId)`. */
-export const stubAiBinding = (gateway: (gatewayId: string) => GatewayStub): WorkersAiBinding =>
-  ({ gateway }) as WorkersAiBinding;
+/** A gateway member a test did not stub: calling it fails the call. */
+const unstubbed = (member: string) => (): Promise<never> =>
+  Promise.reject(new TypeError(`stub gateway: ${member} is not stubbed`));
+
+/**
+ * Builds a stub binding whose `gateway(gatewayId)` returns `gateway(gatewayId)`.
+ * The code under test calls nothing on the binding but `gateway(id).getUrl` /
+ * `.run`; each test stubs the one it reaches, and the other rejects.
+ */
+export const stubAiBinding = (gateway: (gatewayId: string) => GatewayStub): WorkersAiBinding => ({
+  gateway: (gatewayId) => ({
+    getUrl: unstubbed("getUrl"),
+    run: unstubbed("run"),
+    ...gateway(gatewayId),
+  }),
+});

@@ -22,6 +22,7 @@ import type { ModerationModel } from "@thomasfosterau/effect-ext";
 import {
   OPENAI_MODERATION_MODEL,
   makeOpenAiModerationModel,
+  type GatewayUniversalRequest,
   type OpenAiModerationCall,
   type OpenAiModerationOptions,
   type WorkersAiBinding,
@@ -31,7 +32,7 @@ import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 
 /** Builds a stub binding whose `gateway(id).run(data)` is canned. */
 const stubAi = (response: { status: number; body: unknown }) => {
-  const calls: unknown[] = [];
+  const calls: GatewayUniversalRequest[] = [];
   const ai = stubAiBinding(() => ({
     run: async (data) => {
       calls.push(data);
@@ -108,8 +109,7 @@ describe("makeOpenAiModerationModel", () => {
 
     await runTest(moderate(ai, ["hello"], { apiKey: Redacted.make("sk-test") }));
 
-    const sent = calls[0] as { readonly headers: Record<string, string> };
-    expect(sent.headers).toEqual({
+    expect(calls[0]?.headers).toEqual({
       "content-type": "application/json",
       authorization: "Bearer sk-test",
     });
@@ -120,8 +120,7 @@ describe("makeOpenAiModerationModel", () => {
 
     await runTest(moderate(ai, ["hello"], { model: "omni-moderation-2024-09-26" }));
 
-    const sent = calls[0] as { readonly query: { readonly model: string } };
-    expect(sent.query.model).toBe("omni-moderation-2024-09-26");
+    expect(calls[0]?.query).toHaveProperty("model", "omni-moderation-2024-09-26");
   });
 
   it("maps one result per input, in order, with every category score", async () => {
@@ -287,7 +286,7 @@ describe("makeOpenAiModerationModel", () => {
       ]),
     );
 
-    expect(calls.map((call) => (call as { query: unknown }).query)).toEqual([
+    expect(calls.map((call) => call.query)).toEqual([
       { model: OPENAI_MODERATION_MODEL, input: ["a caption"] },
       {
         model: OPENAI_MODERATION_MODEL,
@@ -315,10 +314,10 @@ describe("makeOpenAiModerationModel", () => {
       ]),
     );
 
-    expect(calls.map((call) => (call as { query: { input: unknown } }).query.input)).toEqual([
-      [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/" } }],
-      [{ type: "image_url", image_url: { url: "https://example.com/a.jpg" } }],
-      [{ type: "image_url", image_url: { url: "data:image/webp;base64,UklGRg==" } }],
+    expect(calls.map((call) => call.query)).toMatchObject([
+      { input: [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/" } }] },
+      { input: [{ type: "image_url", image_url: { url: "https://example.com/a.jpg" } }] },
+      { input: [{ type: "image_url", image_url: { url: "data:image/webp;base64,UklGRg==" } }] },
     ]);
   });
 
@@ -341,9 +340,9 @@ describe("makeOpenAiModerationModel", () => {
       ]),
     );
 
-    expect(calls.map((call) => (call as { query: { input: unknown } }).query.input)).toEqual([
-      [{ type: "image_url", image_url: { url: "data:image/png;base64,AQID" } }],
-      [{ type: "image_url", image_url: { url: "https://example.com/b.jpg" } }],
+    expect(calls.map((call) => call.query)).toMatchObject([
+      { input: [{ type: "image_url", image_url: { url: "data:image/png;base64,AQID" } }] },
+      { input: [{ type: "image_url", image_url: { url: "https://example.com/b.jpg" } }] },
     ]);
   });
 

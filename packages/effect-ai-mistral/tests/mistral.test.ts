@@ -65,10 +65,10 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
   const calls: Array<CapturedRequest> = [];
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
-    const body = (await request
+    const body: RequestBody = await request
       .clone()
       .json()
-      .catch(() => ({}))) as RequestBody;
+      .catch(() => ({}));
     const captured: CapturedRequest = {
       url: request.url,
       authorization: Option.fromNullishOr(request.headers.get("authorization")),
@@ -547,7 +547,7 @@ describe("MistralLanguageModel tool calling", () => {
     );
 
     const tools = calls[0]?.body.tools ?? [];
-    expect((tools[0] as { function?: { name?: string } })?.function?.name).toBe("get_weather");
+    expect(tools[0]).toHaveProperty("function.name", "get_weather");
     expect(calls[0]?.body.tool_choice).toBe("auto");
     expect(response.toolCalls).toHaveLength(1);
     expect(response.toolResults[0]?.result).toBe("sunny in Paris");
@@ -717,15 +717,12 @@ describe("MistralLanguageModel.streamText", () => {
     expect(types).toContain("text-start");
     expect(types).toContain("text-end");
 
-    const text = parts
-      .filter((part) => part.type === "text-delta")
-      .map((part) => (part as { delta: string }).delta)
-      .join("");
+    const text = parts.flatMap((part) => (part.type === "text-delta" ? [part.delta] : [])).join("");
     expect(text).toBe("Hello world");
 
-    const finish = parts.find((part) => part.type === "finish");
+    const finish = parts.flatMap((part) => (part.type === "finish" ? [part] : []))[0];
     expect(finish).toBeDefined();
-    expect((finish as { reason?: string }).reason).toBe("stop");
+    expect(finish?.reason).toBe("stop");
   });
 
   it("assembles a streamed tool call across chunks", async () => {
@@ -779,9 +776,9 @@ describe("MistralLanguageModel.streamText", () => {
     expect(types).toContain("tool-params-start");
     expect(types).toContain("tool-params-end");
 
-    const toolCall = parts.find((part) => part.type === "tool-call");
+    const toolCall = parts.flatMap((part) => (part.type === "tool-call" ? [part] : []))[0];
     expect(toolCall).toBeDefined();
-    expect((toolCall as { params?: unknown }).params).toEqual({ city: "Nice" });
+    expect(toolCall?.params).toEqual({ city: "Nice" });
   });
 
   it("finishes a stream that ends with a usage-only chunk", async () => {
@@ -935,13 +932,13 @@ describe("MistralLanguageModel request construction", () => {
       ),
     );
 
-    const body = calls[0]?.body as Record<string, unknown>;
-    expect(body.top_p).toBe(0.9);
-    expect(body.max_tokens).toBe(64);
-    expect(body.random_seed).toBe(7);
-    expect(body.stop).toEqual(["STOP"]);
-    expect(body.presence_penalty).toBe(0.5);
-    expect(body.frequency_penalty).toBe(0.25);
+    const body = calls[0]?.body;
+    expect(body).toHaveProperty("top_p", 0.9);
+    expect(body).toHaveProperty("max_tokens", 64);
+    expect(body).toHaveProperty("random_seed", 7);
+    expect(body).toHaveProperty("stop", ["STOP"]);
+    expect(body).toHaveProperty("presence_penalty", 0.5);
+    expect(body).toHaveProperty("frequency_penalty", 0.25);
   });
 
   it("encodes image file parts from a URL object, an http URL, and raw base64", async () => {
@@ -962,13 +959,10 @@ describe("MistralLanguageModel request construction", () => {
       }).pipe(Effect.provide(modelLayer(fetch))),
     );
 
-    const message = calls[0]?.body.messages?.[0] as {
-      content: Array<{ image_url: { url: string } }>;
-    };
-    const content = message.content;
-    expect(content[0]?.image_url.url).toBe("https://img.example/a.png");
-    expect(content[1]?.image_url.url).toBe("https://img.example/b.png");
-    expect(content[2]?.image_url.url).toBe("data:image/jpeg;base64,QUJD");
+    const message = calls[0]?.body.messages?.[0];
+    expect(message).toHaveProperty("content[0].image_url.url", "https://img.example/a.png");
+    expect(message).toHaveProperty("content[1].image_url.url", "https://img.example/b.png");
+    expect(message).toHaveProperty("content[2].image_url.url", "data:image/jpeg;base64,QUJD");
   });
 
   it("emits a content-less assistant message and drops provider-executed tool calls", async () => {
@@ -1001,13 +995,11 @@ describe("MistralLanguageModel request construction", () => {
       }).pipe(Effect.provide(modelLayer(fetch))),
     );
 
-    const assistant = calls[0]?.body.messages?.[0] as {
-      content: unknown;
-      tool_calls: Array<{ id: string }>;
-    };
-    expect(assistant.content).toBeNull();
-    expect(assistant.tool_calls).toHaveLength(1);
-    expect(assistant.tool_calls[0]?.id).toBe("call_a");
+    const assistant = calls[0]?.body.messages?.[0];
+    expect(assistant).toBeDefined();
+    expect(assistant?.content).toBeNull();
+    expect(assistant?.tool_calls).toHaveLength(1);
+    expect(assistant).toHaveProperty("tool_calls[0].id", "call_a");
   });
 
   it("pins a specific tool via a { tool } choice", async () => {

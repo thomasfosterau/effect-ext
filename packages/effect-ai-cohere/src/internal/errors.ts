@@ -16,13 +16,12 @@ import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
-import * as Redactable from "effect/Redactable";
 import type * as Redacted from "effect/Redacted";
 import type * as Schema from "effect/Schema";
 import type * as Sse from "effect/encoding/Sse";
 import * as AiError from "effect/ai/AiError";
 import type * as HttpClientError from "effect/http/HttpClientError";
-import type * as Headers from "effect/http/Headers";
+import * as Headers from "effect/http/Headers";
 
 const MODULE = "CohereClient";
 
@@ -31,13 +30,12 @@ const MODULE = "CohereClient";
  * form, in which each sensitive header (authorization, cookies, API keys) is a
  * `Redacted` value instead of its string.
  */
-export const redactHeaders = (
+export const redactHeaders = Effect.fnUntraced(function* (
   headers: Headers.Headers,
-): Record<string, string | Redacted.Redacted> =>
-  // SAFETY: `Headers` implements `Redactable` with `Headers.redact`, whose
-  // result maps each header name to its string value, or to that value
-  // wrapped in `Redacted` for a sensitive header.
-  Redactable.redact(headers) as Record<string, string | Redacted.Redacted>;
+): Effect.fn.Return<Record<string, string | Redacted.Redacted>> {
+  const names = yield* Headers.CurrentRedactedNames;
+  return Headers.redact(headers, names);
+});
 
 /** Wraps a schema decode failure as an `InvalidOutputError`. */
 export const mapSchemaError = dual<
@@ -120,7 +118,7 @@ const mapStatusCodeError = Effect.fnUntraced(function* (
     http: {
       response: {
         status: response.status,
-        headers: redactHeaders(response.headers),
+        headers: yield* redactHeaders(response.headers),
       },
       body,
     },
