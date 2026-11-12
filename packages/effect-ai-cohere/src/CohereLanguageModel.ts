@@ -27,6 +27,10 @@
  * newer; on older models (`command-r`, `command-r-plus` and their dated
  * releases) use `"auto"`.
  *
+ * User messages accept image file parts; any other media type fails with an
+ * `AiError`. Every transport, HTTP-status and decoding failure leaves the
+ * model as an `AiError`, its reason derived from the HTTP status.
+ *
  * @module CohereLanguageModel
  *
  * @copyright Thomas Foster

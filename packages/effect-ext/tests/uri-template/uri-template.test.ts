@@ -17,7 +17,7 @@ import specExamplesBySection from "./fixtures/uritemplate-test/spec-examples-by-
 import specExamples from "./fixtures/uritemplate-test/spec-examples.json" with { type: "json" };
 
 /** The suite's JSON: groups of variables and `[template, expected]` cases. */
-const Primitive = Schema.Union([Schema.String, Schema.Number, Schema.Boolean]);
+const Primitive = Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]);
 const Suite = Schema.Record(
   Schema.String,
   Schema.Struct({

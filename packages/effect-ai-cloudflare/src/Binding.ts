@@ -14,7 +14,10 @@
  * consumer that never installs it still type-checks them with
  * `skipLibCheck: false` (#113). A Worker's `env.AI`, typed `Ai` by
  * `@cloudflare/workers-types`, is assignable to {@link WorkersAiBinding}
- * (`tests/workers-types-binding.test.ts` proves it).
+ * (`tests/workers-types-binding.test.ts` proves it). `@cloudflare/workers-types`
+ * stays an optional peer (`>=4.20250312.0`, the first release whose
+ * `AiGateway` declares `getUrl()`; an older release's `env.AI` is not
+ * assignable) for the application's own Worker typing.
  *
  * @module Binding
  *
@@ -131,7 +134,10 @@ const unknownError = (cause: unknown): Cause.UnknownError =>
  * Resolves the base URL for a provider routed through this gateway
  * (`https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/<provider>`)
  * via the binding's `getUrl` — never hand-built, so the account id is
- * never duplicated in this package.
+ * never duplicated in this package. To route a first-party provider client
+ * (`@thomasfosterau/effect-ai-mistral`, `-cohere`, `-voyage`, `-elevenlabs`)
+ * through the gateway, pass the result as its client's `apiUrl` and omit its
+ * `apiKey`.
  *
  * A failure here (a malformed gateway id, an unbound `AI`) is a
  * deploy-time defect, not a "provider not configured yet" state — BYOK

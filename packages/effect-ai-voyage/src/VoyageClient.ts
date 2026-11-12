@@ -9,7 +9,8 @@
  * Mistral client — the wire format is decoded directly here against the
  * schemas in `internal/wire`. The `apiUrl` override is a contract, not a
  * convenience: a routing layer (the Cloudflare AI Gateway) repoints the
- * client through it for BYOK.
+ * client through it for BYOK. Responses decode leniently: unknown or missing
+ * fields never fail an otherwise-valid response.
  *
  * @module VoyageClient
  *
@@ -195,7 +196,8 @@ export const layer = (options: Options): Layer.Layer<VoyageClient, never, HttpCl
 /**
  * Provides {@link VoyageClient} as a `Layer`, loading its settings through
  * Effect's `Config` module (e.g. from environment variables or a secrets
- * provider).
+ * provider). Each option is a `Config`; the layer fails with a `ConfigError`
+ * when one cannot be read.
  */
 export const layerConfig = (options?: {
   readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined;

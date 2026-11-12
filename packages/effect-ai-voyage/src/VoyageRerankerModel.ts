@@ -4,6 +4,8 @@
  * Voyage's `/v1/rerank` request (via {@link VoyageClient}), then converts the
  * scored results back into a `RerankerModel.ProviderResponse`. The abstraction
  * validates the indices, deduplicates, and sorts by descending relevance.
+ * The call's `topN` is sent as Voyage's `top_k`. Every transport, HTTP-status
+ * and decoding failure leaves the model as an `AiError`.
  *
  * @module VoyageRerankerModel
  *

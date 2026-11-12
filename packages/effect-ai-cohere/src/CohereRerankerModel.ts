@@ -7,7 +7,8 @@
  * The pinned model (`rerank-v3.5`) lives here as the single source of truth.
  * The abstraction's `make` validates and normalises the provider results (see
  * `@thomasfosterau/effect-ext/RerankerModel`), so this module only maps
- * Cohere's wire response into the provider-response contract.
+ * Cohere's wire response into the provider-response contract. Cohere bills
+ * reranking in search units; they are reported as `usage.inputTokens`.
  *
  * @module CohereRerankerModel
  *

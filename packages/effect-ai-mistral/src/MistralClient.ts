@@ -9,7 +9,9 @@
  * so — like this repo's Cohere gateway client — the wire format is decoded
  * directly here against the schemas in `internal/wire`. Mistral's API is
  * OpenAI-shaped chat completions, so the same client also serves any
- * OpenAI-compatible endpoint via the `apiUrl` option.
+ * OpenAI-compatible endpoint via the `apiUrl` option. Responses decode
+ * leniently: unknown or missing fields never fail an otherwise-valid
+ * response.
  *
  * @module MistralClient
  *
@@ -233,7 +235,8 @@ export const layer = (options: Options): Layer.Layer<MistralClient, never, HttpC
 /**
  * Provides {@link MistralClient} as a `Layer`, loading its settings through
  * Effect's `Config` module (e.g. from environment variables or a secrets
- * provider).
+ * provider). Each option is a `Config`; the layer fails with a `ConfigError`
+ * when one cannot be read.
  */
 export const layerConfig = (options?: {
   readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined;

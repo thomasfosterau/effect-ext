@@ -124,7 +124,7 @@ export const make = (
   if (getBattery === undefined) {
     return Battery.of({
       supported: false,
-      status: Effect.succeed(Option.none()),
+      status: Effect.succeedNone,
       changes: Stream.empty,
     });
   }

@@ -145,8 +145,8 @@ export const make = (
   if (orientation === undefined) {
     return ScreenOrientation.of({
       supported: false,
-      type: Effect.succeed(Option.none()),
-      angle: Effect.succeed(Option.none()),
+      type: Effect.succeedNone,
+      angle: Effect.succeedNone,
       changes: Stream.empty,
       lock: () => Effect.fail(orientationError("Unsupported", undefined)),
     });

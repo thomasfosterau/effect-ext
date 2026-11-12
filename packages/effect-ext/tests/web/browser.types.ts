@@ -57,7 +57,7 @@ export const strict = WakeLock.keepAwake(work);
 export const gated = PageVisibility.whileVisible(work);
 
 // A typed channel publishes and receives the schema's type only.
-const Ping = Schema.Struct({ at: Schema.Number });
+const Ping = Schema.Struct({ at: Schema.Finite });
 export const channel = Broadcast.channel("sync", Ping);
 export type ChannelValue =
   Effect.Success<typeof channel> extends Broadcast.Channel<infer A> ? A : never;

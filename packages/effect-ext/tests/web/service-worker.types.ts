@@ -54,7 +54,7 @@ export const listener = fetchListener([
 ]);
 
 // A message handler gets the decoded type, never `unknown`.
-const Ping = Schema.Struct({ id: Schema.Number });
+const Ping = Schema.Struct({ id: Schema.Finite });
 export const onMessage = messageListener(Ping, (message: { readonly id: number }) =>
   Effect.succeed(message.id),
 );

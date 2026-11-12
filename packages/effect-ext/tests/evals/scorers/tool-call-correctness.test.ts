@@ -11,6 +11,7 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
+import * as DateTime from "effect/DateTime";
 import { ToolCallCorrectness } from "../../../src/evals/index.ts";
 import { runTest } from "../helpers/effect.ts";
 
@@ -168,16 +169,40 @@ describe("ToolCallCorrectness.toolCallCorrectness — edge cases", () => {
   it("distinguishes different Date-valued params (Equal.equals, not a plain-object key comparison)", async () => {
     const same = await runTest(
       ToolCallCorrectness.toolCallCorrectness({ matchParams: true }).evaluate({
-        golden: { expectedTools: [{ name: "schedule", params: { at: new Date("2026-01-01") } }] },
-        toolCalls: [{ name: "schedule", params: { at: new Date("2026-01-01") } }],
+        golden: {
+          expectedTools: [
+            {
+              name: "schedule",
+              params: { at: DateTime.toDateUtc(DateTime.makeUnsafe("2026-01-01")) },
+            },
+          ],
+        },
+        toolCalls: [
+          {
+            name: "schedule",
+            params: { at: DateTime.toDateUtc(DateTime.makeUnsafe("2026-01-01")) },
+          },
+        ],
       }),
     );
     expect(same.score).toBe(1);
 
     const different = await runTest(
       ToolCallCorrectness.toolCallCorrectness({ matchParams: true }).evaluate({
-        golden: { expectedTools: [{ name: "schedule", params: { at: new Date("2026-01-01") } }] },
-        toolCalls: [{ name: "schedule", params: { at: new Date("2026-06-01") } }],
+        golden: {
+          expectedTools: [
+            {
+              name: "schedule",
+              params: { at: DateTime.toDateUtc(DateTime.makeUnsafe("2026-01-01")) },
+            },
+          ],
+        },
+        toolCalls: [
+          {
+            name: "schedule",
+            params: { at: DateTime.toDateUtc(DateTime.makeUnsafe("2026-06-01")) },
+          },
+        ],
       }),
     );
     expect(different.score).toBe(0);
