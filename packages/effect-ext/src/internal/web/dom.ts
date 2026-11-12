@@ -6,7 +6,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 
@@ -21,7 +21,7 @@ export const reasonOf = <Reason extends string>(
   table: Readonly<Partial<Record<string, Reason>>>,
   fallback: Reason,
 ): Reason =>
-  Predicate.hasProperty(cause, "name") && Predicate.isString(cause.name)
+  P.hasProperty(cause, "name") && P.isString(cause.name)
     ? (table[cause.name] ?? fallback)
     : fallback;
 

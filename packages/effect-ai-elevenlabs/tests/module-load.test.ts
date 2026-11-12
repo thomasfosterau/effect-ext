@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import * as EffectRecord from "effect/Record";
+import * as R from "effect/Record";
 
 const NAMESPACES = [
   "ElevenLabsClient",
@@ -26,7 +26,7 @@ describe("module load", () => {
   it("imports the package entry and exposes every namespace", async () => {
     const entry: Record<string, unknown> = await import("@thomasfosterau/effect-ai-elevenlabs");
 
-    expect(EffectRecord.keys(entry)).toEqual(expect.arrayContaining([...NAMESPACES]));
+    expect(R.keys(entry)).toEqual(expect.arrayContaining([...NAMESPACES]));
   });
 
   it.each(NAMESPACES)("exposes the %s namespace from the package entry", async (name) => {

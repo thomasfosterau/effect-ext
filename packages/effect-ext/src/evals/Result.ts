@@ -15,8 +15,8 @@
 
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as EffectRecord from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import type { Score } from "./Score.ts";
 
 /**
@@ -105,15 +105,13 @@ const NO_SCORED_TRIALS = "no scored trials";
  */
 export const lastReason = (metric: MetricAggregate): string =>
   Arr.findLast(metric.trials, (trial) =>
-    Predicate.isTagged(trial, "Scored")
+    P.isTagged(trial, "Scored")
       ? Option.some(trial.score.reason ?? NO_REASON_GIVEN)
       : Option.none(),
   ).pipe(
     Option.orElse(() =>
       Arr.findLast(metric.trials, (trial) =>
-        Predicate.isTagged(trial, "Errored")
-          ? Option.some(`error: ${String(trial.error)}`)
-          : Option.none(),
+        P.isTagged(trial, "Errored") ? Option.some(`error: ${String(trial.error)}`) : Option.none(),
       ),
     ),
     Option.getOrElse(() => NO_TRIALS_RECORDED),
@@ -236,21 +234,21 @@ export const aggregate = (result: SuiteResult): Aggregate => {
   ).length;
   const sums = Arr.reduce(
     Arr.flatMap(result.cases, (caseResult) => caseResult.metrics),
-    EffectRecord.empty<string, { readonly sum: number; readonly cases: number }>(),
+    R.empty<string, { readonly sum: number; readonly cases: number }>(),
     (acc, metric) => {
       if (metric.summary === undefined) return acc;
       const { mean } = metric.summary;
-      return EffectRecord.set(
+      return R.set(
         acc,
         metric.metric,
-        Option.match(EffectRecord.get(acc, metric.metric), {
+        Option.match(R.get(acc, metric.metric), {
           onNone: () => ({ sum: mean, cases: 1 }),
           onSome: (entry) => ({ sum: entry.sum + mean, cases: entry.cases + 1 }),
         }),
       );
     },
   );
-  const metrics = EffectRecord.map(sums, ({ sum, cases }): MetricAggregateAcrossCases => ({
+  const metrics = R.map(sums, ({ sum, cases }): MetricAggregateAcrossCases => ({
     mean: sum / cases,
     cases,
   }));

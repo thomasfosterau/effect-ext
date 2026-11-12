@@ -4,6 +4,8 @@
  * Voyage's `/v1/rerank` request (via {@link VoyageClient}), then converts the
  * scored results back into a `RerankerModel.ProviderResponse`. The abstraction
  * validates the indices, deduplicates, and sorts by descending relevance.
+ * The call's `topN` is sent as Voyage's `top_k`. Every transport, HTTP-status
+ * and decoding failure leaves the model as an `AiError`.
  *
  * @module VoyageRerankerModel
  *
@@ -12,7 +14,7 @@
 
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
 import { VoyageClient } from "./VoyageClient";
 import type * as Wire from "./internal/wire";
@@ -76,8 +78,8 @@ export const make = Effect.fnUntraced(function* (
           model: options.model,
           query,
           documents,
-          ...(Predicate.isNotUndefined(topN) ? { top_k: topN } : undefined),
-          ...(Predicate.isNotUndefined(options.truncation)
+          ...(P.isNotUndefined(topN) ? { top_k: topN } : undefined),
+          ...(P.isNotUndefined(options.truncation)
             ? { truncation: options.truncation }
             : undefined),
         })

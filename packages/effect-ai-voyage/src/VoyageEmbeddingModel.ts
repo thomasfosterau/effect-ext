@@ -8,7 +8,8 @@
  * `input_type` (embed stored documents with `"document"`, search queries with
  * `"query"`) and an optional Matryoshka `output_dimension`. The
  * {@link EMBEDDING_MODELS} matrix documents the current Voyage embedding model
- * ids with their native and selectable dimensions.
+ * ids with their native and selectable dimensions. Embeddings are returned in
+ * input order, whatever order Voyage reports them in.
  *
  * @module VoyageEmbeddingModel
  *
@@ -19,7 +20,7 @@ import * as Order from "effect/Order";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as EmbeddingModel from "effect/ai/EmbeddingModel";
 import * as AiModel from "effect/ai/Model";
 import { VoyageClient } from "./VoyageClient";
@@ -147,13 +148,11 @@ export const make = Effect.fnUntraced(function* (
         .createEmbeddings({
           model: options.model,
           input: inputs,
-          ...(Predicate.isNotUndefined(options.inputType)
-            ? { input_type: options.inputType }
-            : undefined),
-          ...(Predicate.isNotUndefined(options.outputDimension)
+          ...(P.isNotUndefined(options.inputType) ? { input_type: options.inputType } : undefined),
+          ...(P.isNotUndefined(options.outputDimension)
             ? { output_dimension: options.outputDimension }
             : undefined),
-          ...(Predicate.isNotUndefined(options.truncation)
+          ...(P.isNotUndefined(options.truncation)
             ? { truncation: options.truncation }
             : undefined),
         })

@@ -213,10 +213,6 @@ export default defineConfig({
           // fires on every `as`, including the narrowings the Fetch / Workers
           // types structurally require. Stays visible as a warning.
           "effect/casting-awareness": "warn",
-          // Hard-codes abbreviations (`Arr`, `P`, `R`, …) with no options; the
-          // AI packages use the full-name convention (`import * as Option from
-          // "effect/Option"`) they share with their consumers.
-          "effect/prefer-namespace-imports": "off",
           // `prefer-option-over-null` also fires on `?: T | undefined`, the
           // ONLY spelling of an optional member `exactOptionalPropertyTypes`
           // lets a caller forward an optional of its own into. A bare `null` /
@@ -389,9 +385,8 @@ export default defineConfig({
         },
       },
       // The AI packages' test fixtures are the seams under test, not domain
-      // code: a wall-clock `Date` standing in for a publication stamp, a `CI`
-      // variable toggled to drive a reporter, or a single type assertion
-      // that narrows a stub or a decoded fixture. Each stays visible as a
+      // code: a `CI` variable toggled to drive a reporter, or a single type
+      // assertion that narrows a stub or a decoded fixture. Each stays visible as a
       // warning, because a fixture cannot be written another way.
       {
         files: [
@@ -401,7 +396,6 @@ export default defineConfig({
         ],
         rules: {
           "effect/require-safety-comment-for-type-assertion": "warn",
-          "effect/use-clock-service": "warn",
           "effect/avoid-process-env": "warn",
           "effect/require-effect-concurrency": "warn",
         },
@@ -414,9 +408,6 @@ export default defineConfig({
       {
         files: webModules,
         rules: {
-          // Full-name Effect imports (`import * as Predicate`), the convention
-          // effect-web shares with its consumers; the rule has no options.
-          "effect/prefer-namespace-imports": "off",
           // Fires on `?: T | undefined`, the only optional-member spelling
           // a caller can forward an optional of its own into under
           // `exactOptionalPropertyTypes`.

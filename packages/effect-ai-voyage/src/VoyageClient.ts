@@ -9,7 +9,8 @@
  * Mistral client — the wire format is decoded directly here against the
  * schemas in `internal/wire`. The `apiUrl` override is a contract, not a
  * convenience: a routing layer (the Cloudflare AI Gateway) repoints the
- * client through it for BYOK.
+ * client through it for BYOK. Responses decode leniently: unknown or missing
+ * fields never fail an otherwise-valid response.
  *
  * @module VoyageClient
  *
@@ -21,7 +22,7 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import { identity } from "effect/Function";
 import * as Layer from "effect/Layer";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Redacted from "effect/Redacted";
 import type * as AiError from "effect/ai/AiError";
 import * as HttpBody from "effect/http/HttpBody";
@@ -132,13 +133,13 @@ export const make = Effect.fnUntraced(function* (
     HttpClient.mapRequest((request) =>
       request.pipe(
         HttpClientRequest.prependUrl(options.apiUrl ?? defaultApiUrl),
-        Predicate.isNotUndefined(options.apiKey)
+        P.isNotUndefined(options.apiKey)
           ? HttpClientRequest.bearerToken(Redacted.value(options.apiKey))
           : identity,
         HttpClientRequest.acceptJson,
       ),
     ),
-    Predicate.isNotUndefined(options.transformClient) ? options.transformClient : identity,
+    P.isNotUndefined(options.transformClient) ? options.transformClient : identity,
   );
 
   const httpClientOk = HttpClient.filterStatusOk(httpClient);
@@ -195,7 +196,8 @@ export const layer = (options: Options): Layer.Layer<VoyageClient, never, HttpCl
 /**
  * Provides {@link VoyageClient} as a `Layer`, loading its settings through
  * Effect's `Config` module (e.g. from environment variables or a secrets
- * provider).
+ * provider). Each option is a `Config`; the layer fails with a `ConfigError`
+ * when one cannot be read.
  */
 export const layerConfig = (options?: {
   readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined;
@@ -205,8 +207,8 @@ export const layerConfig = (options?: {
   Layer.effect(
     VoyageClient,
     Effect.gen(function* () {
-      const apiKey = Predicate.isNotUndefined(options?.apiKey) ? yield* options.apiKey : undefined;
-      const apiUrl = Predicate.isNotUndefined(options?.apiUrl) ? yield* options.apiUrl : undefined;
+      const apiKey = P.isNotUndefined(options?.apiKey) ? yield* options.apiKey : undefined;
+      const apiUrl = P.isNotUndefined(options?.apiUrl) ? yield* options.apiUrl : undefined;
       return yield* make({ apiKey, apiUrl, transformClient: options?.transformClient });
     }),
   );

@@ -1,7 +1,7 @@
 /**
  * Tests for `bin/effect-evals.js`'s Node flags (#81): the bin hides Node's
  * `ExperimentalWarning`s (`fs.promises.glob` and type stripping still emit
- * one on Node 23.x and early 24.x, inside the `>=22.18` engines range) and
+ * one on Node 23.x and early 24.x, inside the CLI's `>=22.18` range) and
  * nothing else, so a `DeprecationWarning` raised while a consumer's
  * `*.eval.ts` file loads still reaches stderr. `--no-warnings=…` would hide
  * it: Node ignores that flag's value and silences every warning, which is how
@@ -12,6 +12,10 @@
  * TypeScript source (type-stripped by Node, as it is outside `node_modules`).
  * The bin's own argv is what runs; only the entry it launches is swapped.
  * `vp run check:dist` covers the built entry from an installed path.
+ *
+ * The bin also refuses a Node older than the CLI's 22.18 floor before it
+ * spawns anything (#71); the library's own `engines.node` floor is lower. A
+ * preload stands in for the old Node by overriding `process.versions.node`.
  *
  * @module tests/cli/bin
  */
@@ -33,6 +37,9 @@ beforeAll(() => {
   ["bin", "src/evals/cli", "dist/evals/cli"].forEach((dir) => {
     mkdirSync(path.join(scratch, dir), { recursive: true });
   });
+  // As in the published package: without it, a Node older than 22.7 (no
+  // ESM syntax detection) cannot even parse the bin to run its version check.
+  writeFileSync(path.join(scratch, "package.json"), '{ "type": "module" }\n');
   copyFileSync(
     source("../../../bin/effect-evals.js"),
     path.join(scratch, "bin", "effect-evals.js"),
@@ -52,6 +59,19 @@ afterAll(() => {
   rmSync(scratch, { recursive: true, force: true });
 });
 
+/** Runs the bin with `--help`, as though on Node `version` (#71). */
+const runAs = (version: string) =>
+  spawnSync(
+    process.execPath,
+    [
+      "--import",
+      `data:text/javascript,Object.defineProperty(process.versions,"node",{value:"${version}"})`,
+      path.join(scratch, "bin", "effect-evals.js"),
+      "--help",
+    ],
+    { cwd: scratch, encoding: "utf8" },
+  );
+
 describe("bin/effect-evals", () => {
   it("lets a DeprecationWarning from an eval file reach stderr", () => {
     const result = spawnSync(
@@ -63,6 +83,19 @@ describe("bin/effect-evals", () => {
 
     expect(result.stderr).toContain("DeprecationWarning: effect-evals fixture warning");
     expect(result.stderr).not.toContain("ExperimentalWarning");
+    expect(result.status).toBe(0);
+  });
+
+  it("refuses a Node older than 22.18 with a message naming the floor", () => {
+    const result = runAs("22.17.1");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("needs Node 22.18 or later");
+    expect(result.stderr).toContain("this is Node 22.17.1");
+  });
+
+  it.each(["22.18.0", "23.0.0", "24.11.0"])("runs on Node %s", (version) => {
+    const result = runAs(version);
+    expect(result.stderr).not.toContain("needs Node");
     expect(result.status).toBe(0);
   });
 });

@@ -57,7 +57,10 @@ export const gatewayUrlConfig: Config.Config<GatewayUrlConfig> = Config.all({
  * Builds the gateway's public HTTPS base URL for one provider — the same
  * route shape `Binding.ts`'s `gatewayUrl` resolves from the Worker binding
  * (`ai.gateway(id).getUrl(provider)`), hand-built here since there is no
- * binding to ask.
+ * binding to ask. To route a first-party provider client through the public
+ * endpoint, pass the result as its client's `apiUrl`, omit its `apiKey`, and
+ * set {@link cfAigAuthorizationHeader} on each request through the client's
+ * `transformClient`.
  */
 export const gatewayBaseUrl = (config: GatewayUrlConfig, provider: GatewayProvider): string =>
   `https://gateway.ai.cloudflare.com/v1/${config.accountId}/${config.gatewayId}/${provider}`;

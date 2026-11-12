@@ -36,8 +36,8 @@
 import * as Order from "effect/Order";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as Predicate from "effect/Predicate";
-import * as EffectRecord from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Schema from "effect/Schema";
 import { KeyValueStore } from "effect/persistence";
 
@@ -89,8 +89,7 @@ type CanonicalLeaf = string | number | boolean | bigint | symbol | null | undefi
 type Canonical = CanonicalLeaf | ReadonlyArray<Canonical> | { readonly [key: string]: Canonical };
 
 /** Every value but an object or a function is a {@link CanonicalLeaf}. */
-const isCanonicalLeaf = (value: unknown): value is CanonicalLeaf =>
-  !Predicate.isObjectKeyword(value);
+const isCanonicalLeaf = (value: unknown): value is CanonicalLeaf => !P.isObjectKeyword(value);
 
 /**
  * Normalises a value into a plain JSON-compatible shape with every object's
@@ -107,12 +106,9 @@ const canonicalize = (value: unknown): Canonical => {
     return { __map: Array.from(value, ([k, v]) => [canonicalize(k), canonicalize(v)]) };
   if (value instanceof Set) return { __set: Array.from(value, canonicalize) };
   if (Array.isArray(value)) return value.map(canonicalize);
-  if (Predicate.isObject(value)) {
-    return EffectRecord.fromEntries(
-      Arr.map(Arr.sort(EffectRecord.keys(value), Order.String), (key) => [
-        key,
-        canonicalize(value[key]),
-      ]),
+  if (P.isObject(value)) {
+    return R.fromEntries(
+      Arr.map(Arr.sort(R.keys(value), Order.String), (key) => [key, canonicalize(value[key])]),
     );
   }
   // Only a function is left. `JSON.stringify` drops one exactly as it drops

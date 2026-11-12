@@ -9,7 +9,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Str from "effect/String";
 import * as Color from "./color.ts";
 import * as Length from "./length.ts";
@@ -48,7 +48,7 @@ const WIDE_KEYWORDS: ReadonlyArray<string> = [
 ];
 
 const ident = (value: ComponentValue): Option.Option<string> =>
-  Predicate.isTagged(value, "Ident") ? Option.some(Str.toLowerCase(value.value)) : Option.none();
+  P.isTagged(value, "Ident") ? Option.some(Str.toLowerCase(value.value)) : Option.none();
 
 const isKeyword =
   (keywords: ReadonlyArray<string>) =>
@@ -73,7 +73,7 @@ const isColor = (value: ComponentValue): boolean => Option.isSome(Color.parse(va
 
 /** The significant (non-whitespace) component values of a declaration's value. */
 const significant = (declaration: Declaration): ReadonlyArray<ComponentValue> =>
-  declaration.value.filter((value) => !Predicate.isTagged(value, "Whitespace"));
+  declaration.value.filter((value) => !P.isTagged(value, "Whitespace"));
 
 /** A declaration for `name` with `value`, keeping the shorthand's `!important`. */
 const longhand = (
@@ -242,11 +242,7 @@ export const isShorthand = (name: string): boolean =>
 export const expand = (declaration: Declaration): Option.Option<ReadonlyArray<Declaration>> => {
   const name = Str.toLowerCase(declaration.name);
   const values = significant(declaration);
-  if (
-    values.some(
-      (value) => Predicate.isTagged(value, "Func") && Str.toLowerCase(value.name) === "var",
-    )
-  ) {
+  if (values.some((value) => P.isTagged(value, "Func") && Str.toLowerCase(value.name) === "var")) {
     return Option.none();
   }
   return Option.flatMap(

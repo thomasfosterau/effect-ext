@@ -70,7 +70,9 @@ export const supported = (): ReadonlyArray<string> => Intl.supportedValuesOf("ti
  *
  * The runtime's `Intl.DateTimeFormat` decides, so aliases, `UTC` and the
  * `Etc/GMT±n` zones are known, and names are matched without regard to
- * case. This is `DateTime.zoneMakeNamed`, named for this module.
+ * case. This is `DateTime.zoneMakeNamed`, named for this module, except that
+ * the zone is always the runtime's canonical one: Effect 4.1 keeps the alias
+ * it was given (`US/Eastern`), Effect 4.0 resolved it.
  *
  * @example
  * ```ts
@@ -84,7 +86,11 @@ export const supported = (): ReadonlyArray<string> => Intl.supportedValuesOf("ti
  * @since 0.1.0
  */
 export const known = (zoneName: string): Option.Option<DateTime.TimeZone.Named> =>
-  DateTime.zoneMakeNamed(zoneName);
+  Option.flatMap(DateTime.zoneMakeNamed(zoneName), (zone) =>
+    DateTime.zoneMakeNamed(
+      new Intl.DateTimeFormat("en-US", { timeZone: zone.id }).resolvedOptions().timeZone,
+    ),
+  );
 
 /**
  * Whether the runtime knows a time zone name; see {@link known}.

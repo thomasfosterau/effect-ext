@@ -18,7 +18,7 @@ Extensions to the [Effect](https://effect.website) standard library and to its A
 pnpm add @thomasfosterau/effect-ext effect
 ```
 
-Peer: `effect` `^4.0.0`. Three optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `^4.0.0` (`Browser`, `BrowserTesting`), `@thomasfosterau/effect-jsonapi` `>=0.16.1` (`Negotiate`) and `@thomasfosterau/effect-parse` `^0.4.1 || ^0.5.0` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. A fourth optional peer, `@effect/platform-node` `^4.0.0`, is needed only by the `effect-evals` CLI (see [CLI](#cli)). Node.js 22.18 or later (the binary-data modules use `ArrayBuffer.prototype.transfer`; the CLI type-strips `*.eval.ts` files, on by default from 22.18). ESM only, `"sideEffects": false`; every module is also its own entry point:
+Peer: `effect` `^4.0.0`. Two optional peers, each needed only by the modules that import it — install it when you use them: `@effect/platform-browser` `^4.0.0` (`Browser`, `BrowserTesting`) and `@thomasfosterau/effect-parse` `^0.4.1 || ^0.5.0` (`Robots` and the eight time modules). Those modules are subpaths only; the barrel does not re-export them, so it never needs a peer you did not install. A third optional peer, `@effect/platform-node` `^4.0.0`, is needed only by the `effect-evals` CLI (see [CLI](#cli)). Node.js 22 or later for the library; the `effect-evals` CLI needs 22.18 or later (it type-strips `*.eval.ts` files, on by default from 22.18) and says so when started on an older Node. ESM only, `"sideEffects": false`; every module is also its own entry point:
 
 ```ts
 import { Vec, TriState } from "@thomasfosterau/effect-ext";
@@ -45,7 +45,7 @@ import * as Vec from "@thomasfosterau/effect-ext/Vec";
 | `Web` | Response-header policies, the cross-origin mutation guard, the trusted client address, the degraded-session report, the canonical site base, the JSON:API guard responses and the Fetch adapters. |
 | `Net` | The SSRF host block list, the URL safety check and the redirect-revalidating fetch. |
 | `Observability` | The structured JSON-line sink, the allow-listed span tracer, the `logEvent` trio, `describeError`, the auth-outcome signal and per-request metrics. |
-| `Negotiate` | The content-negotiation dispatch verdict (HTML / JSON:API / Markdown). Needs `@thomasfosterau/effect-jsonapi`. |
+| `Negotiate` | The content-negotiation verdict over the representations you declare (media type, served paths, accepted parameters). |
 | `ServiceWorker` | Cache Storage as typed effects, the five caching strategies, a route table that becomes a `fetch` listener, and lifecycle listeners whose work runs inside `waitUntil`. |
 | `Browser` | Browser platform APIs as Effect services, and one `layer` with every live service. Needs `@effect/platform-browser`. |
 | `BrowserTesting` | In-memory doubles for every `Browser` service, each with a `Control`; `observe`. Needs `@effect/platform-browser`. |
@@ -371,7 +371,10 @@ import {
   endpointPaths,
   makeApiPathMatcher,
   makeMarkdownPathMatcher,
+  MARKDOWN_MEDIA_TYPE,
+  Negotiation,
   negotiateWebRequest,
+  type Representation,
 } from "@thomasfosterau/effect-ext/Negotiate";
 
 /** What the application supplies. */
@@ -385,8 +388,20 @@ interface App {
 }
 
 export const makeHandle = (app: App): Handle => {
-  const isApiPath = makeApiPathMatcher(endpointPaths(app.apiGroups));
-  const isMarkdownPath = makeMarkdownPathMatcher(app.markdownSegments);
+  // What the server can produce, in priority order. Markdown is served from a
+  // content page's own URL; the JSON API at its endpoints, for `ext` / `profile`
+  // parameters only (a JSON:API library supplies its own representation).
+  const markdown: Representation = {
+    mediaType: MARKDOWN_MEDIA_TYPE,
+    servesPath: makeMarkdownPathMatcher(app.markdownSegments),
+  };
+  const jsonApi: Representation = {
+    mediaType: "application/vnd.api+json",
+    servesPath: makeApiPathMatcher(endpointPaths(app.apiGroups)),
+    acceptsParameters: (mediaType) =>
+      mediaType.parameters.every(([name]) => name === "ext" || name === "profile"),
+  };
+  const options = { accept: [markdown, jsonApi], contentType: [jsonApi] };
 
   // Outermost: the post-`resolve` header stamp lands on the final response.
   const applyHeaders: Handle = async ({ event, resolve }) => {
@@ -404,7 +419,15 @@ export const makeHandle = (app: App): Handle => {
   // mutation is refused (already `private, no-store`); anything else gets the
   // CACHE-AUTH-003 safety net, since `cacheControl` below never sees it.
   const forward: Handle = async ({ event, resolve }) => {
-    if (!negotiateWebRequest(event.request, { isApiPath }).dispatch) return resolve(event);
+    const verdict = negotiateWebRequest(event.request, options);
+    if (verdict._tag === "NotAcceptable" || verdict._tag === "UnsupportedMediaType") {
+      return verdict._tag === "NotAcceptable"
+        ? new Response("Not Acceptable", { status: 406 })
+        : new Response("Unsupported Media Type", { status: 415 });
+    }
+    if (!Negotiation.$is("Selected")(verdict) || verdict.representation !== jsonApi) {
+      return resolve(event);
+    }
     const rejected = crossOriginMutationRejectionWeb(event.request);
     if (Option.isSome(rejected)) return rejected.value;
     return updateWebHeaders(await app.forwardJsonApi(event.request), ensureCacheControl);
@@ -419,8 +442,8 @@ export const makeHandle = (app: App): Handle => {
 
   // Innermost: the Markdown representation, or SvelteKit's own render.
   const negotiate: Handle = async ({ event, resolve }) => {
-    const verdict = negotiateWebRequest(event.request, { isApiPath, isMarkdownPath });
-    if (verdict.markdown === true) {
+    const verdict = negotiateWebRequest(event.request, options);
+    if (Negotiation.$is("Selected")(verdict) && verdict.representation === markdown) {
       return chooseNegotiatedResponse(await app.renderMarkdown(event), () => resolve(event));
     }
     return resolve(event);
@@ -430,7 +453,7 @@ export const makeHandle = (app: App): Handle => {
 };
 ```
 
-A response that bypasses the middleware (an auth short-circuit) still gets the safety net: `updateWebHeaders(response, ensureCacheControl)`. A verdict with an `error` (406 / 415) is answered with `jsonApiErrorResponseWeb(verdict.error)`.
+A response that bypasses the middleware (an auth short-circuit) still gets the safety net: `updateWebHeaders(response, ensureCacheControl)`. A `NotAcceptable` / `UnsupportedMediaType` verdict is answered with the error document your API's library defines (the example uses bare 406 / 415 responses).
 
 #### In a browser
 
@@ -520,15 +543,19 @@ Pure `(headers: Headers.Headers) => Headers.Headers` functions; compose them and
 - `deriveAuthOutcome(facts): AuthOutcome` (`"skipped" | "resolved" | "anonymous" | "degraded"`; `"skipped"` is the credential-less fast path, PERF-CACHE-003) and `logAuthOutcome(durationMs, outcome)` — the `read-path.auth` line.
 - `withRequestMetrics(fn, onSettle): Promise<A>` — runs `fn` in a fresh per-request metric scope (its own `Metric.Counter` and `MetricRegistry`, scoped through `AsyncLocalStorage`) and hands `{ count }` to `onSettle` once `fn` settles, resolved or rejected. `incrementRequestMetric(amount = 1)` adds to the active scope from any code, synchronously, and is a no-op outside one; `currentRequestMetrics(): Option<RequestMetrics>` reads it. `countingProxy(client, methodNames: Iterable<string>)` (an array, a `HashSet` or a `Set`, read once) counts each call of a named method on `client`, invoking it with the real client as `this` and returning its result untouched — the per-request query count, an N+1 / waterfall signal. Which methods begin a query is the caller's parameter. Emit the settled count as your own `logStructured` line (`{ event: "read-path.db", dbQueryCount: metrics.count, path }`). On Workers this needs `nodejs_compat` (it imports `node:async_hooks`).
 
-#### `Negotiate` — the dispatch verdict
+#### `Negotiate` — the negotiation verdict
 
-- `negotiateRepresentation(request: HttpServerRequest, options): Negotiation` / `negotiateWebRequest(request: Request, options)` — reads negotiate on `Accept`, trying `text/markdown` first on a Markdown path so the page's own URL serves it (DISC-009); mutating methods on `Content-Type`, anything else is HTML; a disallowed media-type parameter answers 406 / 415 (JSONAPI-NEG-001 / JSONAPI-NEG-002). Media types are matched on their WHATWG essence (`MimeType.parse` from `@thomasfosterau/effect-ext/Mime`), so case and whitespace never decide the verdict, and a `Content-Type` that is not a MIME type falls through as HTML. The verdict: `representation` (`"text/html" | "application/vnd.api+json" | "text/markdown"`, the normalized cache key, never the raw `Accept`: PERF-CACHE-005), `dispatch`, `markdown?`, `error?` (`NOT_ACCEPTABLE` 406 / `UNSUPPORTED_MEDIA_TYPE` 415).
-- `NegotiationOptions`: `isApiPath` (required — build it with `makeApiPathMatcher(endpointPaths(groups))` from the served `HttpApi` groups, so the matcher never drifts from the surface), `isMarkdownPath?` (`makeMarkdownPathMatcher(segments)`: a `<segment>/<id>` page whose segment is listed, DISC-009), `extensions?` (the JSON:API `ext` URIs the api declares).
+Nothing about any one media type is built in: you declare the `Representation`s the server can produce and `negotiateRepresentation` says which one a request selects. A JSON:API library supplies its own `Representation` (its `acceptsParameters` is the `ext` / `profile` rule); the 406 / 415 error documents are its too.
+
+- `negotiateRepresentation(request: HttpServerRequest, options: NegotiationOptions): Negotiation` / `negotiateWebRequest(request: Request, options)` — reads (`GET` / `HEAD`) negotiate on `Accept`, trying `options.accept` in priority order; mutating methods on `Content-Type` against `options.contentType`; anything else is `Fallback`. Media types are matched on their WHATWG essence (`MimeType.parse` from `@thomasfosterau/effect-ext/Mime`), so case and whitespace never decide the verdict, and a `Content-Type` that is not a MIME type is `Fallback`.
+- `Representation`: `mediaType` (lower-case `type/subtype`), `servesPath?(pathname)` (omitted → every path) and `acceptsParameters?(mediaType: MimeType)` (the instance's media-type parameters, those before `q`; omitted → any).
+- `NegotiationOptions`: `accept: ReadonlyArray<Representation>` and `contentType?: ReadonlyArray<Representation>` (omitted → no write selects a representation).
+- `Negotiation` (a `Data.TaggedEnum`, with constructors, `$is` and `$match` on the `Negotiation` value): `Selected` (serve `representation`), `Fallback` (serve the default, e.g. HTML), `NotAcceptable` (a read: the client asked for `representation`'s media type at a path it is served on, but every instance carried rejected parameters) and `UnsupportedMediaType` (a write: the `Content-Type` is that media type at a served path, with rejected parameters).
+- Ranking: a read selects a representation when a clean (parameters accepted), `q > 0` instance of its media type outranks (≥) every other media type the client offered; ties win and an unparsable `q` reads as `1`. Otherwise the next representation is tried, and `Fallback` follows the last.
+- `makeApiPathMatcher(paths)` / `endpointPaths(groups)` / `makeMarkdownPathMatcher(segments)` — build a `servesPath` from the served `HttpApi` groups (so the matcher never drifts from the surface) or from the Markdown route segments (a `<segment>/<id>` page, DISC-009).
 - `requestForRouter(request)` / `requestForRouterWeb(request)` — relabels a dispatched write's `Content-Type` to `application/json` for a router that registers JSON payloads under the default encoding.
 - `chooseNegotiatedResponse(markdown: Option<A>, onHtml: () => B)` — the Markdown response or the framework's render, which runs only on `None`.
-- `MARKDOWN_MEDIA_TYPE`, `Representation`, `Negotiation`.
-
-What is adopted from `@thomasfosterau/effect-jsonapi` and what is not: the JSON:API §5/§6 media-type-parameter rule (`ext` / `profile` only; every `ext` URI must be declared) runs through `Middleware.negotiate` for a write and `Middleware.contentTypeIsAcceptable` per `Accept` instance. The **ranking** — whether the JSON:API or Markdown instance outranks every other media type the client offered (`q`, ties win, an unparsable `q` reads as `1`) — is local, because a JSON:API-only server never chooses between representations. Two consequences: an undeclared `ext` is a 406 / 415 (spec-correct), and the §6 error `code`s are effect-jsonapi's (`not_acceptable`, `unsupported_media_type`).
+- `MARKDOWN_MEDIA_TYPE`.
 
 #### `ServiceWorker` — caching strategies and event listeners
 
@@ -1808,7 +1835,7 @@ Effect-native LLM evaluation: goldens, scorers, thresholds, and a runner with tr
 
 #### Requirements
 
-Requires Node `>=22.18`: the CLI loads `*.eval.ts` files with Node's type stripping, on by default from 22.18.0, and its resolution hook uses `module.registerHooks()` (22.15+). `effect` (`^4.0.0`) is a peer dependency. The package also ships the `effect-evals` CLI for discovering and running `*.eval.ts` suites — see [CLI](#cli) below. The CLI additionally needs the **optional** peer `@effect/platform-node` (`^4.0.0`): install it at the same version as `effect`, and pin `@effect/platform-node-shared` to that version too (a direct dependency or an `overrides` entry). Upstream's `^` range otherwise floats it to the newest rc, whose own `effect` peer rejects an older `effect`.
+The CLI requires Node `>=22.18` (the library itself needs only Node 22, its `engines.node` floor; the bin checks the version at start-up and exits with a message below 22.18): it loads `*.eval.ts` files with Node's type stripping, on by default from 22.18.0, and its resolution hook uses `module.registerHooks()` (22.15+). `effect` (`^4.0.0`) is a peer dependency. The package also ships the `effect-evals` CLI for discovering and running `*.eval.ts` suites — see [CLI](#cli) below. The CLI additionally needs the **optional** peer `@effect/platform-node` (`^4.0.0`): install it at the same version as `effect`, and pin `@effect/platform-node-shared` to that version too (a direct dependency or an `overrides` entry). Upstream's `^` range otherwise floats it to the newest rc, whose own `effect` peer rejects an older `effect`.
 
 ```sh
 pnpm add @effect/platform-node@<your effect version> @effect/platform-node-shared@<your effect version>

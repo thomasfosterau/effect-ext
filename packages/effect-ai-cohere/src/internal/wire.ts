@@ -23,7 +23,7 @@
  */
 
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
 
 // ── Chat request ──────────────────────────────────────────────────────
@@ -319,4 +319,4 @@ const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
  * stays `undefined` and its key is left off the serialised request body.
  */
 export const stringifyJson = (value: unknown): string | undefined =>
-  Predicate.isUndefined(value) ? undefined : encodeJson(value);
+  P.isUndefined(value) ? undefined : encodeJson(value);

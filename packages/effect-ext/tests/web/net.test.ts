@@ -7,9 +7,9 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import * as Array from "effect/Array";
+import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Result from "effect/Result";
 import {
   assertAllowedUrl,
@@ -23,7 +23,7 @@ import {
 
 /** The URL a stubbed `fetch` was called with, whatever form it took. */
 const urlOf = (input: Parameters<typeof fetch>[0]): string =>
-  Predicate.isString(input) ? input : input instanceof URL ? input.href : input.url;
+  P.isString(input) ? input : input instanceof URL ? input.href : input.url;
 
 // `toStrictEqual` against a bare `Error` checks the prototype as well as the
 // message, so a rethrown `UnsafeUrl` / `RedirectRejected` (an `Error` subclass
@@ -55,7 +55,7 @@ const expectPlainErrorCausedBy = async (
 
 describe("isBlockedHost", () => {
   it("blocks loopback, private, link-local, CGNAT, and internal hosts", () => {
-    Array.forEach(
+    Arr.forEach(
       [
         "localhost",
         "foo.localhost",
@@ -79,7 +79,7 @@ describe("isBlockedHost", () => {
   });
 
   it("blocks IPv4-mapped and NAT64 IPv6 literals carrying private IPv4 addresses", () => {
-    Array.forEach(
+    Arr.forEach(
       [
         // Hex-group form — what `new URL("http://[::ffff:127.0.0.1]/")`
         // canonicalises `hostname` to.
@@ -106,7 +106,7 @@ describe("isBlockedHost", () => {
    * suffix-match arm.
    */
   it("blocks the trailing-root-dot spelling of a blocked host", () => {
-    Array.forEach(
+    Arr.forEach(
       [
         "localhost.",
         "foo.localhost.",
@@ -129,7 +129,7 @@ describe("isBlockedHost", () => {
     // `999.1.1.1` matches the dotted-quad shape but is not a valid address.
     // The guard fails safe: an unparseable quad is blocked, never allowed
     // through on the grounds that it did not match a known-private range.
-    Array.forEach(["999.1.1.1", "256.1.1.1", "1.2.3.999"], (host) => {
+    Arr.forEach(["999.1.1.1", "256.1.1.1", "1.2.3.999"], (host) => {
       expect(isBlockedHost(host)).toBe(true);
     });
   });
@@ -138,13 +138,13 @@ describe("isBlockedHost", () => {
     // The embedded-IPv4 extractor yields nothing for anything that is not a
     // well-formed two-group hex or dotted form, so these fall through to the
     // public verdict instead of being misread as a private quad.
-    Array.forEach(["[::ffff:zzzz:1]", "[::ffff:1:2:3]"], (host) => {
+    Arr.forEach(["[::ffff:zzzz:1]", "[::ffff:1:2:3]"], (host) => {
       expect(isBlockedHost(host)).toBe(false);
     });
   });
 
   it("allows public hostnames and addresses", () => {
-    Array.forEach(
+    Arr.forEach(
       [
         "example.com",
         "sub.example.org",
@@ -595,7 +595,7 @@ describe("followRedirects (the Effect form)", () => {
       ),
     );
     expect(looping._tag).toBe("RedirectRejected");
-    expect(Predicate.isTagged(looping, "RedirectRejected") && looping.reason).toBe("too-many-hops");
+    expect(P.isTagged(looping, "RedirectRejected") && looping.reason).toBe("too-many-hops");
   });
 
   it("fails with FetchFailed carrying the cause when fetch rejects", async () => {
@@ -606,7 +606,7 @@ describe("followRedirects (the Effect form)", () => {
       ),
     );
     expect(failed._tag).toBe("FetchFailed");
-    expect(Predicate.isTagged(failed, "FetchFailed") && failed.cause).toBe(cause);
+    expect(P.isTagged(failed, "FetchFailed") && failed.cause).toBe(cause);
   });
 
   it("passes the shared init (signal included) to every hop with redirect: manual", async () => {
@@ -628,7 +628,7 @@ describe("followRedirects (the Effect form)", () => {
     );
     expect(finalUrl).toBe("https://example.com/final");
     expect(seen).toHaveLength(2);
-    Array.forEach(seen, (init) => {
+    Arr.forEach(seen, (init) => {
       expect(init?.redirect).toBe("manual");
       expect(init?.signal).toBe(controller.signal);
     });

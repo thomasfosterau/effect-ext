@@ -7,7 +7,7 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import { AnPlusB, Syntax, Token } from "@thomasfosterau/effect-ext/Css";
 
 type ComponentValue = Token.ComponentValue;
@@ -34,10 +34,8 @@ const numeric = (
 /** A component value in the suite's representation, plus the error item it records after an unterminated string or URL. */
 const toJsonItems = (value: ComponentValue): ReadonlyArray<Json> => {
   const json = toJson(value);
-  if (Predicate.isTagged(value, "String") && value.unterminated)
-    return [json, ["error", "eof-in-string"]];
-  if (Predicate.isTagged(value, "Url") && value.unterminated)
-    return [json, ["error", "eof-in-url"]];
+  if (P.isTagged(value, "String") && value.unterminated) return [json, ["error", "eof-in-string"]];
+  if (P.isTagged(value, "Url") && value.unterminated) return [json, ["error", "eof-in-url"]];
   return [json];
 };
 
@@ -95,12 +93,12 @@ const item = (
   });
 
 const one = (value: ComponentValue | Syntax.SyntaxError): Json =>
-  Predicate.isTagged(value, "SyntaxError") ? ["error", value.kind] : toJson(value);
+  P.isTagged(value, "SyntaxError") ? ["error", value.kind] : toJson(value);
 
 /** The suite's alternating input / expected pairs. */
 const pairs = (fixture: ReadonlyArray<unknown>): ReadonlyArray<readonly [string, unknown]> =>
   fixture.flatMap((input, index) =>
-    index % 2 === 0 && Predicate.isString(input) ? [[input, fixture[index + 1]] as const] : [],
+    index % 2 === 0 && P.isString(input) ? [[input, fixture[index + 1]] as const] : [],
   );
 
 // `stylesheet_bytes.json` is not run: the parsers take text, and decoding bytes
@@ -159,7 +157,7 @@ describe("error offsets", () => {
 const depthOf = (value: Option.Option<Token.ComponentValue>): number =>
   Arr.unfold(value, (current) =>
     Option.flatMap(current, (node) =>
-      Predicate.isTagged(node, "Block") || Predicate.isTagged(node, "Func")
+      P.isTagged(node, "Block") || P.isTagged(node, "Func")
         ? Option.some([node, Arr.head(node.value)] as const)
         : Option.none(),
     ),

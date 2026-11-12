@@ -16,13 +16,13 @@ import * as Arr from "effect/Array";
 import { pipe } from "effect/Function";
 import * as Headers from "effect/http/Headers";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import * as Str from "effect/String";
 
 /**
  * The spellings Title-Case gets wrong, keyed by lower-cased name.
  */
-const IRREGULAR_HEADER_NAMES: Record.ReadonlyRecord<string, string> = {
+const IRREGULAR_HEADER_NAMES: R.ReadonlyRecord<string, string> = {
   dnt: "DNT",
   etag: "ETag",
   te: "TE",
@@ -41,24 +41,43 @@ const IRREGULAR_HEADER_NAMES: Record.ReadonlyRecord<string, string> = {
 const canonicalHeaderName = (name: string): string => {
   const lower = Str.toLowerCase(name);
   return pipe(
-    Record.get(IRREGULAR_HEADER_NAMES, lower),
+    R.get(IRREGULAR_HEADER_NAMES, lower),
     Option.getOrElse(() => pipe(Str.split(lower, "-"), Arr.map(Str.capitalize), Arr.join("-"))),
   );
 };
 
-/**
- * The names whose value `next` sets differently from `previous` (a policy
- * never removes a header, so only additions and replacements matter), each
- * in its canonical spelling.
- */
-const changedEntries = (
-  previous: Headers.Headers,
-  next: Headers.Headers,
+/** A header's name (lower-case, as `Headers` keys it) and value. */
+const entriesOf = (
+  headers: Headers.Headers,
 ): ReadonlyArray<readonly [name: string, value: string]> =>
   // oxlint-disable-next-line effect/avoid-native-object-helpers -- `Headers` carries a symbol-keyed `TypeId` member alongside its string keys; `Record.toEntries` types the values as the union of both, while `Object.entries` (which never yields symbol keys) keeps them `string`.
-  Object.entries(next)
+  Object.entries(headers);
+
+/**
+ * What a policy did to the headers: `set` for each header `next` adds or
+ * gives a different value, in its canonical spelling, and `remove` for each
+ * header of `previous` that `next` no longer has (#93: a policy may strip an
+ * upstream header, `Vary` say, and the removal must reach the target too).
+ */
+interface HeaderChanges {
+  readonly set: ReadonlyArray<readonly [name: string, value: string]>;
+  readonly remove: ReadonlyArray<string>;
+}
+
+const headerChanges = (previous: Headers.Headers, next: Headers.Headers): HeaderChanges => ({
+  set: entriesOf(next)
     .filter(([name, value]) => previous[name] !== value)
-    .map(([name, value]) => [canonicalHeaderName(name), value] as const);
+    .map(([name, value]) => [canonicalHeaderName(name), value] as const),
+  remove: entriesOf(previous)
+    .filter(([name]) => !Headers.has(next, name))
+    .map(([name]) => name),
+});
+
+/** Writes `changes` to a mutable Web `Headers`. */
+const applyChanges = (target: globalThis.Headers, changes: HeaderChanges): void => {
+  changes.set.forEach(([name, value]) => target.set(name, value));
+  changes.remove.forEach((name) => target.delete(name));
+};
 
 /**
  * Applies a header policy to a Web `Response`. Returns the same instance
@@ -66,7 +85,8 @@ const changedEntries = (
  * body stream) carrying the policy's headers — a `fetch()`-sourced
  * response's headers are immutable, so mutation in place is never assumed.
  * Each header the policy adds or changes is written under its canonical
- * spelling (`X-Frame-Options`), since some runtimes send a name as written.
+ * spelling (`X-Frame-Options`), since some runtimes send a name as written,
+ * and each header it removes is removed.
  *
  * @example
  * ```ts
@@ -88,21 +108,21 @@ export const updateWebHeaders = (
   policy: (headers: Headers.Headers) => Headers.Headers,
 ): Response => {
   const previous = Headers.fromInput(response.headers);
-  return Arr.match(changedEntries(previous, policy(previous)), {
-    onEmpty: () => response,
-    onNonEmpty: (changes) => {
-      const stamped = new Response(response.body, response);
-      changes.forEach(([name, value]) => stamped.headers.set(name, value));
-      return stamped;
-    },
-  });
+  const changes = headerChanges(previous, policy(previous));
+  if (Arr.isReadonlyArrayEmpty(changes.set) && Arr.isReadonlyArrayEmpty(changes.remove)) {
+    return response;
+  }
+  const stamped = new Response(response.body, response);
+  applyChanges(stamped.headers, changes);
+  return stamped;
 };
 
 /**
  * Applies a header policy in place to a mutable Web `Headers` — a
  * SvelteKit `resolve()` response's headers, which a hook mutates directly.
  * Each header the policy adds or changes is written under its canonical
- * spelling (`Referrer-Policy`), since some runtimes send a name as written.
+ * spelling (`Referrer-Policy`), since some runtimes send a name as written,
+ * and each header it removes is deleted.
  *
  * @example
  * ```ts
@@ -122,5 +142,5 @@ export const applyToWebHeaders = (
   policy: (headers: Headers.Headers) => Headers.Headers,
 ): void => {
   const previous = Headers.fromInput(target);
-  changedEntries(previous, policy(previous)).forEach(([name, value]) => target.set(name, value));
+  applyChanges(target, headerChanges(previous, policy(previous)));
 };

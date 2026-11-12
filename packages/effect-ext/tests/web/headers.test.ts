@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import * as Headers from "effect/http/Headers";
 import {
   appendVary,
@@ -30,7 +30,7 @@ const vary = (headers: Headers.Headers): Option.Option<string> => Headers.get(he
 describe("securityHeaders", () => {
   it("adds every baseline header to a bare response", () => {
     const headers = securityHeaders(Headers.empty);
-    Arr.forEach(Record.toEntries(SECURITY_HEADER_DEFAULTS), ([name, value]) => {
+    Arr.forEach(R.toEntries(SECURITY_HEADER_DEFAULTS), ([name, value]) => {
       expect(Headers.get(headers, name)).toStrictEqual(Option.some(value));
     });
   });
@@ -175,6 +175,34 @@ describe("the Fetch adapter", () => {
     expect(headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
   });
 
+  it("applyToWebHeaders deletes a header the policy removes (#93)", () => {
+    const headers = new globalThis.Headers({ vary: "Cookie", "x-kept": "1" });
+    applyToWebHeaders(headers, (h) => Headers.remove(h, "vary"));
+    expect(headers.get("vary")).toBeNull();
+    expect(headers.get("x-kept")).toBe("1");
+  });
+
+  it("applyToWebHeaders replaces an upstream Vary a policy strips and re-derives (#93)", () => {
+    // website#2362: Paraglide adds `Vary: Cookie` to every response; a
+    // locale-invariant asset's policy drops it and states its own.
+    const asset = new globalThis.Headers({ vary: "Cookie" });
+    applyToWebHeaders(asset, (h) => responseVary(Headers.remove(h, "vary"), "locale-invariant"));
+    expect(asset.get("vary")).toBeNull();
+
+    const image = new globalThis.Headers({ vary: "Cookie" });
+    applyToWebHeaders(image, (h) => responseVary(Headers.remove(h, "vary"), "format-negotiated"));
+    expect(image.get("vary")).toBe("Accept");
+  });
+
+  it("updateWebHeaders clones and drops a header the policy removes (#93)", () => {
+    const upstream = new Response("x", { headers: { vary: "Cookie", "x-kept": "1" } });
+    const stripped = updateWebHeaders(upstream, (h) => Headers.remove(h, "vary"));
+    expect(stripped).not.toBe(upstream);
+    expect(stripped.headers.get("vary")).toBeNull();
+    expect(stripped.headers.get("x-kept")).toBe("1");
+    expect(upstream.headers.get("vary")).toBe("Cookie");
+  });
+
   describe("header-name spelling", () => {
     afterEach(() => {
       vi.restoreAllMocks();
@@ -187,7 +215,7 @@ describe("the Fetch adapter", () => {
         stageNoindex(responseVary(securityHeaders(h), "negotiated"), { indexable: false }),
       );
       expect(names().toSorted()).toEqual(
-        [...Record.keys(SECURITY_HEADER_DEFAULTS), "Vary", "X-Robots-Tag"].toSorted(),
+        [...R.keys(SECURITY_HEADER_DEFAULTS), "Vary", "X-Robots-Tag"].toSorted(),
       );
     });
 
@@ -199,7 +227,7 @@ describe("the Fetch adapter", () => {
       );
       expect(names().toSorted()).toEqual(
         [
-          ...Record.keys(SECURITY_HEADER_DEFAULTS).filter((name) => name !== "X-Frame-Options"),
+          ...R.keys(SECURITY_HEADER_DEFAULTS).filter((name) => name !== "X-Frame-Options"),
           "ETag",
           "WWW-Authenticate",
         ].toSorted(),
