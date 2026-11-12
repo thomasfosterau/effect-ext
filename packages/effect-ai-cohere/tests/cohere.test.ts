@@ -32,6 +32,7 @@ import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
 import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
+import * as Struct from "effect/Struct";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { AiError, EmbeddingModel, LanguageModel, Tool, Toolkit } from "effect/ai";
@@ -50,7 +51,7 @@ import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 
 interface CapturedRequest {
   readonly url: string;
-  readonly authorization: string | null;
+  readonly authorization: Option.Option<string>;
   readonly headers: Record<string, string>;
   readonly body: RequestBody;
 }
@@ -83,7 +84,7 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
       .catch(() => ({}))) as RequestBody;
     const captured: CapturedRequest = {
       url: request.url,
-      authorization: request.headers.get("authorization"),
+      authorization: Option.fromNullishOr(request.headers.get("authorization")),
       headers: R.fromEntries(request.headers),
       body,
     };
@@ -126,7 +127,7 @@ const chatReply = (over?: Record<string, unknown>) => ({
 
 const clientLayer = (
   fetch: typeof globalThis.fetch,
-  options?: { readonly apiKey?: Redacted.Redacted | undefined; readonly apiUrl?: string },
+  options?: { readonly apiKey?: Redacted.Redacted; readonly apiUrl?: string },
 ) =>
   CohereClient.layer({
     apiKey: options?.apiKey ?? Redacted.make("test-key"),
@@ -140,13 +141,40 @@ const modelLayer = (
     readonly config?: Omit<CohereLanguageModel.ConfigService, "model">;
   },
 ) =>
-  CohereLanguageModel.layer({ model: "command-a-03-2025", config: options?.config }).pipe(
-    Layer.provide(clientLayer(fetch, { apiKey: options?.apiKey })),
-  );
+  CohereLanguageModel.layer({
+    model: "command-a-03-2025",
+    ...Struct.pick(options ?? {}, ["config"]),
+  }).pipe(Layer.provide(clientLayer(fetch, Struct.pick(options ?? {}, ["apiKey"]))));
 
 // ── Text generation ───────────────────────────────────────────────────
 
 describe("CohereLanguageModel.generateText", () => {
+  it("omits a tool result's content key when the result is undefined", async () => {
+    const { calls, fetch } = makeFetch(() => jsonResponse(chatReply()));
+
+    await runTest(
+      LanguageModel.generateText({
+        prompt: [
+          {
+            role: "tool",
+            content: [
+              {
+                type: "tool-result",
+                id: "call_1",
+                name: "get_weather",
+                isFailure: false,
+                result: undefined,
+              },
+            ],
+          },
+        ],
+      }).pipe(Effect.provide(modelLayer(fetch))),
+    );
+
+    const message = calls[0]?.body.messages?.[0];
+    expect(message).toEqual({ role: "tool", tool_call_id: "call_1" });
+  });
+
   it("posts to /v2/chat with a bearer token and decodes the reply", async () => {
     const { calls, fetch } = makeFetch(() => jsonResponse(chatReply()));
 
@@ -156,7 +184,7 @@ describe("CohereLanguageModel.generateText", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe("https://api.cohere.com/v2/chat");
-    expect(calls[0]?.authorization).toBe("Bearer test-key");
+    expect(calls[0]?.authorization).toEqual(Option.some("Bearer test-key"));
     expect(calls[0]?.body.model).toBe("command-a-03-2025");
     expect(calls[0]?.body.stream).toBe(false);
     expect(response.text).toBe("Bonjour");
@@ -179,7 +207,7 @@ describe("CohereLanguageModel.generateText", () => {
       ),
     );
 
-    expect(calls[0]?.authorization).toBeNull();
+    expect(calls[0]?.authorization).toEqual(Option.none());
   });
 
   it("translates each prompt message into its Cohere wire form", async () => {
@@ -469,7 +497,7 @@ describe("CohereLanguageModel configuration", () => {
     );
 
     expect(calls[0]?.url).toBe("https://gateway.example/cohere/v2/chat");
-    expect(calls[0]?.authorization).toBe("Bearer test-key");
+    expect(calls[0]?.authorization).toEqual(Option.some("Bearer test-key"));
   });
 
   it("provides the model through a Config-driven client layer with apiUrl override", async () => {
@@ -491,7 +519,7 @@ describe("CohereLanguageModel configuration", () => {
     );
 
     expect(calls[0]?.url).toBe("https://proxy.example/v2/chat");
-    expect(calls[0]?.authorization).toBe("Bearer cfg-key");
+    expect(calls[0]?.authorization).toEqual(Option.some("Bearer cfg-key"));
   });
 
   it("applies a transformClient to outgoing requests", async () => {
@@ -892,7 +920,7 @@ describe("CohereLanguageModel.streamText", () => {
 
     const finish = parts.find((part) => part.type === "finish");
     expect(finish).toBeDefined();
-    expect((finish as { reason?: string } | undefined)?.reason).toBe("stop");
+    expect((finish as { reason?: string }).reason).toBe("stop");
   });
 
   it("assembles a streamed tool call across events", async () => {
@@ -946,8 +974,8 @@ describe("CohereLanguageModel.streamText", () => {
 
     const toolCall = parts.find((part) => part.type === "tool-call");
     expect(toolCall).toBeDefined();
-    expect((toolCall as { params?: unknown } | undefined)?.params).toEqual({ city: "Nice" });
-    expect((toolCall as { name?: string } | undefined)?.name).toBe("get_weather");
+    expect((toolCall as { params?: unknown }).params).toEqual({ city: "Nice" });
+    expect((toolCall as { name?: string }).name).toBe("get_weather");
   });
 
   it("fails the stream when an event frame carries a non-finite number literal", async () => {

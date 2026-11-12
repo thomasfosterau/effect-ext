@@ -29,7 +29,7 @@ import { expectFailureInstanceOf, runTest, runTestExit } from "./helpers/effect"
 
 interface CapturedRequest {
   readonly url: string;
-  readonly cfAigAuthorizationHeader: string | null;
+  readonly cfAigAuthorizationHeader: Option.Option<string>;
   readonly body: unknown;
 }
 
@@ -39,7 +39,7 @@ const stubFetch = (response: { status: number; body: unknown }) => {
     const request = new Request(input, init);
     calls.push({
       url: request.url,
-      cfAigAuthorizationHeader: request.headers.get("cf-aig-authorization"),
+      cfAigAuthorizationHeader: Option.fromNullishOr(request.headers.get("cf-aig-authorization")),
       body: await request.json(),
     });
     return Response.json(response.body, { status: response.status });
@@ -109,7 +109,7 @@ describe("makeCohereEmbeddingModelFromUrl", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe("https://gateway.ai.cloudflare.com/v1/acct/website/cohere/v2/embed");
-    expect(calls[0]?.cfAigAuthorizationHeader).toBe("Bearer test-token");
+    expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
     expect(calls[0]?.body).toEqual({
       model: COHERE_EMBEDDING_MODEL,
       input_type: "search_document",
@@ -209,7 +209,7 @@ describe("makeCohereRerankerFromUrl", () => {
     expect(calls[0]?.url).toBe(
       "https://gateway.ai.cloudflare.com/v1/acct/website/cohere/v2/rerank",
     );
-    expect(calls[0]?.cfAigAuthorizationHeader).toBe("Bearer test-token");
+    expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
     expect(calls[0]?.body).toEqual({
       model: COHERE_RERANK_MODEL,
       query: "monstera",

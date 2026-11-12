@@ -16,6 +16,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import { LanguageModel } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
 import {
@@ -35,8 +36,8 @@ const stubAi = (url: string): WorkersAiBinding =>
 
 interface CapturedRequest {
   readonly url: string;
-  readonly apiKeyHeader: string | null;
-  readonly versionHeader: string | null;
+  readonly apiKeyHeader: Option.Option<string>;
+  readonly versionHeader: Option.Option<string>;
   readonly body: unknown;
 }
 
@@ -47,8 +48,8 @@ const stubFetch = (response: { status: number; body: unknown }) => {
     const request = new Request(input, init);
     calls.push({
       url: request.url,
-      apiKeyHeader: request.headers.get("x-api-key"),
-      versionHeader: request.headers.get("anthropic-version"),
+      apiKeyHeader: Option.fromNullishOr(request.headers.get("x-api-key")),
+      versionHeader: Option.fromNullishOr(request.headers.get("anthropic-version")),
       body: await request.json(),
     });
     return Response.json(response.body, { status: response.status });
@@ -99,9 +100,9 @@ describe("anthropicLanguageModelLayer", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe(`${GATEWAY_URL}/v1/messages?beta=true`);
-    expect(calls[0]?.apiKeyHeader).toBeNull();
-    expect(calls[0]?.versionHeader).toBe("2023-06-01");
-    expect((calls[0]?.body as { model?: string } | undefined)?.model).toBe("claude-sonnet-4-6");
+    expect(calls[0]?.apiKeyHeader).toEqual(Option.none());
+    expect(calls[0]?.versionHeader).toEqual(Option.some("2023-06-01"));
+    expect(calls[0]?.body).toMatchObject({ model: "claude-sonnet-4-6" });
     expect(response.text).toBe("hello from the gateway");
   });
 

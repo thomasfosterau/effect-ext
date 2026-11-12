@@ -62,6 +62,7 @@ import * as Tool from "effect/ai/Tool";
 import type * as HttpClientResponse from "effect/http/HttpClientResponse";
 import { CohereClient } from "./CohereClient";
 import * as Errors from "./internal/errors";
+import { optionalField } from "./internal/fields";
 import * as Wire from "./internal/wire";
 
 const MODULE = "CohereLanguageModel";
@@ -92,17 +93,17 @@ export type Model =
  * {@link layer}, or {@link model}.
  */
 export interface ConfigService {
-  readonly model?: string | undefined;
-  readonly temperature?: number | undefined;
+  readonly model?: string;
+  readonly temperature?: number;
   /** Nucleus sampling probability (Cohere's `p`, i.e. OpenAI's `top_p`). */
-  readonly topP?: number | undefined;
+  readonly topP?: number;
   /** Top-k sampling (Cohere's `k`). */
-  readonly topK?: number | undefined;
-  readonly maxTokens?: number | undefined;
-  readonly seed?: number | undefined;
-  readonly stopSequences?: ReadonlyArray<string> | undefined;
-  readonly presencePenalty?: number | undefined;
-  readonly frequencyPenalty?: number | undefined;
+  readonly topK?: number;
+  readonly maxTokens?: number;
+  readonly seed?: number;
+  readonly stopSequences?: ReadonlyArray<string>;
+  readonly presencePenalty?: number;
+  readonly frequencyPenalty?: number;
 }
 
 /**
@@ -127,7 +128,7 @@ export class Config extends Context.Service<Config, ConfigService>()(
  */
 export const model = (
   modelName: (string & Record<never, never>) | Model,
-  config?: Omit<ConfigService, "model">,
+  config: Omit<ConfigService, "model"> = {},
 ): AiModel.Model<"cohere", LanguageModel.LanguageModel, CohereClient> =>
   AiModel.make("cohere", modelName, layer({ model: modelName, config }));
 
@@ -144,7 +145,7 @@ export const make = Effect.fnUntraced(function* ({
   config: providerConfig,
 }: {
   readonly model: (string & Record<never, never>) | Model;
-  readonly config?: Omit<ConfigService, "model"> | undefined;
+  readonly config?: Omit<ConfigService, "model">;
 }): Effect.fn.Return<LanguageModel.LanguageModel, never, CohereClient> {
   const client = yield* CohereClient;
 
@@ -182,7 +183,7 @@ export const make = Effect.fnUntraced(function* ({
         frequency_penalty: config.frequencyPenalty,
         tools,
         tool_choice: toolChoice,
-        response_format: responseFormat,
+        response_format: Option.getOrUndefined(responseFormat),
       }) as Wire.ChatRequest;
     });
 
@@ -231,7 +232,7 @@ export const make = Effect.fnUntraced(function* ({
  */
 export const layer = (options: {
   readonly model: (string & Record<never, never>) | Model;
-  readonly config?: Omit<ConfigService, "model"> | undefined;
+  readonly config?: Omit<ConfigService, "model">;
 }): Layer.Layer<LanguageModel.LanguageModel, never, CohereClient> =>
   Layer.effect(LanguageModel.LanguageModel, make(options));
 
@@ -342,7 +343,10 @@ const convertAssistantMessage = (
           {
             id: part.id,
             type: "function",
-            function: { name: part.name, arguments: Wire.stringifyJson(part.params) },
+            function: {
+              name: part.name,
+              ...optionalField("arguments", Wire.stringifyJson(part.params)),
+            },
           },
         ]
       : [],
@@ -362,7 +366,10 @@ const convertToolMessage = (message: Prompt.ToolMessage): Array<Wire.ToolMessage
           {
             role: "tool",
             tool_call_id: part.id,
-            content: P.isString(part.result) ? part.result : Wire.stringifyJson(part.result),
+            ...optionalField(
+              "content",
+              P.isString(part.result) ? Option.some(part.result) : Wire.stringifyJson(part.result),
+            ),
           },
         ]
       : [],
@@ -446,7 +453,7 @@ const buildToolRequest = (tool: Tool.Any): Effect.Effect<Wire.ToolRequest, AiErr
 /** The tool set and tool-choice directive a request is sent with. */
 interface ResolvedToolChoice {
   readonly tools: ReadonlyArray<Wire.ToolRequest>;
-  readonly toolChoice: Wire.ToolChoiceRequest | undefined;
+  readonly toolChoice?: Wire.ToolChoiceRequest;
 }
 
 /**
@@ -462,7 +469,7 @@ const resolveToolChoice = (
   tools: ReadonlyArray<Wire.ToolRequest>,
 ): ResolvedToolChoice => {
   if (toolChoice === "auto") {
-    return { tools, toolChoice: undefined };
+    return { tools };
   }
   if (toolChoice === "none") {
     return { tools, toolChoice: "NONE" };
@@ -477,24 +484,24 @@ const resolveToolChoice = (
     };
   }
   const allowed = HashSet.fromIterable(toolChoice.oneOf);
-  return {
-    tools: tools.filter((tool) => HashSet.has(allowed, tool.function.name)),
-    toolChoice: toolChoice.mode === "required" ? "REQUIRED" : undefined,
-  };
+  const subset = tools.filter((tool) => HashSet.has(allowed, tool.function.name));
+  return toolChoice.mode === "required"
+    ? { tools: subset, toolChoice: "REQUIRED" }
+    : { tools: subset };
 };
 
 const prepareTools = (
   options: LanguageModel.ProviderOptions,
 ): Effect.Effect<
   {
-    readonly tools: ReadonlyArray<Wire.ToolRequest> | undefined;
-    readonly toolChoice: Wire.ToolChoiceRequest | undefined;
+    readonly tools?: ReadonlyArray<Wire.ToolRequest>;
+    readonly toolChoice?: Wire.ToolChoiceRequest;
   },
   AiError.AiError
 > =>
   Effect.gen(function* () {
     if (Arr.isReadonlyArrayEmpty(options.tools)) {
-      return { tools: undefined, toolChoice: undefined };
+      return {};
     }
     const tools = yield* Effect.forEach(options.tools, (tool) => buildToolRequest(tool), {
       concurrency: 1,
@@ -508,11 +515,11 @@ const prepareTools = (
 
 const prepareResponseFormat = (
   options: LanguageModel.ProviderOptions,
-): Effect.Effect<Wire.ResponseFormatRequest | undefined, AiError.AiError> =>
+): Effect.Effect<Option.Option<Wire.ResponseFormatRequest>, AiError.AiError> =>
   Effect.gen(function* () {
     const responseFormat = options.responseFormat;
     if (responseFormat.type !== "json") {
-      return undefined;
+      return Option.none();
     }
     const schema = yield* Effect.try({
       try: () => Tool.getJsonSchemaFromSchema(responseFormat.schema),
@@ -524,7 +531,7 @@ const prepareResponseFormat = (
           }),
         ),
     });
-    return { type: "json_object", schema };
+    return Option.some({ type: "json_object", schema });
   });
 
 // =============================================================================
@@ -536,11 +543,11 @@ const prepareResponseFormat = (
  * reports uppercase values (`COMPLETE`, `MAX_TOKENS`, `TOOL_CALL`, …) but has
  * used lowercase (`tool_calls`) in places, so both are accepted.
  */
-const mapFinishReason = (reason: string | null | undefined): Response.FinishReason => {
-  if (P.isNullish(reason)) {
+const mapFinishReason = (reason: Option.Option<string>): Response.FinishReason => {
+  if (Option.isNone(reason)) {
     return "unknown";
   }
-  return Match.value(reason.toLowerCase()).pipe(
+  return Match.value(reason.value.toLowerCase()).pipe(
     Match.when(Match.is("complete", "stop", "stop_sequence"), (): Response.FinishReason => "stop"),
     Match.when(Match.is("max_tokens", "length"), (): Response.FinishReason => "length"),
     Match.when(Match.is("tool_call", "tool_calls"), (): Response.FinishReason => "tool-calls"),
@@ -639,7 +646,7 @@ const makeResponse = (
 
     parts.push({
       type: "finish",
-      reason: mapFinishReason(body.finish_reason),
+      reason: mapFinishReason(Option.fromNullishOr(body.finish_reason)),
       usage: makeUsage(body.usage, body.meta),
       response: responseDetails,
     });
@@ -709,7 +716,7 @@ const emitResponseMetadata = (
 };
 
 const handleTextDelta = (
-  text: string | null | undefined,
+  text: Option.Option<string>,
   state: StreamState,
   context: StreamContext,
   out: Array<Response.StreamPartEncoded>,
@@ -718,8 +725,8 @@ const handleTextDelta = (
     state.textStarted = true;
     out.push({ type: "text-start", id: context.textId });
   }
-  if (P.isNotNullish(text) && Str.isNonEmpty(text)) {
-    out.push({ type: "text-delta", id: context.textId, delta: text });
+  if (Option.isSome(text) && Str.isNonEmpty(text.value)) {
+    out.push({ type: "text-delta", id: context.textId, delta: text.value });
   }
 };
 
@@ -795,7 +802,7 @@ const handleEvent = (
   Match.value(event.type).pipe(
     Match.when(Match.is("content-start", "content-delta"), () => {
       if (P.isNullish(content) || content.type === undefined || content.type === "text") {
-        handleTextDelta(content?.text, state, context, out);
+        handleTextDelta(Option.fromNullishOr(content?.text), state, context, out);
       }
     }),
     Match.when("content-end", () => {
@@ -808,7 +815,13 @@ const handleEvent = (
       handleToolCallDelta(event, state, context, out),
     ),
     Match.when("message-end", () =>
-      finalize(state, context, out, event.delta?.finish_reason, event.delta?.usage),
+      finalize(
+        state,
+        context,
+        out,
+        Option.fromNullishOr(event.delta?.finish_reason),
+        event.delta?.usage,
+      ),
     ),
     Match.orElse(() => undefined),
   );
@@ -821,7 +834,7 @@ const finalize = (
   state: StreamState,
   context: StreamContext,
   out: Array<Response.StreamPartEncoded>,
-  finishReason: string | null | undefined,
+  finishReason: Option.Option<string>,
   usage: Wire.ChatResponse["usage"],
 ): void => {
   if (state.finished) {

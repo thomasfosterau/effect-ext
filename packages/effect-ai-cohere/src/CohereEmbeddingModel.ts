@@ -51,13 +51,13 @@ export interface Options {
    *
    * @default "embed-v4.0"
    */
-  readonly model?: string | undefined;
+  readonly model?: string;
   /**
    * The output vector dimension, pinned on every request.
    *
    * @default 1024
    */
-  readonly outputDimension?: number | undefined;
+  readonly outputDimension?: number;
 }
 
 /**

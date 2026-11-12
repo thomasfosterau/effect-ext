@@ -24,6 +24,7 @@ import * as Order from "effect/Order";
 import * as P from "effect/Predicate";
 import { ElevenLabsClient } from "./ElevenLabsClient";
 import { collectBytes, toBlob } from "./internal/audio";
+import { optionalField } from "./internal/fields";
 import type * as Wire from "./internal/wire";
 
 /** The default Scribe model id. */
@@ -38,15 +39,15 @@ export type Model = "scribe_v1" | "scribe_v1_experimental";
 /** Construction-time defaults for an {@link ElevenLabsTranscriptionModel}. */
 export interface Settings {
   /** Scribe model id (default `scribe_v1`). */
-  readonly modelId?: (string & Record<never, never>) | Model | undefined;
+  readonly modelId?: (string & Record<never, never>) | Model;
   /** Default language-code hint; a call's `language` overrides it. */
-  readonly languageCode?: string | undefined;
+  readonly languageCode?: string;
   /** Timestamp granularity (`word` or `character`; default `word`). */
-  readonly timestampsGranularity?: string | undefined;
+  readonly timestampsGranularity?: string;
   /** Annotate speakers in the transcript. */
-  readonly diarize?: boolean | undefined;
+  readonly diarize?: boolean;
   /** Tag non-speech audio events (laughter, etc.). */
-  readonly tagAudioEvents?: boolean | undefined;
+  readonly tagAudioEvents?: boolean;
 }
 
 /** One spoken word's span in the transcript. */
@@ -110,10 +111,16 @@ export const make = (
           const form: Wire.SpeechToTextForm = {
             file: toBlob(bytes, options.mediaType),
             model_id: config.modelId ?? DEFAULT_MODEL_ID,
-            language_code: options.language ?? config.languageCode,
-            timestamps_granularity: config.timestampsGranularity,
-            diarize: config.diarize,
-            tag_audio_events: config.tagAudioEvents,
+            ...optionalField(
+              "language_code",
+              Option.fromUndefinedOr(options.language ?? config.languageCode),
+            ),
+            ...optionalField(
+              "timestamps_granularity",
+              Option.fromUndefinedOr(config.timestampsGranularity),
+            ),
+            ...optionalField("diarize", Option.fromUndefinedOr(config.diarize)),
+            ...optionalField("tag_audio_events", Option.fromUndefinedOr(config.tagAudioEvents)),
           };
           const [body] = yield* client.speechToText(form);
           return mapTranscript(body);

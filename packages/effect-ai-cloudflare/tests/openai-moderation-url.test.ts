@@ -31,8 +31,8 @@ import { expectFailureInstanceOf, runTest, runTestExit } from "./helpers/effect"
 
 interface CapturedRequest {
   readonly url: string;
-  readonly cfAigAuthorizationHeader: string | null;
-  readonly authorizationHeader: string | null;
+  readonly cfAigAuthorizationHeader: Option.Option<string>;
+  readonly authorizationHeader: Option.Option<string>;
   readonly body: unknown;
 }
 
@@ -42,8 +42,8 @@ const stubFetch = (respond: () => Response) => {
     const request = new Request(input, init);
     calls.push({
       url: request.url,
-      cfAigAuthorizationHeader: request.headers.get("cf-aig-authorization"),
-      authorizationHeader: request.headers.get("authorization"),
+      cfAigAuthorizationHeader: Option.fromNullishOr(request.headers.get("cf-aig-authorization")),
+      authorizationHeader: Option.fromNullishOr(request.headers.get("authorization")),
       body: await request.json(),
     });
     return respond();
@@ -98,9 +98,9 @@ describe("makeOpenAiModerationModelFromUrl", () => {
     expect(calls[0]?.url).toBe(
       "https://gateway.ai.cloudflare.com/v1/acct/website/openai/moderations",
     );
-    expect(calls[0]?.cfAigAuthorizationHeader).toBe("Bearer test-token");
+    expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
     // BYOK by default: no provider key leaves this process.
-    expect(calls[0]?.authorizationHeader).toBeNull();
+    expect(calls[0]?.authorizationHeader).toEqual(Option.none());
     expect(calls[0]?.body).toEqual({ model: OPENAI_MODERATION_MODEL, input: ["hello"] });
     expect(response.results[0]).toMatchObject({ isFlagged: false, categories: { hate: 0.01 } });
     expect(response.usage.inputTokens).toStrictEqual(Option.none());
@@ -116,8 +116,8 @@ describe("makeOpenAiModerationModelFromUrl", () => {
       ),
     );
 
-    expect(calls[0]?.cfAigAuthorizationHeader).toBe("Bearer test-token");
-    expect(calls[0]?.authorizationHeader).toBe("Bearer sk-test");
+    expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
+    expect(calls[0]?.authorizationHeader).toEqual(Option.some("Bearer sk-test"));
   });
 
   it("never fails an otherwise-valid response over a vendor field it has never heard of", async () => {
@@ -280,8 +280,8 @@ describe("makeOpenAiModerationModelFromUrl", () => {
     );
 
     expect(seen).toHaveLength(1);
-    expect(seen[0]?.status).toBe(503);
+    expect(seen[0]?.status).toEqual(Option.some(503));
     expect(seen[0]?.durationMillis).toBeGreaterThanOrEqual(0);
-    expect(seen[0]?.error).toBe(failure);
+    expect(seen[0]?.error).toEqual(Option.some(failure));
   });
 });

@@ -26,9 +26,9 @@ import * as Schema from "effect/Schema";
 /**
  * The retrieval-aware input type. Voyage prepends a prompt for asymmetric
  * retrieval — embed stored documents with `"document"` and search queries
- * with `"query"`. `null`/omitted embeds the text as-is.
+ * with `"query"`. Omitted embeds the text as-is.
  */
-export type InputType = "query" | "document" | null;
+export type InputType = "query" | "document";
 
 /** The full `/v1/embeddings` request body. */
 export interface EmbeddingRequest {
