@@ -16,13 +16,13 @@ import * as Arr from "effect/Array";
 import { pipe } from "effect/Function";
 import * as Headers from "effect/http/Headers";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import * as Str from "effect/String";
 
 /**
  * The spellings Title-Case gets wrong, keyed by lower-cased name.
  */
-const IRREGULAR_HEADER_NAMES: Record.ReadonlyRecord<string, string> = {
+const IRREGULAR_HEADER_NAMES: R.ReadonlyRecord<string, string> = {
   dnt: "DNT",
   etag: "ETag",
   te: "TE",
@@ -41,7 +41,7 @@ const IRREGULAR_HEADER_NAMES: Record.ReadonlyRecord<string, string> = {
 const canonicalHeaderName = (name: string): string => {
   const lower = Str.toLowerCase(name);
   return pipe(
-    Record.get(IRREGULAR_HEADER_NAMES, lower),
+    R.get(IRREGULAR_HEADER_NAMES, lower),
     Option.getOrElse(() => pipe(Str.split(lower, "-"), Arr.map(Str.capitalize), Arr.join("-"))),
   );
 };

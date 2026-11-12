@@ -18,7 +18,7 @@ import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
-import * as EffectRecord from "effect/Record";
+import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 import { Decision, DecisionModel } from "effect/ai";
@@ -56,7 +56,7 @@ const stubFetch = () => {
     const request = new Request(input, init);
     calls.push({
       url: request.url,
-      headers: EffectRecord.fromEntries(request.headers),
+      headers: R.fromEntries(request.headers),
       body: await request.json(),
     });
     return Response.json(clefResponse);

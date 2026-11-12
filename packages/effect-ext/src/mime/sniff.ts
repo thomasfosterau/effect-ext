@@ -8,7 +8,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import {
   ARCHIVE,
   AUDIO_VIDEO,
@@ -121,7 +121,7 @@ const isWebm = (bytes: Uint8Array): boolean => {
   while (iter < bytes.length && iter < 38) {
     const step =
       bytes[iter] === 0x42 && bytes[iter + 1] === 0x82 ? webmCandidate(bytes, iter) : iter + 1;
-    if (Predicate.isBoolean(step)) return step;
+    if (P.isBoolean(step)) return step;
     iter = step;
   }
   return false;
@@ -439,7 +439,7 @@ export const sniff = (bytes: Uint8Array, options: SniffOptions = {}): MimeType =
                 essence(mimeType) === "application/ogg"
               ? matchAudioOrVideo
               : undefined;
-        return Predicate.isUndefined(pattern)
+        return P.isUndefined(pattern)
           ? mimeType
           : Option.getOrElse(Option.map(pattern(header), computed), () => mimeType);
       },

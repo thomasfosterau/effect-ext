@@ -32,7 +32,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import * as Headers from "effect/http/Headers";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
 import { Middleware } from "@thomasfosterau/effect-jsonapi";
@@ -216,7 +216,7 @@ export const endpointPaths = (
   groups: Iterable<{ readonly endpoints: Readonly<Record<string, { readonly path: string }>> }>,
 ): ReadonlyArray<string> =>
   Arr.flatMap(Arr.fromIterable(groups), (group) =>
-    Record.values(group.endpoints).map((endpoint) => endpoint.path),
+    R.values(group.endpoints).map((endpoint) => endpoint.path),
   );
 
 /**

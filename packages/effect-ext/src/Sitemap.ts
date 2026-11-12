@@ -19,7 +19,7 @@ import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as HashSet from "effect/HashSet";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Stream from "effect/Stream";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
 import * as JsonFeedDocument from "./JsonFeed.ts";
@@ -132,9 +132,9 @@ export const escapeXml = (value: string): string =>
  */
 // oxlint-disable-next-line effect/prefer-option-over-null -- XML render seam: the result is interpolated into an optional `<lastmod>` element, and `undefined` is what `renderUrl` reads as "omit the element" — the same shape `SitemapUrl.lastmod` carries.
 export const lastmodOf = (value: unknown): string | undefined => {
-  if (Predicate.isDate(value))
+  if (P.isDate(value))
     return Number.isNaN(value.getTime()) ? undefined : value.toISOString().slice(0, 10);
-  if (Predicate.isString(value) && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  if (P.isString(value) && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
   return undefined;
 };
 

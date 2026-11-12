@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import * as Headers from "effect/http/Headers";
 import {
   appendVary,
@@ -30,7 +30,7 @@ const vary = (headers: Headers.Headers): Option.Option<string> => Headers.get(he
 describe("securityHeaders", () => {
   it("adds every baseline header to a bare response", () => {
     const headers = securityHeaders(Headers.empty);
-    Arr.forEach(Record.toEntries(SECURITY_HEADER_DEFAULTS), ([name, value]) => {
+    Arr.forEach(R.toEntries(SECURITY_HEADER_DEFAULTS), ([name, value]) => {
       expect(Headers.get(headers, name)).toStrictEqual(Option.some(value));
     });
   });
@@ -187,7 +187,7 @@ describe("the Fetch adapter", () => {
         stageNoindex(responseVary(securityHeaders(h), "negotiated"), { indexable: false }),
       );
       expect(names().toSorted()).toEqual(
-        [...Record.keys(SECURITY_HEADER_DEFAULTS), "Vary", "X-Robots-Tag"].toSorted(),
+        [...R.keys(SECURITY_HEADER_DEFAULTS), "Vary", "X-Robots-Tag"].toSorted(),
       );
     });
 
@@ -199,7 +199,7 @@ describe("the Fetch adapter", () => {
       );
       expect(names().toSorted()).toEqual(
         [
-          ...Record.keys(SECURITY_HEADER_DEFAULTS).filter((name) => name !== "X-Frame-Options"),
+          ...R.keys(SECURITY_HEADER_DEFAULTS).filter((name) => name !== "X-Frame-Options"),
           "ETag",
           "WWW-Authenticate",
         ].toSorted(),

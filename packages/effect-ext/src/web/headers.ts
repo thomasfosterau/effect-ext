@@ -10,7 +10,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import * as Headers from "effect/http/Headers";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
 
@@ -63,7 +63,7 @@ export const SECURITY_HEADER_DEFAULTS = {
  * @category policies
  */
 export const securityHeaders = (headers: Headers.Headers): Headers.Headers =>
-  Record.toEntries(SECURITY_HEADER_DEFAULTS).reduce(
+  R.toEntries(SECURITY_HEADER_DEFAULTS).reduce(
     (acc, [name, value]) => setIfAbsent(acc, name, value),
     headers,
   );

@@ -7,7 +7,7 @@
  */
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Str from "effect/String";
 import * as Length from "./length.ts";
 import { keyword, significant, single, type Values, valuesOf } from "../internal/css/values.ts";
@@ -153,16 +153,14 @@ const SYSTEM_FONTS: ReadonlyArray<string> = [
 
 /** The comma-separated groups of `values`, each without whitespace. */
 const commaGroups = (values: Values): ReadonlyArray<Values> => {
-  const commas = values.flatMap((value, index) =>
-    Predicate.isTagged(value, "Comma") ? [index] : [],
-  );
+  const commas = values.flatMap((value, index) => (P.isTagged(value, "Comma") ? [index] : []));
   return [-1, ...commas].map((start, group) =>
     significant(values.slice(start + 1, commas[group] ?? values.length)),
   );
 };
 
 const identValue = (value: ComponentValue): Option.Option<string> =>
-  Predicate.isTagged(value, "Ident") ? Option.some(value.value) : Option.none();
+  P.isTagged(value, "Ident") ? Option.some(value.value) : Option.none();
 
 /** A family name from identifiers: a lone generic keyword, or names not starting with a reserved keyword. */
 const identFamily = (idents: Arr.NonEmptyReadonlyArray<string>): Option.Option<FamilyName> => {
@@ -178,7 +176,7 @@ const identFamily = (idents: Arr.NonEmptyReadonlyArray<string>): Option.Option<F
 /** One `font-family` entry (CSS Fonts 4 §2.1). */
 const familyName = (group: Values): Option.Option<FamilyName> => {
   const [first, ...rest] = group;
-  if (Predicate.isTagged(first, "String") && Arr.isReadonlyArrayEmpty(rest)) {
+  if (P.isTagged(first, "String") && Arr.isReadonlyArrayEmpty(rest)) {
     return Option.some({ _tag: "Family", name: first.value });
   }
   return Option.flatMap(Option.all(group.map(identValue)), (idents) =>
@@ -208,7 +206,7 @@ export const parseFamily = (input: string | Values): Option.Option<ReadonlyArray
 
 /** A `font-weight` from one component value. */
 const weightOf = (value: ComponentValue): Option.Option<FontWeight> => {
-  if (Predicate.isTagged(value, "Number")) {
+  if (P.isTagged(value, "Number")) {
     return value.value >= 1 && value.value <= 1000 ? Option.some(value.value) : Option.none();
   }
   return Option.flatMap(keyword(value), (name) => {
@@ -246,7 +244,7 @@ const degreesPer = (unit: string): Option.Option<number> => {
 
 /** An oblique angle, in degrees, from -90 to 90. */
 const obliqueAngle = (value: ComponentValue): Option.Option<number> =>
-  Predicate.isTagged(value, "Dimension")
+  P.isTagged(value, "Dimension")
     ? Option.filter(
         Option.map(degreesPer(Str.toLowerCase(value.unit)), (factor) => value.value * factor),
         (degrees) => degrees >= -90 && degrees <= 90,
@@ -316,7 +314,7 @@ export const parseSize = (input: string | Values): Option.Option<FontSize> =>
   Option.flatMap(single(input), sizeOf);
 
 const lineHeightOf = (value: ComponentValue): Option.Option<LineHeight> => {
-  if (Predicate.isTagged(value, "Number")) {
+  if (P.isTagged(value, "Number")) {
     return value.value >= 0 ? Option.some({ _tag: "Number", value: value.value }) : Option.none();
   }
   if (Option.exists(keyword(value), (name) => name === "normal")) {
@@ -417,7 +415,7 @@ const sizeAndLineHeight = (
   const [sizeValue, slash, lineHeightValue, ...rest] = values;
   if (sizeValue === undefined) return Option.none();
   return Option.flatMap(sizeOf(sizeValue), (size) =>
-    Predicate.isTagged(slash, "Delim") && slash.value === "/"
+    P.isTagged(slash, "Delim") && slash.value === "/"
       ? Option.map(
           Option.flatMap(Option.fromUndefinedOr(lineHeightValue), lineHeightOf),
           (lineHeight) => ({ size, lineHeight, rest }),

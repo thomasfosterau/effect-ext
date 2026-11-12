@@ -10,7 +10,7 @@ import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import * as Stream from "effect/Stream";
 import { Encoding } from "@thomasfosterau/effect-ext/Encoding";
 import { LABELS } from "../../src/internal/encoding/labels.ts";
@@ -36,12 +36,12 @@ const failureOf = <A, E>(exit: Exit.Exit<A, E>): Option.Option<E> =>
 describe("getEncoding", () => {
   it("has the standard's 40 encodings and 228 labels", () => {
     expect(Encoding.ENCODING_NAMES).toHaveLength(40);
-    expect(Record.keys(LABELS)).toHaveLength(228);
+    expect(R.keys(LABELS)).toHaveLength(228);
   });
 
   it("agrees with the runtime's TextDecoder on every label it supports", () => {
     const disagreements = Arr.getSomes(
-      Arr.map(Record.toEntries(LABELS), ([label, name]) => {
+      Arr.map(R.toEntries(LABELS), ([label, name]) => {
         const runtime = Option.liftThrowable(() => new TextDecoder(label).encoding)();
         return Option.isSome(runtime) && runtime.value !== name.toLowerCase()
           ? Option.some([label, name, runtime.value])

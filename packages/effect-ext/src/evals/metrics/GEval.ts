@@ -40,7 +40,7 @@ import * as Str from "effect/String";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import { AiError, LanguageModel } from "effect/ai";
 import * as Prompt from "effect/ai/Prompt";
@@ -377,12 +377,10 @@ const encodeJson = Schema.encodeOption(Schema.fromJsonString(Schema.Unknown));
  * @since 0.1.0
  */
 export const renderValue = (value: unknown): string => {
-  if (Predicate.isString(value)) return value;
+  if (P.isString(value)) return value;
   if (Array.isArray(value)) {
     return value
-      .map((item) =>
-        Predicate.isString(item) ? item : Option.getOrElse(encodeJson(item), () => ""),
-      )
+      .map((item) => (P.isString(item) ? item : Option.getOrElse(encodeJson(item), () => "")))
       .join("\n");
   }
   return Option.getOrElse(encodeJson(value), () => String(value));

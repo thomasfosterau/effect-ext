@@ -8,7 +8,7 @@
  * not (reading a missing one off `globalThis` is `undefined`, never a
  * throw), so each read is typed `| undefined` for the caller to narrow.
  */
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import type { BatteryManagerLike } from "../../browser/battery.ts";
 import type { IdleDetectorLike } from "../../browser/idle-detection.ts";
 
@@ -34,7 +34,7 @@ export const ambientBroadcastChannel = (): typeof globalThis.BroadcastChannel | 
  * not one.
  */
 export const ambientEventTarget = (): EventTarget | undefined =>
-  Predicate.isFunction(globalThis.addEventListener) ? globalThis : undefined;
+  P.isFunction(globalThis.addEventListener) ? globalThis : undefined;
 
 /** `globalThis.IdleDetector`, where the agent has one (Chromium, in a window or a dedicated worker). */
 export const ambientIdleDetector = (): IdleDetectorLike | undefined => {

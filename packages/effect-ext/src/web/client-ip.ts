@@ -5,7 +5,7 @@
  * @since 0.1.0
  */
 import * as Option from "effect/Option";
-import * as String from "effect/String";
+import * as Str from "effect/String";
 
 /**
  * The platform-resolved client address (Cloudflare's `CF-Connecting-IP`,
@@ -35,7 +35,7 @@ import * as String from "effect/String";
 export const resolveClientIp = (getClientAddress: () => string): Option.Option<string> => {
   // oxlint-disable-next-line effect/avoid-try-catch -- plain framework glue, outside any Effect runtime: the resolver throws when the platform cannot determine an address, and SEC-SSRF-005 requires forwarding no IP in that case rather than falling back to the spoofable `x-forwarded-for`.
   try {
-    return Option.filter(Option.some(getClientAddress()), String.isNonEmpty);
+    return Option.filter(Option.some(getClientAddress()), Str.isNonEmpty);
   } catch {
     return Option.none();
   }
