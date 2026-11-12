@@ -25,6 +25,11 @@
  *
  * Every published package's `files` must also name `CHANGELOG.md` (#72).
  *
+ * Every optional peer must be imported only by the subpaths listed for it in
+ * `optionalPeerSubpaths`, following each built entry's chunk graph, so a
+ * subpath such as `/Encoding` loads with none of them installed (see
+ * `optionalPeerSubpaths`).
+ *
  * Every published package that declares a `bin` is also PACKED (`pnpm pack`),
  * unpacked into `node_modules/` of a scratch directory and its bin launched
  * from there (issue #42). Node refuses to type-strip TypeScript under
@@ -390,6 +395,105 @@ const checkPackedBin = (dir, manifest) => {
     rmSync(scratch, { recursive: true, force: true });
   }
 };
+
+/**
+ * Optional peers stay behind the subpaths that need them. For each published
+ * package, every optional peer (`peerDependenciesMeta[name].optional`) is
+ * listed here with the ONLY subpaths whose built module graph may import it.
+ * Every built entry's static and dynamic imports are followed through its
+ * `dist` chunks (`ts.preProcessFile`, which skips comments, so a JSDoc
+ * `@example` naming a peer is no import), and the check fails when:
+ *
+ * - a subpath reaches an optional peer it is not listed under, so a consumer
+ *   importing it without that peer installed gets `ERR_MODULE_NOT_FOUND`
+ *   (effect-document depends on `/Encoding` and `/Mime` with none of these
+ *   peers installed, and the `.` barrel must load bare too);
+ * - a listed subpath no longer reaches its peer, so the table stays a true
+ *   statement rather than an allowance;
+ * - an optional peer has no entry here, or an entry names an undeclared peer.
+ *
+ * A peer imported only by a `bin` (not an export) lists no subpaths.
+ * `@cloudflare/workers-types` is a types-only package, so no built `.js` may
+ * import it.
+ */
+const optionalPeerSubpaths = {
+  "@thomasfosterau/effect-ai-cloudflare": {
+    "@cloudflare/workers-types": [],
+  },
+  "@thomasfosterau/effect-ext": {
+    "@effect/platform-browser": ["./Browser", "./BrowserTesting"],
+    // The `effect-evals` bin's CLI only.
+    "@effect/platform-node": [],
+    "@thomasfosterau/effect-jsonapi": ["./Negotiate"],
+    "@thomasfosterau/effect-parse": [
+      "./CronExpression",
+      "./IanaTimeZone",
+      "./IsoDuration",
+      "./PosixTz",
+      "./RRule",
+      "./Rfc3339",
+      "./Rfc9557",
+      "./Robots",
+      "./Tzif",
+    ],
+  },
+};
+
+/** The bare package names the built module graph rooted at `entry` imports. */
+const packageImportsOf = (entry) => {
+  const seen = new Set();
+  const packages = new Set();
+  const pending = [entry];
+  while (pending.length > 0) {
+    const file = pending.pop();
+    if (seen.has(file)) continue;
+    seen.add(file);
+    const { importedFiles } = ts.preProcessFile(readFileSync(file, "utf8"), true, true);
+    for (const { fileName } of importedFiles) {
+      if (fileName.startsWith(".")) pending.push(path.resolve(path.dirname(file), fileName));
+      else if (!fileName.startsWith("node:")) {
+        const parts = fileName.split("/");
+        packages.add(parts.slice(0, fileName.startsWith("@") ? 2 : 1).join("/"));
+      }
+    }
+  }
+  return packages;
+};
+
+for (const { dir, manifest } of published) {
+  const optional = Object.entries(manifest.peerDependenciesMeta ?? {})
+    .filter(([, meta]) => meta.optional === true)
+    .map(([name]) => name)
+    .toSorted();
+  const table = optionalPeerSubpaths[manifest.name] ?? {};
+  const problems = [
+    ...optional
+      .filter((peer) => !(peer in table))
+      .map((peer) => `optional peer ${peer} has no entry in optionalPeerSubpaths`),
+    ...Object.keys(table)
+      .filter((peer) => !optional.includes(peer))
+      .map((peer) => `optionalPeerSubpaths names ${peer}, which is not an optional peer`),
+  ];
+  const exports = manifest.publishConfig?.exports ?? manifest.exports;
+  for (const [subpath, conditions] of Object.entries(exports)) {
+    const reached = packageImportsOf(path.join(dir, conditions.import ?? conditions.default));
+    for (const peer of optional) {
+      const allowed = (table[peer] ?? []).includes(subpath);
+      if (reached.has(peer) && !allowed) problems.push(`${subpath} imports optional peer ${peer}`);
+      if (!reached.has(peer) && allowed) {
+        problems.push(`${subpath} is listed for ${peer} but no longer imports it`);
+      }
+    }
+  }
+  if (problems.length > 0) {
+    failures++;
+    console.error(`FAIL ${manifest.name} optional peers:\n  ${problems.join("\n  ")}`);
+  } else if (optional.length > 0) {
+    console.log(
+      `ok   ${manifest.name} optional peers imported only by their subpaths (${optional.join(", ")})`,
+    );
+  }
+}
 
 for (const dirName of readdirSync(packagesDir).toSorted()) {
   const dir = path.join(packagesDir, dirName);
