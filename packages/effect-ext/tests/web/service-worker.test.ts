@@ -43,13 +43,11 @@ import {
 const URL_A = "https://example.com/a";
 
 /** A scripted `fetch`: records every call and answers with `respond`. */
-const stubFetch = (
-  respond: (request: Request, init: RequestInit | undefined) => Promise<Response>,
-) => {
-  const calls: Array<{ readonly request: Request; readonly init: RequestInit | undefined }> = [];
+const stubFetch = (respond: (request: Request, init?: RequestInit) => Promise<Response>) => {
+  const calls: Array<{ readonly request: Request; readonly init: Option.Option<RequestInit> }> = [];
   const fetch: typeof globalThis.fetch = (input, init) => {
     const request = input instanceof Request ? input : new Request(input);
-    calls.push({ request, init });
+    calls.push({ request, init: Option.fromUndefinedOr(init) });
     return respond(request, init);
   };
   return { fetch, calls };
@@ -323,7 +321,7 @@ describe("cacheFirst", () => {
 });
 
 /** A network that answers after `ms`, or rejects when its signal aborts. */
-const slow = (ms: number) => (_request: Request, init: RequestInit | undefined) =>
+const slow = (ms: number) => (_request: Request, init?: RequestInit) =>
   new Promise<Response>((resolve, reject) => {
     const timer = setTimeout(() => resolve(new Response("fresh")), ms);
     init?.signal?.addEventListener("abort", () => {
@@ -363,7 +361,12 @@ describe("networkFirst", () => {
     const strategy = networkFirst({ cacheName: "pages", timeout: "20 millis" });
     const response = await h.run(strategy(new Request(URL_A)));
     expect(await response.text()).toBe("stale");
-    expect(h.network.calls[0]?.init?.signal?.aborted).toBe(true);
+    expect(
+      Option.fromUndefinedOr(h.network.calls[0]).pipe(
+        Option.flatMap((call) => call.init),
+        Option.map((init) => init.signal?.aborted),
+      ),
+    ).toEqual(Option.some(true));
   });
 
   it("keeps waiting on the network when the timeout elapses on a miss", async () => {
@@ -495,11 +498,11 @@ describe("route and isNavigationRequest", () => {
 /** A fake `FetchEvent` that records what the listener did with it. */
 const fakeFetchEvent = (url: string) => {
   const extended: Array<Promise<unknown>> = [];
-  let response: PromiseLike<Response> | Response | undefined;
+  let response: Option.Option<PromiseLike<Response> | Response> = Option.none();
   const event: FetchEventLike = {
     request: new Request(url),
     respondWith: (answer) => {
-      response = answer;
+      response = Option.some(answer);
     },
     waitUntil: (promise) => {
       extended.push(promise);
@@ -508,8 +511,8 @@ const fakeFetchEvent = (url: string) => {
   return {
     event,
     extended,
-    responded: () => response !== undefined,
-    response: () => Promise.resolve(response),
+    responded: () => Option.isSome(response),
+    response: () => Promise.resolve(Option.getOrUndefined(response)),
   };
 };
 

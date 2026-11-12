@@ -327,8 +327,8 @@ export const isLocaleInvariantAsset: (pathname: string) => boolean =
  * @category models
  */
 export interface RouteClassifier {
-  readonly isLocaleInvariantAsset?: ((pathname: string) => boolean) | undefined;
-  readonly isFormatNegotiatedAsset?: ((pathname: string) => boolean) | undefined;
+  readonly isLocaleInvariantAsset?: (pathname: string) => boolean;
+  readonly isFormatNegotiatedAsset?: (pathname: string) => boolean;
 }
 
 /**

@@ -617,7 +617,7 @@ self.addEventListener("message", onMessage);
 - `route(match, handle)`, `fetchListener(routes)` — `match` is synchronous because `respondWith` must be called during dispatch; the first match answers, and no match leaves the request to the browser. A failed answer rejects `respondWith` (a network error to the page).
 - `extendableListener(handle)` — `install` / `activate`: the effect's promise goes to `waitUntil`, so a failure fails the install. `messageListener(schema, handle)` — decodes `event.data` first; an undecodable message is logged and dropped.
 - `EventLifetime` — how background work outlives a response: bound to the event's `waitUntil` inside a listener, detached outside one. Background failures are logged at `Warning`.
-- Persistent notifications, shown through the worker's registration (effect-web#108 decided they live here, not in `Browser`: they outlive the page, and their events reach the worker). `Registration` is a context reference defaulting to `self.registration` (a page provides `await navigator.serviceWorker.ready`); `showNotification(title, options?)` and `getNotifications({ tag? })` fail with `ShowNotificationError` (`operation`, `reason`: `Unsupported`, `NotAllowed`, `InvalidData`, `Failed`). `notificationClickListener(schema, handle)` / `notificationCloseListener(schema, handle)` decode `notification.data` first, as `messageListener` does, and run `handle` inside `waitUntil`.
+- Persistent notifications, shown through the worker's registration (effect-web#108 decided they live here, not in `Browser`: they outlive the page, and their events reach the worker). `Registration` is a context reference holding an `Option` of the registration, defaulting to `self.registration` (`Option.none()` where there is none; a page provides `Option.some(await navigator.serviceWorker.ready)`); `showNotification(title, options?)` and `getNotifications({ tag? })` fail with `ShowNotificationError` (`operation`, `reason`: `Unsupported`, `NotAllowed`, `InvalidData`, `Failed`). `notificationClickListener(schema, handle)` / `notificationCloseListener(schema, handle)` decode `notification.data` first, as `messageListener` does, and run `handle` inside `waitUntil`.
 - `memoryCacheStorage({ fetch? })` — an in-memory `CacheStorage` for tests, rejecting what the browser's `put` rejects.
 
 #### `Browser` — platform services
@@ -679,19 +679,19 @@ const robotsTxt = parse(`
 
 isAllowed(robotsTxt, "MyBot", "/admin"); // false
 isAllowed(robotsTxt, "MyBot", "/admin/public"); // true
-getCrawlDelay(robotsTxt, "MyBot"); // 10
+getCrawlDelay(robotsTxt, "MyBot"); // Option.some(10)
 getSitemaps(robotsTxt); // ["https://example.com/sitemap.xml"]
 encode(robotsTxt); // the canonical text
 ```
 
 | Export | What it is |
 | --- | --- |
-| `Rule`, `RobotGroup`, `RobotsTxt` | `Data.Class` values with structural equality. `RobotGroup.crawlDelay` is `number \| undefined`. |
+| `Rule`, `RobotGroup`, `RobotsTxt` | `Data.Class` values with structural equality. `RobotGroup.crawlDelay` is an `Option<number>` (required; `Option.none()` when the group has no `Crawl-delay`). |
 | `RuleSchema`, `RobotGroupSchema`, `RobotsTxtSchema` | `Schema.instanceOf` of each class. |
 | `RobotsTxtFromString` | `Schema.String` → `RobotsTxt`: the parser is the decode, the encoder the encode. `Schema.decodeUnknownEffect(RobotsTxtFromString)(text)` for the Effect form. |
 | `parse(text)`, `encode(robotsTxt)` | The synchronous forms. `parse` never throws: unknown lines are ignored, rules before any `User-agent` are dropped, `#` starts a comment, LF, CRLF and a bare CR all end a line (RFC 9309 §2.2). |
 | `isAllowed(robotsTxt, userAgent, path)` | Group selection by the longest matching product token (exact or prefix, case-insensitive; `*` matches everything, last); rule selection by the longest matching pattern, `Allow` winning a tie; `*` wildcards and `$` anchors; a query string or fragment on `path` is stripped. No group or no matching rule means allowed. |
-| `getCrawlDelay`, `getSitemaps` | The selected group's `Crawl-delay` as an `Option`; every `Sitemap:` line. |
+| `getCrawlDelay`, `getSitemaps` | The selected group's `Crawl-delay` as an `Option<number>` (`None` when no group matches or it has none); every `Sitemap:` line. |
 
 Group selection follows RFC 9309 §2.2.1: the **product token** matches exactly or as a prefix, never as a **substring** (`userAgent.includes(token)`). A `User-agent: Google` group binds `Googlebot`; a `User-agent: bot` group does not bind `Googlebot`. Both sides are compared by their product token, the leading run of letters, `_` and `-`, so a version or comment is ignored: `User-agent: ExampleBot/1.0` binds the `ExampleBot` crawler, and a crawler passing `ExampleBot/1.0 (+https://…)` finds its `User-agent: ExampleBot` group.
 
