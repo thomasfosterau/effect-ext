@@ -19,3 +19,5 @@ The AI abstractions and the evals toolkit now spell absence the way the rest of 
 - `GEvalCase`, `GEvalConversationalCase` (now a type alias) and `RagCase` are `Pick`s of the `Golden` / `EvalCase` decoded types instead of hand-written `?: T | undefined` members, so they still accept a decoded case.
 
 The provider packages' published code changed only to build the new `ProviderResponse` shapes; their own APIs are unchanged.
+
+`evals/Cache.hashKey` now canonicalises a golden to `Schema.Json` before hashing. The JSON it hashes is the same as before for every value `JSON.stringify` could already encode, so existing cache keys keep their digests (a pinned-digest test checks this). One key changes: a golden holding a `bigint` used to make `hashKey` die, because `JSON.stringify` throws on one; it is now keyed as `{ "__bigint": "<digits>" }`.

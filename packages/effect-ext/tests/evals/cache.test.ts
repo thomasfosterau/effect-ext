@@ -6,11 +6,9 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
-import * as Exit from "effect/Exit";
 import { Cache } from "../../src/evals/index.ts";
-import { runTest, runTestExit } from "./helpers/effect.ts";
+import { runTest } from "./helpers/effect.ts";
 
 const hash = (input: Cache.CacheKeyInput) => runTest(Cache.hashKey(input));
 
@@ -35,11 +33,12 @@ describe("Cache.hashKey", () => {
     expect(await hash(base)).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("dies on a golden JSON cannot serialise (a BigInt): a caller bug, not a cache miss", async () => {
-    const exit = await runTestExit(Cache.hashKey({ ...base, golden: { input: 1n } }));
-    expect(Exit.isFailure(exit)).toBe(true);
-    if (!Exit.isFailure(exit)) return;
-    expect(Cause.hasDies(exit.cause)).toBe(true);
+  it("keys a BigInt as its digits, where JSON.stringify would throw, distinct from the number and the string", async () => {
+    const big = await hash({ ...base, golden: { input: 1n } });
+    expect(big).toMatch(/^[0-9a-f]{64}$/);
+    expect(big).toBe(await hash({ ...base, golden: { input: 1n } }));
+    expect(big).not.toBe(await hash({ ...base, golden: { input: 1 } }));
+    expect(big).not.toBe(await hash({ ...base, golden: { input: "1" } }));
   });
 
   it("keeps the digest of a varied golden pinned, so existing cache entries stay addressable", async () => {
