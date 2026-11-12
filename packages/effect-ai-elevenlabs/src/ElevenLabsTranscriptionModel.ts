@@ -3,7 +3,8 @@
  * `effect-ext`'s `TranscriptionModel` service (speech-to-text) over Scribe.
  * It accepts audio as bytes or a stream, uploads it as `multipart/form-data`,
  * and maps the Scribe transcript into the neutral response: the full text,
- * per-word segment timestamps, and the detected language.
+ * per-word segment timestamps, and the detected language. The latest word end
+ * is reported as `usage.durationSeconds`.
  *
  * Scribe is a whole-file endpoint, so a streamed input is drained to a `Blob`
  * before upload — the only audio buffered anywhere in this package, and bounded
