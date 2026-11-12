@@ -5,17 +5,17 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import { Shorthand, Syntax, Token } from "@thomasfosterau/effect-ext/Css";
 
 /** Serialise one component value back to text, for comparison. */
 const textOf = (value: Token.ComponentValue): string => {
-  if (Predicate.isTagged(value, "Ident")) return value.value;
-  if (Predicate.isTagged(value, "Dimension")) return `${value.representation}${value.unit}`;
-  if (Predicate.isTagged(value, "Number")) return value.representation;
-  if (Predicate.isTagged(value, "Percentage")) return `${value.representation}%`;
-  if (Predicate.isTagged(value, "Hash")) return `#${value.value}`;
-  if (Predicate.isTagged(value, "Func")) return `${value.name}(…)`;
+  if (P.isTagged(value, "Ident")) return value.value;
+  if (P.isTagged(value, "Dimension")) return `${value.representation}${value.unit}`;
+  if (P.isTagged(value, "Number")) return value.representation;
+  if (P.isTagged(value, "Percentage")) return `${value.representation}%`;
+  if (P.isTagged(value, "Hash")) return `#${value.value}`;
+  if (P.isTagged(value, "Func")) return `${value.name}(…)`;
   return value._tag;
 };
 
@@ -25,7 +25,7 @@ const text = (values: ReadonlyArray<Token.ComponentValue>): string => values.map
 /** Expand the one declaration in `css` to `name: value[!]` strings, or `None`. */
 const expanded = (css: string): Option.Option<ReadonlyArray<string>> => {
   const [declaration] = Syntax.parseDeclarationList(css);
-  if (!Predicate.isTagged(declaration, "Declaration")) return Option.none();
+  if (!P.isTagged(declaration, "Declaration")) return Option.none();
   return Option.map(Shorthand.expand(declaration), (longhands) =>
     longhands.map((one) => `${one.name}: ${text(one.value)}${one.important ? "!" : ""}`),
   );

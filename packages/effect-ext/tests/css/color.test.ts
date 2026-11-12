@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import { Color, Length, Syntax } from "@thomasfosterau/effect-ext/Css";
 import colorFunction from "./fixtures/css-parsing-tests/color_function_4.json" with { type: "json" };
 import hex3 from "./fixtures/css-parsing-tests/color_hexadecimal_3.json" with { type: "json" };
@@ -82,10 +82,10 @@ describe("css-parsing-tests colour vectors", () => {
 });
 
 const inColorForm = (color: Color.Color): string =>
-  Predicate.isTagged(color, "Rgb") ||
-  Predicate.isTagged(color, "Named") ||
-  Predicate.isTagged(color, "Hsl") ||
-  Predicate.isTagged(color, "Hwb")
+  P.isTagged(color, "Rgb") ||
+  P.isTagged(color, "Named") ||
+  P.isTagged(color, "Hsl") ||
+  P.isTagged(color, "Hwb")
     ? Option.getOrElse(
         Option.map(Color.toSrgb(color), ({ red, green, blue, alpha }) =>
           Color.serialize({
@@ -111,7 +111,7 @@ const level5 = (input: string): (typeof functions5)[number] => {
     return Option.match(parsed, {
       onNone: () => [null, null],
       onSome: (color) =>
-        Predicate.isTagged(color, "LightDark")
+        P.isTagged(color, "LightDark")
           ? [inColorForm(color.light), inColorForm(color.dark)]
           : [null, null],
     });
@@ -122,7 +122,7 @@ const level5 = (input: string): (typeof functions5)[number] => {
 describe("css-parsing-tests Color 5 vectors (color_functions_5)", () => {
   it("matches every vector", () => {
     const cases = functions5.flatMap((input, index) =>
-      index % 2 === 0 && Predicate.isString(input) ? [[input, functions5[index + 1]] as const] : [],
+      index % 2 === 0 && P.isString(input) ? [[input, functions5[index + 1]] as const] : [],
     );
     expect(cases.length).toBe(20);
     expect(cases.map(([input]) => [input, level5(input)])).toEqual(cases);
@@ -200,8 +200,8 @@ describe("keywords and component values", () => {
 
   it("parses a component value already produced by Syntax", () => {
     const [declaration] = Syntax.parseDeclarationList("color: #f00");
-    const value = Predicate.isTagged(declaration, "Declaration")
-      ? declaration.value.find((v) => !Predicate.isTagged(v, "Whitespace"))
+    const value = P.isTagged(declaration, "Declaration")
+      ? declaration.value.find((v) => !P.isTagged(v, "Whitespace"))
       : undefined;
     expect(
       Option.map(Option.flatMap(Option.fromNullishOr(value), Color.parse), Color.serialize),

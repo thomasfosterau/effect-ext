@@ -23,13 +23,13 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Config from "effect/Config";
-import * as Predicate from "effect/Predicate";
+import * as P from "effect/Predicate";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
-import * as EffectRecord from "effect/Record";
+import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
@@ -71,7 +71,7 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
     const captured: CapturedRequest = {
       url: request.url,
       authorization: request.headers.get("authorization"),
-      headers: EffectRecord.fromEntries(request.headers),
+      headers: R.fromEntries(request.headers),
       body,
     };
     calls.push(captured);
@@ -94,9 +94,8 @@ const jsonResponse = (body: unknown, status = 200): Response =>
 
 const sseResponse = (frames: ReadonlyArray<unknown>): Response => {
   const text =
-    frames
-      .map((frame) => `data: ${Predicate.isString(frame) ? frame : toJson(frame)}\n\n`)
-      .join("") + "data: [DONE]\n\n";
+    frames.map((frame) => `data: ${P.isString(frame) ? frame : toJson(frame)}\n\n`).join("") +
+    "data: [DONE]\n\n";
   return new Response(text, {
     status: 200,
     headers: { "content-type": "text/event-stream" },

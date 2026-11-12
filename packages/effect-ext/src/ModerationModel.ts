@@ -30,8 +30,8 @@ import * as Arr from "effect/Array";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as EffectRecord from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Schema from "effect/Schema";
 import { AiError, LanguageModel, type Prompt } from "effect/ai";
 
@@ -218,7 +218,7 @@ const emptyResponse = (): ModerationResponse =>
   });
 
 const isEmptyPartList = (input: ModerationInput): boolean =>
-  !Predicate.isString(input) && Arr.isReadonlyArrayEmpty(input);
+  !P.isString(input) && Arr.isReadonlyArrayEmpty(input);
 
 const mapProviderResponse = (
   inputCount: number,
@@ -232,7 +232,7 @@ const mapProviderResponse = (
     );
   }
   const outOfRange = Arr.findFirst(response.results, (result) =>
-    Arr.findFirst(EffectRecord.toEntries(result.categories), ([category, score]) =>
+    Arr.findFirst(R.toEntries(result.categories), ([category, score]) =>
       !Number.isFinite(score) || score < 0 || score > 1
         ? Option.some(
             `Provider returned score ${score} for category '${category}', expected a value between 0 and 1`,
@@ -328,7 +328,7 @@ const PROMPT_HEADER: ReadonlyArray<string> = [
   "Inputs:",
 ];
 
-const isTextInput = (input: ModerationInput): input is string => Predicate.isString(input);
+const isTextInput = (input: ModerationInput): input is string => P.isString(input);
 
 /**
  * The prompt for a batch. A text-only batch is one string. A batch with a

@@ -5,11 +5,11 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import * as Record from "effect/Record";
+import * as R from "effect/Record";
 import { Color } from "@thomasfosterau/effect-ext/Css";
 import vectors from "./fixtures/wpt-color-invalid.json" with { type: "json" };
 
-describe.each(Record.toEntries(vectors))("WPT %s", (_file, inputs) => {
+describe.each(R.toEntries(vectors))("WPT %s", (_file, inputs) => {
   it.each(inputs)("%s", (input) => {
     expect(Color.parse(input)).toStrictEqual(Option.none());
   });

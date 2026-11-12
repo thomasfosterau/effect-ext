@@ -6,8 +6,8 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
-import * as Record from "effect/Record";
+import * as P from "effect/Predicate";
+import * as R from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { UriTemplate } from "@thomasfosterau/effect-ext/UriTemplate";
@@ -49,13 +49,13 @@ const matcherOf = (source: string): UriTemplate.Matcher =>
   });
 
 /** Every suite case whose template compiles for matching and whose expected expansion is one string. */
-const matchable = Record.toEntries(
+const matchable = R.toEntries(
   Schema.decodeUnknownSync(Suite)({ ...specExamples, ...specExamplesBySection, ...extendedTests }),
 ).flatMap(([group, { testcases }]) =>
   testcases.flatMap(([source, expected]) => {
     const parsed = UriTemplate.parse(source);
     const compiles =
-      Predicate.isString(expected) &&
+      P.isString(expected) &&
       Result.isSuccess(parsed) &&
       Result.isSuccess(UriTemplate.matcher(parsed.success));
     return compiles ? [{ group, source, expected }] : [];
