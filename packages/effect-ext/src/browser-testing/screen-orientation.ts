@@ -38,11 +38,11 @@ export type Refusal = "NotSupportedError" | "SecurityError" | "AbortError";
  * @category models
  */
 export interface Options {
-  readonly supported?: boolean | undefined;
-  readonly type?: OrientationType | undefined;
-  readonly angle?: number | undefined;
-  readonly lockable?: boolean | undefined;
-  readonly refuse?: Refusal | undefined;
+  readonly supported?: boolean;
+  readonly type?: OrientationType;
+  readonly angle?: number;
+  readonly lockable?: boolean;
+  readonly refuse?: Refusal;
 }
 
 /**
@@ -53,7 +53,7 @@ export interface Options {
  * - `locked` — the orientation the document is locked to; `None` when
  *   unlocked.
  * - `setRefusal` — refuse later locks with this rejection, or grant them
- *   again with `undefined`.
+ *   again by calling it with no argument.
  *
  * @since 0.2.0
  * @category services
@@ -63,7 +63,7 @@ export class Control extends Context.Service<
   {
     readonly rotate: (type: OrientationType, angle?: number) => Effect.Effect<void>;
     readonly locked: Effect.Effect<Option.Option<OrientationLockType>>;
-    readonly setRefusal: (refusal: Refusal | undefined) => Effect.Effect<void>;
+    readonly setRefusal: (refusal?: Refusal) => Effect.Effect<void>;
   }
 >()("@thomasfosterau/effect-ext/BrowserTesting/ScreenOrientationControl") {}
 
@@ -89,8 +89,8 @@ const NATURAL_ANGLE = {
 interface State {
   type: OrientationType;
   angle: number;
-  locked: OrientationLockType | undefined;
-  refusal: Refusal | undefined;
+  locked: Option.Option<OrientationLockType>;
+  refusal: Option.Option<Refusal>;
 }
 
 /** An orientation whose readings are the double's live state. */
@@ -107,7 +107,7 @@ class TestOrientation extends EventTarget {
     return this.#state.angle;
   }
   unlock(): void {
-    this.#state.locked = undefined;
+    this.#state.locked = Option.none();
   }
 }
 
@@ -119,10 +119,13 @@ class LockableTestOrientation extends TestOrientation {
     this.#state = state;
   }
   lock(orientation: OrientationLockType): Promise<void> {
-    const refusal = this.#state.refusal;
-    if (refusal !== undefined) return Promise.reject(new DOMException("Lock refused", refusal));
-    this.#state.locked = orientation;
-    return Promise.resolve();
+    return Option.match(this.#state.refusal, {
+      onSome: (refusal) => Promise.reject(new DOMException("Lock refused", refusal)),
+      onNone: () => {
+        this.#state.locked = Option.some(orientation);
+        return Promise.resolve();
+      },
+    });
   }
 }
 
@@ -149,8 +152,8 @@ export const make = (options?: Options): Fixture => {
   const state: State = {
     type,
     angle: options?.angle ?? NATURAL_ANGLE[type],
-    locked: undefined,
-    refusal: options?.refuse,
+    locked: Option.none(),
+    refusal: Option.fromUndefinedOr(options?.refuse),
   };
   const orientation =
     options?.lockable === false ? new TestOrientation(state) : new LockableTestOrientation(state);
@@ -165,10 +168,10 @@ export const make = (options?: Options): Fixture => {
           state.angle = nextAngle;
           orientation.dispatchEvent(new Event("change"));
         }),
-      locked: Effect.sync(() => Option.fromUndefinedOr(state.locked)),
+      locked: Effect.sync(() => state.locked),
       setRefusal: (refusal) =>
         Effect.sync(() => {
-          state.refusal = refusal;
+          state.refusal = Option.fromUndefinedOr(refusal);
         }),
     }),
   };

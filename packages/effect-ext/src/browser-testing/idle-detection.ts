@@ -39,11 +39,11 @@ export type Permission = "granted" | "denied" | "prompt";
  * @category models
  */
 export interface Options {
-  readonly supported?: boolean | undefined;
-  readonly permission?: Permission | undefined;
-  readonly answer?: "granted" | "denied" | undefined;
-  readonly user?: IdleState["user"] | undefined;
-  readonly screen?: IdleState["screen"] | undefined;
+  readonly supported?: boolean;
+  readonly permission?: Permission;
+  readonly answer?: "granted" | "denied";
+  readonly user?: IdleState["user"];
+  readonly screen?: IdleState["screen"];
 }
 
 /**

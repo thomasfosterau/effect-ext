@@ -17,6 +17,7 @@ import * as Context from "effect/Context";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import type * as Stream from "effect/Stream";
@@ -120,7 +121,7 @@ export class WakeLock extends Context.Service<
  * import * as Effect from "effect/Effect"
  * import { WakeLock } from "@thomasfosterau/effect-ext/Browser"
  *
- * const wakeLock = WakeLock.make(undefined)
+ * const wakeLock = WakeLock.make()
  * Effect.runPromise(Effect.flip(Effect.scoped(wakeLock.acquire))).then((error) =>
  *   console.log(error.reason), // "Unsupported"
  * )
@@ -129,7 +130,7 @@ export class WakeLock extends Context.Service<
  * @since 0.2.0
  * @category constructors
  */
-export const make = (wakeLock: WakeLockLike | undefined): WakeLock["Service"] => {
+export const make = (wakeLock?: WakeLockLike): WakeLock["Service"] => {
   if (wakeLock === undefined) {
     return WakeLock.of({
       supported: false,
@@ -185,7 +186,11 @@ export const make = (wakeLock: WakeLockLike | undefined): WakeLock["Service"] =>
  * @category layers
  */
 export const layer: Layer.Layer<WakeLock> = Layer.sync(WakeLock, () =>
-  make(ambientNavigator()?.wakeLock),
+  make(
+    Option.getOrUndefined(
+      Option.flatMap(ambientNavigator(), (navigator) => Option.fromUndefinedOr(navigator.wakeLock)),
+    ),
+  ),
 );
 
 /**

@@ -10,6 +10,7 @@
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import {
   make as makeNotifications,
   Notifications,
@@ -32,10 +33,10 @@ import {
  * @category models
  */
 export interface Options {
-  readonly supported?: boolean | undefined;
-  readonly permission?: NotificationPermission | undefined;
-  readonly answer?: NotificationPermission | undefined;
-  readonly userActivation?: boolean | undefined;
+  readonly supported?: boolean;
+  readonly permission?: NotificationPermission;
+  readonly answer?: NotificationPermission;
+  readonly userActivation?: boolean;
 }
 
 /**
@@ -47,7 +48,7 @@ export interface Options {
  */
 export interface Shown {
   readonly title: string;
-  readonly options: NotificationOptions | undefined;
+  readonly options: Option.Option<NotificationOptions>;
   readonly closed: boolean;
 }
 
@@ -103,9 +104,9 @@ interface State {
 /** An in-memory notification: `closed` is set by `close` (or a dismissal), never reset. */
 class TestNotification extends EventTarget implements NotificationLike, Shown {
   readonly title: string;
-  readonly options: NotificationOptions | undefined;
+  readonly options: Option.Option<NotificationOptions>;
   closed = false;
-  constructor(title: string, options: NotificationOptions | undefined) {
+  constructor(title: string, options: Option.Option<NotificationOptions>) {
     super();
     this.title = title;
     this.options = options;
@@ -168,7 +169,7 @@ export const make = (options?: Options): Fixture => {
       return Promise.resolve(state.permission);
     }
     constructor(title: string, init?: NotificationOptions) {
-      super(title, init);
+      super(title, Option.fromUndefinedOr(init));
       shown.push(this);
     }
   };
@@ -176,8 +177,14 @@ export const make = (options?: Options): Fixture => {
     Effect.sync(() => shown[index]?.fire(type));
   return {
     notifications: makeNotifications({
-      Notification: options?.supported === false ? undefined : Notification,
-      userActivation: options?.userActivation === undefined ? undefined : new UserActivation(state),
+      ...Option.match(
+        Option.filter(Option.some(Notification), () => options?.supported !== false),
+        { onNone: () => ({}), onSome: (constructor) => ({ Notification: constructor }) },
+      ),
+      ...Option.match(Option.fromUndefinedOr(options?.userActivation), {
+        onNone: () => ({}),
+        onSome: () => ({ userActivation: new UserActivation(state) }),
+      }),
     }),
     control: Control.of({
       shown: Effect.sync(() => [...shown]),

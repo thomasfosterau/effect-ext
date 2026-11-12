@@ -343,7 +343,7 @@ export interface AuthOutcomeFacts {
    * `x-api-key`). A key is a credential just like a cookie: its presence
    * takes the request off the cookieless fast path. Defaults to `false`.
    */
-  readonly hasApiKey?: boolean | undefined;
+  readonly hasApiKey?: boolean;
   /** The session call threw or failed. */
   readonly sessionError: boolean;
   /** The session call ran and returned a session. */

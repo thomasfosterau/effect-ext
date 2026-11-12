@@ -31,7 +31,7 @@ export interface Options {
    *
    * @default "rerank-v3.5"
    */
-  readonly model?: string | undefined;
+  readonly model?: string;
 }
 
 /**

@@ -51,7 +51,7 @@ export interface NetworkInformationLike extends Stream.EventListener {
  * @category models
  */
 export interface StorageManagerLike {
-  estimate(): Promise<{ readonly usage?: number | undefined; readonly quota?: number | undefined }>;
+  estimate(): Promise<{ readonly usage?: number; readonly quota?: number }>;
   persisted(): Promise<boolean>;
   persist(): Promise<boolean>;
 }
@@ -66,22 +66,22 @@ export interface StorageManagerLike {
  * @category models
  */
 export interface NavigatorLike {
-  readonly userAgent?: string | undefined;
-  readonly language?: string | undefined;
-  readonly languages?: ReadonlyArray<string> | undefined;
-  readonly onLine?: boolean | undefined;
-  readonly cookieEnabled?: boolean | undefined;
-  readonly hardwareConcurrency?: number | undefined;
-  readonly maxTouchPoints?: number | undefined;
-  readonly pdfViewerEnabled?: boolean | undefined;
-  readonly webdriver?: boolean | undefined;
-  readonly deviceMemory?: number | undefined;
-  readonly globalPrivacyControl?: boolean | undefined;
-  readonly connection?: NetworkInformationLike | undefined;
+  readonly userAgent?: string;
+  readonly language?: string;
+  readonly languages?: ReadonlyArray<string>;
+  readonly onLine?: boolean;
+  readonly cookieEnabled?: boolean;
+  readonly hardwareConcurrency?: number;
+  readonly maxTouchPoints?: number;
+  readonly pdfViewerEnabled?: boolean;
+  readonly webdriver?: boolean;
+  readonly deviceMemory?: number;
+  readonly globalPrivacyControl?: boolean;
+  readonly connection?: NetworkInformationLike;
   readonly userActivation?:
     | { readonly isActive: boolean; readonly hasBeenActive: boolean }
     | undefined;
-  readonly storage?: StorageManagerLike | undefined;
+  readonly storage?: StorageManagerLike;
   share?(data?: ShareData): Promise<void>;
   canShare?(data?: ShareData): boolean;
   vibrate?(pattern: VibratePattern): boolean;
@@ -98,8 +98,8 @@ export interface NavigatorLike {
  * @category models
  */
 export interface NavigatorEnvironment {
-  readonly navigator: NavigatorLike | undefined;
-  readonly events: Stream.EventListener | undefined;
+  readonly navigator?: NavigatorLike;
+  readonly events?: Stream.EventListener;
 }
 
 /**
@@ -311,7 +311,7 @@ export class Navigator extends Context.Service<
   }
 >()("@thomasfosterau/effect-ext/Browser/Navigator") {}
 
-const readLanguages = (navigator: NavigatorLike | undefined): ReadonlyArray<string> =>
+const readLanguages = (navigator?: NavigatorLike): ReadonlyArray<string> =>
   Arr.match(navigator?.languages ?? [], {
     onNonEmpty: (languages) => [...languages],
     onEmpty: () => {
@@ -343,7 +343,7 @@ const constant = <A>(read: () => A): Stream.Stream<A> => Stream.fromEffect(Effec
 
 const tryCall = <A>(
   operation: NavigatorOperation,
-  call: (() => Promise<A>) | undefined,
+  call?: () => Promise<A>,
 ): Effect.Effect<A, NavigatorError> =>
   call === undefined
     ? Effect.fail(navigatorError(operation, "Unsupported", undefined))
@@ -365,7 +365,6 @@ const tryCall = <A>(
  *
  * const navigator = Navigator.make({
  *   navigator: { userAgent: "Example/1.0", languages: ["en-AU", "en"], onLine: true },
- *   events: undefined,
  * })
  * Effect.runPromise(navigator.info).then((info) => console.log(info.languages)) // ["en-AU", "en"]
  * ```
@@ -476,8 +475,14 @@ export const make = (environment: NavigatorEnvironment): Navigator["Service"] =>
  */
 export const layer: Layer.Layer<Navigator> = Layer.sync(Navigator, () =>
   make({
-    navigator: ambientNavigator(),
-    events: ambientEventTarget(),
+    ...Option.match(ambientNavigator(), {
+      onNone: () => ({}),
+      onSome: (navigator) => ({ navigator }),
+    }),
+    ...Option.match(ambientEventTarget(), {
+      onNone: () => ({}),
+      onSome: (events) => ({ events }),
+    }),
   }),
 );
 

@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import * as Result from "effect/Result";
 import {
@@ -610,7 +611,7 @@ describe("followRedirects (the Effect form)", () => {
   });
 
   it("passes the shared init (signal included) to every hop with redirect: manual", async () => {
-    const seen: Array<RequestInit | undefined> = [];
+    const seen: Array<Option.Option<RequestInit>> = [];
     const controller = new AbortController();
     const { finalUrl } = await Effect.runPromise(
       followRedirects(
@@ -618,7 +619,7 @@ describe("followRedirects (the Effect form)", () => {
         { signal: controller.signal, headers: { "user-agent": "test" } },
         {
           fetch: (input, init) => {
-            seen.push(init);
+            seen.push(Option.fromUndefinedOr(init));
             return Promise.resolve(
               urlOf(input) === "https://example.com/" ? redirectTo("/final") : new Response("ok"),
             );
@@ -629,8 +630,8 @@ describe("followRedirects (the Effect form)", () => {
     expect(finalUrl).toBe("https://example.com/final");
     expect(seen).toHaveLength(2);
     Arr.forEach(seen, (init) => {
-      expect(init?.redirect).toBe("manual");
-      expect(init?.signal).toBe(controller.signal);
+      expect(Option.map(init, (value) => value.redirect)).toEqual(Option.some("manual"));
+      expect(Option.map(init, (value) => value.signal)).toEqual(Option.some(controller.signal));
     });
   });
 });

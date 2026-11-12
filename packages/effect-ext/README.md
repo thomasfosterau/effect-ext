@@ -476,7 +476,7 @@ A response that bypasses the middleware (an auth short-circuit) still gets the s
 
 #### In a browser
 
-Every `Browser` module has the same shape: a `Context.Service` tag, a `make` over a structural `*Like` slice of the platform object, a live `layer` that reads the ambient global when it is built (never at import), a tagged error whose `reason` maps the platform's `DOMException` names, and accessors. A live layer builds in any context — a missing API degrades (`supported: false`, an `Unsupported` failure, `Option.none()`) rather than failing the layer — so one layer serves every browser, a worker and a server render.
+Every `Browser` module has the same shape: a `Context.Service` tag, a `make` over a structural `*Like` slice of the platform object (omit the argument for the unsupported service), a live `layer` that reads the ambient global when it is built (never at import), a tagged error whose `reason` maps the platform's `DOMException` names, and accessors. A live layer builds in any context — a missing API degrades (`supported: false`, an `Unsupported` failure, `Option.none()`) rather than failing the layer — so one layer serves every browser, a worker and a server render.
 
 ```ts
 import * as Effect from "effect/Effect";
@@ -636,7 +636,7 @@ self.addEventListener("message", onMessage);
 - `route(match, handle)`, `fetchListener(routes)` — `match` is synchronous because `respondWith` must be called during dispatch; the first match answers, and no match leaves the request to the browser. A failed answer rejects `respondWith` (a network error to the page).
 - `extendableListener(handle)` — `install` / `activate`: the effect's promise goes to `waitUntil`, so a failure fails the install. `messageListener(schema, handle)` — decodes `event.data` first; an undecodable message is logged and dropped.
 - `EventLifetime` — how background work outlives a response: bound to the event's `waitUntil` inside a listener, detached outside one. Background failures are logged at `Warning`.
-- Persistent notifications, shown through the worker's registration (effect-web#108 decided they live here, not in `Browser`: they outlive the page, and their events reach the worker). `Registration` is a context reference defaulting to `self.registration` (a page provides `await navigator.serviceWorker.ready`); `showNotification(title, options?)` and `getNotifications({ tag? })` fail with `ShowNotificationError` (`operation`, `reason`: `Unsupported`, `NotAllowed`, `InvalidData`, `Failed`). `notificationClickListener(schema, handle)` / `notificationCloseListener(schema, handle)` decode `notification.data` first, as `messageListener` does, and run `handle` inside `waitUntil`.
+- Persistent notifications, shown through the worker's registration (effect-web#108 decided they live here, not in `Browser`: they outlive the page, and their events reach the worker). `Registration` is a context reference holding an `Option` of the registration, defaulting to `self.registration` (`Option.none()` where there is none; a page provides `Option.some(await navigator.serviceWorker.ready)`); `showNotification(title, options?)` and `getNotifications({ tag? })` fail with `ShowNotificationError` (`operation`, `reason`: `Unsupported`, `NotAllowed`, `InvalidData`, `Failed`). `notificationClickListener(schema, handle)` / `notificationCloseListener(schema, handle)` decode `notification.data` first, as `messageListener` does, and run `handle` inside `waitUntil`.
 - `memoryCacheStorage({ fetch? })` — an in-memory `CacheStorage` for tests, rejecting what the browser's `put` rejects.
 
 #### `Browser` — platform services
@@ -663,8 +663,8 @@ Each module is a namespace: `import { Locks } from "@thomasfosterau/effect-ext/B
 - `TestNavigator` — `layer(options?)` / `make(options?)` with `Control`: `setOnLine`, `setLanguages`, `setConnection`, `setUserActivation`, and the recorded `shares`, `beacons`, `vibrations`. Options choose how `share` (`succeed` / `abort` / `deny` / `unsupported`) and `sendBeacon` (`queue` / `reject` / `unsupported`) answer.
 - `TestPageVisibility`, `TestMediaQuery`, `TestWakeLock` (`held`, `requests`, `releaseAll`, `setDenied`), `TestBroadcast` (an in-memory hub with structured-clone semantics; `posted`, `deliver` a message from "another context").
 - `TestIdleDetection` — `Control`: `setUser`, `setScreen` (fire `change` on running detectors), `setPermission`, `setAnswer`, `running`, `thresholds`. `TestBattery` — `Control`: `set({ charging?, level?, chargingTime?, dischargingTime? })` (fires the matching events), `requests`; options set the readings, `supported` and `reject`.
-- `TestFullscreen` — `Control`: `element(id)`, `setAllowed`, `exit` (the user pressing Esc), `requests`. `TestScreenOrientation` — `Control`: `rotate(type, angle?)`, `locked`, `setRefusal`; options choose the starting orientation and whether `lock` exists.
-- `TestNotifications` — `layer(options?)` / `make(options?)` with `Control`: `setPermission`, `setAnswer` (what a prompt resolves to), `setUserActivation`, `click` / `dismiss` / `fail` the `index`th notification, and the recorded `shown` and `requests`.
+- `TestFullscreen` — `Control`: `element(id)`, `setAllowed`, `exit` (the user pressing Esc), `requests`. `TestScreenOrientation` — `Control`: `rotate(type, angle?)`, `locked`, `setRefusal(refusal?)` (no argument grants locks again); options choose the starting orientation and whether `lock` exists.
+- `TestNotifications` — `layer(options?)` / `make(options?)` with `Control`: `setPermission`, `setAnswer` (what a prompt resolves to), `setUserActivation`, `click` / `dismiss` / `fail` the `index`th notification, and the recorded `shown` (each entry's `options` is an `Option`) and `requests`.
 - `TestPermissions`, `TestClipboard`, `TestGeolocation` — doubles for the `@effect/platform-browser` services.
 - `layer` — every double and every `Control` at once. `observe(stream, count)` — forks the first `count` elements and returns once the first is out.
 
@@ -698,19 +698,19 @@ const robotsTxt = parse(`
 
 isAllowed(robotsTxt, "MyBot", "/admin"); // false
 isAllowed(robotsTxt, "MyBot", "/admin/public"); // true
-getCrawlDelay(robotsTxt, "MyBot"); // 10
+getCrawlDelay(robotsTxt, "MyBot"); // Option.some(10)
 getSitemaps(robotsTxt); // ["https://example.com/sitemap.xml"]
 encode(robotsTxt); // the canonical text
 ```
 
 | Export | What it is |
 | --- | --- |
-| `Rule`, `RobotGroup`, `RobotsTxt` | `Data.Class` values with structural equality. `RobotGroup.crawlDelay` is `number \| undefined`. |
+| `Rule`, `RobotGroup`, `RobotsTxt` | `Data.Class` values with structural equality. `RobotGroup.crawlDelay` is an `Option<number>` (required; `Option.none()` when the group has no `Crawl-delay`). |
 | `RuleSchema`, `RobotGroupSchema`, `RobotsTxtSchema` | `Schema.instanceOf` of each class. |
 | `RobotsTxtFromString` | `Schema.String` → `RobotsTxt`: the parser is the decode, the encoder the encode. `Schema.decodeUnknownEffect(RobotsTxtFromString)(text)` for the Effect form. |
 | `parse(text)`, `encode(robotsTxt)` | The synchronous forms. `parse` never throws: unknown lines are ignored, rules before any `User-agent` are dropped, `#` starts a comment, LF, CRLF and a bare CR all end a line (RFC 9309 §2.2). |
 | `isAllowed(robotsTxt, userAgent, path)` | Group selection by the longest matching product token (exact or prefix, case-insensitive; `*` matches everything, last); rule selection by the longest matching pattern, `Allow` winning a tie; `*` wildcards and `$` anchors; a query string or fragment on `path` is stripped. No group or no matching rule means allowed. |
-| `getCrawlDelay`, `getSitemaps` | The selected group's `Crawl-delay` as an `Option`; every `Sitemap:` line. |
+| `getCrawlDelay`, `getSitemaps` | The selected group's `Crawl-delay` as an `Option<number>` (`None` when no group matches or it has none); every `Sitemap:` line. |
 
 Group selection follows RFC 9309 §2.2.1: the **product token** matches exactly or as a prefix, never as a **substring** (`userAgent.includes(token)`). A `User-agent: Google` group binds `Googlebot`; a `User-agent: bot` group does not bind `Googlebot`. Both sides are compared by their product token, the leading run of letters, `_` and `-`, so a version or comment is ignored: `User-agent: ExampleBot/1.0` binds the `ExampleBot` crawler, and a crawler passing `ExampleBot/1.0 (+https://…)` finds its `User-agent: ExampleBot` group.
 
@@ -791,6 +791,7 @@ Invariant ids in doc comments and below (`CANON-001`, `PERF-CACHE-002`, …) nam
 #### Sitemaps
 
 ```ts
+import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import {
   lastmodOf,
@@ -807,7 +808,13 @@ const STATIC_PAGES: ReadonlyArray<SitemapUrl> = [{ path: "/" }, { path: "/about"
 const wholeSitemap = (base: string, rows: ReadonlyArray<{ id: string; updatedAt: Date }>) =>
   renderSitemap(base, [
     ...STATIC_PAGES,
-    ...rows.map((row) => ({ path: `/people/${row.id}`, lastmod: lastmodOf(row.updatedAt) })),
+    ...rows.map((row) => ({
+      path: `/people/${row.id}`,
+      ...Option.match(lastmodOf(row.updatedAt), {
+        onNone: () => ({}),
+        onSome: (lastmod) => ({ lastmod }),
+      }),
+    })),
   ]);
 
 // Streamed, one chunk per entry, for a large one (run the enumeration before building the response):
@@ -818,7 +825,7 @@ const streamedSitemap = (base: string, entries: ReadonlyArray<SitemapUrl>) =>
 | Export | What it is |
 | --- | --- |
 | `SitemapUrl` | `{ path, lastmod?: "YYYY-MM-DD" }`. |
-| `lastmodOf(value)` | The day of a `Date` or an ISO string; `undefined` (omit `<lastmod>`) otherwise. A parse, never a clock read. |
+| `lastmodOf(value)` | `Option<string>`: the day of a `Date` or an ISO string; `None` otherwise (leave `lastmod` off the `SitemapUrl` and `<lastmod>` is omitted). A parse, never a clock read. |
 | `renderUrl(base, entry)` | One `<url>`, its `<loc>` absolute on `base`. |
 | `renderSitemap(base, entries)` | The whole `<urlset>` with the XML declaration, every `<loc>` absolute on `base` (CANON-001). |
 | `sitemapStream(base, Stream<SitemapUrl>)` | The document as a `Stream<string>`: opening, one chunk per entry, closing — never materialised in the isolate. Every `<loc>` is absolute on `base` (CANON-001). |
@@ -863,6 +870,7 @@ const feedResponse = (base: string, rows: ReadonlyArray<FeedEntry>) =>
 #### Cache-Tag purge on mutation
 
 ```ts
+import * as Option from "effect/Option";
 import {
   makePurgeTagsForResourceType,
   purgeCacheTags,
@@ -874,7 +882,7 @@ const purgeTagsForResourceType = makePurgeTagsForResourceType(["posts", "people"
 
 // After a mutation to a resource of `type` (and after the response has gone out):
 const purgeAfterMutation = (ctx: CachePurgeContext, type: string) =>
-  purgeCacheTags(ctx, purgeTagsForResourceType(type));
+  purgeCacheTags(Option.some(ctx), purgeTagsForResourceType(type));
 ```
 
 | Export | What it is |
@@ -882,8 +890,8 @@ const purgeAfterMutation = (ctx: CachePurgeContext, type: string) =>
 | `FEED_CACHE_TAG` (`feed`), `SITEMAP_CACHE_TAG` (`sitemap`) | The tags the responses carry and the purge names. |
 | `makePurgeTagsForResourceType(eligibleTypes, tags?)` | `(type) => tags`: both tags for a type the documents enumerate, none otherwise — decided from the type alone, no visibility check (a wasted purge over a missed one). |
 | `CachePurgeContext` | The `{ cache?: { purge({ tags }) } }` subset of a Workers `ExecutionContext`; `cache` is absent in local dev. |
-| `purgeCacheTags(ctx, tags)` | `Effect<void>`: a no-op for no tags or no `cache`; a logged `cache-purge.rejected` (`success: false`) or `cache-purge.failed` (rejection), never a failure — the mutation never sees a dropped purge. The purge half of PERF-CACHE-002. |
-| `purgeCacheTagsPromise(ctx, tags)` | The same as a `Promise`, for `ctx.waitUntil`. |
+| `purgeCacheTags(ctx, tags)` | `ctx` is an `Option<CachePurgeContext>` (`Option.fromUndefinedOr(ctx)` for a platform handle that may be absent). `Effect<void>`: a no-op for no tags or no `cache`; a logged `cache-purge.rejected` (`success: false`) or `cache-purge.failed` (rejection), never a failure — the mutation never sees a dropped purge. The purge half of PERF-CACHE-002. |
+| `purgeCacheTagsPromise(ctx, tags)` | The same (`ctx` an `Option`) as a `Promise`, for `ctx.waitUntil`. |
 | `LOW_CHURN_CACHE_CONTROL` | The document `Cache-Control` (an hour at the edge, a day stale-while-revalidate): the explicit edge TTL of PERF-CACHE-002. |
 
 ## RssFeed

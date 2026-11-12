@@ -8,16 +8,17 @@ import { assert, describe, expect, it } from "vite-plus/test";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
+import * as Option from "effect/Option";
 import { gatewayRun, gatewayUrl } from "@thomasfosterau/effect-ai-cloudflare";
 import { stubAiBinding } from "./helpers/ai";
 import { runTest } from "./helpers/effect";
 
 /** Builds a stub binding whose `gateway(id).getUrl(provider)` is canned. */
 const stubAi = (behaviour: { readonly url: string } | { readonly reject: true }) => {
-  const calls: Array<{ gatewayId: string; provider: string | undefined }> = [];
+  const calls: Array<{ gatewayId: string; provider: Option.Option<string> }> = [];
   const ai = stubAiBinding((gatewayId) => ({
     getUrl: async (provider?: string) => {
-      calls.push({ gatewayId, provider });
+      calls.push({ gatewayId, provider: Option.fromUndefinedOr(provider) });
       if ("reject" in behaviour) throw new TypeError("gateway unreachable");
       return behaviour.url;
     },
@@ -34,7 +35,7 @@ describe("gatewayUrl", () => {
     const url = await runTest(gatewayUrl({ ai, gatewayId: "website" }, "anthropic"));
 
     expect(url).toBe("https://gateway.ai.cloudflare.com/v1/acct/website/anthropic");
-    expect(calls).toEqual([{ gatewayId: "website", provider: "anthropic" }]);
+    expect(calls).toEqual([{ gatewayId: "website", provider: Option.some("anthropic") }]);
   });
 
   it("dies (does not fail typed) when the binding call rejects", async () => {
@@ -99,12 +100,12 @@ describe("gatewayRun", () => {
     // `Effect.tryPromise` evaluator, so a wrapping `Effect.timeout` cancels
     // the in-flight subrequest instead of merely abandoning it — the
     // #706/#730 lesson applied to this package's universal-run seam.
-    let receivedSignal: AbortSignal | undefined;
+    let receivedSignal = Option.none<AbortSignal>();
     let aborted = false;
     const ai = stubAiBinding(() => ({
       run: (_data, options) =>
         new Promise<never>((_resolve, reject) => {
-          receivedSignal = options?.signal;
+          receivedSignal = Option.fromUndefinedOr(options?.signal);
           options?.signal?.addEventListener("abort", () => {
             aborted = true;
             reject(new DOMException("aborted", "AbortError"));
@@ -121,7 +122,7 @@ describe("gatewayRun", () => {
       ),
     );
 
-    expect(receivedSignal).toBeInstanceOf(AbortSignal);
+    expect(receivedSignal).toEqual(Option.some(expect.any(AbortSignal)));
     expect(aborted).toBe(true);
     expect(Exit.isFailure(exit)).toBe(true);
   });

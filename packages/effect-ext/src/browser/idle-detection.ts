@@ -159,7 +159,7 @@ const unsupported = (): IdleDetection["Service"] =>
  * import * as Stream from "effect/Stream"
  * import { IdleDetection } from "@thomasfosterau/effect-ext/Browser"
  *
- * const idle = IdleDetection.make(undefined)
+ * const idle = IdleDetection.make()
  * Effect.runPromise(Effect.flip(Stream.runDrain(idle.watch({ threshold: "1 minute" })))).then(
  *   (error) => console.log(error.reason), // "Unsupported"
  * )
@@ -168,7 +168,7 @@ const unsupported = (): IdleDetection["Service"] =>
  * @since 0.2.0
  * @category constructors
  */
-export const make = (IdleDetector: IdleDetectorLike | undefined): IdleDetection["Service"] => {
+export const make = (IdleDetector?: IdleDetectorLike): IdleDetection["Service"] => {
   if (IdleDetector === undefined) return unsupported();
   const watch = (options: WatchOptions): Stream.Stream<IdleState, IdleError> => {
     const threshold = Duration.fromInput(options.threshold);
@@ -240,7 +240,7 @@ export const make = (IdleDetector: IdleDetectorLike | undefined): IdleDetection[
  * @category layers
  */
 export const layer: Layer.Layer<IdleDetection> = Layer.sync(IdleDetection, () =>
-  make(ambientIdleDetector()),
+  make(Option.getOrUndefined(ambientIdleDetector())),
 );
 
 /**

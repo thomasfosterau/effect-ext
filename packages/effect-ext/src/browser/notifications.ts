@@ -67,7 +67,7 @@ export interface UserActivationLike {
 }
 
 /**
- * What {@link make} reads: the `Notification` constructor (`undefined`
+ * What {@link make} reads: the `Notification` constructor (omitted
  * builds the unsupported service) and, where the agent has it,
  * `navigator.userActivation` (without it, `requestPermission` is not gated
  * on activation and the browser decides).
@@ -76,8 +76,8 @@ export interface UserActivationLike {
  * @category models
  */
 export interface NotificationsEnvironment {
-  readonly Notification: NotificationConstructorLike | undefined;
-  readonly userActivation?: UserActivationLike | undefined;
+  readonly Notification?: NotificationConstructorLike;
+  readonly userActivation?: UserActivationLike;
 }
 
 /**
@@ -207,7 +207,7 @@ const unsupported = (): Notifications["Service"] =>
  * import * as Effect from "effect/Effect"
  * import { Notifications } from "@thomasfosterau/effect-ext/Browser"
  *
- * const notifications = Notifications.make({ Notification: undefined })
+ * const notifications = Notifications.make({})
  * Effect.runPromise(Effect.flip(notifications.requestPermission)).then((error) =>
  *   console.log(error.reason), // "Unsupported"
  * )
@@ -310,8 +310,16 @@ export const make = (environment: NotificationsEnvironment): Notifications["Serv
  */
 export const layer: Layer.Layer<Notifications> = Layer.sync(Notifications, () =>
   make({
-    Notification: ambientNotification(),
-    userActivation: ambientNavigator()?.userActivation,
+    ...Option.match(ambientNotification(), {
+      onNone: () => ({}),
+      onSome: (Notification) => ({ Notification }),
+    }),
+    ...Option.match(
+      Option.flatMap(ambientNavigator(), (navigator) =>
+        Option.fromUndefinedOr(navigator.userActivation),
+      ),
+      { onNone: () => ({}), onSome: (userActivation) => ({ userActivation }) },
+    ),
   }),
 );
 

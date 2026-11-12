@@ -20,6 +20,7 @@ import * as Order from "effect/Order";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import * as EmbeddingModel from "effect/ai/EmbeddingModel";
 import * as AiModel from "effect/ai/Model";
@@ -92,11 +93,11 @@ export const EMBEDDING_MODELS = {
 export type Model = keyof typeof EMBEDDING_MODELS;
 
 /**
- * Returns the default vector dimension for a known model, or `undefined` for
+ * Returns the default vector dimension for a known model, or `None` for
  * an unrecognised id (Voyage then applies the model's own default).
  */
-export const defaultDimension = (model: string): number | undefined =>
-  isKnownModel(model) ? EMBEDDING_MODELS[model].defaultDimension : undefined;
+export const defaultDimension = (model: string): Option.Option<number> =>
+  isKnownModel(model) ? Option.some(EMBEDDING_MODELS[model].defaultDimension) : Option.none();
 
 /** Whether `model` is one of the ids in {@link EMBEDDING_MODELS}. */
 const isKnownModel = (model: string): model is Model => Object.hasOwn(EMBEDDING_MODELS, model);
@@ -113,18 +114,18 @@ export interface Options {
    * Voyage's retrieval-aware input type. Embed stored documents with
    * `"document"` and search queries with `"query"`; omit to embed as-is.
    */
-  readonly inputType?: Wire.InputType | undefined;
+  readonly inputType?: Wire.InputType;
   /**
    * The Matryoshka output dimension. Only honoured by the models that list
    * more than one entry in {@link EMBEDDING_MODELS}; omit to take the model's
    * native default.
    */
-  readonly outputDimension?: number | undefined;
+  readonly outputDimension?: number;
   /**
    * Whether Voyage truncates over-length inputs (`true`) instead of failing
    * the request. Voyage defaults to `true`.
    */
-  readonly truncation?: boolean | undefined;
+  readonly truncation?: boolean;
 }
 
 // =============================================================================

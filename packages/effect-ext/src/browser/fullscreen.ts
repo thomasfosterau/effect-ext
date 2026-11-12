@@ -47,7 +47,7 @@ export interface FullscreenElementLike {
  */
 export interface DocumentFullscreenLike extends Stream.EventListener {
   readonly fullscreenElement: FullscreenElementLike | null;
-  readonly fullscreenEnabled?: boolean | undefined;
+  readonly fullscreenEnabled?: boolean;
   exitFullscreen?(): Promise<void>;
 }
 
@@ -134,7 +134,7 @@ const unsupported = (): Fullscreen["Service"] =>
  * import * as Effect from "effect/Effect"
  * import { Fullscreen } from "@thomasfosterau/effect-ext/Browser"
  *
- * const fullscreen = Fullscreen.make(undefined)
+ * const fullscreen = Fullscreen.make()
  * console.log(fullscreen.supported) // false
  * Effect.runPromise(fullscreen.element).then(console.log) // { _id: "Option", _tag: "None" }
  * ```
@@ -142,7 +142,7 @@ const unsupported = (): Fullscreen["Service"] =>
  * @since 0.2.0
  * @category constructors
  */
-export const make = (document: DocumentFullscreenLike | undefined): Fullscreen["Service"] => {
+export const make = (document?: DocumentFullscreenLike): Fullscreen["Service"] => {
   const exitFullscreen = document?.exitFullscreen?.bind(document);
   if (
     document === undefined ||
@@ -187,7 +187,9 @@ export const make = (document: DocumentFullscreenLike | undefined): Fullscreen["
  * @since 0.2.0
  * @category layers
  */
-export const layer: Layer.Layer<Fullscreen> = Layer.sync(Fullscreen, () => make(ambientDocument()));
+export const layer: Layer.Layer<Fullscreen> = Layer.sync(Fullscreen, () =>
+  make(Option.getOrUndefined(ambientDocument())),
+);
 
 /**
  * The fullscreen element now, from the {@link Fullscreen} service.

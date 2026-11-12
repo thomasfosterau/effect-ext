@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
 import {
@@ -34,18 +35,18 @@ const STATIC_PAGES: ReadonlyArray<SitemapUrl> = [
 
 describe("lastmodOf", () => {
   it("takes the day of a Date or an ISO string, and nothing from anything else", () => {
-    expect(lastmodOf("2026-03-04T05:06:07.000Z")).toBe("2026-03-04");
-    expect(lastmodOf("2026-03-04")).toBe("2026-03-04");
-    expect(lastmodOf(DateTime.toDateUtc(DateTime.makeUnsafe("2026-03-04T23:59:59Z")))).toBe(
-      "2026-03-04",
-    );
+    expect(lastmodOf("2026-03-04T05:06:07.000Z")).toStrictEqual(Option.some("2026-03-04"));
+    expect(lastmodOf("2026-03-04")).toStrictEqual(Option.some("2026-03-04"));
+    expect(
+      lastmodOf(DateTime.toDateUtc(DateTime.makeUnsafe("2026-03-04T23:59:59Z"))),
+    ).toStrictEqual(Option.some("2026-03-04"));
     // An invalid `Date` (its time is `NaN`), which `DateTime` never constructs.
     const invalid = DateTime.toDateUtc(DateTime.makeUnsafe(0));
     invalid.setTime(Number.NaN);
-    expect(lastmodOf(invalid)).toBeUndefined();
-    expect(lastmodOf("not a date")).toBeUndefined();
-    expect(lastmodOf(12345)).toBeUndefined();
-    expect(lastmodOf(undefined)).toBeUndefined();
+    expect(lastmodOf(invalid)).toStrictEqual(Option.none());
+    expect(lastmodOf("not a date")).toStrictEqual(Option.none());
+    expect(lastmodOf(12345)).toStrictEqual(Option.none());
+    expect(lastmodOf(undefined)).toStrictEqual(Option.none());
   });
 });
 

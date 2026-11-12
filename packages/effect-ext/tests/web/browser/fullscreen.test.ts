@@ -103,7 +103,7 @@ describe("Fullscreen.enter", () => {
       Effect.flip(Effect.scoped(disabled.fullscreen.enter(element))),
     );
     expect(unsupported.reason).toBe("Unsupported");
-    const missing = Fullscreen.make(undefined);
+    const missing = Fullscreen.make();
     expect(await Effect.runPromise(missing.element)).toStrictEqual(Option.none());
   });
 
