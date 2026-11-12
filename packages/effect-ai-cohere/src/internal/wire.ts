@@ -68,6 +68,7 @@ export interface UserMessageRequest {
 /** `assistant` role request message, optionally carrying tool calls. */
 export interface AssistantMessageRequest {
   readonly role: "assistant";
+  // oxlint-disable-next-line effect/prefer-option-over-null -- the vendor's wire format: an assistant turn carrying only tool calls sends an explicit `content: null`
   readonly content?: string | null;
   readonly tool_plan?: string;
   readonly tool_calls?: ReadonlyArray<RequestToolCall>;

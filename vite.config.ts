@@ -213,11 +213,6 @@ export default defineConfig({
           // fires on every `as`, including the narrowings the Fetch / Workers
           // types structurally require. Stays visible as a warning.
           "effect/casting-awareness": "warn",
-          // `prefer-option-over-null` also fires on `?: T | undefined`, the
-          // ONLY spelling of an optional member `exactOptionalPropertyTypes`
-          // lets a caller forward an optional of its own into. A bare `null` /
-          // `undefined` in a return type is still a finding to read.
-          "effect/prefer-option-over-null": "warn",
           // `unknown` is the honest type at the boundaries these libraries sit
           // on: a caught failure handed to an error tracker or a log line, and
           // the free-form fields of a structured log event.
