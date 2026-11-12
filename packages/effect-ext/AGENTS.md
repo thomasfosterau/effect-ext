@@ -69,7 +69,7 @@ Imports nothing from this workspace (`.fallowrc.json` zone `effect-ext`, no outb
 
 ## Numeric invariants
 
-Carried over from effect-numeric's guidance. There is no consuming application: Rust's documented semantics are the spec, and `tests/numeric/examples.test.ts` pins the README's Numeric examples.
+Carried over from effect-numeric's guidance. There is no consuming application: Rust's documented semantics are the spec, and `tests/numeric/examples.test.ts` pins the numeric guide's (`guides/numeric.md`) examples.
 
 - **Overflow semantics follow Rust exactly.** `wrapping*` is modulo 2^bits, `saturating*` clamps to `MIN` / `MAX`, `checked*` returns `None`, `overflowing*` returns `[wrapped, overflowed]`, and the unprefixed form returns `Result<A, ArithmeticError>`. `MIN / -1` and `MIN % -1` are the only overflowing division cases. When in doubt, check the Rust std docs for the same method and add a property test.
 - **Representation is fixed by width.** Types of up to 32 bits are `number`, wider ones `bigint` (`FixedInt.make` vs `FixedInt.makeBig`). Number arithmetic normalises `-0` to `0` (the `+ 0` in `numberPrim`); keep it.
@@ -94,7 +94,7 @@ Carried over from effect-time's guidance.
 - **Time is never read here.** The parsers are pure (a consumer reads the time through `Clock`, never `Date.now()`); a test that needs a fixed time uses `TestClock`. `effect/Date` does not exist; `Date` interop is `DateTime.make(date)` / `DateTime.toDateUtc`.
 - **Each module is a parser to compose, an effectful decoder, a printer and a `Schema`**, and a parse failure is effect-parse's `ParseError`, positioned at the offending field (a byte offset for `Tzif`).
 - **Nothing is bundled.** `IanaTimeZone` asks the runtime's ICU build (`Intl`), so its answer depends on that runtime's tz data; `Tzif` reads bytes the caller supplies.
-- **Each grammar is its specification's, and its departures are documented** in the module and the README (a leap second rejected by `Rfc3339`, fractions truncated to milliseconds, Quartz's `?` / `L` / `W` / `#` not read by `CronExpression`, `RSCALE` / `SKIP` not read by `RRule`).
+- **Each grammar is its specification's, and its departures are documented** in the module and `guides/time.md` (a leap second rejected by `Rfc3339`, fractions truncated to milliseconds, Quartz's `?` / `L` / `W` / `#` not read by `CronExpression`, `RSCALE` / `SKIP` not read by `RRule`).
 
 ## Schema invariants
 

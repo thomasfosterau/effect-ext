@@ -1,4 +1,4 @@
-// Keeps the examples in the package README's "Numeric" section honest: a
+// Keeps the examples in the numeric guide (`guides/numeric.md`) honest: a
 // change to one updates the other in the same commit.
 import { describe, expect, it } from "vite-plus/test";
 import * as Arr from "effect/Array";
@@ -25,13 +25,13 @@ import { U8 } from "@thomasfosterau/effect-ext/U8";
 import { U64 } from "@thomasfosterau/effect-ext/U64";
 import * as Wrapping from "@thomasfosterau/effect-ext/Wrapping";
 
-/** The README's "generic code" example, at module scope as it is there. */
+/** The guide's "generic code" example, at module scope as it is there. */
 const mean =
   <A>(N: Num.Fractional<A>, fromCount: (n: number) => A) =>
   (xs: ReadonlyArray<A>) =>
     N.div(Num.sum(N)(xs), fromCount(xs.length));
 
-describe("README", () => {
+describe("numeric guide", () => {
   it("fixed-width integers", () => {
     const a = U8.make(200);
     const b = U8.make(100);
