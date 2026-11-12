@@ -8,6 +8,7 @@
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
+import { parseUrl } from "../internal/url.ts";
 
 /**
  * Suffixes in use by this family and common on the web, from the IANA
@@ -75,9 +76,6 @@ export class WellKnownError extends Schema.TaggedError<WellKnownError>()("WellKn
   message: Schema.String,
 }) {}
 
-/** `URL.parse` without its Node 22.1 floor: `null` for an invalid URL. */
-const parseUrl = (url: string | URL): URL | null => (URL.canParse(url) ? new URL(url) : null);
-
 /** RFC 3986 `segment-nz`: one or more `pchar`s. */
 const SEGMENT_NZ = /^(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|%[0-9A-Fa-f]{2})+$/u;
 const SCHEMES = ["http:", "https:", "ws:", "wss:"];
@@ -125,15 +123,17 @@ export const url = (origin: string | URL, suffix: string): Result.Result<URL, We
       }),
     );
   }
-  const parsed = parseUrl(origin);
-  return parsed === null || !SCHEMES.includes(parsed.protocol)
+  const parsed = Option.filter(parseUrl(origin), (parsedOrigin) =>
+    SCHEMES.includes(parsedOrigin.protocol),
+  );
+  return Option.isNone(parsed)
     ? Result.fail(
         new WellKnownError({
           reason: "InvalidOrigin",
           message: `well-known: invalid origin "${String(origin)}"`,
         }),
       )
-    : Result.succeed(new URL(`/.well-known/${suffix}`, parsed.origin));
+    : Result.succeed(new URL(`/.well-known/${suffix}`, parsed.value.origin));
 };
 
 /**
@@ -152,7 +152,8 @@ export const url = (origin: string | URL, suffix: string): Result.Result<URL, We
  * @category accessors
  */
 export const suffixOf = (uri: string | URL): Option.Option<string> => {
-  const parsed = parseUrl(uri);
-  const match = parsed === null ? null : /^\/\.well-known\/([^/]+)/u.exec(parsed.pathname);
-  return Option.filter(Option.fromNullishOr(match?.[1]), isValidSuffix);
+  const segment = Option.flatMap(parseUrl(uri), (parsedUri) =>
+    Option.fromNullishOr(/^\/\.well-known\/([^/]+)/u.exec(parsedUri.pathname)?.[1]),
+  );
+  return Option.filter(segment, isValidSuffix);
 };
