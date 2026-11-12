@@ -10,7 +10,6 @@
  * @module tests/TriState.types
  */
 
-/* oxlint-disable effect/prefer-option-over-null -- the nullable encoding IS the shape under test */
 import * as Option from "effect/Option";
 import { TriState } from "@thomasfosterau/effect-ext";
 
