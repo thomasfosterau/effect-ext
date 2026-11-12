@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import {
   getNotifications,
@@ -70,7 +71,7 @@ describe("showNotification / getNotifications", () => {
         const chat = yield* getNotifications({ tag: "chat" });
         const all = yield* getNotifications();
         return { chat: chat.map((entry) => entry.title), all: all.length, data: chat[0]?.data };
-      }).pipe(Effect.provideService(Registration, registration)),
+      }).pipe(Effect.provideService(Registration, Option.some(registration))),
     );
     expect(titles).toStrictEqual({ chat: ["Chat"], all: 2, data: { room: "general" } });
   });
@@ -84,7 +85,7 @@ describe("showNotification / getNotifications", () => {
       message: "service-worker: show notification: Unsupported",
     });
     const none = await Effect.runPromise(
-      Effect.flip(getNotifications().pipe(Effect.provideService(Registration, undefined))),
+      Effect.flip(getNotifications().pipe(Effect.provideService(Registration, Option.none()))),
     );
     expect([none.operation, none.reason]).toStrictEqual(["get", "Unsupported"]);
   });
@@ -98,7 +99,7 @@ describe("showNotification / getNotifications", () => {
     const error = await Effect.runPromise(
       Effect.flip(
         showNotification("x").pipe(
-          Effect.provideService(Registration, stubRegistration(rejection)),
+          Effect.provideService(Registration, Option.some(stubRegistration(rejection))),
         ),
       ),
     );
@@ -148,7 +149,7 @@ describe("notification listeners", () => {
     const registration = stubRegistration();
     const onClick = Effect.runSync(
       notificationClickListener(Chat, (data) => showNotification(`Opened ${data.room}`)).pipe(
-        Effect.provideService(Registration, registration),
+        Effect.provideService(Registration, Option.some(registration)),
       ),
     );
     const pending: Array<Promise<unknown>> = [];

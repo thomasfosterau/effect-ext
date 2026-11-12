@@ -56,10 +56,18 @@ const readScope = (scope: RequestMetricScope): RequestMetrics => ({
 });
 
 /** The scope store, created on first use so importing this module has no effect. */
-let store: AsyncLocalStorage<RequestMetricScope> | undefined;
+let store: Option.Option<AsyncLocalStorage<RequestMetricScope>> = Option.none();
 
 const scopeStore = (): AsyncLocalStorage<RequestMetricScope> =>
-  (store ??= new AsyncLocalStorage<RequestMetricScope>());
+  Option.getOrElse(store, () => {
+    const created = new AsyncLocalStorage<RequestMetricScope>();
+    store = Option.some(created);
+    return created;
+  });
+
+/** The active scope, or `None` outside any scope (or before the store exists). */
+const activeScope = (): Option.Option<RequestMetricScope> =>
+  Option.flatMap(store, (als) => Option.fromUndefinedOr(als.getStore()));
 
 /**
  * Runs `fn` in a fresh request scope and hands what it counted to `onSettle`
@@ -120,8 +128,7 @@ export const withRequestMetrics = <A>(
  * @category request metrics
  */
 export const incrementRequestMetric = (amount = 1): void => {
-  const scope = store?.getStore();
-  if (scope !== undefined) scope.counter.updateUnsafe(amount, scope.context);
+  Option.map(activeScope(), (scope) => scope.counter.updateUnsafe(amount, scope.context));
 };
 
 /**
@@ -147,7 +154,7 @@ export const incrementRequestMetric = (amount = 1): void => {
  * @category request metrics
  */
 export const currentRequestMetrics = (): Option.Option<RequestMetrics> =>
-  Option.map(Option.fromUndefinedOr(store?.getStore()), readScope);
+  Option.map(activeScope(), readScope);
 
 /**
  * Wraps `client` so that calling one of `methodNames` on it increments the
