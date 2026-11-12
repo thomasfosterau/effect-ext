@@ -86,7 +86,7 @@ export interface Fixture {
 export const make = (): Fixture => {
   const open: Array<{ readonly name: string; readonly channel: EventTarget }> = [];
   const posted: Array<Posted> = [];
-  const deliver = (name: string, message: unknown, except: EventTarget | undefined) => {
+  const deliver = (name: string, message: unknown, except?: EventTarget) => {
     queueMicrotask(() => {
       open
         .filter((entry) => entry.name === name && entry.channel !== except)
@@ -120,7 +120,7 @@ export const make = (): Fixture => {
     broadcast: makeBroadcast(factory),
     control: Control.of({
       posted: Effect.sync(() => [...posted]),
-      deliver: (name, message) => Effect.sync(() => deliver(name, message, undefined)),
+      deliver: (name, message) => Effect.sync(() => deliver(name, message)),
     }),
   };
 };

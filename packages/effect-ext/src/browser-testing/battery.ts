@@ -36,12 +36,12 @@ export interface Readings {
  * @category models
  */
 export interface Options {
-  readonly supported?: boolean | undefined;
-  readonly reject?: boolean | undefined;
-  readonly charging?: boolean | undefined;
-  readonly level?: number | undefined;
-  readonly chargingTime?: number | undefined;
-  readonly dischargingTime?: number | undefined;
+  readonly supported?: boolean;
+  readonly reject?: boolean;
+  readonly charging?: boolean;
+  readonly level?: number;
+  readonly chargingTime?: number;
+  readonly dischargingTime?: number;
 }
 
 /**

@@ -14,6 +14,7 @@
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import { watch } from "../internal/web/dom.ts";
 import { ambientDocument } from "../internal/web/globals.ts";
@@ -64,7 +65,7 @@ const normalise = (state: string): VisibilityState => (state === "visible" ? "vi
 
 /**
  * Builds the {@link PageVisibility} service over a document; `undefined`
- * builds the always-visible service. {@link layer} passes the ambient
+ * builds the always-visible service (omit the argument). {@link layer} passes the ambient
  * `document`.
  *
  * @example
@@ -72,14 +73,14 @@ const normalise = (state: string): VisibilityState => (state === "visible" ? "vi
  * import * as Effect from "effect/Effect"
  * import { PageVisibility } from "@thomasfosterau/effect-ext/Browser"
  *
- * const visibility = PageVisibility.make(undefined)
+ * const visibility = PageVisibility.make()
  * Effect.runPromise(visibility.state).then(console.log) // "visible"
  * ```
  *
  * @since 0.2.0
  * @category constructors
  */
-export const make = (document: DocumentLike | undefined): PageVisibility["Service"] => {
+export const make = (document?: DocumentLike): PageVisibility["Service"] => {
   if (document === undefined) {
     const visible = Effect.succeed<VisibilityState>("visible");
     return PageVisibility.of({ state: visible, changes: Stream.fromEffect(visible) });
@@ -107,7 +108,7 @@ export const make = (document: DocumentLike | undefined): PageVisibility["Servic
  * @category layers
  */
 export const layer: Layer.Layer<PageVisibility> = Layer.sync(PageVisibility, () =>
-  make(ambientDocument()),
+  make(Option.getOrUndefined(ambientDocument())),
 );
 
 /**

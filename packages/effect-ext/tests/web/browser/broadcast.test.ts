@@ -153,7 +153,7 @@ describe("Broadcast.open", () => {
   });
 
   it("is unsupported without BroadcastChannel, and maps a throwing factory", async () => {
-    const unsupported = Broadcast.make(undefined);
+    const unsupported = Broadcast.make();
     expect(unsupported.supported).toBe(false);
     const missing = await Effect.runPromise(Effect.flip(Effect.scoped(unsupported.open("x"))));
     expect(missing.reason).toBe("Unsupported");
