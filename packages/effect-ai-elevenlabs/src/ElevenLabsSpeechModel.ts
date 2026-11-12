@@ -24,6 +24,7 @@
 
 import * as SpeechModel from "@thomasfosterau/effect-ext/SpeechModel";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
 import * as EffectRecord from "effect/Record";
 import * as Stream from "effect/Stream";
@@ -135,7 +136,7 @@ export const make = (
             audio: result.audio,
             mediaType: result.contentType ?? mediaTypeForOutputFormat(outputFormat),
             // ElevenLabs bills per input character; report the submitted length.
-            usage: { inputCharacters: options.text.length },
+            usage: { inputCharacters: Option.some(options.text.length) },
           };
         }),
       stream: (options) => {

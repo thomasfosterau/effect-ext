@@ -328,7 +328,7 @@ Carried over from each effect-web package's own guidance, with paths and names r
 
 ## AI service abstractions
 
-Merged in from `@thomasfosterau/effect-ai-ext` (published to 0.5.1, then deprecated). They keep the AI conventions in the root AGENTS.md ("The AI packages": `?: T | undefined` option members, full-name Effect imports, extensionless relative imports, the scoped lint relaxations in the root `vite.config.ts`) until someone unifies them with the rest of the package; their exports carry `@since 0.1.0`, the effect-ext release they first ship in. Their tests are `tests/ai/`.
+Merged in from `@thomasfosterau/effect-ai-ext` (published to 0.5.1, then deprecated). They keep the AI conventions in the root AGENTS.md ("The AI packages": full-name Effect imports, extensionless relative imports, the scoped lint relaxations in the root `vite.config.ts`) until someone unifies them with the rest of the package, but not its option members, which follow the package rule (#17): options-object settings are `x?: T`, and `ProviderResponse` fields and response-model fields a provider may not report are `Option.Option<T>` (`Schema.OptionFromOptionalKey` in the `Schema.Class` models), required, never optional; their exports carry `@since 0.1.0`, the effect-ext release they first ship in. Their tests are `tests/ai/`.
 
 The provider-neutral half of the AI family: the AI service abstractions `effect/ai` lacks (`RerankerModel`, `ClassifierModel`, `SpeechModel`, `TranscriptionModel`, `ImageModel`, `ModerationModel`, `VoiceConversionModel`), each written as if it could merge into `effect/ai`. No HTTP, no provider code.
 
@@ -346,7 +346,7 @@ The seven `src/<Module>.ts` files (`aiModules` in `vite.config.ts`, `aiModuleFil
 
 ## Evals
 
-Merged in from `@thomasfosterau/effect-evals` (published to 0.5.1, then deprecated). It keeps the AI conventions in the root AGENTS.md until someone unifies them, as the AI abstractions do; its exports carry `@since 0.1.0`. Its tests are `tests/evals/`.
+Merged in from `@thomasfosterau/effect-evals` (published to 0.5.1, then deprecated). It keeps the AI conventions in the root AGENTS.md until someone unifies them, as the AI abstractions do, except the option members (#17): `x?: T` in options objects, `Option.Option<T>` in results (`Result.MetricAggregate.summary`, `ExtractThenClassify.Verdict.reason`). Types that mirror a wire schema's decoded type (`GEvalCase`, `RagCase`) are `Pick`s of it rather than hand-written `| undefined` members; its exports carry `@since 0.1.0`. Its tests are `tests/evals/`.
 
 The Effect-native LLM evaluation toolkit: goldens, eval cases, scorers, thresholds and metrics; a runner with trials, bounded concurrency, retry and a content-hashed cache; reporters; ranking, G-Eval and RAG metrics; and the `effect-evals` CLI that discovers and runs `*.eval.ts` files.
 

@@ -149,8 +149,10 @@ const definedScores = (
 /** The provider's per-category verdicts, `null` ("not assessed") dropped. */
 const definedFlags = (
   flags: Readonly<Record<string, boolean | null>> | undefined,
-): Record<string, boolean> | undefined =>
-  flags === undefined ? undefined : EffectRecord.filter(flags, Predicate.isNotNull);
+): Option.Option<Record<string, boolean>> =>
+  Option.map(Option.fromUndefinedOr(flags), (verdicts) =>
+    EffectRecord.filter(verdicts, Predicate.isNotNull),
+  );
 
 /** One part of a multimodal moderations input, as OpenAI's wire carries it. */
 type WireContentPart =
@@ -267,10 +269,8 @@ const mapModerationResponse = (
       flags: definedFlags(result.categories),
     })),
   ),
-  usage: { inputTokens: undefined },
-  modelId: Option.getOrUndefined(
-    Arr.findFirst(responses, (response) => Option.fromUndefinedOr(response.model)),
-  ),
+  usage: { inputTokens: Option.none() },
+  modelId: Arr.findFirst(responses, (response) => Option.fromUndefinedOr(response.model)),
 });
 
 /**

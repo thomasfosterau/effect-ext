@@ -18,6 +18,7 @@ import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
 import * as Record from "effect/Record";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import { Cache, Dataset, Result, Runner, Threshold } from "../../src/evals/index.ts";
 import { runTest } from "./helpers/effect.ts";
 
@@ -109,12 +110,17 @@ describe("Runner.runRetrievalSuite", () => {
     // precision@1 over the truncated page: 1 of 1, not 1 of 4.
     expect(result.aggregate.metrics["precision@1"]).toEqual({ mean: 1, cases: 2 });
     // The second case's page holds only "taxon:monstera" — recall 0.5.
-    expect(result.cases[1]?.metrics.find((m) => m.metric === "recall@1")?.summary?.mean).toBe(0.5);
+    expect(
+      Option.flatMap(
+        Option.fromUndefinedOr(result.cases[1]?.metrics.find((m) => m.metric === "recall@1")),
+        (metric) => Option.map(metric.summary, (spread) => spread.mean),
+      ),
+    ).toStrictEqual(Option.some(0.5));
   });
 
   it("hands the port the whole golden, so per-case narrowing reaches it", async () => {
     interface NarrowedGolden extends Runner.RetrievalGolden {
-      readonly locale?: string | undefined;
+      readonly locale?: string;
     }
     // Two cases share a query and differ only in locale: keying off the
     // query string could not tell them apart.
@@ -122,11 +128,11 @@ describe("Runner.runRetrievalSuite", () => {
       { name: "en", query: "monstera", relevant: { "taxon:monstera": 3 } },
       { name: "es", query: "monstera", relevant: { "taxon:costilla-de-adan": 3 }, locale: "es" },
     ];
-    const seen: Array<string | undefined> = [];
+    const seen: Array<Option.Option<string>> = [];
     const port: Runner.RetrievalPort<never, never, NarrowedGolden> = {
       id: "locale@none",
       retrieve: (_query, { golden }) => {
-        seen.push(golden.locale);
+        seen.push(Option.fromUndefinedOr(golden.locale));
         return Effect.succeed(
           golden.locale === "es" ? ["taxon:costilla-de-adan"] : ["taxon:monstera"],
         );
@@ -140,7 +146,7 @@ describe("Runner.runRetrievalSuite", () => {
         k: 3,
       }).pipe(Effect.provide(Cache.layerMemory)),
     );
-    expect(seen).toEqual([undefined, "es"]);
+    expect(seen).toEqual([Option.none(), Option.some("es")]);
     expect(result.cases.map((caseResult) => caseResult.golden.locale)).toEqual([undefined, "es"]);
     // Cached on the whole golden, so the "es" case did not reuse the "en" page.
     expect(result.cases.map((caseResult) => caseResult.taskOutputs[0]?.output)).toEqual([
@@ -199,7 +205,7 @@ describe("Runner.runRetrievalSuite", () => {
       { trial: 1, error: 'no stubbed ordering for "monstera deliciosa"' },
     ]);
     expect(result.cases[0]?.passed).toBe(false);
-    expect(result.cases[0]?.metrics.every((metric) => metric.summary === undefined)).toBe(true);
+    expect(result.cases[0]?.metrics.every((metric) => Option.isNone(metric.summary))).toBe(true);
     // The surviving case scored 1, and the failure did not drag it to 0.5.
     expect(result.aggregate.metrics["ndcg@3"]).toEqual({ mean: 1, cases: 1 });
     expect(result.aggregate).toMatchObject({ totalCases: 2, successfulCases: 1, failedCases: 1 });
@@ -288,14 +294,14 @@ describe("Runner.runRetrievalSuite", () => {
 const scoredAggregate = (metric: string, mean: number): Result.MetricAggregate => ({
   metric,
   trials: [{ _tag: "Scored", trial: 1, score: { score: mean }, cached: false }],
-  summary: Result.summarize([mean]),
+  summary: Option.some(Result.summarize([mean])),
   errorCount: 0,
   passed: true,
 });
 const erroredAggregate = (metric: string): Result.MetricAggregate => ({
   metric,
   trials: [{ _tag: "Errored", trial: 1, error: "boom", cached: false }],
-  summary: undefined,
+  summary: Option.none(),
   errorCount: 1,
   passed: false,
 });

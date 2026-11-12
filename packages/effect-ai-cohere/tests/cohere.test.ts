@@ -1236,7 +1236,7 @@ describe("CohereRerankerModel", () => {
 
     expect(response.results.map((result) => result.index)).toEqual([2, 1, 0]);
     expect(response.results[0]?.relevanceScore).toBe(0.9);
-    expect(response.usage.inputTokens).toBe(1);
+    expect(response.usage.inputTokens).toStrictEqual(Option.some(1));
   });
 
   it("passes topN through as top_n", async () => {

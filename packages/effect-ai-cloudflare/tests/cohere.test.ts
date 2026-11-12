@@ -13,6 +13,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
 import {
   COHERE_EMBEDDING_DIMENSIONS,
@@ -250,7 +251,7 @@ describe("Cohere reranker", () => {
     ]);
     expect(response.results.map((result) => result.index)).toEqual([1, 0]);
     expect(response.results[0]?.relevanceScore).toBe(0.9);
-    expect(response.usage.inputTokens).toBe(1);
+    expect(response.usage.inputTokens).toStrictEqual(Option.some(1));
   });
 
   it("omits top_n when topN is not given", async () => {

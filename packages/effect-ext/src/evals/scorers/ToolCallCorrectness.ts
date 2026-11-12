@@ -180,7 +180,7 @@ const matchToolCalls = (
 const describeMismatches = (
   unmatchedExpected: ReadonlyArray<ExpectedToolCall>,
   extraActual: ReadonlyArray<ToolCall>,
-): string | undefined => {
+): Option.Option<string> => {
   const parts: string[] = [];
   if (Arr.isReadonlyArrayNonEmpty(unmatchedExpected)) {
     parts.push(`missing: ${unmatchedExpected.map((call) => call.name).join(", ")}`);
@@ -188,7 +188,7 @@ const describeMismatches = (
   if (Arr.isReadonlyArrayNonEmpty(extraActual)) {
     parts.push(`unexpected: ${extraActual.map((call) => call.name).join(", ")}`);
   }
-  return Arr.isReadonlyArrayNonEmpty(parts) ? parts.join("; ") : undefined;
+  return Arr.isReadonlyArrayNonEmpty(parts) ? Option.some(parts.join("; ")) : Option.none();
 };
 
 /**
@@ -213,7 +213,7 @@ export const toolCallCorrectness = (
           ordered,
           matchParams,
         });
-        const reason = describeMismatches(unmatchedExpected, extraActual);
+        const reason = Option.getOrUndefined(describeMismatches(unmatchedExpected, extraActual));
 
         if (mode === "exact") {
           const isExact =

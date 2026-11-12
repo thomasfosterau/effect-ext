@@ -79,11 +79,18 @@ export interface CacheKeyInput {
   readonly taskId: string;
   readonly trial: number;
   readonly metric?: string;
-  readonly judgeModelId?: string | undefined;
+  readonly judgeModelId?: string;
 }
 
 /** A value `canonicalize` hands to `JSON.stringify` as it came. */
-type CanonicalLeaf = string | number | boolean | bigint | symbol | null | undefined;
+type CanonicalLeaf =
+  | string
+  | number
+  | boolean
+  | bigint
+  | symbol
+  // `null` and `undefined`, which `JSON.stringify` also takes as they come.
+  | Predicate.Refinement.Out<typeof Predicate.isNullish<unknown>>;
 
 /** {@link canonicalize}'s output: leaves, and arrays and key-sorted records of them. */
 type Canonical = CanonicalLeaf | ReadonlyArray<Canonical> | { readonly [key: string]: Canonical };

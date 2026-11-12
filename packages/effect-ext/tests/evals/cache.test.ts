@@ -19,7 +19,6 @@ describe("Cache.hashKey", () => {
     golden: { input: "Bonjour" },
     taskId: "translate@v1",
     metric: "exact-match",
-    judgeModelId: undefined,
     trial: 1,
   };
 
@@ -52,9 +51,9 @@ describe("Cache.hashKey", () => {
       u: undefined,
       n: { d: new Date(86400000), e: true },
     };
-    expect(
-      await hash({ golden, taskId: "t@v1", trial: 2, metric: "m", judgeModelId: undefined }),
-    ).toBe("a8b2f547bbad801e410ff90962419c384ff47772926185330d6a4f3f704fe37f");
+    expect(await hash({ golden, taskId: "t@v1", trial: 2, metric: "m" })).toBe(
+      "a8b2f547bbad801e410ff90962419c384ff47772926185330d6a4f3f704fe37f",
+    );
   });
 
   it("is deterministic for identical inputs", async () => {
@@ -65,7 +64,6 @@ describe("Cache.hashKey", () => {
     const reordered = {
       trial: 1,
       metric: "exact-match",
-      judgeModelId: undefined,
       taskId: "translate@v1",
       golden: { input: "Bonjour" },
     };

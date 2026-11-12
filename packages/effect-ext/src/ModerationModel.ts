@@ -33,7 +33,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as EffectRecord from "effect/Record";
 import * as Schema from "effect/Schema";
-import { AiError, LanguageModel, type Prompt } from "effect/ai";
+import { AiError, LanguageModel, type Prompt, type Response } from "effect/ai";
 
 /**
  * Service tag for moderation model operations.
@@ -60,7 +60,7 @@ export class ModerationModel extends Context.Service<ModerationModel, Service>()
  *
  * **Details**
  *
- * `inputTokens` is `undefined` when the provider does not report usage or when
+ * `inputTokens` is `Option.none()` when the provider does not report usage or when
  * the empty input short-circuit bypassed the provider.
  *
  * @category models
@@ -70,7 +70,7 @@ export class ModerationModel extends Context.Service<ModerationModel, Service>()
 export class ModerationUsage extends Schema.Class<ModerationUsage>(
   "@thomasfosterau/effect-ext/ModerationModel/ModerationUsage",
 )({
-  inputTokens: Schema.UndefinedOr(Schema.Finite),
+  inputTokens: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
 /**
@@ -82,7 +82,7 @@ export class ModerationUsage extends Schema.Class<ModerationUsage>(
  *
  * `categories` maps a policy category name to a score in `[0, 1]`; higher means
  * more likely to violate that category. `flags` maps a category name to the
- * provider's own verdict for it; it is `undefined` when the provider publishes
+ * provider's own verdict for it; it is `Option.none()` when the provider publishes
  * scores only, since "fired" cannot be derived from a score without the
  * provider's threshold.
  *
@@ -95,7 +95,7 @@ export class ModerationResult extends Schema.Class<ModerationResult>(
 )({
   isFlagged: Schema.Boolean,
   categories: Schema.Record(Schema.String, Schema.Finite),
-  flags: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
+  flags: Schema.OptionFromOptionalKey(Schema.Record(Schema.String, Schema.Boolean)),
 }) {}
 
 /**
@@ -106,7 +106,7 @@ export class ModerationResult extends Schema.Class<ModerationResult>(
  * `results` preserves input order, and `usage` carries token metadata for the
  * operation. `modelId` is the model that served the call as the provider
  * reports it (for example a dated snapshot behind an alias), the name
- * `effect/ai`'s `Response.ResponseMetadataPart` uses; it is `undefined` when
+ * `effect/ai`'s `Response.ResponseMetadataPart` uses; it is `Option.none()` when
  * the provider does not report one or the empty-input short-circuit bypassed
  * the provider.
  *
@@ -122,7 +122,7 @@ export class ModerationResponse extends Schema.Class<ModerationResponse>(
 )({
   results: Schema.Array(ModerationResult),
   usage: ModerationUsage,
-  modelId: Schema.optional(Schema.String),
+  modelId: Schema.OptionFromOptionalKey(Schema.String),
 }) {}
 
 /**
@@ -178,10 +178,10 @@ export interface ProviderResponse {
   readonly results: ReadonlyArray<{
     readonly isFlagged: boolean;
     readonly categories: Record<string, number>;
-    readonly flags?: Record<string, boolean> | undefined;
+    readonly flags: Option.Option<Record<string, boolean>>;
   }>;
-  readonly usage: { readonly inputTokens: number | undefined };
-  readonly modelId?: string | undefined;
+  readonly usage: { readonly inputTokens: Option.Option<number> };
+  readonly modelId: Option.Option<string>;
 }
 
 /**
@@ -214,7 +214,8 @@ const invalidUserInput = (description: string): AiError.AiError =>
 const emptyResponse = (): ModerationResponse =>
   new ModerationResponse({
     results: [],
-    usage: new ModerationUsage({ inputTokens: undefined }),
+    usage: new ModerationUsage({ inputTokens: Option.none() }),
+    modelId: Option.none(),
   });
 
 const isEmptyPartList = (input: ModerationInput): boolean =>
@@ -364,13 +365,9 @@ const buildModeratePrompt = (options: ProviderOptions): Prompt.RawInput => {
 };
 
 /** The model id a `LanguageModel` reported in its response metadata, if any. */
-const responseModelId = (
-  content: ReadonlyArray<{ readonly type: string; readonly modelId?: string | undefined }>,
-): string | undefined =>
-  Option.getOrUndefined(
-    Arr.findFirst(content, (part) =>
-      part.type === "response-metadata" ? Option.fromUndefinedOr(part.modelId) : Option.none(),
-    ),
+const responseModelId = (content: ReadonlyArray<Response.AnyPart>): Option.Option<string> =>
+  Arr.findFirst(content, (part) =>
+    part.type === "response-metadata" ? Option.fromUndefinedOr(part.modelId) : Option.none(),
   );
 
 /**
@@ -391,7 +388,7 @@ const responseModelId = (
  * is the moderation contract; the decoded value is validated identically to a
  * native moderation provider. A multimodal input is sent as a user message's
  * parts, so the `LanguageModel` must accept the file types it carries. The
- * model's own verdicts are not asked for, so `flags` is `undefined`;
+ * model's own verdicts are not asked for, so `flags` is `Option.none()`;
  * `modelId` is the one the `LanguageModel` reports in its response metadata.
  *
  * @see {@link make} for the validation path this adapter reuses
@@ -413,8 +410,12 @@ export const fromLanguageModel: Effect.Effect<Service, never, LanguageModel.Lang
             })
             .pipe(
               Effect.map((response): ProviderResponse => ({
-                results: response.value.results,
-                usage: { inputTokens: undefined },
+                results: Arr.map(response.value.results, (result) => ({
+                  isFlagged: result.isFlagged,
+                  categories: result.categories,
+                  flags: Option.none(),
+                })),
+                usage: { inputTokens: Option.none() },
                 modelId: responseModelId(response.content),
               })),
             ),

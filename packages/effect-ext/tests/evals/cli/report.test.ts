@@ -46,17 +46,17 @@ const passingReport: CliReport = {
 
 describe("Report.writeJsonReport", () => {
   it("writes the report as JSON, ensuring the parent directory exists first", async () => {
-    let created: string | undefined;
-    let written: { path: string; content: string } | undefined;
+    const created: Array<string> = [];
+    const written: Array<{ path: string; content: string }> = [];
 
     const testFs = FileSystem.layerNoop({
       makeDirectory: (path) =>
         Effect.sync(() => {
-          created = path;
+          created.push(path);
         }),
       writeFileString: (path, content) =>
         Effect.sync(() => {
-          written = { path: path, content };
+          written.push({ path, content });
         }),
     });
 
@@ -66,16 +66,18 @@ describe("Report.writeJsonReport", () => {
       ),
     );
 
-    expect(created).toBe(".effect-evals");
-    expect(written?.path).toBe(".effect-evals/results.json");
+    expect(created).toEqual([".effect-evals"]);
+    expect(written.map((file) => file.path)).toEqual([".effect-evals/results.json"]);
     expect(
-      Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))(written?.content ?? "{}"),
-    ).toEqual(passingReport);
+      written.map((file) =>
+        Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))(file.content),
+      ),
+    ).toEqual([passingReport]);
   });
 
   it("does not create a directory when the output path has no directory component", async () => {
     let createCalled = false;
-    let written: { path: string; content: string } | undefined;
+    const written: Array<{ path: string; content: string }> = [];
 
     const testFs = FileSystem.layerNoop({
       makeDirectory: () =>
@@ -84,7 +86,7 @@ describe("Report.writeJsonReport", () => {
         }),
       writeFileString: (path, content) =>
         Effect.sync(() => {
-          written = { path: path, content };
+          written.push({ path, content });
         }),
     });
 
@@ -95,7 +97,7 @@ describe("Report.writeJsonReport", () => {
     );
 
     expect(createCalled).toBe(false);
-    expect(written?.path).toBe("results.json");
+    expect(written.map((file) => file.path)).toEqual(["results.json"]);
   });
 
   it("logs a warning instead of failing when the write itself fails", async () => {

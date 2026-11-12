@@ -330,9 +330,9 @@ export const metricAtK = (
  */
 export interface MetricsAtKOptions {
   /** Which metrics to include, in report order. Default: {@link ALL_METRICS}. */
-  readonly metrics?: ReadonlyArray<RankingMetricName> | undefined;
+  readonly metrics?: ReadonlyArray<RankingMetricName>;
   /** Per-metric thresholds; a metric without one never fails a case. */
-  readonly thresholds?: Partial<Readonly<Record<RankingMetricName, Threshold>>> | undefined;
+  readonly thresholds?: Partial<Readonly<Record<RankingMetricName, Threshold>>>;
 }
 
 /**

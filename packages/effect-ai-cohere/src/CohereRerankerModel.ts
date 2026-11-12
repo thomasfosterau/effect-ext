@@ -15,6 +15,7 @@
  */
 
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
 import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
 import { CohereClient } from "./CohereClient";
@@ -58,7 +59,9 @@ export const make = (
                 index: entry.index,
                 relevanceScore: entry.relevance_score,
               })),
-              usage: { inputTokens: response.meta?.billed_units?.search_units },
+              usage: {
+                inputTokens: Option.fromUndefinedOr(response.meta?.billed_units?.search_units),
+              },
             })),
           ),
     });
