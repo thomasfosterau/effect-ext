@@ -26,6 +26,7 @@ import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { parseUrl } from "./internal/url.ts";
+import { optionalKey } from "./OptionalKey.ts";
 
 /** Matches IPv4 dotted-quad literals (loose — value range checked separately). */
 const IPV4_PATTERN = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
@@ -313,9 +314,9 @@ export interface FollowRedirectsOptions {
    * second request. Defaults to 5. A fraction is rounded down; a negative,
    * `NaN` or infinite value reads as `0`, so every value bounds the chain.
    */
-  readonly maxHops?: number | undefined;
+  readonly maxHops?: number;
   /** The `fetch` to call; defaults to the global. */
-  readonly fetch?: typeof globalThis.fetch | undefined;
+  readonly fetch?: typeof globalThis.fetch;
 }
 
 /**
@@ -459,7 +460,7 @@ export const fetchFollowingRedirects = (
 ): Promise<FollowedResponse> =>
   // oxlint-disable-next-line effect/effect-run-in-body -- boundary: the plain-`Promise` form of `followRedirects`, for callers with no Effect runtime to run it inside.
   Effect.runPromise(
-    followRedirects(url, init, { maxHops, fetch: fetchImpl }).pipe(
+    followRedirects(url, init, { maxHops, ...optionalKey("fetch", fetchImpl) }).pipe(
       Effect.catchTag("FetchFailed", (error) => Effect.die(error.cause)),
       // oxlint-disable-next-line effect/avoid-untagged-errors -- the plain-`Error` rejection IS the contract: its message is pinned by callers' tests, the tagged failure rides as its `cause`.
       Effect.catch((error) => Effect.die(new Error(error.message, { cause: error }))),

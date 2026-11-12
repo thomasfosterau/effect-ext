@@ -111,16 +111,14 @@ const EVENTS = ["chargingchange", "levelchange", "chargingtimechange", "discharg
  * import * as Effect from "effect/Effect"
  * import { Battery } from "@thomasfosterau/effect-ext/Browser"
  *
- * const battery = Battery.make(undefined)
+ * const battery = Battery.make()
  * Effect.runPromise(battery.status).then(console.log) // { _id: "Option", _tag: "None" }
  * ```
  *
  * @since 0.2.0
  * @category constructors
  */
-export const make = (
-  getBattery: (() => Promise<BatteryManagerLike>) | undefined,
-): Battery["Service"] => {
+export const make = (getBattery?: () => Promise<BatteryManagerLike>): Battery["Service"] => {
   if (getBattery === undefined) {
     return Battery.of({
       supported: false,
@@ -128,11 +126,12 @@ export const make = (
       changes: Stream.empty,
     });
   }
-  let pending: Promise<BatteryManagerLike> | undefined;
+  let pending: Option.Option<Promise<BatteryManagerLike>> = Option.none();
   const manager: Effect.Effect<Option.Option<BatteryManagerLike>> = Effect.tryPromise({
     try: () => {
-      pending ??= getBattery();
-      return pending;
+      const promise = Option.getOrElse(pending, getBattery);
+      pending = Option.some(promise);
+      return promise;
     },
     catch: (cause) => new Cause.UnknownError(cause, "navigator.getBattery() rejected"),
   }).pipe(Effect.option);
@@ -167,7 +166,9 @@ export const make = (
  * @since 0.2.0
  * @category layers
  */
-export const layer: Layer.Layer<Battery> = Layer.sync(Battery, () => make(ambientGetBattery()));
+export const layer: Layer.Layer<Battery> = Layer.sync(Battery, () =>
+  make(Option.getOrUndefined(ambientGetBattery())),
+);
 
 /**
  * The battery reading now, from the {@link Battery} service; `None` where

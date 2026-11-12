@@ -480,9 +480,9 @@ export interface StrategyOptions {
   /** The cache read from and written to. */
   readonly cacheName: string;
   /** Which network responses are written back; default {@link isCacheable}. */
-  readonly cacheable?: ((request: Request, response: Response) => boolean) | undefined;
+  readonly cacheable?: (request: Request, response: Response) => boolean;
   /** Passed to `Cache.match` (`ignoreSearch`, `ignoreVary`, `ignoreMethod`). */
-  readonly matchOptions?: CacheQueryOptions | undefined;
+  readonly matchOptions?: CacheQueryOptions;
 }
 
 /** Opens the strategy's cache and looks `request` up in it. */
@@ -577,7 +577,7 @@ export interface NetworkFirstOptions extends StrategyOptions {
    * chance; when the cache hits, the network request is aborted, so a
    * timed-out response never refreshes the cache.
    */
-  readonly timeout?: Duration.Input | undefined;
+  readonly timeout?: Duration.Input;
 }
 
 /**
@@ -1093,7 +1093,7 @@ export interface ServiceWorkerRegistrationLike {
  */
 export interface NotificationEventLike extends ExtendableEventLike {
   readonly notification: PersistentNotificationLike;
-  readonly action?: string | undefined;
+  readonly action?: string;
 }
 
 /**
@@ -1151,26 +1151,27 @@ const notificationError = (
   });
 
 /** The worker's own registration, read structurally: the `dom` lib has no `registration` global. */
-const ambientRegistration = (): ServiceWorkerRegistrationLike | undefined => {
+const ambientRegistration = (): Option.Option<ServiceWorkerRegistrationLike> => {
   // `caches` only keeps the annotation from reading as a weak type.
-  const scope: { readonly registration?: ServiceWorkerRegistrationLike | undefined } & Pick<
+  const scope: { readonly registration?: ServiceWorkerRegistrationLike } & Pick<
     typeof globalThis,
     "caches"
   > = globalThis;
-  return scope.registration;
+  return Option.fromUndefinedOr(scope.registration);
 };
 
 /**
  * The `ServiceWorkerRegistration` notifications are shown through. Defaults
  * to the worker's `self.registration`, read on first use, never at import;
- * `undefined` (a page, a test) fails each call `Unsupported`. A page
- * provides `await navigator.serviceWorker.ready`, which is how it shows a
+ * `Option.none()` (a page, a test) fails each call `Unsupported`. A page
+ * provides `Option.some(await navigator.serviceWorker.ready)`, which is how it shows a
  * notification where the `Notification` constructor is refused (Chrome on
  * Android).
  *
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
+ * import * as Option from "effect/Option"
  * import { Registration, showNotification } from "@thomasfosterau/effect-ext/ServiceWorker"
  *
  * const shown: Array<string> = []
@@ -1179,7 +1180,7 @@ const ambientRegistration = (): ServiceWorkerRegistrationLike | undefined => {
  *   getNotifications: async () => [],
  * }
  * await Effect.runPromise(
- *   showNotification("Back online").pipe(Effect.provideService(Registration, registration)),
+ *   showNotification("Back online").pipe(Effect.provideService(Registration, Option.some(registration))),
  * )
  * shown // ["Back online"]
  * ```
@@ -1187,7 +1188,7 @@ const ambientRegistration = (): ServiceWorkerRegistrationLike | undefined => {
  * @since 0.2.0
  * @category context
  */
-export const Registration: Context.Reference<ServiceWorkerRegistrationLike | undefined> =
+export const Registration: Context.Reference<Option.Option<ServiceWorkerRegistrationLike>> =
   /*#__PURE__*/ Context.Reference("@thomasfosterau/effect-ext/ServiceWorker/Registration", {
     defaultValue: ambientRegistration,
   });
@@ -1197,13 +1198,15 @@ const withRegistration = <A>(
   call: (registration: ServiceWorkerRegistrationLike) => Promise<A>,
 ): Effect.Effect<A, ShowNotificationError> =>
   Registration.use((registration) =>
-    registration === undefined
-      ? Effect.fail(notificationError(operation, "Unsupported", undefined))
-      : Effect.tryPromise({
-          try: () => call(registration),
+    Option.match(registration, {
+      onNone: () => Effect.fail(notificationError(operation, "Unsupported", undefined)),
+      onSome: (present) =>
+        Effect.tryPromise({
+          try: () => call(present),
           catch: (cause) =>
             notificationError(operation, reasonOf(cause, NOTIFICATION_REJECTIONS, "Failed"), cause),
         }),
+    }),
   );
 
 /**
@@ -1216,9 +1219,10 @@ const withRegistration = <A>(
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
+ * import * as Option from "effect/Option"
  * import { Registration, showNotification } from "@thomasfosterau/effect-ext/ServiceWorker"
  *
- * const program = Effect.flip(showNotification("x").pipe(Effect.provideService(Registration, undefined)))
+ * const program = Effect.flip(showNotification("x").pipe(Effect.provideService(Registration, Option.none())))
  * Effect.runPromise(program).then((error) => console.log(error.reason)) // "Unsupported"
  * ```
  *
@@ -1239,6 +1243,7 @@ export const showNotification = (
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
+ * import * as Option from "effect/Option"
  * import { getNotifications, Registration } from "@thomasfosterau/effect-ext/ServiceWorker"
  *
  * const registration = {
@@ -1248,7 +1253,7 @@ export const showNotification = (
  * const titles = await Effect.runPromise(
  *   getNotifications({ tag: "chat" }).pipe(
  *     Effect.map((shown) => shown.map((notification) => notification.title)),
- *     Effect.provideService(Registration, registration),
+ *     Effect.provideService(Registration, Option.some(registration)),
  *   ),
  * )
  * titles // ["Hi"]
@@ -1258,7 +1263,7 @@ export const showNotification = (
  * @category notifications
  */
 export const getNotifications = (filter?: {
-  readonly tag?: string | undefined;
+  readonly tag?: string;
 }): Effect.Effect<ReadonlyArray<PersistentNotificationLike>, ShowNotificationError> =>
   withRegistration("get", (registration) =>
     registration.getNotifications(filter?.tag === undefined ? undefined : { tag: filter.tag }),
@@ -1355,7 +1360,7 @@ export const notificationCloseListener = notificationListener("notificationclose
 // ---------------------------------------------------------------------------
 
 /** The cache key of a request: its URL, with or without the query. */
-const cacheKey = (request: Request, options: CacheQueryOptions | undefined): string => {
+const cacheKey = (request: Request, options?: CacheQueryOptions): string => {
   if (options?.ignoreSearch !== true) return request.url;
   const url = new URL(request.url);
   url.search = "";
@@ -1366,7 +1371,7 @@ const toRequest = (request: RequestInfo | URL): Request =>
   request instanceof Request ? request : new Request(request);
 
 /** Whether `request` can be matched at all: a `GET` / `HEAD`, or any method under `ignoreMethod`. */
-const matchable = (request: Request, options: CacheQueryOptions | undefined): boolean =>
+const matchable = (request: Request, options?: CacheQueryOptions): boolean =>
   options?.ignoreMethod === true || request.method === "GET" || request.method === "HEAD";
 
 /**
@@ -1389,7 +1394,7 @@ const sequentially = <A>(items: ReadonlyArray<A>, f: (item: A) => Promise<void>)
 const memoryCache = (fetchImpl: typeof globalThis.fetch): Cache => {
   // Keyed by request URL, in insertion order.
   let entries: ReadonlyArray<readonly [string, readonly [Request, Response]]> = [];
-  const find = (request: RequestInfo | URL, options: CacheQueryOptions | undefined) => {
+  const find = (request: RequestInfo | URL, options?: CacheQueryOptions) => {
     const wanted = toRequest(request);
     if (!matchable(wanted, options)) return [];
     const key = cacheKey(wanted, options);
@@ -1451,7 +1456,7 @@ const memoryCache = (fetchImpl: typeof globalThis.fetch): Cache => {
  */
 export interface MemoryCacheStorageOptions {
   /** The `fetch` that `Cache.add` / `Cache.addAll` call; defaults to the global. */
-  readonly fetch?: typeof globalThis.fetch | undefined;
+  readonly fetch?: typeof globalThis.fetch;
 }
 
 /**

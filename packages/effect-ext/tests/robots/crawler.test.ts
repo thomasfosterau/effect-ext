@@ -72,14 +72,14 @@ describe("parse — the crawlers' cases", () => {
     const parsed = parse("Crawl-delay: 5\nDisallow: /orphan\nUser-agent: *\nDisallow: /x");
     expect(parsed.groups).toHaveLength(1);
     expect(parsed.groups[0]?.rules).toHaveLength(1);
-    expect(parsed.groups[0]?.crawlDelay).toBeUndefined();
+    expect(parsed.groups[0]?.crawlDelay).toEqual(Option.none());
   });
 
   it("ignores an invalid Crawl-delay, keeping any prior valid value", () => {
     const parsed = parse(
       ["User-agent: *", "Crawl-delay: 7", "Crawl-delay: notanumber", "Crawl-delay: -3"].join("\n"),
     );
-    expect(parsed.groups[0]?.crawlDelay).toBe(7);
+    expect(parsed.groups[0]?.crawlDelay).toEqual(Option.some(7));
   });
 
   it("ignores lines with no colon and unknown directives, and collects Sitemap", () => {

@@ -30,7 +30,7 @@ describe("PageVisibility", () => {
   });
 
   it("is always visible without a document, and under Node's live layer", async () => {
-    const visibility = PageVisibility.make(undefined);
+    const visibility = PageVisibility.make();
     expect(await Effect.runPromise(Stream.runCollect(visibility.changes))).toStrictEqual([
       "visible",
     ]);

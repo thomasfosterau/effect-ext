@@ -21,6 +21,7 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import { identity } from "effect/Function";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import * as Queue from "effect/Queue";
 import * as Result from "effect/Result";
@@ -160,7 +161,7 @@ const forwardTo =
  * import * as Effect from "effect/Effect"
  * import { Broadcast } from "@thomasfosterau/effect-ext/Browser"
  *
- * const broadcast = Broadcast.make(undefined)
+ * const broadcast = Broadcast.make()
  * Effect.runPromise(Effect.flip(Effect.scoped(broadcast.open("sync")))).then((error) =>
  *   console.log(error.reason), // "Unsupported"
  * )
@@ -169,7 +170,7 @@ const forwardTo =
  * @since 0.2.0
  * @category constructors
  */
-export const make = (factory: BroadcastChannelFactory | undefined): Broadcast["Service"] => {
+export const make = (factory?: BroadcastChannelFactory): Broadcast["Service"] => {
   if (factory === undefined) {
     return Broadcast.of({
       supported: false,
@@ -239,8 +240,13 @@ export const make = (factory: BroadcastChannelFactory | undefined): Broadcast["S
  * @category layers
  */
 export const layer: Layer.Layer<Broadcast> = Layer.sync(Broadcast, () => {
-  const Constructor = ambientBroadcastChannel();
-  return make(Constructor === undefined ? undefined : (name) => new Constructor(name));
+  const factory = Option.map(
+    ambientBroadcastChannel(),
+    (Constructor): BroadcastChannelFactory =>
+      (name) =>
+        new Constructor(name),
+  );
+  return make(Option.getOrUndefined(factory));
 });
 
 /**

@@ -240,7 +240,7 @@ describe("Locks.withLock", () => {
 
 describe("Locks without a lock manager", () => {
   it("reports unsupported and fails every operation Unsupported", async () => {
-    const locks = Locks.make(undefined);
+    const locks = Locks.make();
     expect(locks.supported).toBe(false);
     const errors = await Effect.runPromise(
       Effect.all(
@@ -322,7 +322,7 @@ describe("Locks rejection mapping", () => {
 /** A manager whose grants the test hands out by hand, as a browser task would. */
 const manual = () => {
   const pending: Array<(lock: { readonly name: string; readonly mode: "exclusive" }) => void> = [];
-  const outcomes: Array<Promise<void> | undefined> = [];
+  const outcomes: Array<Promise<void>> = [];
   const manager: Locks.LockManagerLike = {
     request: (name, _options, callback) =>
       new Promise<void>((resolve) => {
@@ -354,8 +354,9 @@ describe("Locks grant races", () => {
       ),
     );
     expect(Option.isNone(result.timedOut)).toBe(true);
-    // `undefined`, not a pending promise: the lock was handed straight back.
-    expect(result.held).toBeUndefined();
+    // An already-settled promise, not a pending one: the lock was handed straight back.
+    expect(result.held).toBeDefined();
+    expect(await Promise.race([result.held, Promise.resolve("pending")])).toBeUndefined();
   });
 
   it("waits, on closing, for a cancelled request to settle", async () => {

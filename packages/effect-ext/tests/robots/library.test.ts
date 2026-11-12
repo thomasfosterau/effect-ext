@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, it as test } from "vite-plus/test";
+import * as Option from "effect/Option";
 import {
   encode,
   getCrawlDelay,
@@ -14,6 +15,18 @@ import {
   RobotsTxt,
   Rule,
 } from "@thomasfosterau/effect-ext/Robots";
+
+/** A group whose `Crawl-delay` is absent unless given. */
+const robotGroup = (fields: {
+  readonly userAgents: ReadonlyArray<string>;
+  readonly rules: ReadonlyArray<Rule>;
+  readonly crawlDelay?: number;
+}): RobotGroup =>
+  new RobotGroup({
+    userAgents: fields.userAgents,
+    rules: fields.rules,
+    crawlDelay: Option.fromUndefinedOr(fields.crawlDelay),
+  });
 
 describe("Parser", () => {
   test("should parse basic robots.txt", () => {
@@ -72,7 +85,7 @@ Disallow: /admin
 
     const result = parse(content);
 
-    expect(result.groups[0]?.crawlDelay).toBe(10);
+    expect(result.groups[0]?.crawlDelay).toEqual(Option.some(10));
   });
 
   test("should parse sitemaps", () => {
@@ -124,7 +137,7 @@ describe("Encoder", () => {
   test("should encode basic robots.txt", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({
+        robotGroup({
           userAgents: ["*"],
           rules: [
             new Rule({ path: "/admin", allow: false }),
@@ -145,7 +158,7 @@ describe("Encoder", () => {
   test("should encode multiple user agents", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({
+        robotGroup({
           userAgents: ["Googlebot", "Bingbot"],
           rules: [new Rule({ path: "/private", allow: false })],
         }),
@@ -161,7 +174,7 @@ describe("Encoder", () => {
 
   test("should encode crawl-delay", () => {
     const robotsTxt = new RobotsTxt({
-      groups: [new RobotGroup({ userAgents: ["*"], rules: [], crawlDelay: 10 })],
+      groups: [robotGroup({ userAgents: ["*"], rules: [], crawlDelay: 10 })],
       sitemaps: [],
     });
 
@@ -187,7 +200,7 @@ describe("Matcher", () => {
   test("should allow access when no rules match", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })] }),
+        robotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })] }),
       ],
       sitemaps: [],
     });
@@ -198,7 +211,7 @@ describe("Matcher", () => {
   test("should disallow access to disallowed paths", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })] }),
+        robotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })] }),
       ],
       sitemaps: [],
     });
@@ -210,7 +223,7 @@ describe("Matcher", () => {
   test("should apply most specific rule", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({
+        robotGroup({
           userAgents: ["*"],
           rules: [
             new Rule({ path: "/admin", allow: false }),
@@ -230,11 +243,11 @@ describe("Matcher", () => {
   test("should match user agents case-insensitively", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({
+        robotGroup({
           userAgents: ["GoogleBot"],
           rules: [new Rule({ path: "/no-google", allow: false })],
         }),
-        new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })] }),
+        robotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })] }),
       ],
       sitemaps: [],
     });
@@ -246,7 +259,7 @@ describe("Matcher", () => {
   test("should support wildcard matching", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/*.php", allow: false })] }),
+        robotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/*.php", allow: false })] }),
       ],
       sitemaps: [],
     });
@@ -259,7 +272,7 @@ describe("Matcher", () => {
   test("should support end-of-path anchor", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/page$", allow: false })] }),
+        robotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/page$", allow: false })] }),
       ],
       sitemaps: [],
     });
@@ -272,14 +285,14 @@ describe("Matcher", () => {
   test("should get crawl delay", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({ userAgents: ["Googlebot"], rules: [], crawlDelay: 5 }),
-        new RobotGroup({ userAgents: ["*"], rules: [], crawlDelay: 10 }),
+        robotGroup({ userAgents: ["Googlebot"], rules: [], crawlDelay: 5 }),
+        robotGroup({ userAgents: ["*"], rules: [], crawlDelay: 10 }),
       ],
       sitemaps: [],
     });
 
-    expect(getCrawlDelay(robotsTxt, "Googlebot")).toBe(5);
-    expect(getCrawlDelay(robotsTxt, "OtherBot")).toBe(10);
+    expect(getCrawlDelay(robotsTxt, "Googlebot")).toEqual(Option.some(5));
+    expect(getCrawlDelay(robotsTxt, "OtherBot")).toEqual(Option.some(10));
   });
 
   test("should get sitemaps", () => {
@@ -297,12 +310,12 @@ describe("Matcher", () => {
   test("should select most specific user-agent group (RFC 9309)", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/", allow: false })] }),
-        new RobotGroup({
+        robotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/", allow: false })] }),
+        robotGroup({
           userAgents: ["google"],
           rules: [new Rule({ path: "/private", allow: false })],
         }),
-        new RobotGroup({
+        robotGroup({
           userAgents: ["googlebot"],
           rules: [new Rule({ path: "/admin", allow: false })],
         }),
@@ -327,7 +340,7 @@ describe("Matcher", () => {
   test("should apply Allow precedence for equal-length rules (RFC 9309)", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({
+        robotGroup({
           userAgents: ["*"],
           rules: [
             new Rule({ path: "/page", allow: false }),
@@ -344,7 +357,7 @@ describe("Matcher", () => {
   test("should apply Allow precedence regardless of order (RFC 9309)", () => {
     const robotsTxt = new RobotsTxt({
       groups: [
-        new RobotGroup({
+        robotGroup({
           userAgents: ["*"],
           rules: [
             new Rule({ path: "/page", allow: true }),
@@ -371,7 +384,7 @@ Disallow: /admin
 
     expect(result.groups).toHaveLength(2);
     expect([...(result.groups[0]?.userAgents ?? [])]).toEqual(["A"]);
-    expect(result.groups[0]?.crawlDelay).toBe(10);
+    expect(result.groups[0]?.crawlDelay).toEqual(Option.some(10));
     expect(result.groups[0]?.rules).toHaveLength(0);
 
     expect([...(result.groups[1]?.userAgents ?? [])]).toEqual(["B"]);

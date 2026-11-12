@@ -109,7 +109,7 @@ describe("Notifications.show", () => {
     );
     expect(result).toStrictEqual({
       titles: ["Timer done"],
-      options: { body: "The rice is ready", tag: "timer" },
+      options: Option.some({ body: "The rice is ready", tag: "timer" }),
       closedDuring: [false],
       closedAfter: [true],
     });

@@ -63,10 +63,11 @@ export class Rule extends Data.Class<{
  *
  * @example
  * ```ts
+ * import * as Option from "effect/Option"
  * import { RobotGroup, Rule } from "@thomasfosterau/effect-ext/Robots"
  *
- * const group = new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })] })
- * group.crawlDelay // undefined
+ * const group = new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })], crawlDelay: Option.none() })
+ * group.crawlDelay // Option.none()
  * ```
  *
  * @since 0.1.0
@@ -75,7 +76,7 @@ export class Rule extends Data.Class<{
 export class RobotGroup extends Data.Class<{
   readonly userAgents: ReadonlyArray<string>;
   readonly rules: ReadonlyArray<Rule>;
-  readonly crawlDelay?: number | undefined;
+  readonly crawlDelay: Option.Option<number>;
 }> {}
 
 /**
@@ -187,7 +188,7 @@ interface ParserState {
   readonly sitemaps: Array<string>;
   userAgents: Array<string>;
   rules: Array<Rule>;
-  crawlDelay: number | undefined;
+  crawlDelay: Option.Option<number>;
   /** Whether a non-`User-agent` directive has been seen for the current group. */
   hasDirectives: boolean;
 }
@@ -206,7 +207,7 @@ const finishGroup = (state: ParserState): void => {
   if (state.hasDirectives) {
     state.userAgents = [];
     state.rules = [];
-    state.crawlDelay = undefined;
+    state.crawlDelay = Option.none();
     state.hasDirectives = false;
   }
 };
@@ -233,7 +234,7 @@ const applyDirective = (state: ParserState, { field: rawField, value }: Directiv
   if (field === "crawl-delay") {
     const delay = Number.parseFloat(value);
     if (!Number.isNaN(delay) && delay >= 0) {
-      state.crawlDelay = delay;
+      state.crawlDelay = Option.some(delay);
       state.hasDirectives = true;
     }
   }
@@ -250,7 +251,7 @@ const groupLines = (lines: ReadonlyArray<Line>): RobotsTxt => {
     sitemaps: [],
     userAgents: [],
     rules: [],
-    crawlDelay: undefined,
+    crawlDelay: Option.none(),
     hasDirectives: false,
   };
   Arr.forEach(Arr.getSomes(lines), (parsed) => applyDirective(state, parsed));
@@ -265,7 +266,9 @@ const directiveLine = (field: string, value: string): Line => Option.some({ fiel
 const encodeGroup = (group: RobotGroup): Array<Line> => [
   ...Arr.map(group.userAgents, (userAgent) => directiveLine("User-agent", userAgent)),
   ...Arr.map(group.rules, (rule) => directiveLine(rule.allow ? "Allow" : "Disallow", rule.path)),
-  ...(group.crawlDelay === undefined ? [] : [directiveLine("Crawl-delay", `${group.crawlDelay}`)]),
+  ...Arr.fromOption(
+    Option.map(group.crawlDelay, (delay) => directiveLine("Crawl-delay", `${delay}`)),
+  ),
   Option.none(),
 ];
 
@@ -326,17 +329,18 @@ export type RobotsTxtFromString = typeof RobotsTxtFromString.Type;
  * @category parsing
  */
 export const parse = (content: string): RobotsTxt =>
-  Schema.decodeUnknownSync(RobotsTxtFromString)(content);
+  Schema.decodeSync(RobotsTxtFromString)(content);
 
 /**
  * Encodes a {@link RobotsTxt} back to robots.txt text (synchronous).
  *
  * @example
  * ```ts
+ * import * as Option from "effect/Option"
  * import { encode, RobotGroup, RobotsTxt, Rule } from "@thomasfosterau/effect-ext/Robots"
  *
  * encode(new RobotsTxt({
- *   groups: [new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })] })],
+ *   groups: [new RobotGroup({ userAgents: ["*"], rules: [new Rule({ path: "/admin", allow: false })], crawlDelay: Option.none() })],
  *   sitemaps: ["https://example.com/sitemap.xml"],
  * }))
  * // "User-agent: *\nDisallow: /admin\n\nSitemap: https://example.com/sitemap.xml"
@@ -463,17 +467,15 @@ export const isAllowed = (robotsTxt: RobotsTxt, userAgent: string, urlPath: stri
  * import { getCrawlDelay, parse } from "@thomasfosterau/effect-ext/Robots"
  *
  * const robots = parse("User-agent: Googlebot\nCrawl-delay: 5\nDisallow: /x\n\nUser-agent: *\nCrawl-delay: 10\nDisallow: /y")
- * getCrawlDelay(robots, "Googlebot") // 5
- * getCrawlDelay(robots, "OtherBot") // 10
+ * getCrawlDelay(robots, "Googlebot") // Option.some(5)
+ * getCrawlDelay(robots, "OtherBot") // Option.some(10)
  * ```
  *
  * @since 0.1.0
  * @category matching
  */
-export const getCrawlDelay = (robotsTxt: RobotsTxt, userAgent: string): number | undefined =>
-  Option.getOrUndefined(
-    Option.map(findMatchingGroup(robotsTxt, userAgent), (group) => group.crawlDelay),
-  );
+export const getCrawlDelay = (robotsTxt: RobotsTxt, userAgent: string): Option.Option<number> =>
+  Option.flatMap(findMatchingGroup(robotsTxt, userAgent), (group) => group.crawlDelay);
 
 /**
  * Every `Sitemap:` URL in the file.
@@ -523,7 +525,7 @@ export interface RobotsEvaluation {
  */
 export interface EvaluateOptions {
   /** The cap on a reported `Crawl-delay`. Defaults to {@link MAX_CRAWL_DELAY_SECONDS}. */
-  readonly maxCrawlDelaySeconds?: number | undefined;
+  readonly maxCrawlDelaySeconds?: number;
 }
 
 /**
@@ -564,10 +566,9 @@ export const evaluateRobots = (
   return {
     allowed: Option.isNone(rule) ? true : rule.value.allow,
     matchedPattern: Option.map(rule, (matched) => matched.path),
-    crawlDelaySeconds: Option.filter(
-      Option.fromUndefinedOr(group.value.crawlDelay),
-      (delay) => delay > 0,
-    ).pipe(Option.map((delay) => Math.min(delay, cap))),
+    crawlDelaySeconds: Option.filter(group.value.crawlDelay, (delay) => delay > 0).pipe(
+      Option.map((delay) => Math.min(delay, cap)),
+    ),
   };
 };
 
@@ -722,9 +723,9 @@ export interface FetchRobotsOptions {
   /** The full `User-Agent` header sent with the request. */
   readonly userAgent: string;
   /** Wall-clock bound on the request. Defaults to 10 seconds. */
-  readonly timeout?: Duration.Input | undefined;
+  readonly timeout?: Duration.Input;
   /** The body cap. Defaults to {@link MAX_ROBOTS_BYTES}. */
-  readonly maxBytes?: number | undefined;
+  readonly maxBytes?: number;
   /**
    * Whether a failed request was refused by the caller's own client (an
    * SSRF guard, or a DNS failure inside it) rather than by the origin or
@@ -733,7 +734,7 @@ export interface FetchRobotsOptions {
    * {@link ROBOTS_UNAVAILABLE_SENTINEL}. Defaults to treating no failure as
    * a refusal, which is the behaviour without this option.
    */
-  readonly isRefusal?: ((error: HttpClientError.HttpClientError) => boolean) | undefined;
+  readonly isRefusal?: (error: HttpClientError.HttpClientError) => boolean;
 }
 
 /** The default `isRefusal`: no failure is a refusal. */
@@ -819,17 +820,17 @@ export interface RobotsCheckerOptions<R = never> extends FetchRobotsOptions, Eva
   /** The product token matched against `User-agent:` lines. */
   readonly userAgentToken: string;
   /** The per-origin cache. Defaults to {@link noRobotsCache}. */
-  readonly cache?: RobotsCache<R> | undefined;
+  readonly cache?: RobotsCache<R>;
   /** TTL for a body or a 4xx. Defaults to {@link ROBOTS_CACHE_TTL_SECONDS}. */
-  readonly cacheTtlSeconds?: number | undefined;
+  readonly cacheTtlSeconds?: number;
   /** TTL for an unavailable outcome. Defaults to {@link ROBOTS_UNAVAILABLE_TTL_SECONDS}. */
-  readonly unavailableTtlSeconds?: number | undefined;
+  readonly unavailableTtlSeconds?: number;
   /**
    * Whether the query string takes part in matching. Defaults to `true`
    * (`pathname + search`, as RFC 9309 §2.2.2 matches); `false` matches the
    * pathname alone.
    */
-  readonly matchQuery?: boolean | undefined;
+  readonly matchQuery?: boolean;
 }
 
 /**
@@ -948,7 +949,7 @@ export interface RobotsPolicy {
   /** The absolute, production-canonical sitemap URL. */
   readonly sitemapUrl: string;
   /** Comment lines emitted first, without the `# ` prefix. */
-  readonly comments?: ReadonlyArray<string> | undefined;
+  readonly comments?: ReadonlyArray<string>;
 }
 
 /**
@@ -985,6 +986,7 @@ export const productionBody = (policy: RobotsPolicy): string =>
           new RobotGroup({
             userAgents: ["*"],
             rules: Arr.map(policy.disallow, (path) => new Rule({ path, allow: false })),
+            crawlDelay: Option.none(),
           }),
         ],
         sitemaps: [policy.sitemapUrl],

@@ -31,16 +31,16 @@ export interface RssChannel {
   /** The channel's `<description>`; RSS 2.0 requires one. */
   readonly description: string;
   /** The page the feed describes, the channel `<link>`. Defaults to `/`. */
-  readonly homePath?: string | undefined;
+  readonly homePath?: string;
   /** The feed's own path, emitted as the `atom:link rel="self"`. Defaults to `/rss.xml`. */
-  readonly feedPath?: string | undefined;
+  readonly feedPath?: string;
   /** A language tag (`en-AU`). */
-  readonly language?: string | undefined;
-  readonly copyright?: string | undefined;
+  readonly language?: string;
+  readonly copyright?: string;
   /** When the feed's content last changed. A value the caller supplies, never a clock read. */
-  readonly lastBuildDate?: DateTime.DateTime | undefined;
+  readonly lastBuildDate?: DateTime.DateTime;
   /** How long, in minutes, a reader may cache the feed before refreshing. */
-  readonly ttl?: number | undefined;
+  readonly ttl?: number;
 }
 
 /**
@@ -54,25 +54,25 @@ export interface RssChannel {
 export type RssItem = {
   readonly path: string;
   /** Full HTML content, emitted escaped as `content:encoded`. */
-  readonly content?: string | undefined;
+  readonly content?: string;
   /** The author's email address, optionally followed by `(Name)`, as RSS 2.0 specifies. */
-  readonly author?: string | undefined;
-  readonly categories?: ReadonlyArray<string> | undefined;
+  readonly author?: string;
+  readonly categories?: ReadonlyArray<string>;
   /**
    * A stable identifier that is not the item's URL, emitted with
    * `isPermaLink="false"`. Absent, the item's absolute URL is the permalink
    * `<guid>`.
    */
-  readonly guid?: string | undefined;
+  readonly guid?: string;
   /** The item's `<pubDate>`. */
-  readonly publishedAt?: DateTime.DateTime | undefined;
+  readonly publishedAt?: DateTime.DateTime;
 } & (
   | {
       readonly title: string;
       /** A summary or the item's HTML, emitted escaped. */
-      readonly description?: string | undefined;
+      readonly description?: string;
     }
-  | { readonly title?: string | undefined; readonly description: string }
+  | { readonly title?: string; readonly description: string }
 );
 
 // ── Rendering ──────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ export const RSS_CONTENT_TYPE = "application/rss+xml";
 /** The RFC 822 date RSS 2.0 requires (`Wed, 04 Mar 2026 05:06:07 GMT`). */
 const rfc822 = (date: DateTime.DateTime): string => DateTime.toDateUtc(date).toUTCString();
 
-const optionalDate = (name: string, date: DateTime.DateTime | undefined): string =>
+const optionalDate = (name: string, date?: DateTime.DateTime): string =>
   date === undefined ? "" : element(name, rfc822(date));
 
 const guid = (url: string, item: RssItem): string =>
@@ -196,9 +196,9 @@ export const LOW_CHURN_CACHE_CONTROL =
  */
 export interface RssResponseOptions {
   /** The `Cache-Tag` a mutation purges; absent means untagged. */
-  readonly cacheTag?: string | undefined;
+  readonly cacheTag?: string;
   /** Defaults to {@link LOW_CHURN_CACHE_CONTROL}. */
-  readonly cacheControl?: string | undefined;
+  readonly cacheControl?: string;
 }
 
 /**

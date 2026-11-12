@@ -42,7 +42,7 @@ describe("Navigator.info", () => {
   });
 
   it("takes documented defaults where the agent says nothing", async () => {
-    const navigator = Navigator.make({ navigator: undefined, events: undefined });
+    const navigator = Navigator.make({});
     const result = await Effect.runPromise(
       Effect.all(
         {
@@ -84,12 +84,10 @@ describe("Navigator.info", () => {
 
   it("falls back from an empty `languages` to `language`", async () => {
     const languages = await Effect.runPromise(
-      Navigator.make({ navigator: { languages: [], language: "de" }, events: undefined }).languages,
+      Navigator.make({ navigator: { languages: [], language: "de" } }).languages,
     );
     expect(languages).toStrictEqual(["de"]);
-    const none = await Effect.runPromise(
-      Navigator.make({ navigator: { language: "" }, events: undefined }).languages,
-    );
+    const none = await Effect.runPromise(Navigator.make({ navigator: { language: "" } }).languages);
     expect(none).toStrictEqual([]);
   });
 
@@ -275,7 +273,6 @@ describe("Navigator calls", () => {
   it("falls back to `share`'s presence when `canShare` is missing", async () => {
     const navigator = Navigator.make({
       navigator: { share: () => Promise.resolve() },
-      events: undefined,
     });
     expect(await Effect.runPromise(navigator.canShare({}))).toBe(true);
   });
@@ -301,7 +298,6 @@ describe("Navigator calls", () => {
           throw new TypeError("Invalid URL");
         },
       },
-      events: undefined,
     });
     const invalid = await Effect.runPromise(Effect.flip(throwing.sendBeacon("::")));
     expect(invalid.reason).toBe("InvalidData");
@@ -340,7 +336,7 @@ describe("Navigator calls", () => {
   });
 
   it("fails storage calls Unsupported without a storage manager, and maps rejections", async () => {
-    const bare = Navigator.make({ navigator: {}, events: undefined });
+    const bare = Navigator.make({ navigator: {} });
     const unsupported = await Effect.runPromise(
       Effect.all(
         [
@@ -364,7 +360,6 @@ describe("Navigator calls", () => {
           persist: () => Promise.reject(new DOMException("busy", "InvalidStateError")),
         },
       },
-      events: undefined,
     });
     const outcome = await Effect.runPromise(
       Effect.all(

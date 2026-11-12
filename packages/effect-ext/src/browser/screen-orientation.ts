@@ -130,7 +130,7 @@ const sameOrientation = (self: Orientation, that: Orientation): boolean =>
  * import * as Effect from "effect/Effect"
  * import { ScreenOrientation } from "@thomasfosterau/effect-ext/Browser"
  *
- * const orientation = ScreenOrientation.make(undefined)
+ * const orientation = ScreenOrientation.make()
  * Effect.runPromise(Effect.flip(Effect.scoped(orientation.lock("landscape")))).then((error) =>
  *   console.log(error.reason), // "Unsupported"
  * )
@@ -139,9 +139,7 @@ const sameOrientation = (self: Orientation, that: Orientation): boolean =>
  * @since 0.2.0
  * @category constructors
  */
-export const make = (
-  orientation: ScreenOrientationLike | undefined,
-): ScreenOrientation["Service"] => {
+export const make = (orientation?: ScreenOrientationLike): ScreenOrientation["Service"] => {
   if (orientation === undefined) {
     return ScreenOrientation.of({
       supported: false,
@@ -194,7 +192,7 @@ export const make = (
  * @category layers
  */
 export const layer: Layer.Layer<ScreenOrientation> = Layer.sync(ScreenOrientation, () =>
-  make(ambientScreenOrientation()),
+  make(Option.getOrUndefined(ambientScreenOrientation())),
 );
 
 /**
