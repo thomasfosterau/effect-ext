@@ -8,6 +8,7 @@ import * as Arr from "effect/Array";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
+import * as Schema from "effect/Schema";
 import { AnPlusB, Syntax, Token } from "@thomasfosterau/effect-ext/Css";
 
 type ComponentValue = Token.ComponentValue;
@@ -21,7 +22,7 @@ import oneRule from "./fixtures/css-parsing-tests/one_rule.json" with { type: "j
 import ruleList from "./fixtures/css-parsing-tests/rule_list.json" with { type: "json" };
 import stylesheet from "./fixtures/css-parsing-tests/stylesheet.json" with { type: "json" };
 
-type Json = null | boolean | number | string | ReadonlyArray<Json>;
+type Json = Schema.Json;
 
 /** `-0` reads as `0`: the suite's JSON cannot tell them apart. */
 const num = (value: number): number => value + 0;

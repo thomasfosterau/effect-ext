@@ -37,7 +37,7 @@ import { lookup, matchesBasic } from "./language-range.ts";
  */
 export const negotiateLanguage = <A extends string>(
   available: ReadonlyArray<A>,
-  header: string | undefined,
+  header?: string,
 ): Option.Option<A> => {
   const preferences = header === undefined ? [] : parse(header);
   const accepted = Arr.filter(preferences, (preference) => preference.quality > 0);

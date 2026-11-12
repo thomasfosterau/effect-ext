@@ -42,6 +42,7 @@ import * as Vec from "@thomasfosterau/effect-ext/Vec";
 | `LiteralExact` | Literal tuples checked to cover a union exactly. |
 | `Ast` | Schema field introspection by AST and decode probe. |
 | `Url` | An absolute URL whose scheme, host, port, credentials and path are part of its type. |
+| `OptionalKey` | Optional keys for object construction under `exactOptionalPropertyTypes`. |
 | `Web` | Response-header policies, the cross-origin mutation guard, the trusted client address, the degraded-session report, the canonical site base, the JSON:API guard responses and the Fetch adapters. |
 | `Net` | The SSRF host block list, the URL safety check and the redirect-revalidating fetch. |
 | `Observability` | The structured JSON-line sink, the allow-listed span tracer, the `logEvent` trio, `describeError`, the auth-outcome signal and per-request metrics. |
@@ -338,6 +339,23 @@ Each `@thomasfosterau/effect-web` entry point, and each of its sibling packages,
 
 Two things change beyond the path: the `effect` peer range is `^4.0.0` (effect-web's was `>=4.0.0-rc.118`), and each service's `Context` key moved with it (`@thomasfosterau/effect-web/browser/Locks` is now `@thomasfosterau/effect-ext/Browser/Locks`), so a layer built from the old package does not satisfy a service from the new one. Move every import at once.
 
+## OptionalKey
+
+Under `exactOptionalPropertyTypes` an absent optional key must be omitted, not set to `undefined`. Spread `optionalKey(key, value)` instead of `...(value !== undefined ? { key: value } : {})`:
+
+```ts
+import * as Option from "effect/Option";
+import { fields, fromOption, optionalKey } from "@thomasfosterau/effect-ext/OptionalKey";
+
+const options = { limit: 10, ...optionalKey("cursor", cursor), ...fromOption("filter", filter) };
+const forwarded = { collection, ...fields({ limit, cursor }) };
+```
+
+- `optionalKey(key, value?)` — `{ [key]: value }` unless `value` is `undefined`. `null`, `""`, `0` and `false` keep their key; pass `x ?? undefined` to drop a `null`.
+- `fromOption(key, option)` — the same over an `Option`: the key for `Some`, none for `None`.
+- `fields(input)` — the whole-object form: copies the members of `input` that are not `undefined`. Its type, `Defined<T>`, makes each member that admits `undefined` optional and keeps the rest required.
+- An absent key from `optionalKey` or `fromOption` allocates nothing: every such result is one shared, frozen empty object.
+
 ## Web, Net, Observability, Negotiate, ServiceWorker, Browser, BrowserTesting
 
 Framework-neutral web request/response utilities on `effect/http`: cache-control and security headers, Vary, the cross-origin guard, client IP, an SSRF-guarded fetch, structured logging and an allow-listed span tracer, with no SvelteKit, Alchemy or Cloudflare dependency, so it serves a SvelteKit hook, an `HttpApi` middleware or a bare Worker equally. On the client side, browser platform APIs (Web Locks, `navigator`, page visibility, media queries, the screen wake lock, `BroadcastChannel`, permission state) as Effect services, alongside `@effect/platform-browser`, with in-memory test doubles for every one.
@@ -541,7 +559,7 @@ Pure `(headers: Headers.Headers) => Headers.Headers` functions; compose them and
 - `spanTracer(trackedSpanNames): Tracer.Tracer` — logs `{ event: "span", name, durationMs, traceId, spanId, ok }` per completed span whose name is in the set, nothing for any other. **The allow-list is a required parameter, never a constant**: it replaces the tracer for the whole per-request layer, where `Effect.withSpan` has hundreds of call sites. Build it once at module scope.
 - `logEvent` / `logWarningEvent` / `logErrorEvent(event, fields?)` — `Effect.logInfo` / `logWarning` / `logError` with `{ event, ...fields }` as log annotations. `describeError(error)` renders a failure as `Tag: message`, `Tag`, `message` or `String(error)`.
 - `deriveAuthOutcome(facts): AuthOutcome` (`"skipped" | "resolved" | "anonymous" | "degraded"`; `"skipped"` is the credential-less fast path, PERF-CACHE-003) and `logAuthOutcome(durationMs, outcome)` — the `read-path.auth` line.
-- `withRequestMetrics(fn, onSettle): Promise<A>` — runs `fn` in a fresh per-request metric scope (its own `Metric.Counter` and `MetricRegistry`, scoped through `AsyncLocalStorage`) and hands `{ count }` to `onSettle` once `fn` settles, resolved or rejected. `incrementRequestMetric(amount = 1)` adds to the active scope from any code, synchronously, and is a no-op outside one; `currentRequestMetrics(): Option<RequestMetrics>` reads it. `countingProxy(client, methodNames: ReadonlySet<string>)` counts each call of a named method on `client`, invoking it with the real client as `this` and returning its result untouched — the per-request query count, an N+1 / waterfall signal. Which methods begin a query is the caller's parameter. Emit the settled count as your own `logStructured` line (`{ event: "read-path.db", dbQueryCount: metrics.count, path }`). On Workers this needs `nodejs_compat` (it imports `node:async_hooks`).
+- `withRequestMetrics(fn, onSettle): Promise<A>` — runs `fn` in a fresh per-request metric scope (its own `Metric.Counter` and `MetricRegistry`, scoped through `AsyncLocalStorage`) and hands `{ count }` to `onSettle` once `fn` settles, resolved or rejected. `incrementRequestMetric(amount = 1)` adds to the active scope from any code, synchronously, and is a no-op outside one; `currentRequestMetrics(): Option<RequestMetrics>` reads it. `countingProxy(client, methodNames: Iterable<string>)` (an array, a `HashSet` or a `Set`, read once) counts each call of a named method on `client`, invoking it with the real client as `this` and returning its result untouched — the per-request query count, an N+1 / waterfall signal. Which methods begin a query is the caller's parameter. Emit the settled count as your own `logStructured` line (`{ event: "read-path.db", dbQueryCount: metrics.count, path }`). On Workers this needs `nodejs_compat` (it imports `node:async_hooks`).
 
 #### `Negotiate` — the negotiation verdict
 

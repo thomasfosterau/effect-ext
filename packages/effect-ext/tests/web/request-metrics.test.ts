@@ -8,6 +8,7 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
+import * as HashSet from "effect/HashSet";
 import * as Schema from "effect/Schema";
 import {
   countingProxy,
@@ -35,8 +36,7 @@ class FakeClient {
 /** The failure the settle-on-failure test injects. */
 class Boom extends Schema.TaggedError<Boom>()("Boom", { message: Schema.String }) {}
 
-// oxlint-disable-next-line effect/avoid-native-object-helpers -- `countingProxy` takes a native `ReadonlySet`: its per-call cost is one `Set#has`.
-const QUERY_METHODS: ReadonlySet<string> = new Set(["select", "insert", "transaction"]);
+const QUERY_METHODS = HashSet.make("select", "insert", "transaction");
 
 const settledCount = async <A>(fn: () => Promise<A>): Promise<{ value: A; count: number }> => {
   let count = -1;
@@ -61,6 +61,29 @@ describe("countingProxy over a class-instance client", () => {
     expect(count).toBe(2);
   });
 
+  it("takes any iterable of method names: an array, a HashSet or a Set (#98)", async () => {
+    const counts = await Promise.all(
+      [["select"], HashSet.make("select"), new globalThis.Set(["select"])].map(async (names) => {
+        const client = countingProxy(new FakeClient(), names);
+        const { count } = await settledCount(async () => {
+          client.select();
+          client.select();
+          return client.insert("n1");
+        });
+        return count;
+      }),
+    );
+    expect(counts).toStrictEqual([2, 2, 2]);
+  });
+
+  it("reads the names once, when the proxy is made (#98)", async () => {
+    const names = ["select"];
+    const client = countingProxy(new FakeClient(), names);
+    names.push("insert");
+    const { count } = await settledCount(async () => client.insert("n1"));
+    expect(count).toBe(0);
+  });
+
   it("forwards outside a scope without counting", () => {
     const client = countingProxy(new FakeClient(), QUERY_METHODS);
     expect(client.select()).toStrictEqual(["row"]);
@@ -69,8 +92,7 @@ describe("countingProxy over a class-instance client", () => {
 
   it("passes other properties and non-function members straight through", async () => {
     const real = { marker: "REAL", select: 42, other: () => "other" };
-    // oxlint-disable-next-line effect/avoid-native-object-helpers -- `countingProxy` takes a native `ReadonlySet`.
-    const client = countingProxy(real, new Set(["select"]));
+    const client = countingProxy(real, ["select"]);
     const { value, count } = await settledCount(async () => [
       client.marker,
       client.select,
@@ -82,8 +104,7 @@ describe("countingProxy over a class-instance client", () => {
 
   it("does not count a symbol-keyed method", async () => {
     const key = Symbol("select");
-    // oxlint-disable-next-line effect/avoid-native-object-helpers -- `countingProxy` takes a native `ReadonlySet`.
-    const client = countingProxy({ [key]: () => "ok" }, new Set(["select"]));
+    const client = countingProxy({ [key]: () => "ok" }, ["select"]);
     expect((await settledCount(async () => client[key]())).count).toBe(0);
   });
 });

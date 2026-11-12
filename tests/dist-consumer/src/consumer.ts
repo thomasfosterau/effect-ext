@@ -25,6 +25,7 @@ import {
   Issues,
   Layout,
   LiteralExact,
+  OptionalKey,
   Str,
   String,
   StructOfArrays,
@@ -108,7 +109,20 @@ const ApiUrl = Url.schema({ scheme: "https", hostname: "api.example.com" });
 // @ts-expect-error -- a plain string is not a branded Url after emit
 export const plainUrl: Url.Url<{ readonly scheme: "https" }> = raw;
 
+const nicknameKey = OptionalKey.optionalKey(
+  "nickname",
+  Option.getOrUndefined(Option.some("Countess")),
+);
+const parentKey = OptionalKey.fromOption("parent", Option.none<number>());
+/** `number`, or absent as `undefined` (spelled without writing the union). */
+type MaybeNumber = ReturnType<typeof Option.getOrUndefined<number>>;
+const forwarded = OptionalKey.fields({ limit: Option.getOrUndefined(Option.some(1)), tag: "x" });
+
 export type Checks = [
+  // OptionalKey
+  Assert<Equals<typeof nicknameKey, { readonly nickname?: string }>>,
+  Assert<Equals<typeof parentKey, { readonly parent?: number }>>,
+  Assert<Equals<typeof forwarded, OptionalKey.Defined<{ limit: MaybeNumber; tag: string }>>>,
   // Ids
   Assert<Not<Equals<PersonId, string>>>,
   Assert<Equals<typeof PersonId.Encoded, string>>,
