@@ -1,5 +1,13 @@
 # @thomasfosterau/effect-ai-cohere
 
+## 0.5.1
+
+### Patch Changes
+
+- [#128](https://github.com/thomasfosterau/effect-ext/pull/128) [`4e5aa76`](https://github.com/thomasfosterau/effect-ext/commit/4e5aa76d88cd027c4849b37fe58b8f2e256375eb) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Depend on `@thomasfosterau/effect-ext` with a caret range (`^0.3.0`) instead of the exact version. The workspace reference was `workspace:*`, which publishes as an exact pin: every release of these providers pinned exactly the effect-ext of its release day, so an app that also installed another effect-ext consumer (such as `@thomasfosterau/effect-jsonapi`, which depends on `^0.2.0`) got a second effect-ext copy. With `workspace:^` the published range lets the app's package manager dedupe within the effect-ext minor.
+- Updated dependencies [[`e2a2866`](https://github.com/thomasfosterau/effect-ext/commit/e2a2866cc209a814b35198f5186da3ac7c7a7c24)]:
+  - @thomasfosterau/effect-ext@0.3.1
+
 ## 0.5.0
 
 ### Minor Changes
