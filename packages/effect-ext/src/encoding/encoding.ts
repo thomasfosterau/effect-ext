@@ -145,7 +145,7 @@ export interface DecodeOptions {
  */
 export class DecodeError extends Schema.TaggedError<DecodeError>()("DecodeError", {
   encoding: Schema.String,
-  offset: Schema.Number,
+  offset: Schema.Int,
   message: Schema.String,
 }) {}
 
@@ -453,8 +453,8 @@ export interface EncodeOptions {
  */
 export class EncodeError extends Schema.TaggedError<EncodeError>()("EncodeError", {
   encoding: Schema.String,
-  offset: Schema.Number,
-  codePoint: Schema.Number,
+  offset: Schema.Int,
+  codePoint: Schema.Int,
   message: Schema.String,
 }) {}
 
