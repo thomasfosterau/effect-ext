@@ -69,7 +69,7 @@ describe("Report.writeJsonReport", () => {
     expect(created).toBe(".effect-evals");
     expect(written?.path).toBe(".effect-evals/results.json");
     expect(
-      Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))(written?.content ?? "{}"),
+      Schema.decodeSync(Schema.fromJsonString(Schema.Unknown))(written?.content ?? "{}"),
     ).toEqual(passingReport);
   });
 
