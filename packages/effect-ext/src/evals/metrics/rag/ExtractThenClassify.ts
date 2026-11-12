@@ -23,7 +23,9 @@
 
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
+import * as Str from "effect/String";
 import { AiError, LanguageModel } from "effect/ai";
 import type * as Prompt from "effect/ai/Prompt";
 import type { Score } from "../../Score.ts";
@@ -52,8 +54,28 @@ const Verdicts = Schema.Struct({
 export interface Verdict {
   readonly statement: string;
   readonly verdict: "yes" | "no";
-  readonly reason?: string | undefined;
+  readonly reason: Option.Option<string>;
 }
+
+/**
+ * A verdict as `Score.metadata` records it: plain JSON, with `reason` left out
+ * when the judge gave none.
+ *
+ * @since 0.1.0
+ */
+export const verdictMetadata = (
+  verdicts: ReadonlyArray<Verdict>,
+): ReadonlyArray<{
+  readonly statement: string;
+  readonly verdict: "yes" | "no";
+  readonly reason?: string;
+}> =>
+  Arr.map(verdicts, ({ statement, verdict, reason }) =>
+    Option.match(reason, {
+      onNone: () => ({ statement, verdict }),
+      onSome: (given) => ({ statement, verdict, reason: given }),
+    }),
+  );
 
 /**
  * The judge returned a different number of verdicts than statements given to
@@ -178,7 +200,11 @@ export const classifyStatements = (
         actual: verdicts.length,
       });
     }
-    return verdicts;
+    return Arr.map(verdicts, (verdict): Verdict => ({
+      statement: verdict.statement,
+      verdict: verdict.verdict,
+      reason: Option.filter(Option.fromUndefinedOr(verdict.reason), Str.isNonEmpty),
+    }));
   });
 
 // ── Scoring ──────────────────────────────────────────────────────────
@@ -204,7 +230,10 @@ export const summarizeVerdicts = (verdicts: ReadonlyArray<Verdict>): string => {
   const failures = verdicts
     .filter((verdict) => verdict.verdict === "no")
     .map((verdict) =>
-      verdict.reason ? `- ${verdict.statement}: ${verdict.reason}` : `- ${verdict.statement}`,
+      Option.match(verdict.reason, {
+        onNone: () => `- ${verdict.statement}`,
+        onSome: (reason) => `- ${verdict.statement}: ${reason}`,
+      }),
     );
   const summary = `${passCount}/${verdicts.length} statements passed.`;
   return Arr.isReadonlyArrayNonEmpty(failures) ? [summary, ...failures].join("\n") : summary;
@@ -251,6 +280,6 @@ export const extractThenClassifyRatio = (
     return {
       score: ratioScore(verdicts),
       reason: summarizeVerdicts(verdicts),
-      metadata: { statements, verdicts },
+      metadata: { statements, verdicts: verdictMetadata(verdicts) },
     };
   });

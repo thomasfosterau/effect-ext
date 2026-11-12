@@ -210,7 +210,7 @@ TriState.toNullOr(input.summary); // null  — a clear, not a carry-forward
 
 **Folding readers** — for side effects only (insert a document only when one is _set_, re-check a slug only when it changes):
 
-- `TriState.suppliedValue(field: Option<A> | undefined): Option<A>` — the `Option` encoding.
+- `TriState.suppliedValue(field?: Option<A>): Option<A>` — the `Option` encoding.
 - `TriState.suppliedNullOr(field: A | null | undefined): Option<A>` — the nullable encoding.
 
 Both map "absent" and "clear" to `Option.none()`. Never use them to compute a column value.
@@ -560,7 +560,7 @@ Pure `(headers: Headers.Headers) => Headers.Headers` functions; compose them and
 - `spanTracer(trackedSpanNames): Tracer.Tracer` — logs `{ event: "span", name, durationMs, traceId, spanId, ok }` per completed span whose name is in the set, nothing for any other. **The allow-list is a required parameter, never a constant**: it replaces the tracer for the whole per-request layer, where `Effect.withSpan` has hundreds of call sites. Build it once at module scope.
 - `logEvent` / `logWarningEvent` / `logErrorEvent(event, fields?)` — `Effect.logInfo` / `logWarning` / `logError` with `{ event, ...fields }` as log annotations. `describeError(error)` renders a failure as `Tag: message`, `Tag`, `message` or `String(error)`.
 - `deriveAuthOutcome(facts): AuthOutcome` (`"skipped" | "resolved" | "anonymous" | "degraded"`; `"skipped"` is the credential-less fast path, PERF-CACHE-003) and `logAuthOutcome(durationMs, outcome)` — the `read-path.auth` line.
-- `withRequestMetrics(fn, onSettle): Promise<A>` — runs `fn` in a fresh per-request metric scope (its own `Metric.Counter` and `MetricRegistry`, scoped through `AsyncLocalStorage`) and hands `{ count }` to `onSettle` once `fn` settles, resolved or rejected. `incrementRequestMetric(amount = 1)` adds to the active scope from any code, synchronously, and is a no-op outside one; `currentRequestMetrics(): Option<RequestMetrics>` reads it. `countingProxy(client, methodNames: ReadonlySet<string>)` counts each call of a named method on `client`, invoking it with the real client as `this` and returning its result untouched — the per-request query count, an N+1 / waterfall signal. Which methods begin a query is the caller's parameter. Emit the settled count as your own `logStructured` line (`{ event: "read-path.db", dbQueryCount: metrics.count, path }`). On Workers this needs `nodejs_compat` (it imports `node:async_hooks`).
+- `withRequestMetrics(fn, onSettle): Promise<A>` — runs `fn` in a fresh per-request metric scope (its own `Metric.Counter` and `MetricRegistry`, scoped through `AsyncLocalStorage`) and hands `{ count }` to `onSettle` once `fn` settles, resolved or rejected. `incrementRequestMetric(amount = 1)` adds to the active scope from any code, synchronously, and is a no-op outside one; `currentRequestMetrics(): Option<RequestMetrics>` reads it. `countingProxy(client, methodNames: Iterable<string>)` (an array, a `HashSet` or a `Set`, read once) counts each call of a named method on `client`, invoking it with the real client as `this` and returning its result untouched — the per-request query count, an N+1 / waterfall signal. Which methods begin a query is the caller's parameter. Emit the settled count as your own `logStructured` line (`{ event: "read-path.db", dbQueryCount: metrics.count, path }`). On Workers this needs `nodejs_compat` (it imports `node:async_hooks`).
 
 #### `Negotiate` — the negotiation verdict
 
@@ -1772,15 +1772,17 @@ No provider code, no HTTP — abstractions only. First-party provider packages (
 
 Each module is also available as a per-module subpath (mirroring how `effect` itself ships), e.g. `@thomasfosterau/effect-ext/RerankerModel`, and a namespace on the root barrel. Every module exports the same set of names: the service tag (`RerankerModel.RerankerModel`, …), its `Service` interface, the caller options, the normalised `ProviderOptions` / `ProviderResponse` a provider implements, the `Schema.Class` response and usage models, and `make`.
 
+Absence follows one rule. An optional setting in an options object (`topN?`, `voice?`, `format?`, …) is an optional key: omit it, and a provider's `ProviderOptions` has the key only when the caller gave it. Anything a provider may not report is an `Option` in `ProviderResponse` and in the response models: `usage.inputTokens`, `usage.inputCharacters`, `usage.durationSeconds`, a transcription's `segments` and `language`, a moderation result's `flags` and a moderation response's `modelId` are each `Option.Option<…>` (`Option.none()` when unreported). A `Schema.Class` response model encodes an `Option` as an omitted key.
+
 | Module | Operation(s) | Caller options | Response | `make` validates |
 | --- | --- | --- | --- | --- |
-| `RerankerModel` | `rerank` | `RerankOptions`: `query`, `documents`, `topN?` | `RerankResponse`: `results` (`RerankedDocument`: `index`, `relevanceScore`), sorted by descending score; `usage.inputTokens` | every `index` names an input document, indices are unique, count ≤ `topN` (or the document count); no documents → empty response, provider not called |
-| `ClassifierModel` | `classify` | `ClassifyOptions`: `inputs`, `labels?`, `multiLabel?`, `examples?` (`ClassifyExample`: `text`, `label`) | `ClassifyResponse`: one `Classification` (`classes`: `ClassScore` `label` / `score`) per input; `usage.inputTokens` | one classification per input, finite scores, labels within `labels` when given; no inputs → empty response |
-| `SpeechModel` | `generate`, `stream` | `SpeechOptions`: `text`, `voice?`, `format?`, `sampleRate?` | `SpeechResponse`: `audio` (`Uint8Array`), `mediaType`, `usage.inputCharacters`; `stream` yields `Uint8Array` chunks | non-empty audio (`generate`); `stream` passes through, traced |
-| `TranscriptionModel` | `transcribe` | `TranscriptionOptions`: `audio` (`Uint8Array` or `Stream<Uint8Array>`), `mediaType?`, `language?` | `TranscriptionResponse`: `text`, `segments?` (`TranscriptionSegment`: `text`, `start`, `end`), `language?`, `usage.durationSeconds` | segment timestamps finite with `end >= start` |
-| `ImageModel` | `generate` | `ImageOptions`: `prompt`, `size?`, `format?`, `count?` | `ImageResponse`: `images` (`ImagePart`: `data` as bytes or base64 string, `mediaType`), `usage.inputTokens` | at least one image, at most `count` |
-| `ModerationModel` | `moderate` | `ModerationOptions`: `inputs` (each a string, or an array of `effect/ai` `Prompt.UserMessagePartEncoded` text / file parts screened as one input) | `ModerationResponse`: one `ModerationResult` (`isFlagged`, `categories`: category → score, `flags?`: the provider's category → fired) per input; `modelId?` (the model that served the call); `usage.inputTokens` | one result per input, scores finite in `[0, 1]`; no inputs → empty response; an empty part list → `InvalidUserInputError` |
-| `VoiceConversionModel` | `convert` | `VoiceConversionOptions`: `audio` (`Uint8Array` or `Stream<Uint8Array>`), `targetVoice`, `format?` | `VoiceConversionResponse`: `audio`, `mediaType`, `usage.durationSeconds` | non-empty audio |
+| `RerankerModel` | `rerank` | `RerankOptions`: `query`, `documents`, `topN?` | `RerankResponse`: `results` (`RerankedDocument`: `index`, `relevanceScore`), sorted by descending score; `usage.inputTokens` (an `Option`) | every `index` names an input document, indices are unique, count ≤ `topN` (or the document count); no documents → empty response, provider not called |
+| `ClassifierModel` | `classify` | `ClassifyOptions`: `inputs`, `labels?`, `multiLabel?`, `examples?` (`ClassifyExample`: `text`, `label`) | `ClassifyResponse`: one `Classification` (`classes`: `ClassScore` `label` / `score`) per input; `usage.inputTokens` (an `Option`) | one classification per input, finite scores, labels within `labels` when given; no inputs → empty response |
+| `SpeechModel` | `generate`, `stream` | `SpeechOptions`: `text`, `voice?`, `format?`, `sampleRate?` | `SpeechResponse`: `audio` (`Uint8Array`), `mediaType`, `usage.inputCharacters` (an `Option`); `stream` yields `Uint8Array` chunks | non-empty audio (`generate`); `stream` passes through, traced |
+| `TranscriptionModel` | `transcribe` | `TranscriptionOptions`: `audio` (`Uint8Array` or `Stream<Uint8Array>`), `mediaType?`, `language?` | `TranscriptionResponse`: `text`, `segments` (`Option` of `TranscriptionSegment`: `text`, `start`, `end`), `language` (`Option`), `usage.durationSeconds` (`Option`) | segment timestamps finite with `end >= start` |
+| `ImageModel` | `generate` | `ImageOptions`: `prompt`, `size?`, `format?`, `count?` | `ImageResponse`: `images` (`ImagePart`: `data` as bytes or base64 string, `mediaType`), `usage.inputTokens` (an `Option`) | at least one image, at most `count` |
+| `ModerationModel` | `moderate` | `ModerationOptions`: `inputs` (each a string, or an array of `effect/ai` `Prompt.UserMessagePartEncoded` text / file parts screened as one input) | `ModerationResponse`: one `ModerationResult` (`isFlagged`, `categories`: category → score, `flags`: an `Option` of the provider's category → fired) per input; `modelId` (an `Option`: the model that served the call); `usage.inputTokens` (an `Option`) | one result per input, scores finite in `[0, 1]`; no inputs → empty response; an empty part list → `InvalidUserInputError` |
+| `VoiceConversionModel` | `convert` | `VoiceConversionOptions`: `audio` (`Uint8Array` or `Stream<Uint8Array>`), `targetVoice`, `format?` | `VoiceConversionResponse`: `audio`, `mediaType`, `usage.durationSeconds` (an `Option`) | non-empty audio |
 
 A result that fails validation fails the call with an `AiError` whose reason is `InvalidOutputError`. Every operation is wrapped in `Effect.withSpan("<Module>.<operation>")`.
 
@@ -1809,7 +1811,7 @@ const program = Effect.gen(function* () {
 Implementing the service in a provider: `make` takes the provider hook and returns the validated service.
 
 ```ts
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Option } from "effect";
 import * as RerankerModel from "@thomasfosterau/effect-ext/RerankerModel";
 
 const KeywordReranker = Layer.effect(
@@ -1821,7 +1823,7 @@ const KeywordReranker = Layer.effect(
           index,
           relevanceScore: document.includes(query) ? 1 : 0,
         })),
-        usage: { inputTokens: undefined },
+        usage: { inputTokens: Option.none() },
       }),
   }),
 );
@@ -1976,7 +1978,7 @@ const program = Runner.runSuite(suite, {
 }
 ```
 
-`summary` is `null` when every trial for that metric errored (no scores to summarize). `taskOutputs` holds, per trial whose task produced an output, that output and the task's wall-clock duration (retries included); a trial served from the cache is `cached: true` with a `durationMillis` of `0`, so leave it out of a latency figure. `taskFailures` is empty unless the task itself failed for some trial, in which case that trial contributes to no metric's `trials` array at all (there was no output to score).
+`summary` is `null` in the JSON when every trial for that metric errored (no scores to summarize); in the typed `Result.MetricAggregate` it is an `Option<Summary>`, and `Result.summaryReplacer` is the `JSON.stringify` replacer that writes it this way. `taskOutputs` holds, per trial whose task produced an output, that output and the task's wall-clock duration (retries included); a trial served from the cache is `cached: true` with a `durationMillis` of `0`, so leave it out of a latency figure. `taskFailures` is empty unless the task itself failed for some trial, in which case that trial contributes to no metric's `trials` array at all (there was no output to score).
 
 ### Retrieval ranking metrics
 
@@ -2000,24 +2002,25 @@ The retrieval counterpart of `runSuite`: a dataset of `RetrievalGolden`s (`{ que
 
 ```ts
 import * as Effect from "effect/Effect";
+import * as Struct from "effect/Struct";
 import { Cache, Dataset, Reporter, Runner, Threshold } from "@thomasfosterau/effect-ext/evals";
 
 // The consumer's search operation, returning document handles best first.
 declare const search: (options: {
   readonly query: string;
   readonly limit: number;
-  readonly locale: string | undefined;
+  readonly locale?: string;
 }) => Effect.Effect<ReadonlyArray<{ readonly id: string }>, Error>;
 
 // A golden may carry per-case narrowing; the port receives the whole golden.
 interface SearchGolden extends Runner.RetrievalGolden {
-  readonly locale?: string | undefined;
+  readonly locale?: string;
 }
 
 const port: Runner.RetrievalPort<Error, never, SearchGolden> = {
   id: "search@rerank-v3.5", // the configuration under test; part of the cache key
   retrieve: (query, { limit, golden }) =>
-    search({ query, limit, locale: golden.locale }).pipe(
+    search({ query, limit, ...Struct.pick(golden, ["locale"]) }).pipe(
       Effect.map((rows) => rows.map((row) => row.id)),
     ),
 };
@@ -2146,13 +2149,13 @@ pnpm effect-evals --help                                  # full flag reference
 | [`Dataset`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Dataset.ts) | `Dataset`, `makeDataset`, `fromArray`. |
 | [`EvalFile`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/EvalFile.ts) | The `*.eval.ts` contract shared by every execution surface: `EvalFile`, `AnySuite`. |
 | [`Runner`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Runner.ts) | `Suite`, `makeSuite`, `TaskDefinition`, `makeTask`, `runSuite`, `RunnerOptions`; `RetrievalPort`, `RetrievalGolden`, `RetrievalSuite`, `runRetrievalSuite`; `isConfigError` (the credential-gating test). |
-| [`Result`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Result.ts) | The typed suite → case → trial → metric result model; `summarize`, `aggregate`, `lastReason`, `formatSpread`. |
+| [`Result`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Result.ts) | The typed suite → case → trial → metric result model; `summarize`, `aggregate`, `lastReason`, `formatSpread`, `summaryReplacer`. |
 | [`Cache`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Cache.ts) | `layerMemory` / `layerFileSystem`, `hashKey`. |
 | [`Reporter`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/Reporter.ts) | `Reporter`, `makeReporter`, `terminal`, `json`, `formatTerminalTable`. |
 | [`Ranking`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/Ranking.ts) | `ndcg` / `recall` / `mrr` / `precision`, `scoreCase`, `metricKey`; `ndcgAtK` / `recallAtK` / `mrrAtK` / `precisionAtK` (or `scorerAtK`) as scorers, `metricAtK` / `metricsAtK`. |
 | [`GEval`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/GEval.ts) | `gEval`, `gEvalConversational`, `makeRubric`, `defaultTemplate`, `judge`, `renderValue` / `renderTurns`; `MissingEvaluationParamError`, `InvalidGEvalDefinitionError`. |
 | [`RagCase`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/RagCase.ts) | `RagCase` — the case shape the RAG metrics read (`input`, `output`, `expected`, `retrievedContext`); `require…` field lookups, `renderContext`. |
-| [`ExtractThenClassify`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ExtractThenClassify.ts) | The extract → classify → ratio judge primitive the RAG metrics share: `extractStatements`, `classifyStatements`, `extractThenClassifyRatio`, `summarizeVerdicts`, `ratioScore`; `VerdictCountMismatchError`. |
+| [`ExtractThenClassify`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ExtractThenClassify.ts) | The extract → classify → ratio judge primitive the RAG metrics share: `extractStatements`, `classifyStatements`, `extractThenClassifyRatio`, `summarizeVerdicts`, `ratioScore`, `verdictMetadata`; `VerdictCountMismatchError`. |
 | [`Faithfulness`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/Faithfulness.ts) / [`AnswerRelevancy`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/AnswerRelevancy.ts) / [`ContextualPrecision`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ContextualPrecision.ts) / [`ContextualRecall`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ContextualRecall.ts) / [`ContextualRelevancy`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/metrics/rag/ContextualRelevancy.ts) | Judge-based RAG metrics over `RagCase`: `faithfulness`, `answerRelevancy`, `contextualPrecision` (and its `weightedCumulativePrecision`), `contextualRecall`, `contextualRelevancy`. |
 | [`ExactMatch`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/ExactMatch.ts) / [`Levenshtein`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/Levenshtein.ts) / [`JsonValidity`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/JsonValidity.ts) / [`SchemaMatch`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/SchemaMatch.ts) | Deterministic scorers: `exactMatch` / `normalizedMatch`, `levenshtein` / `levenshteinSimilarity`, `jsonValidity`, `schemaMatch` / `schemaMatchValue`. |
 | [`ToolCallCorrectness`](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/src/evals/scorers/ToolCallCorrectness.ts) | `toolCallCorrectness` — a case's actual tool calls against its golden's `expectedTools`. |

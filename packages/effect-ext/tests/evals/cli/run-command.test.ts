@@ -122,9 +122,7 @@ describe("cli/RunCommand — run", () => {
 
     expect(writes).toHaveLength(1);
     expect(writes[0]?.path).toBe("out.json");
-    const parsed = Schema.decodeUnknownSync(Schema.fromJsonString(RunReport))(
-      writes[0]?.content ?? "{}",
-    );
+    const parsed = Schema.decodeSync(Schema.fromJsonString(RunReport))(writes[0]?.content ?? "{}");
     expect(parsed.isPassed).toBe(true);
     expect(parsed.ran[0]?.suites[0]?.suite).toBe("fixture-greetings");
 

@@ -12,13 +12,15 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
+import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 import { Result } from "../../src/evals/index.ts";
 
 const scoredMetric = (score: number, reason?: string): Result.MetricAggregate => ({
   metric: "exact-match",
   passed: score >= 1,
   errorCount: 0,
-  summary: Result.summarize([score]),
+  summary: Option.some(Result.summarize([score])),
   trials: [{ _tag: "Scored", trial: 1, cached: false, score: { score, reason } }],
 });
 
@@ -58,7 +60,7 @@ describe("Result.lastReason", () => {
       metric: "exact-match",
       passed: true,
       errorCount: 0,
-      summary: Result.summarize([0, 1]),
+      summary: Option.some(Result.summarize([0, 1])),
       trials: [
         { _tag: "Scored", trial: 1, cached: false, score: { score: 0, reason: "no match" } },
         { _tag: "Scored", trial: 2, cached: false, score: { score: 1, reason: "exact" } },
@@ -72,7 +74,7 @@ describe("Result.lastReason", () => {
       metric: "exact-match",
       passed: true,
       errorCount: 1,
-      summary: Result.summarize([1]),
+      summary: Option.some(Result.summarize([1])),
       trials: [
         { _tag: "Errored", trial: 1, cached: false, error: "judge unavailable" },
         { _tag: "Scored", trial: 2, cached: false, score: { score: 1, reason: "exact" } },
@@ -86,7 +88,7 @@ describe("Result.lastReason", () => {
       metric: "exact-match",
       passed: false,
       errorCount: 2,
-      summary: undefined,
+      summary: Option.none(),
       trials: [
         { _tag: "Errored", trial: 1, cached: false, error: "first failure" },
         { _tag: "Errored", trial: 2, cached: false, error: "judge unavailable" },
@@ -109,7 +111,7 @@ describe("Result.lastReason", () => {
       metric: "exact-match",
       passed: false,
       errorCount: 0,
-      summary: undefined,
+      summary: Option.none(),
       trials: [],
     };
     expect(Result.lastReason(metric)).toBe("(no trials recorded)");
@@ -121,17 +123,39 @@ describe("Result.formatSpread", () => {
   // `mean=… stddev=…` — the shared seam picks the ASCII form as canonical.
   it("renders mean, stddev, and range with the mean=/stddev= label style", () => {
     const summary = Result.summarize([0.6, 0.8, 1]);
-    expect(Result.formatSpread(summary)).toBe(
+    expect(Result.formatSpread(Option.some(summary))).toBe(
       `mean=${summary.mean.toFixed(3)} stddev=${summary.stddev.toFixed(3)} [${summary.min.toFixed(3)}, ${summary.max.toFixed(3)}]`,
     );
-    expect(Result.formatSpread(summary)).not.toContain("μ=");
-    expect(Result.formatSpread(summary)).not.toContain("σ=");
+    expect(Result.formatSpread(Option.some(summary))).not.toContain("μ=");
+    expect(Result.formatSpread(Option.some(summary))).not.toContain("σ=");
   });
 
   // Drift case: `Reporter.ts` used to render "—" for an all-errored metric,
   // the runner adapter "no scored trials" — the shared seam picks the
   // latter, more descriptive form as canonical.
   it("falls back to a placeholder when there is no summary", () => {
-    expect(Result.formatSpread(undefined)).toBe("no scored trials");
+    expect(Result.formatSpread(Option.none())).toBe("no scored trials");
+  });
+});
+
+describe("Result.summaryReplacer", () => {
+  const stringify = Schema.encodeSync(
+    Schema.fromJsonString(Schema.Unknown, { replacer: Result.summaryReplacer }),
+  );
+  const plain = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
+
+  it("writes a present summary as the summary itself", () => {
+    const summary = Result.summarize([0.5]);
+    expect(stringify({ summary: Option.some(summary) })).toBe(plain({ summary }));
+  });
+
+  it("writes an absent summary as null, keeping the key", () => {
+    expect(stringify({ summary: Option.none() })).toBe('{"summary":null}');
+  });
+
+  it("leaves every other key, and a summary that is not an Option, alone", () => {
+    expect(stringify({ other: Option.none(), summary: 3 })).toBe(
+      plain({ other: Option.none(), summary: 3 }),
+    );
   });
 });

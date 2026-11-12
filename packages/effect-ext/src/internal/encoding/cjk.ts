@@ -21,19 +21,19 @@ import type { Name as EncodingName } from "./labels.ts";
 export interface CjkIndexData {
   readonly base: number;
   readonly codePoints: string;
-  readonly astral?: ReadonlyArray<number> | undefined;
+  readonly astral?: ReadonlyArray<number>;
 }
 
 /** The CJK indexes a program has provided; each entry module fills some of them. */
 export interface CjkTables {
   readonly _tag: "EncodingTables";
-  readonly jis0208?: CjkIndexData | undefined;
-  readonly jis0212?: CjkIndexData | undefined;
-  readonly iso2022jpKatakana?: CjkIndexData | undefined;
-  readonly gb18030?: CjkIndexData | undefined;
-  readonly gb18030Ranges?: ReadonlyArray<number> | undefined;
-  readonly big5?: CjkIndexData | undefined;
-  readonly eucKr?: CjkIndexData | undefined;
+  readonly jis0208?: CjkIndexData;
+  readonly jis0212?: CjkIndexData;
+  readonly iso2022jpKatakana?: CjkIndexData;
+  readonly gb18030?: CjkIndexData;
+  readonly gb18030Ranges?: ReadonlyArray<number>;
+  readonly big5?: CjkIndexData;
+  readonly eucKr?: CjkIndexData;
 }
 
 /** No tables. */
@@ -128,7 +128,7 @@ const LEAD = -2;
 interface PairRules {
   readonly single: (byte: number) => number;
   readonly pair: (lead: number, byte: number) => PairResult;
-  readonly relead?: ((lead: number, byte: number) => boolean) | undefined;
+  readonly relead?: (lead: number, byte: number) => boolean;
 }
 
 /**

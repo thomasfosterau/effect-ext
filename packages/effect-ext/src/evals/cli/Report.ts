@@ -15,7 +15,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import type * as Result from "../Result.ts";
+import * as Result from "../Result.ts";
 
 /** The default `--out` path, gitignored alongside the filesystem cache (`.effect-evals/`). */
 export const DEFAULT_OUT_PATH = ".effect-evals/results.json";
@@ -49,11 +49,11 @@ export interface CliReport {
 
 /**
  * `JSON.stringify` with two-space indentation, as a codec. The replacer writes
- * an absent `summary` as `null` rather than dropping the key.
+ * a metric's `summary` as the summary itself, or `null` when it has none.
  */
 const encodeReportJson = Schema.encodeEffect(
   Schema.fromJsonString(Schema.Unknown, {
-    replacer: (key, value) => (key === "summary" && value === undefined ? null : value),
+    replacer: Result.summaryReplacer,
     space: 2,
   }),
 );

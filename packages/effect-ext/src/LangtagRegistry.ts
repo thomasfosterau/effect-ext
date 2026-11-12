@@ -146,7 +146,7 @@ export const suppressScript = (language: string): Option.Option<string> =>
  * @category models
  */
 export interface CanonicalizeOptions {
-  readonly suppressScript?: boolean | undefined;
+  readonly suppressScript?: boolean;
 }
 
 const preferred = (map: string, subtag: string): string =>
@@ -157,7 +157,7 @@ const byOrder: Order.Order<Extension> = Order.mapInput(Order.String, (extension:
 );
 
 /** A `langtag`'s parts in canonical form, as a tag string. */
-const canonicalLangtag = (parts: Subtags, options: CanonicalizeOptions | undefined): string => {
+const canonicalLangtag = (parts: Subtags, options?: CanonicalizeOptions): string => {
   const primary = Option.getOrElse(parts.language, () => "");
   // An extlang's Preferred-Value is the language it is: `zh-yue` → `yue`.
   const language = Option.match(Arr.head(parts.extlangs), {

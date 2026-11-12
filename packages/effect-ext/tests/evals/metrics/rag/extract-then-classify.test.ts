@@ -9,6 +9,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import { AiError, LanguageModel } from "effect/ai";
 import { ExtractThenClassify } from "../../../../src/evals/index.ts";
@@ -18,10 +19,10 @@ import { makeJudgeStub, provideJudge } from "./helpers.ts";
 describe("ExtractThenClassify.ratioScore", () => {
   it("scores the fraction of yes verdicts", () => {
     const score = ExtractThenClassify.ratioScore([
-      { statement: "a", verdict: "yes" },
-      { statement: "b", verdict: "yes" },
-      { statement: "c", verdict: "no" },
-      { statement: "d", verdict: "no" },
+      { statement: "a", verdict: "yes", reason: Option.none() },
+      { statement: "b", verdict: "yes", reason: Option.none() },
+      { statement: "c", verdict: "no", reason: Option.none() },
+      { statement: "d", verdict: "no", reason: Option.none() },
     ]);
     expect(score).toBe(0.5);
   });
@@ -31,8 +32,12 @@ describe("ExtractThenClassify.ratioScore", () => {
   });
 
   it("scores a perfect match as 1 and a total miss as 0", () => {
-    expect(ExtractThenClassify.ratioScore([{ statement: "a", verdict: "yes" }])).toBe(1);
-    expect(ExtractThenClassify.ratioScore([{ statement: "a", verdict: "no" }])).toBe(0);
+    expect(
+      ExtractThenClassify.ratioScore([{ statement: "a", verdict: "yes", reason: Option.none() }]),
+    ).toBe(1);
+    expect(
+      ExtractThenClassify.ratioScore([{ statement: "a", verdict: "no", reason: Option.none() }]),
+    ).toBe(0);
   });
 });
 
@@ -40,8 +45,8 @@ describe("ExtractThenClassify.summarizeVerdicts", () => {
   it("reports a pass count with no failure detail when everything passes", () => {
     expect(
       ExtractThenClassify.summarizeVerdicts([
-        { statement: "a", verdict: "yes" },
-        { statement: "b", verdict: "yes" },
+        { statement: "a", verdict: "yes", reason: Option.none() },
+        { statement: "b", verdict: "yes", reason: Option.none() },
       ]),
     ).toBe("2/2 statements passed.");
   });
@@ -49,16 +54,18 @@ describe("ExtractThenClassify.summarizeVerdicts", () => {
   it("lists each failing statement with its reason", () => {
     expect(
       ExtractThenClassify.summarizeVerdicts([
-        { statement: "a", verdict: "yes" },
-        { statement: "b", verdict: "no", reason: "contradicted by context" },
+        { statement: "a", verdict: "yes", reason: Option.none() },
+        { statement: "b", verdict: "no", reason: Option.some("contradicted by context") },
       ]),
     ).toBe("1/2 statements passed.\n- b: contradicted by context");
   });
 
   it("lists a failing statement without a reason using just the statement text", () => {
-    expect(ExtractThenClassify.summarizeVerdicts([{ statement: "b", verdict: "no" }])).toBe(
-      "0/1 statements passed.\n- b",
-    );
+    expect(
+      ExtractThenClassify.summarizeVerdicts([
+        { statement: "b", verdict: "no", reason: Option.none() },
+      ]),
+    ).toBe("0/1 statements passed.\n- b");
   });
 
   it("reports nothing to evaluate when there are no verdicts", () => {

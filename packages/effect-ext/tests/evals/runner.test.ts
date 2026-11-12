@@ -15,9 +15,18 @@ import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Schedule from "effect/Schedule";
 import { AiError } from "effect/ai";
-import { Cache, Dataset, Metric, Runner, Scorer, Threshold } from "../../src/evals/index.ts";
+import {
+  Cache,
+  Dataset,
+  Metric,
+  Result,
+  Runner,
+  Scorer,
+  Threshold,
+} from "../../src/evals/index.ts";
 import { runTest } from "./helpers/effect.ts";
 
 class TaskError {
@@ -27,6 +36,15 @@ class TaskError {
     this.message = message;
   }
 }
+
+/** One statistic of a metric's summary, `NaN` when the metric has none (so an assertion on it fails). */
+const statOf = (stat: "mean" | "min" | "max", metric?: Result.MetricAggregate): number =>
+  Option.getOrElse(
+    Option.flatMap(Option.fromUndefinedOr(metric), (found) =>
+      Option.map(found.summary, (spread) => spread[stat]),
+    ),
+    () => Number.NaN,
+  );
 
 /** Immediate retries (no delay) so retry tests stay fast. */
 const fastSchedule = Schedule.recurs(5);
@@ -59,7 +77,7 @@ describe("Runner.runSuite — end to end", () => {
     expect(result.suite).toBe("greetings");
     expect(result.passed).toBe(true);
     expect(result.cases).toHaveLength(2);
-    expect(result.cases[0]?.metrics[0]?.summary?.mean).toBe(1);
+    expect(statOf("mean", result.cases[0]?.metrics[0])).toBe(1);
     expect(result.cases[0]?.metrics[0]?.passed).toBe(true);
   });
 
@@ -78,7 +96,7 @@ describe("Runner.runSuite — end to end", () => {
 
     expect(result.passed).toBe(false);
     expect(result.cases[0]?.metrics[0]?.passed).toBe(false);
-    expect(result.cases[0]?.metrics[0]?.summary?.mean).toBe(0);
+    expect(statOf("mean", result.cases[0]?.metrics[0])).toBe(0);
   });
 
   it("propagates a dataset failure rather than swallowing it", async () => {
@@ -127,9 +145,9 @@ describe("Runner.runSuite — trials", () => {
 
     const metric = result.cases[0]?.metrics[0];
     expect(metric?.trials).toHaveLength(3);
-    expect(metric?.summary?.mean).toBeCloseTo(0.8);
-    expect(metric?.summary?.min).toBe(0.6);
-    expect(metric?.summary?.max).toBe(1);
+    expect(statOf("mean", metric)).toBeCloseTo(0.8);
+    expect(statOf("min", metric)).toBe(0.6);
+    expect(statOf("max", metric)).toBe(1);
     expect(metric?.passed).toBe(true);
   });
 
@@ -339,7 +357,7 @@ describe("Runner.runSuite — ignore vs fail metric errors", () => {
 
     const metric = result.cases[0]?.metrics[0];
     expect(metric?.errorCount).toBe(1);
-    expect(metric?.summary?.mean).toBe(1);
+    expect(statOf("mean", metric)).toBe(1);
     expect(metric?.passed).toBe(true);
     expect(result.cases[0]?.passed).toBe(true);
   });
@@ -436,7 +454,6 @@ describe("Runner.runSuite — caching", () => {
           golden: "Bonjour",
           taskId: "corrupt@v1",
           metric: "counting",
-          judgeModelId: undefined,
           trial: 1,
         });
         yield* kv.set(taskKey, "{not valid json");

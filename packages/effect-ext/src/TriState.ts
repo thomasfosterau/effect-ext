@@ -198,8 +198,7 @@ type NotOption<A> = [Extract<A, Option.Option<unknown>>] extends [never]
  * @since 0.1.0
  * @category readers
  */
-// oxlint-disable-next-line effect/prefer-option-over-null -- the `| undefined` is the tri-state's OUTER half (key absence), which `Schema.optionalKey` expresses and which must stay distinct from the inner `Option`'s `none`; reading both halves is precisely what this function does
-export const read = <A>(field: Option.Option<A> | undefined): TriState<A> =>
+export const read = <A>(field?: Option.Option<A>): TriState<A> =>
   field === undefined
     ? carryForward
     : Option.match(field, { onNone: () => clear, onSome: (value) => assign(value) });
@@ -279,7 +278,7 @@ export const match =
  * @category converters
  */
 // oxlint-disable-next-line effect/prefer-option-over-null -- converting between the two tri-state encodings: the nullable side IS the target shape
-export const toNullOr = <A>(field: Option.Option<A> | undefined): A | null | undefined =>
+export const toNullOr = <A>(field?: Option.Option<A>): A | null | undefined =>
   field === undefined ? undefined : Option.getOrNull(field);
 
 /**
@@ -372,8 +371,7 @@ export function toNullOrFields(
  * @since 0.1.0
  * @category readers
  */
-// oxlint-disable-next-line effect/prefer-option-over-null -- the `| undefined` is the tri-state's OUTER half (key absence), which `Schema.optionalKey` expresses and which must stay distinct from the inner `Option`'s `none`; reading both halves is precisely what this function does
-export const suppliedValue = <A>(field: Option.Option<A> | undefined): Option.Option<A> =>
+export const suppliedValue = <A>(field?: Option.Option<A>): Option.Option<A> =>
   field ?? Option.none();
 
 /**

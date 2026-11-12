@@ -9,6 +9,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import { AiError } from "effect/ai";
 import {
@@ -50,7 +51,7 @@ describe("SpeechModel", () => {
           Effect.succeed({
             audio: new Uint8Array([1, 2, 3]),
             mediaType: "audio/mpeg",
-            usage: { inputCharacters: 5 },
+            usage: { inputCharacters: Option.some(5) },
           }),
         );
         const result = yield* model.generate({ text: "hello", voice: "nova", format: "mp3" });
@@ -60,8 +61,8 @@ describe("SpeechModel", () => {
 
     expect(Array.from(response.audio)).toEqual([1, 2, 3]);
     expect(response.mediaType).toBe("audio/mpeg");
-    expect(response.usage.inputCharacters).toBe(5);
-    expect(calls).toEqual([{ text: "hello", voice: "nova", format: "mp3", sampleRate: undefined }]);
+    expect(response.usage.inputCharacters).toStrictEqual(Option.some(5));
+    expect(calls).toEqual([{ text: "hello", voice: "nova", format: "mp3" }]);
   });
 
   it("fails with AiError when the provider returns empty audio", async () => {
@@ -71,7 +72,7 @@ describe("SpeechModel", () => {
           Effect.succeed({
             audio: new Uint8Array([]),
             mediaType: "audio/mpeg",
-            usage: { inputCharacters: undefined },
+            usage: { inputCharacters: Option.none() },
           }),
         );
         return yield* model.generate({ text: "hello" });
@@ -88,7 +89,7 @@ describe("SpeechModel", () => {
           Effect.succeed({
             audio: new Uint8Array([1]),
             mediaType: "audio/mpeg",
-            usage: { inputCharacters: undefined },
+            usage: { inputCharacters: Option.none() },
           }),
         );
         return yield* Stream.runCollect(model.stream({ text: "hi" }));
