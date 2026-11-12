@@ -17,6 +17,12 @@
  * format, voice settings) are supplied at construction and overridden per call
  * by the neutral `SpeechOptions` (`voice`, `format`, `sampleRate`).
  *
+ * The neutral `format` and `sampleRate` map onto ElevenLabs' combined
+ * `output_format` (`pcm` with `24000` becomes `pcm_24000`); a `format` that
+ * already contains an underscore is passed through as-is, and
+ * {@link Settings.outputFormat} sets an exact id. A call with neither `voice`
+ * nor a default `voiceId` fails with an `AiError` (`InvalidUserInputError`).
+ *
  * @module ElevenLabsSpeechModel
  *
  * @copyright Thomas Foster

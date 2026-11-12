@@ -5,7 +5,7 @@
  * streaming text-to-speech (binary audio out), Scribe speech-to-text (a
  * multipart upload, JSON transcript back), and speech-to-speech voice
  * conversion (multipart in, binary audio out). Every failure is mapped into the
- * unified `AiError` type.
+ * unified `AiError` type, its reason derived from the HTTP status.
  *
  * ElevenLabs has no upstream `@effect/ai-*` package to repoint, so the wire
  * format is handled directly here against the request interfaces / transcript
@@ -316,7 +316,8 @@ export const layer = (
 /**
  * Provides {@link ElevenLabsClient} as a `Layer`, loading its settings through
  * Effect's `Config` module (e.g. from environment variables or a secrets
- * provider).
+ * provider). Each option is a `Config`; the layer fails with a `ConfigError`
+ * when one cannot be read.
  */
 export const layerConfig = (options?: {
   readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined;
