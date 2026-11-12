@@ -45,7 +45,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@thomasfosterau/effect-ext": "workspace:*"
+    "@thomasfosterau/effect-ext": "workspace:^"
   },
   "devDependencies": {
     "@effect/language-service": "catalog:",
