@@ -71,4 +71,3 @@ jobs:
             vp-task-v1-${{ runner.os }}-node-${{ steps.setup.outputs.node-version }}-
       - name: CI gate
         run: vp run ci
-
