@@ -345,14 +345,16 @@ Under `exactOptionalPropertyTypes` an absent optional key must be omitted, not s
 
 ```ts
 import * as Option from "effect/Option";
-import { fromOption, optionalKey } from "@thomasfosterau/effect-ext/OptionalKey";
+import { fields, fromOption, optionalKey } from "@thomasfosterau/effect-ext/OptionalKey";
 
 const options = { limit: 10, ...optionalKey("cursor", cursor), ...fromOption("filter", filter) };
+const forwarded = { collection, ...fields({ limit, cursor }) };
 ```
 
 - `optionalKey(key, value?)` — `{ [key]: value }` unless `value` is `undefined`. `null`, `""`, `0` and `false` keep their key; pass `x ?? undefined` to drop a `null`.
 - `fromOption(key, option)` — the same over an `Option`: the key for `Some`, none for `None`.
-- An absent key allocates nothing: every absent result is one shared, frozen empty object.
+- `fields(input)` — the whole-object form: copies the members of `input` that are not `undefined`. Its type, `Defined<T>`, makes each member that admits `undefined` optional and keeps the rest required.
+- An absent key from `optionalKey` or `fromOption` allocates nothing: every such result is one shared, frozen empty object.
 
 ## Web, Net, Observability, Negotiate, ServiceWorker, Browser, BrowserTesting
 

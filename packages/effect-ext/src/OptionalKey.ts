@@ -8,10 +8,13 @@
  * names the intent instead: spread `optionalKey("key", value)` and the key is
  * present exactly when the value is.
  *
+ * {@link fields} does the same for a whole object of optional values at once.
+ *
  * Only `undefined` means absent: `null`, `""`, `0` and `false` are values and
  * keep their key. Pass `x ?? undefined` to drop a `null`, or use
- * {@link fromOption} for an `Option`. An absent key costs no allocation: every
- * absent result is one shared, frozen empty object.
+ * {@link fromOption} for an `Option`. An absent key from {@link optionalKey} or
+ * {@link fromOption} costs no allocation: every such result is one shared,
+ * frozen empty object.
  *
  * Effect has no equivalent: `effect/Struct` picks, omits and evolves existing
  * structs but does not build optional keys.
@@ -21,6 +24,7 @@
  */
 
 import * as Option from "effect/Option";
+import * as R from "effect/Record";
 
 /**
  * The object {@link optionalKey} returns: `key` is optional and, when present,
@@ -30,6 +34,20 @@ import * as Option from "effect/Option";
  * @category models
  */
 export type OptionalKey<K extends string, A> = { readonly [P in K]?: Exclude<A, undefined> };
+
+/**
+ * The object {@link fields} returns: each member whose type admits `undefined`
+ * becomes optional with `undefined` excluded; every other member is kept as
+ * it is.
+ *
+ * @since 0.3.0
+ * @category models
+ */
+export type Defined<T> = {
+  readonly [K in keyof T as undefined extends T[K] ? K : never]?: Exclude<T[K], undefined>;
+} & {
+  readonly [K in keyof T as undefined extends T[K] ? never : K]: T[K];
+};
 
 const EMPTY = /* @__PURE__ */ Object.freeze({});
 
@@ -82,3 +100,30 @@ export const fromOption = <const K extends string, A>(
   key: K,
   option: Option.Option<A>,
 ): OptionalKey<K, A> => optionalKey(key, Option.getOrUndefined(option));
+
+/**
+ * Copies the members of `input` whose value is not `undefined`: the
+ * whole-object form of {@link optionalKey}, for forwarding several optional
+ * values into an options object at once.
+ *
+ * @example
+ * ```ts
+ * import { fields } from "@thomasfosterau/effect-ext/OptionalKey"
+ *
+ * const list = (collection: string, limit?: number, cursor?: string) => ({ collection, ...fields({ limit, cursor }) })
+ *
+ * console.log(list("posts"))
+ * // → { collection: 'posts' }
+ * console.log(list("posts", 10))
+ * // → { collection: 'posts', limit: 10 }
+ * console.log(fields({ a: null, b: 0, c: undefined }))
+ * // → { a: null, b: 0 }
+ * ```
+ *
+ * @since 0.3.0
+ * @category constructors
+ */
+export function fields<T extends object>(input: T): Defined<T>;
+export function fields<T extends object>(input: T): Readonly<Record<string, T[keyof T]>> {
+  return R.filter(input, (value) => value !== undefined);
+}

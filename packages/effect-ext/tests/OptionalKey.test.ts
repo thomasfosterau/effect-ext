@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Option from "effect/Option";
-import { fromOption, optionalKey } from "@thomasfosterau/effect-ext/OptionalKey";
+import { fields, fromOption, optionalKey } from "@thomasfosterau/effect-ext/OptionalKey";
 
 const introduce = (name: string, nickname?: string) => ({
   name,
@@ -50,5 +50,28 @@ describe("fromOption", () => {
 
   it("omits the key for None", () => {
     expect(fromOption("a", Option.none<number>())).toStrictEqual({});
+  });
+});
+
+describe("fields", () => {
+  it("drops undefined members and keeps every other value", () => {
+    expect(fields({ a: undefined, b: null, c: 0, d: "", e: false, f: 1 })).toStrictEqual({
+      b: null,
+      c: 0,
+      d: "",
+      e: false,
+      f: 1,
+    });
+  });
+
+  it("returns an empty object when every member is undefined", () => {
+    expect(fields({ a: undefined })).toStrictEqual({});
+  });
+
+  it("spreads into an options object", () => {
+    expect({ collection: "posts", ...fields({ limit: 10, cursor: undefined }) }).toStrictEqual({
+      collection: "posts",
+      limit: 10,
+    });
   });
 });
