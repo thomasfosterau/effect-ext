@@ -88,7 +88,7 @@ catalog:
   "@enfect/oxlint": 0.10.0
   # Optional peer of effect-ext: the `Robots` line grammar is an
   # effect-parse parser, decoded through its `ParserSchema` (effect-web#113).
-  "@thomasfosterau/effect-parse": ^0.6.0
+  "@thomasfosterau/effect-parse": ^0.6.1
   "@types/node": ^26.6.6
   # Must match `vitest` below (its peer is the exact vitest version).
   "@vitest/coverage-istanbul": 5.1.0
