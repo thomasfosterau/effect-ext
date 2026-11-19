@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Layout from "@thomasfosterau/effect-ext/Layout";
 
 describe("Layout", () => {
-  it("alignUp is exact past 2^31 bytes (effect-ext#19)", () => {
+  it("alignUp is exact past 2^31 bytes", () => {
     expect(Layout.alignUp(2 ** 31, 8)).toBe(2 ** 31);
     expect(Layout.alignUp(2 ** 31 + 1, 8)).toBe(2 ** 31 + 8);
     expect(Layout.alignUp(2 ** 32 + 1, 8)).toBe(2 ** 32 + 8);

@@ -103,7 +103,7 @@ const pairs = (fixture: ReadonlyArray<unknown>): ReadonlyArray<readonly [string,
   );
 
 // `stylesheet_bytes.json` is not run: the parsers take text, and decoding bytes
-// (the Syntax 3 §3.2 encoding sniff) is left to the caller (#186).
+// (the Syntax 3 §3.2 encoding sniff) is left to the caller.
 describe("css-parsing-tests", () => {
   it.each([
     [

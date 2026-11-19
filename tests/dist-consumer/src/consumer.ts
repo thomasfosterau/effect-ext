@@ -156,7 +156,7 @@ export type Checks = [
   Assert<Equals<typeof BoundedEntry.PageOffset, typeof Bounded.PageOffset>>,
   Assert<Equals<typeof strictPagination, Bounded.RequiredPagination>>,
   Assert<Equals<NonNullable<Bounded.IdListOptions["maxLength"]>, Option.Option<number>>>,
-  // The page window is built on `Schema.Finite` (#75), and says so on emit.
+  // The page window is built on `Schema.Finite`, and says so on emit.
   Assert<Equals<typeof Bounded.PageOffset, Schema.Finite>>,
   Assert<Equals<ReturnType<typeof Bounded.pageLimit>, Schema.Finite>>,
   Assert<Equals<typeof strictPagination.limit, Schema.Finite>>,

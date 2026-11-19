@@ -97,7 +97,7 @@ export interface Allocator {
 export const DEFAULT_ALIGN = 8;
 
 // Arithmetic, not bitwise: `&` / `~` truncate to 32 bits, which breaks at
-// 2^31 bytes and beyond (effect-ext#19). `log2` of a power of two is exact.
+// 2^31 bytes and beyond. `log2` of a power of two is exact.
 const isPowerOfTwo = (n: number) =>
   Number.isSafeInteger(n) && n > 0 && 2 ** Math.round(Math.log2(n)) === n;
 
@@ -382,7 +382,7 @@ export interface Tracked extends Allocator {
  * @category allocators
  */
 export const tracked = (underlying: Allocator): Tracked => {
-  // Identity of every block handed out and not yet released (effect-ext#18):
+  // Identity of every block handed out and not yet released:
   // a release counts only for a live block, so a double free cannot drive
   // the counts negative and hide a leak. A `WeakSet` keeps a leaked block
   // collectable.

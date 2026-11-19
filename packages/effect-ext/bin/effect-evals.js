@@ -4,7 +4,7 @@
  * itself as `node --disable-warning=ExperimentalWarning
  * --import <loader.mjs> <dist/evals/cli/main.js> …argv`. The CLI itself is BUILT
  * JavaScript (`dist/evals/cli/main.js`) because Node refuses to type-strip anything
- * under `node_modules` (issue #42); the loader hook plus Node's native type
+ * under `node_modules`; the loader hook plus Node's native type
  * stripping exist only for the consumer's own `*.eval.ts` files, which live
  * outside `node_modules`. Flags and the loader import are literal argv on this
  * one `node` invocation — never tsx and never `NODE_OPTIONS`, because the
@@ -15,13 +15,13 @@
  * Node 23.x and early 24.x, inside the CLI's `>=22.18` range,
  * `fs.promises.glob` and type stripping each still print one on every run.
  * Never `--no-warnings=…`: Node ignores its value and hides every warning,
- * `DeprecationWarning`s included (#81).
+ * `DeprecationWarning`s included.
  *
  * The library's `engines.node` floor is 22.0, but the CLI needs 22.18: type
  * stripping is on by default from 22.18, and the loader hook uses
  * `module.registerHooks()` (22.15). `engines` cannot be set per entry point,
  * so the bin checks the version itself, before it spawns anything, and exits
- * with a message that names the requirement (#71).
+ * with a message that names the requirement.
  *
  * Run `vp run -r build` before using the bin from the workspace.
  *

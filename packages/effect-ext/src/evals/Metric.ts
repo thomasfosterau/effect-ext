@@ -1,6 +1,6 @@
 /**
  * `Metric` — a {@link Scorer.Scorer} paired with a {@link Threshold.Threshold}
- * policy and a display name, the unit a runner (website#924) will actually
+ * policy and a display name, the unit a runner will actually
  * execute and report on. Scorers stay reusable and threshold-agnostic; a
  * metric is what turns a raw score into a pass/fail verdict for one particular
  * evaluation.

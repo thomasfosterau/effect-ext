@@ -86,7 +86,7 @@
     "src/evals/cli/loader.mjs",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE.md"
   ],
   "type": "module",
   "sideEffects": false,

@@ -19,9 +19,6 @@
  *   the package exactly as a consumer does. Its tests import the package by
  *   name through an alias to `src/`, and a sibling is consumed through its
  *   `dist/`, hence the build edge on every task.
- *
- * Copied from the effect-web library's `vite.package.ts`; the one-module-per-
- * subpath layout (`src/<Module>.ts`) is Effect's own.
  */
 import * as Arr from "effect/Array";
 import * as Config from "effect/Config";
@@ -38,11 +35,7 @@ export interface CoverageThresholds {
   readonly statements: number;
 }
 
-/**
- * The coverage every package ratchets toward: effect-web's thresholds, the
- * family standard. A package that omits a metric from its `coverageFloor` is
- * held to the value here.
- */
+/** The default floor for any metric a package's `coverageFloor` omits. */
 export const coverageTarget: CoverageThresholds = {
   lines: 90,
   branches: 85,
@@ -206,9 +199,7 @@ export const packageConfig = ({
       entry: { ...entry },
       format: "esm",
       platform: "neutral",
-      // The tsup build this replaced emitted untranspiled `esnext`; without
-      // this tsdown would lower syntax to `engines.node` where a package
-      // declares one.
+      // Otherwise tsdown lowers syntax to `engines.node`.
       target: "esnext",
       dts: true,
       outDir: "dist",
@@ -310,12 +301,8 @@ export const distExportsPackageConfig = ({
           dependsOn: [siblingBuild],
           cache: { env: testEnv, input: cacheInputs, output: ["coverage/**"] },
         },
-        // Compiles AND RUNS every JSDoc `@example`: docgen.json's
-        // `"runExamples": true` turns that on, and `--run-examples` is the
-        // backstop docgen falls back to if the key is ever dropped (the key
-        // wins when present, so an explicit `false` still turns it off).
-        // Examples import the package by name exactly as a consumer would,
-        // which resolves through `exports` to `dist/` — hence the build edge.
+        // Compiles and runs every JSDoc `@example`. Examples import the package
+        // by name, which resolves through `exports` to `dist/`.
         docgen: {
           command: "docgen --run-examples",
           dependsOn: ["build"],

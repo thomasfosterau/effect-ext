@@ -2,64 +2,13 @@
 
 The published package: one subpath per module plus the `.` barrel. Peer: `effect` — two copies break `Context` / `Layer` / `Schema` identity, so the consumer owns the singleton — plus three optional peers, each needed only by the modules that import it: `@effect/platform-browser` (`Browser`, `BrowserTesting`), `@thomasfosterau/effect-parse` (`Robots` and the eight time modules) and `@effect/platform-node` (`src/evals/cli/main.ts` alone, the `effect-evals` bin's entry). Those eleven modules are subpaths only: the `.` barrel does not re-export them, so importing it never needs a peer the consumer did not install. The evals toolkit is not on the `.` barrel either: it has its own, `./evals`, and one subpath per module under `./evals/` (see [Evals](#evals)).
 
-Seven families share the package; the AI abstractions and the evals toolkit, the last two, have their own sections ([AI service abstractions](#ai-service-abstractions), [Evals](#evals)). The binary-data and Schema modules are effect-ext's own; the web-platform modules came from `thomasfosterau/effect-web`, merged here with their history (#32); the numeric modules came from `thomasfosterau/effect-numeric` and the time modules from `thomasfosterau/effect-time`, both merged with their history and never published under their old names (`effect-numeric`, `@thomasfosterau/effect-time`). Each of effect-web's entry points became one subpath with the same contents (`@thomasfosterau/effect-web/net` → `Net`, `@thomasfosterau/effect-css` → `Css`, …), so a consumer's switch is an import change. They keep two of effect-web's conventions until #31 unifies them: `SAFETY:`-commented assertions, and suites that run their programs with `Effect.runPromise` (the lint relaxations are `webModules` in the root `vite.config.ts`). In their comments, a bare `#NNN` written before the merge is effect-web's tracker (`effect-web#NNN`); an invariant id (`CACHE-AUTH-003`) names a rule from the apps' specs, listed in the root `SECURITY.md`. The numeric and time modules follow the conventions below except where their own sections say otherwise: their suites are plain vitest (`Effect.runPromise` in the test body), not `@effect/vitest`. Their lint allowances are scoped by file in the root `vite.config.ts`.
+Seven families share the package: binary data, Schema, web platform, numeric, time, the AI abstractions and the evals toolkit; the module list is the [README](README.md). The web, numeric and time suites still run their programs with `Effect.runPromise` rather than `@effect/vitest`, and the web modules keep `SAFETY:`-commented assertions; their lint allowances are scoped by file in the root `vite.config.ts`. An invariant id (`CACHE-AUTH-003`) names a rule defined in [docs/SECURITY.md](../../docs/SECURITY.md#invariant-ids).
 
-| Module | Family | What it is |
-| --- | --- | --- |
-| `Allocator` | binary data | An `Allocator` service (a `Context.Reference`) handing out `ArrayBuffer` blocks: heap, arena and tracked |
-| `Layout` | binary data | Binary layouts (`u8` … `f64`, `bool`, structs, fixed arrays) with C-like alignment |
-| `BufferStruct` | binary data | Structs whose fields live in an `ArrayBuffer`, exposed as ordinary properties |
-| `Vec` | binary data | A growable, `ArrayBuffer`-backed array, like Rust's `Vec<T>` |
-| `StructOfArrays` | binary data | A growable struct-of-arrays container with typed-array columns |
-| `String` | binary data | A growable, Allocator-backed UTF-8 string, like Rust's `String` |
-| `Str` | binary data | An immutable UTF-8 string slice, like Rust's `str`; usable as a `HashMap` key |
-| `TriState` | Schema | The update tri-state: field schemas and readers |
-| `Issues` | Schema | Schema issue trees → RFC 6901 JSON Pointers |
-| `Bounded` | Schema | Bounded pagination and id-list codecs |
-| `Ids` | Schema | UUID, branded-UUID ids and slugs |
-| `LiteralExact` | Schema | Literal tuples checked to cover a union exactly |
-| `Ast` | Schema | Schema introspection by AST and behavioural decode probe |
-| `Url` | Schema | Absolute URLs (WHATWG serialisation) branded with the components they were checked against: scheme, hostname / domain, port, credentials, path |
-| `OptionalKey` | objects | `optionalKey` / `fromOption` / `fields` / `presentFields`: optional keys for object construction under `exactOptionalPropertyTypes` |
-| `Web` | web | Framework-neutral request / response utilities: header policies, cache control, `Vary`, cross-origin and client-IP checks, sessions, `siteBase`, the JSON:API error document and the Fetch adapters |
-| `Net` | web | The lexical SSRF host block list and the redirect-revalidating fetch (SEC-SSRF-003) |
-| `Observability` | web | The structured JSON-line sink, the allow-listed span logger, the event trio, the auth-outcome signal and per-request metrics |
-| `Negotiate` | web | The content-negotiation verdict over the caller's `Representation`s (media type, served paths, accepted parameters); no media type is built in |
-| `ServiceWorker` | web | Caching strategies, precache, the route table and event plumbing for a service worker, on Effect |
-| `Browser` | web | Browser platform APIs as services: `Locks`, `Navigator`, `PageVisibility`, `MediaQuery`, `WakeLock`, `Broadcast`, `PermissionStatus`, `Notifications`, `Fullscreen`, `ScreenOrientation`, `IdleDetection`, `Battery`, and one `layer` |
-| `BrowserTesting` | web | An in-memory double, with its `Control`, for every `Browser` service and for `@effect/platform-browser`'s `Clipboard`, `Geolocation` and `Permissions`; `observe` |
-| `Robots` | web | The Robots Exclusion Protocol (RFC 9309): parse / encode and match, the crawler side and the serving side |
-| `Sitemap` | web | `sitemap.xml` (whole or streamed), the sitemap index, the `feed.json` adapter and the `Cache-Tag` purge |
-| `RssFeed` | web | An RSS 2.0 feed, rendered and served |
-| `AtomFeed` | web | An Atom (RFC 4287) feed, rendered and served |
-| `JsonFeed` | web | A JSON Feed 1.1 document, rendered and served, and the lenient 1.0 / 1.1 reader |
-| `UriTemplate` | web | `UriTemplate` (RFC 6570 parse, expand and match), `LinkHeader` (RFC 8288) and `WellKnown` (RFC 8615) |
-| `Langtag` | web | BCP 47 language tags (RFC 5646), language ranges (RFC 4647), `Accept-Language` and `negotiateLanguage` |
-| `LangtagRegistry` | web | Tag validity and canonicalisation against a snapshot of the IANA Language Subtag Registry |
-| `Css` | web | CSS Syntax 3 parsing, `An+B`, tokens, CSS Color 4 / 5, lengths, the box shorthands, fonts, text values and serialisation |
-| `Encoding` | web | The WHATWG Encoding Standard: labels, BOM sniffing, fatal decoding and encoding of bytes and streams |
-| `EncodingJapanese`, `EncodingGb18030`, `EncodingBig5`, `EncodingEucKr` | web | The opt-in CJK indexes, provided through `Encoding.tablesLayer` |
-| `Mime` | web | `MimeType`, `Sniff` (WHATWG MIME Sniffing), `Extension` and `DataUrl` |
-| `I8` … `I128`, `U8` … `U128` | numeric | The standard fixed-width integers (Rust's `i8` … `u128`), each a `FixedInt` instance with strict, checked, wrapping, saturating and overflowing arithmetic |
-| `FixedInt` | numeric | The fixed-width integer model and `make` / `makeBig` for any width |
-| `Wrapping`, `Saturating`, `Checked`, `Overflowing` | numeric | The arithmetic strategies as type classes, with an instance per standard integer |
-| `Clamped` | numeric | Numbers constrained to `[min, max]` at the type level |
-| `Float`, `F32` | numeric | The `Float` type class, `F64`, IEEE 754 `totalOrder`, `NotNaN` / `Finite`; single precision floats |
-| `Ratio`, `Complex` | numeric | Exact rationals over `bigint`; complex numbers over doubles |
-| `Num`, `Integer`, `Range` | numeric | `num-traits` type classes and instances; `num-integer` algorithms; `num-iter` ranges |
-| `ArithmeticError` | numeric | The tagged errors of fallible numeric operations |
-| `Rfc3339`, `Rfc9557` | time | RFC 3339 date-times and RFC 9557 (IXDTF) extended date-times, to and from `DateTime` |
-| `IsoDuration` | time | ISO 8601 durations, to and from the amounts `DateTime.add` takes |
-| `PosixTz`, `Tzif`, `IanaTimeZone` | time | POSIX TZ strings; compiled TZif files (RFC 8536); IANA zone names checked against the runtime's tz data |
-| `CronExpression`, `RRule` | time | Cron expressions to Effect's `Cron`; RFC 5545 recurrence rules |
-| `RerankerModel`, `ClassifierModel`, `SpeechModel`, `TranscriptionModel`, `ImageModel`, `ModerationModel`, `VoiceConversionModel` | AI | The provider-neutral AI service abstractions `effect/ai` lacks, each shaped like its `EmbeddingModel` |
-| `evals`, `evals/<Module>` | evals | The LLM evaluation toolkit: goldens, scorers, thresholds, metrics (G-Eval, RAG, retrieval ranking), the runner, the cache, reporters; `src/evals/cli/` is the `effect-evals` bin's CLI |
-
-Shared internals live in `src/internal/`: `bytes.ts` (a growable byte buffer), `iterator.ts` (the `indexed` iterator), `utf8.ts` (the byte-level UTF-8 algorithms behind `String` and `Str`) and `xml.ts` (the escaping behind `RssFeed` and `AtomFeed`), plus one directory per web module family (`internal/css/`, `internal/encoding/`, …), `internal/numeric/` (the scalar kernels, the brand helpers and the `Value` base class) and `internal/time/` (`calendar.ts`, shared by `Rfc3339` and `RRule`). They are not entry points, and docgen skips them. A web module whose effect-web entry was a barrel of several modules keeps them in a public directory beside its subpath file (`src/Css.ts` re-exports `src/css/*.ts`; `Browser` → `src/browser/`, `BrowserTesting` → `src/browser-testing/`); docgen documents those files and skips the pure re-export barrels (`docgen.json`). Their tests live in `tests/<effect-web package>/` (`tests/css/`, `tests/web/`, …), with each suite's vendored fixtures beside it; the numeric and time suites live in `tests/numeric/` and `tests/time/`.
+Shared internals live in `src/internal/`: `bytes.ts` (a growable byte buffer), `iterator.ts` (the `indexed` iterator), `utf8.ts` (the byte-level UTF-8 algorithms behind `String` and `Str`) and `xml.ts` (the escaping behind `RssFeed` and `AtomFeed`), plus one directory per web module family (`internal/css/`, `internal/encoding/`, …), `internal/numeric/` (the scalar kernels, the brand helpers and the `Value` base class) and `internal/time/` (`calendar.ts`, shared by `Rfc3339` and `RRule`). They are not entry points, and docgen skips them. A web module with several submodules keeps them in a public directory beside its subpath file (`src/Css.ts` re-exports `src/css/*.ts`; `Browser` → `src/browser/`, `BrowserTesting` → `src/browser-testing/`); docgen documents those files and skips the pure re-export barrels (`docgen.json`). Their tests live in `tests/<family>/` (`tests/css/`, `tests/web/`, …), with each suite's vendored fixtures beside it; the numeric and time suites live in `tests/numeric/` and `tests/time/`.
 
 ## Boundary
 
-Imports nothing from this workspace (`.fallowrc.json` zone `effect-ext`, no outbound rule). Modules may import each other (`Bounded` → `Ids`, `Vec` → `Layout` → `Allocator`); `index.ts` only re-exports. The seven families do not import each other today. Within the web family: `Negotiate` imports `Mime` (it compares media types as `MimeType`s, effect-web#164) and `isMutatingMethod` from `Web`'s `web/jsonapi-error.ts`; `Sitemap` imports `Observability` (`logErrorEvent` / `describeError` for the purge outcome) and `JsonFeed` (its JSON Feed builder is an adapter over that one); `ServiceWorker` imports `Net` (its `FetchFailed`); `BrowserTesting` imports `Browser`'s modules (its doubles run the real adapters), and nothing outside `BrowserTesting` imports it. An optional peer is imported only by the modules named in the first paragraph, which keeps every other subpath, and the barrel, free of it (`vp run check:dist` proves it over the built chunks: `optionalPeerSubpaths` in `scripts/check-dist.mjs` is the same list, and `/Encoding` and `/Mime` must load with no optional peer installed, which effect-document relies on); `Robots` and the time modules import effect-parse's subpaths (`/Parser`, `/Token`, `/ParserSchema`, `/Ascii`, `/Binary`, `/ParseError`), never its root barrel. Within the time family `Rfc9557` imports `Rfc3339`, `Tzif` imports `PosixTz`, and `Rfc3339` and `RRule` share `internal/time/calendar.ts`. Within the numeric family every integer module is a `FixedInt.make` / `makeBig` instance, and the strategy modules import the integer modules for their per-type instances.
+Imports nothing from this workspace (`.fallowrc.json` zone `effect-ext`, no outbound rule). Modules may import each other (`Bounded` → `Ids`, `Vec` → `Layout` → `Allocator`); `index.ts` only re-exports. The seven families do not import each other today. Within the web family: `Negotiate` imports `Mime` (it compares media types as `MimeType`s) and `isMutatingMethod` from `Web`'s `web/jsonapi-error.ts`; `Sitemap` imports `Observability` (`logErrorEvent` / `describeError` for the purge outcome) and `JsonFeed` (its JSON Feed builder is an adapter over that one); `ServiceWorker` imports `Net` (its `FetchFailed`); `BrowserTesting` imports `Browser`'s modules (its doubles run the real adapters), and nothing outside `BrowserTesting` imports it. An optional peer is imported only by the modules named in the first paragraph, which keeps every other subpath, and the barrel, free of it (`vp run check:dist` proves it over the built chunks: `optionalPeerSubpaths` in `scripts/check-dist.mjs` is the same list, and `/Encoding` and `/Mime` must load with no optional peer installed, which effect-document relies on); `Robots` and the time modules import effect-parse's subpaths (`/Parser`, `/Token`, `/ParserSchema`, `/Ascii`, `/Binary`, `/ParseError`), never its root barrel. Within the time family `Rfc9557` imports `Rfc3339`, `Tzif` imports `PosixTz`, and `Rfc3339` and `RRule` share `internal/time/calendar.ts`. Within the numeric family every integer module is a `FixedInt.make` / `makeBig` instance, and the strategy modules import the integer modules for their per-type instances.
 
 ## Binary-data invariants
 
@@ -69,7 +18,7 @@ Imports nothing from this workspace (`.fallowrc.json` zone `effect-ext`, no outb
 
 ## Numeric invariants
 
-Carried over from effect-numeric's guidance. There is no consuming application: Rust's documented semantics are the spec, and `tests/numeric/examples.test.ts` pins the numeric guide's (`guides/numeric.md`) examples.
+Rust's documented semantics are the spec, and `tests/numeric/examples.test.ts` pins the numeric guide's examples.
 
 - **Overflow semantics follow Rust exactly.** `wrapping*` is modulo 2^bits, `saturating*` clamps to `MIN` / `MAX`, `checked*` returns `None`, `overflowing*` returns `[wrapped, overflowed]`, and the unprefixed form returns `Result<A, ArithmeticError>`. `MIN / -1` and `MIN % -1` are the only overflowing division cases. When in doubt, check the Rust std docs for the same method and add a property test.
 - **Representation is fixed by width.** Types of up to 32 bits are `number`, wider ones `bigint` (`FixedInt.make` vs `FixedInt.makeBig`). Number arithmetic normalises `-0` to `0` (the `+ 0` in `numberPrim`); keep it.
@@ -88,9 +37,7 @@ Carried over from effect-numeric's guidance. There is no consuming application: 
 
 ## Time invariants
 
-Carried over from effect-time's guidance.
-
-- **Effect's values in, Effect's values out.** Every module produces and consumes `DateTime`, the amounts `DateTime.add` takes, or `Cron`; nothing here wraps or copies them. effect-time's identity re-exports of `effect/Clock` and `effect/DateTime` were dropped at the merge: Effect provides them.
+- **Effect's values in, Effect's values out.** Every module produces and consumes `DateTime`, the amounts `DateTime.add` takes, or `Cron`; nothing here wraps or copies them.
 - **Time is never read here.** The parsers are pure (a consumer reads the time through `Clock`, never `Date.now()`); a test that needs a fixed time uses `TestClock`. `effect/Date` does not exist; `Date` interop is `DateTime.make(date)` / `DateTime.toDateUtc`.
 - **Each module is a parser to compose, an effectful decoder, a printer and a `Schema`**, and a parse failure is effect-parse's `ParseError`, positioned at the offending field (a byte offset for `Tzif`).
 - **Nothing is bundled.** `IanaTimeZone` asks the runtime's ICU build (`Intl`), so its answer depends on that runtime's tz data; `Tzif` reads bytes the caller supplies.
@@ -101,7 +48,7 @@ Carried over from effect-time's guidance.
 - **No JSON:API, Drizzle or application vocabulary.** The `data/attributes` pointer prefix, a JSON:API error object, a `dbColumn` annotation, a reserved-route list or a page cap are the caller's; they are parameters here, never defaults. An app-shaped special case is a constructor parameter with the app's value in the README.
 - **A separating reader never folds.** `read(undefined)` is `CarryForward`, never `Clear`; `toNullOr(undefined)` is `undefined`, never `null`. The tests pin both directions. A new reader states whether it separates or folds.
 - **The wire is unchanged by the field schemas.** Encoding a decoded tri-state payload reproduces the JSON it came from: an absent key stays absent, `null` stays `null`.
-- **FlatQuery parity.** `PageOffset`, `pageLimit`, `pagination` (+ `DefaultedPagination`, `RequiredPagination`), `idList` / `IdList` / `DEFAULT_MAX_ID_LIST`, `Uuid`, `SLUG_PATTERN`, `slug` / `Slug`, `suppliedValue` and `Issues.pathToJsonPointer` keep effect-jsonapi's names, defaults and messages (`FlatQuery.*`, plus `ServerErrors.pathToJsonPointer`, both backed today by its `src/FlatQuery.ts` and `src/internal/schemaExt.ts`): its switch to this package (#15) is an import change plus one accepted break (owner, effect-schema-ext#79): the option objects (`PaginationOptions`, `IdListOptions`, `SlugOptions`) take `Option`-valued optional members, and `defaultLimit: false` is `requiredPagination`, so those call sites are rewritten. Additions are fine (`idList`'s `dedupe` option, off by default; `requiredPagination`); a changed default or message is a break for that move. The `FlatQuery parity` test blocks pin it.
+- **FlatQuery parity.** `PageOffset`, `pageLimit`, `pagination` (+ `DefaultedPagination`, `RequiredPagination`), `idList` / `IdList` / `DEFAULT_MAX_ID_LIST`, `Uuid`, `SLUG_PATTERN`, `slug` / `Slug`, `suppliedValue` and `Issues.pathToJsonPointer` keep effect-jsonapi's names, defaults and messages (`FlatQuery.*`, plus `ServerErrors.pathToJsonPointer`, both backed today by its `src/FlatQuery.ts` and `src/internal/schemaExt.ts`): moving to this package is an import change plus one accepted break: the option objects (`PaginationOptions`, `IdListOptions`, `SlugOptions`) take `Option`-valued optional members, and `defaultLimit: false` is `requiredPagination`, so those call sites are rewritten. Additions are fine (`idList`'s `dedupe` option, off by default; `requiredPagination`); a changed default or message is a break for that move. The `FlatQuery parity` test blocks pin it.
 - **Bounds apply to input as sent.** `IdList` counts ids before de-duplication, so repeats cannot pad a request past the bound; the decoded side keeps the bound too.
 - **Probes decode through `Schema.toCodecJson`**, the wire reading (`Schema.Date`'s own decoder accepts only a `Date` instance on effect rc.115 and later).
 - **Every export has a one-line summary, `@since` and `@category`; every exported function and schema also has a runnable `@example`** (docgen executes it). Types and plain constants need no example.
@@ -114,8 +61,6 @@ Carried over from effect-time's guidance.
 - **Probe** — a decode of a fixed input (`null`, `[]`, an ISO timestamp) through a schema's JSON codec, used to read a field's traits without unpicking its AST.
 
 ## Web-platform modules
-
-Carried over from each effect-web package's own guidance, with paths and names rewritten. Each heading names the modules it covers; "this package" in a section means those modules.
 
 ### Web, Net, Observability, Negotiate, ServiceWorker, Browser, BrowserTesting
 
@@ -283,7 +228,7 @@ Carried over from each effect-web package's own guidance, with paths and names r
 - **The tokenizer and parser are transcriptions.** `src/internal/css/tokenizer.ts` and `src/css/syntax.ts` follow the specification's consume-* algorithms step for step over a cursor; the imperative loops are the algorithm as written (file-level lint disables say so). Restructure them only with the suite green.
 - **Errors are recovered from and reported in place**: a list parse yields `SyntaxError` items (`empty`, `invalid`, `extra-input`) with the code-point offset in the preprocessed input; an unterminated string or URL token is flagged `unterminated`. Nothing throws.
 - **WPT `color-mix()` vectors** (`tests/css/fixtures/wpt-color-mix.json`, recorded from `css/css-color/parsing`: valid, invalid and computed) run in `tests/css/color-mix.test.ts`; only the `calc()` / `var()` ones are set aside, and the counts left are pinned. `Color.resolve` computes a mix through `src/internal/css/mix.ts` (interpolation) and `src/internal/css/spaces.ts` (every interpolation space to and from XYZ D65; inverse matrices as literals).
-- **Colour serialisation is today's CSS Color 4 / 5** (the owner's decision on effect-web#166, option B): named colours print their name; hex, `rgb()`, `hsl()` and `hwb()` print `rgb(r, g, b)` / `rgba(…)` with integer channels, except that a `none` channel keeps `color(srgb …)` (from `rgb()`) or `hsl()` / `hwb()`; `lab()`-family lightness is clamped at parse time; Lab-family and `color()` keep their space; numbers print with at most six decimals. The WPT vectors pin it (`tests/css/color-valid.test.ts`, `tests/css/color-mix.test.ts`), with each file's pass count pinned; only `calc()` / `var()` vectors are set aside. The css-parsing-tests colour vectors pin the 2021 edition, so `tests/css/color.test.ts` checks them for parsing only: each input must parse to the same colour as its expected serialisation. `toSrgb` does not gamut-map.
+- **Colour serialisation is today's CSS Color 4 / 5**: named colours print their name; hex, `rgb()`, `hsl()` and `hwb()` print `rgb(r, g, b)` / `rgba(…)` with integer channels, except that a `none` channel keeps `color(srgb …)` (from `rgb()`) or `hsl()` / `hwb()`; `lab()`-family lightness is clamped at parse time; Lab-family and `color()` keep their space; numbers print with at most six decimals. The WPT vectors pin it (`tests/css/color-valid.test.ts`, `tests/css/color-mix.test.ts`), with each file's pass count pinned; only `calc()` / `var()` vectors are set aside. The css-parsing-tests colour vectors pin the 2021 edition, so `tests/css/color.test.ts` checks them for parsing only: each input must parse to the same colour as its expected serialisation. `toSrgb` does not gamut-map.
 - **Serialisation round-trips**: parsing `Serialize.componentValues` output gives back the component values it was given, less comments and whitespace runs; `tests/css/serialize.test.ts` checks it over every suite input.
 - **Nothing runs at import** (`"sideEffects": false`): tables and matrices are literals.
 
@@ -332,7 +277,7 @@ Carried over from each effect-web package's own guidance, with paths and names r
 
 ## AI service abstractions
 
-Merged in from `@thomasfosterau/effect-ai-ext` (published to 0.5.1, then deprecated). They keep the AI conventions in the root AGENTS.md ("The AI packages": extensionless relative imports, the scoped lint relaxations in the root `vite.config.ts`) until someone unifies them with the rest of the package, but not its option members, which follow the package rule (#17): options-object settings are `x?: T`, and `ProviderResponse` fields and response-model fields a provider may not report are `Option.Option<T>` (`Schema.OptionFromOptionalKey` in the `Schema.Class` models), required, never optional; their exports carry `@since 0.1.0`, the effect-ext release they first ship in. Their tests are `tests/ai/`.
+They follow the AI provider conventions (extensionless relative imports, the scoped lint relaxations in the root `vite.config.ts`), but their option members follow the package rule: options-object settings are `x?: T`, and `ProviderResponse` fields and response-model fields a provider may not report are `Option.Option<T>` (`Schema.OptionFromOptionalKey` in the `Schema.Class` models), required, never optional; their exports carry `@since 0.1.0`, the effect-ext release they first ship in. Their tests are `tests/ai/`.
 
 The provider-neutral half of the AI family: the AI service abstractions `effect/ai` lacks (`RerankerModel`, `ClassifierModel`, `SpeechModel`, `TranscriptionModel`, `ImageModel`, `ModerationModel`, `VoiceConversionModel`), each written as if it could merge into `effect/ai`. No HTTP, no provider code.
 
@@ -346,11 +291,11 @@ The seven `src/<Module>.ts` files (`aiModules` in `vite.config.ts`, `aiModuleFil
 - **Operations fail only with `AiError`.** A provider result that breaks the contract (an out-of-range or duplicate rerank index, a missing classification, a label outside the caller's set, a moderation score outside `[0, 1]`, empty audio, a segment with `end < start`) fails with an `AiError` whose reason is `InvalidOutputError`, never a defect.
 - **Empty input never reaches the provider**: `rerank` with no documents, `classify` / `moderate` with no inputs return an empty response without calling it.
 - **`fromLanguageModel` adapters reuse `make`.** `ClassifierModel.fromLanguageModel` and `ModerationModel.fromLanguageModel` prompt through `LanguageModel.generateObject` and feed the decoded value through the same `make` validation as a native provider.
-- **No upstream re-export.** `@thomasfosterau/effect-ai-ext`'s barrel re-exported `effect/ai`; effect-ext's does not, and `tests/ai/barrel.test.ts` pins that no abstraction's name exists upstream. One that ever does is the signal to adopt upstream and drop the local module.
+- **No upstream re-export.** The barrel does not re-export `effect/ai`, and `tests/ai/barrel.test.ts` pins that no abstraction's name exists upstream. One that ever does is the signal to adopt upstream and drop the local module.
 
 ## Evals
 
-Merged in from `@thomasfosterau/effect-evals` (published to 0.5.1, then deprecated). It keeps the AI conventions in the root AGENTS.md until someone unifies them, as the AI abstractions do, except the option members (#17): `x?: T` in options objects, `Option.Option<T>` in results (`Result.MetricAggregate.summary`, `ExtractThenClassify.Verdict.reason`). Types that mirror a wire schema's decoded type (`GEvalCase`, `RagCase`) are `Pick`s of it rather than hand-written `| undefined` members; its exports carry `@since 0.1.0`. Its tests are `tests/evals/`.
+It follows the AI provider conventions, as the AI abstractions do, except the option members: `x?: T` in options objects, `Option.Option<T>` in results (`Result.MetricAggregate.summary`, `ExtractThenClassify.Verdict.reason`). Types that mirror a wire schema's decoded type (`GEvalCase`, `RagCase`) are `Pick`s of it rather than hand-written `| undefined` members; its exports carry `@since 0.1.0`. Its tests are `tests/evals/`.
 
 The Effect-native LLM evaluation toolkit: goldens, eval cases, scorers, thresholds and metrics; a runner with trials, bounded concurrency, retry and a content-hashed cache; reporters; ranking, G-Eval and RAG metrics; and the `effect-evals` CLI that discovers and runs `*.eval.ts` files.
 

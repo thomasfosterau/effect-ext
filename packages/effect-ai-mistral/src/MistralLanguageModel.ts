@@ -449,7 +449,7 @@ interface ResolvedToolChoice {
  * Maps Effect AI's tool-choice directive onto Mistral's, filtering the tool
  * set for a `oneOf` subset. `required` becomes Mistral's `"any"`. `"none"`
  * keeps the full tool set and sends Mistral's `"none"`, so the model sees the
- * tools but cannot call them (#121).
+ * tools but cannot call them.
  */
 const resolveToolChoice = (
   toolChoice: LanguageModel.ProviderOptions["toolChoice"],

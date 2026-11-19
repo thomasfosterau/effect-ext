@@ -1,6 +1,6 @@
 /**
  * Anthropic `LanguageModel` provider routed through the Cloudflare AI
- * Gateway Worker binding (website#847) instead of calling
+ * Gateway Worker binding instead of calling
  * `api.anthropic.com` directly. The provider key is BYOK, configured once
  * on the caller's gateway (Cloudflare dashboard, provider keys) — never an env var, so this module never takes or reads
  * an API key.
@@ -69,8 +69,8 @@ export const anthropicLanguageModelLayer = (
  * via `Url.gatewayUrlConfig`; a missing required value fails layer
  * construction with a typed `Config.ConfigError`, not a silent fallback.
  * Rides `FetchHttpClient` (like {@link anthropicLanguageModelLayer}), whose
- * `fetch` calls are already interruption-safe (the website#706 /
- * website#730 lesson) — no manual `signal` plumbing needed here, unlike
+ * `fetch` calls are already interruption-safe — no manual `signal`
+ * plumbing needed here, unlike
  * `Binding.ts`'s raw `ai.gateway(id).run()` seam.
  */
 export const anthropicLanguageModelLayerFromUrl = (options: {

@@ -65,7 +65,7 @@ export interface RecordingTracer {
 /**
  * A recording {@link Tracer.Tracer} plus the list of spans it captured, for
  * asserting that an Effect creates the expected `Effect.withSpan(...)` spans
- * (read-path instrumentation, #538 / #739). Provide the tracer with
+ * (read-path instrumentation). Provide the tracer with
  * `Effect.provideService(Tracer.Tracer, tracer)`; every `withSpan` on the
  * program then appends to `spans` in creation order.
  *

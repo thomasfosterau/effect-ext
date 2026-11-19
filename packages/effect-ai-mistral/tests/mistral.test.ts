@@ -600,7 +600,7 @@ describe("MistralLanguageModel tool calling", () => {
       }).pipe(Effect.provide(modelLayer(fetch)), Effect.provide(weatherHandlers)),
     );
 
-    // #121: the model sees the tools but is forbidden from calling them.
+    // The model sees the tools but is forbidden from calling them.
     // The whole body is pinned, so a stray or missing field fails the test.
     expect(calls[0]?.body).toEqual({
       model: "mistral-large-latest",
@@ -672,7 +672,7 @@ describe("MistralLanguageModel.streamText", () => {
       ),
     );
 
-    // #121: the streaming request carries the same tools and directive.
+    // The streaming request carries the same tools and directive.
     expect(calls[0]?.body).toEqual({
       model: "mistral-large-latest",
       messages: [{ role: "user", content: "weather?" }],

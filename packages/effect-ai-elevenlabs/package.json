@@ -33,7 +33,11 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./ElevenLabsClient": "./src/ElevenLabsClient.ts",
+    "./ElevenLabsSpeechModel": "./src/ElevenLabsSpeechModel.ts",
+    "./ElevenLabsTranscriptionModel": "./src/ElevenLabsTranscriptionModel.ts",
+    "./ElevenLabsVoiceConversionModel": "./src/ElevenLabsVoiceConversionModel.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -43,6 +47,22 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./ElevenLabsClient": {
+        "types": "./dist/ElevenLabsClient.d.ts",
+        "import": "./dist/ElevenLabsClient.js"
+      },
+      "./ElevenLabsSpeechModel": {
+        "types": "./dist/ElevenLabsSpeechModel.d.ts",
+        "import": "./dist/ElevenLabsSpeechModel.js"
+      },
+      "./ElevenLabsTranscriptionModel": {
+        "types": "./dist/ElevenLabsTranscriptionModel.d.ts",
+        "import": "./dist/ElevenLabsTranscriptionModel.js"
+      },
+      "./ElevenLabsVoiceConversionModel": {
+        "types": "./dist/ElevenLabsVoiceConversionModel.d.ts",
+        "import": "./dist/ElevenLabsVoiceConversionModel.js"
       }
     },
     "access": "public"

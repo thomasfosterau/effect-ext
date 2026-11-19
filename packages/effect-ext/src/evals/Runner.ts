@@ -1,6 +1,6 @@
 /**
  * `runSuite` — the engine every execution surface (the vite-plus/test
- * adapter, website#929, and the CLI, website#930) sits on: for each golden,
+ * adapter and the CLI) sits on: for each golden,
  * run the task (the system-under-test) with its own `RIn` flowing through,
  * build the resulting
  * {@link EvaluatedCase}, run every {@link Metric.Metric} against it, and
@@ -257,7 +257,7 @@ const cacheGetJson = <A>(
       ),
     );
     if (Option.isNone(raw)) return Option.none();
-    // An unparseable entry is a cache miss (#98).
+    // An unparseable entry is a cache miss.
     return yield* decodeCacheEntry(raw.value).pipe(
       // SAFETY: the entry under this content-hash key was written by
       // `cacheSetJson` from a value of type `A`.

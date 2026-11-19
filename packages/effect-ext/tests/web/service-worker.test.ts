@@ -651,7 +651,7 @@ describe("messageListener", () => {
 describe("EventLifetime default", () => {
   it("runs background work detached and swallows its failure", async () => {
     // The work is detached, so the answer may come back before it runs: wait
-    // for the work itself (bounded), never for a fixed interval (#139).
+    // for the work itself (bounded), never for a fixed interval.
     const answered = await Effect.runPromise(
       Effect.gen(function* () {
         const ran = yield* Deferred.make<void>();

@@ -94,12 +94,11 @@ describe("gatewayRun", () => {
     expect(Cause.hasFails(exit.cause)).toBe(true);
   });
 
-  it("aborts the in-flight subrequest when interrupted (#706/#730)", async () => {
+  it("aborts the in-flight subrequest when interrupted", async () => {
     // Models a hung gateway call: `run` never resolves on its own, only
     // when its `AbortSignal` fires. `gatewayRun` declares `signal` on the
     // `Effect.tryPromise` evaluator, so a wrapping `Effect.timeout` cancels
-    // the in-flight subrequest instead of merely abandoning it — the
-    // #706/#730 lesson applied to this package's universal-run seam.
+    // the in-flight subrequest instead of merely abandoning it.
     let receivedSignal = Option.none<AbortSignal>();
     let aborted = false;
     const ai = stubAiBinding(() => ({

@@ -1,6 +1,6 @@
 import { type CoverageFloor, packageConfig } from "../../vite.package.ts";
 
-// Coverage ratchet (#100): the measured % at adoption (in the comments),
+// Coverage ratchet: the measured % at adoption (in the comments),
 // rounded down to the integer. Raise a metric as coverage rises; never lower one.
 export const coverageFloor: CoverageFloor = {
   lines: 99, // 99.38
@@ -11,5 +11,13 @@ export const coverageFloor: CoverageFloor = {
 
 export default packageConfig({
   coverageFloor,
-  entry: { index: "src/index.ts" },
+  entry: {
+    index: "src/index.ts",
+    Anthropic: "src/Anthropic.ts",
+    Binding: "src/Binding.ts",
+    Cohere: "src/Cohere.ts",
+    OpenAiModeration: "src/OpenAiModeration.ts",
+    Url: "src/Url.ts",
+    WorkersAi: "src/WorkersAi.ts",
+  },
 });

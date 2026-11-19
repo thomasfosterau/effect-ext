@@ -461,8 +461,7 @@ interface ResolvedToolChoice {
  * for a specific-tool or `oneOf` subset. Cohere expresses only `REQUIRED` /
  * `NONE` / (omitted = auto), so a pinned tool is enforced by narrowing the
  * `tools` array to that tool and requiring a call. `"none"` keeps the full
- * tool set and sends `NONE`, so the model sees the tools but cannot call them
- * (#121).
+ * tool set and sends `NONE`, so the model sees the tools but cannot call them.
  */
 const resolveToolChoice = (
   toolChoice: LanguageModel.ProviderOptions["toolChoice"],

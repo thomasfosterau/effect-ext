@@ -26,13 +26,7 @@ import {
 import { stubAiBinding } from "./helpers/ai";
 import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 
-/**
- * Expected embedding width for `embed-v4.0`. In the website repo this test
- * pinned `COHERE_EMBEDDING_DIMENSIONS` against `@thomasfosterau/database`'s
- * `EMBEDDING_DIMENSIONS` (the `vector(n)` column width); this package stays
- * app-schema-agnostic, so it pins against a local literal instead — the
- * website keeps its own cross-package pin. See issue #1 (transfer).
- */
+/** Expected embedding width for `embed-v4.0`. */
 const EMBEDDING_DIMENSIONS = 1024;
 
 /** Builds a stub binding whose `gateway(id).run(data)` is canned. */

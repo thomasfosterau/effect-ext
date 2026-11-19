@@ -2,7 +2,7 @@
 
 Parsers and printers for the strings and files time travels in, producing Effect's own `DateTime`, `Duration` amounts and `Cron`: RFC 3339 and RFC 9557 date-times, ISO 8601 durations, POSIX TZ strings, cron expressions, RFC 5545 recurrence rules, IANA time zone names and TZif files. These were `@thomasfosterau/effect-time`. Each needs the optional peer `@thomasfosterau/effect-parse`.
 
-Parsers and printers for the strings and files time travels in (merged in from thomasfosterau/effect-time, which was never published). Each produces and consumes Effect's own values (`DateTime`, the amounts `DateTime.add` takes, `Cron`) and comes as a parser to compose, an effectful decoder, a printer and a `Schema`, with errors that point at the offending field. They are built on [`@thomasfosterau/effect-parse`](https://www.npmjs.com/package/@thomasfosterau/effect-parse), an optional peer, so these eight modules are subpaths only.
+Parsers and printers for the strings and files time travels in. Each produces and consumes Effect's own values (`DateTime`, the amounts `DateTime.add` takes, `Cron`) and comes as a parser to compose, an effectful decoder, a printer and a `Schema`, with errors that point at the offending field. They are built on [`@thomasfosterau/effect-parse`](https://www.npmjs.com/package/@thomasfosterau/effect-parse), an optional peer, so these eight modules are subpaths only.
 
 effect-time also re-exported `effect/Clock` and `effect/DateTime` unchanged; those re-exports are not carried, because Effect already provides them: import `Clock` and `DateTime` from `effect`, as the examples below do.
 

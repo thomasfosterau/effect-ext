@@ -6,7 +6,7 @@ Framework-neutral request / response policies, an SSRF-guarded fetch, structured
 
 Framework-neutral web request/response utilities on `effect/http`: cache-control and security headers, Vary, the cross-origin guard, client IP, an SSRF-guarded fetch, structured logging and an allow-listed span tracer, with no SvelteKit, Alchemy or Cloudflare dependency, so it serves a SvelteKit hook, an `HttpApi` middleware or a bare Worker equally. On the client side, browser platform APIs (Web Locks, `navigator`, page visibility, media queries, the screen wake lock, `BroadcastChannel`, permission state) as Effect services, alongside `@effect/platform-browser`, with in-memory test doubles for every one.
 
-Invariant ids in doc comments and below (`CACHE-AUTH-003`, `SEC-SSRF-003`, …) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/main/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
+Invariant ids in doc comments and below (`CACHE-AUTH-003`, `SEC-SSRF-003`, …) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/trunk/docs/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
 
 ### Usage
 
@@ -281,7 +281,7 @@ self.addEventListener("message", onMessage);
 - `route(match, handle)`, `fetchListener(routes)` — `match` is synchronous because `respondWith` must be called during dispatch; the first match answers, and no match leaves the request to the browser. A failed answer rejects `respondWith` (a network error to the page).
 - `extendableListener(handle)` — `install` / `activate`: the effect's promise goes to `waitUntil`, so a failure fails the install. `messageListener(schema, handle)` — decodes `event.data` first; an undecodable message is logged and dropped.
 - `EventLifetime` — how background work outlives a response: bound to the event's `waitUntil` inside a listener, detached outside one. Background failures are logged at `Warning`.
-- Persistent notifications, shown through the worker's registration (effect-web#108 decided they live here, not in `Browser`: they outlive the page, and their events reach the worker). `Registration` is a context reference holding an `Option` of the registration, defaulting to `self.registration` (`Option.none()` where there is none; a page provides `Option.some(await navigator.serviceWorker.ready)`); `showNotification(title, options?)` and `getNotifications({ tag? })` fail with `ShowNotificationError` (`operation`, `reason`: `Unsupported`, `NotAllowed`, `InvalidData`, `Failed`). `notificationClickListener(schema, handle)` / `notificationCloseListener(schema, handle)` decode `notification.data` first, as `messageListener` does, and run `handle` inside `waitUntil`.
+- Persistent notifications, shown through the worker's registration (here, not in `Browser`: they outlive the page, and their events reach the worker). `Registration` is a context reference holding an `Option` of the registration, defaulting to `self.registration` (`Option.none()` where there is none; a page provides `Option.some(await navigator.serviceWorker.ready)`); `showNotification(title, options?)` and `getNotifications({ tag? })` fail with `ShowNotificationError` (`operation`, `reason`: `Unsupported`, `NotAllowed`, `InvalidData`, `Failed`). `notificationClickListener(schema, handle)` / `notificationCloseListener(schema, handle)` decode `notification.data` first, as `messageListener` does, and run `handle` inside `waitUntil`.
 - `memoryCacheStorage({ fetch? })` — an in-memory `CacheStorage` for tests, rejecting what the browser's `put` rejects.
 
 #### `Browser` — platform services
@@ -317,7 +317,7 @@ Each module is a namespace: `import { Locks } from "@thomasfosterau/effect-ext/B
 
 The Robots Exclusion Protocol (RFC 9309) for Effect: parse, encode and match robots.txt, evaluate a crawl decision with the §2.3.1 failure posture over a pluggable cache, and build the robots.txt a site serves. At its core is the **library**, whose API and behaviour are held stable by its acceptance suite; on top of it sit the **crawler side** (fetch, cache and evaluate another site's robots.txt) and the **serving side** (the robots.txt your own site serves, by stage).
 
-Invariant ids in doc comments and below (`ROBOTS-005`, `PERF-CACHE-002`, …) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/main/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
+Invariant ids in doc comments and below (`ROBOTS-005`, `PERF-CACHE-002`, …) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/trunk/docs/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
 
 ### Usage
 

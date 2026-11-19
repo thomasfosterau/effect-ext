@@ -1,22 +1,9 @@
 #!/usr/bin/env bash
 #
 # Publish every workspace package whose version is not yet on npm, then tag.
-#
-# Run by the Release workflow (changesets/action `publish-script`) once the
-# "Version Packages" PR has merged. Publishes with the npm CLI (npm OIDC
-# trusted publishing, which needs npm >= 11.5.1 — the Release job pins one),
-# but the tarball is built by `pnpm pack`, which is what rewrites
-# `catalog:peers` / `workspace:*` specifiers and applies `publishConfig` (the
-# `dist/` exports) in the published manifest; `npm pack` would ship the
-# workspace manifest as-is. (pnpm 11's own `pnpm publish` also does OIDC
-# trusted publishing natively; switching to it is possible but not done here.)
-#
-# No `--provenance`: npm attaches provenance by itself under trusted publishing
-# once the repository and the package are both public, and an explicit
-# provenance request from a private repository makes the publish fail.
-#
-# Idempotent: a package already published at its current version is skipped,
-# so a partial run can be re-run without failing on the packages that made it.
+# Run by release.yml. `pnpm pack` rewrites `catalog:` / `workspace:`
+# specifiers and applies `publishConfig`; `npm publish` does the OIDC trusted
+# publishing. Idempotent: a version already on npm is skipped.
 
 set -euo pipefail
 

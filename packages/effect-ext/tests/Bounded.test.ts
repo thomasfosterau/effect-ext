@@ -66,7 +66,7 @@ describe("pageLimit / PageOffset", () => {
     expect(accepts(Limit, Number.NaN)).toBe(false);
   });
 
-  it("reports a non-finite window as not an integer, as FlatQuery does (effect-schema-ext#75)", () => {
+  it("reports a non-finite window as not an integer, as FlatQuery does", () => {
     expect(message(Bounded.pageLimit(1000), Number.POSITIVE_INFINITY)).toContain(
       "Expected an integer",
     );

@@ -303,7 +303,7 @@ export type AnyStruct = Struct<any>;
  */
 export const alignUp = (n: number, align: number): number =>
   // Arithmetic, not `& ~(align - 1)`: bitwise operators truncate to 32 bits,
-  // so `alignUp(2 ** 31, 8)` was negative (effect-ext#19).
+  // so `alignUp(2 ** 31, 8)` was negative.
   Math.ceil(n / align) * align;
 
 /**

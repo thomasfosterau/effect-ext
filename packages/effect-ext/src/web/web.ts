@@ -56,7 +56,7 @@ const entriesOf = (
 /**
  * What a policy did to the headers: `set` for each header `next` adds or
  * gives a different value, in its canonical spelling, and `remove` for each
- * header of `previous` that `next` no longer has (#93: a policy may strip an
+ * header of `previous` that `next` no longer has (a policy may strip an
  * upstream header, `Vary` say, and the removal must reach the target too).
  */
 interface HeaderChanges {

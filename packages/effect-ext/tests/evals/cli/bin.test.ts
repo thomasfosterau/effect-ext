@@ -1,11 +1,11 @@
 /**
- * Tests for `bin/effect-evals.js`'s Node flags (#81): the bin hides Node's
+ * Tests for `bin/effect-evals.js`'s Node flags: the bin hides Node's
  * `ExperimentalWarning`s (`fs.promises.glob` and type stripping still emit
  * one on Node 23.x and early 24.x, inside the CLI's `>=22.18` range) and
  * nothing else, so a `DeprecationWarning` raised while a consumer's
  * `*.eval.ts` file loads still reaches stderr. `--no-warnings=…` would hide
  * it: Node ignores that flag's value and silences every warning, which is how
- * DEP0205 (#72) stayed hidden for CLI users.
+ * DEP0205 stayed hidden for CLI users.
  *
  * The unit-test job runs without a build, so the real bin and loader are
  * copied into a scratch package whose `dist/evals/cli/main.js` imports the CLI's
@@ -14,7 +14,7 @@
  * `vp run check:dist` covers the built entry from an installed path.
  *
  * The bin also refuses a Node older than the CLI's 22.18 floor before it
- * spawns anything (#71); the library's own `engines.node` floor is lower. A
+ * spawns anything; the library's own `engines.node` floor is lower. A
  * preload stands in for the old Node by overriding `process.versions.node`.
  *
  * @module tests/cli/bin
@@ -59,7 +59,7 @@ afterAll(() => {
   rmSync(scratch, { recursive: true, force: true });
 });
 
-/** Runs the bin with `--help`, as though on Node `version` (#71). */
+/** Runs the bin with `--help`, as though on Node `version`. */
 const runAs = (version: string) =>
   spawnSync(
     process.execPath,

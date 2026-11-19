@@ -108,7 +108,7 @@ describe("Allocator", () => {
     });
   });
 
-  describe("tracked (effect-ext#18)", () => {
+  describe("tracked", () => {
     it.effect("counts a double free once and reports it, never going negative", () =>
       Effect.gen(function* () {
         const tracked = Allocator.tracked(Allocator.heap);
@@ -172,7 +172,7 @@ describe("Allocator", () => {
     );
   });
 
-  describe("arena capacity and large offsets (effect-ext#19)", () => {
+  describe("arena capacity and large offsets", () => {
     it("rejects a capacity that is not a non-negative integer", () => {
       expect(() => Allocator.makeArenaUnsafe(1.5)).toThrow(Allocator.AllocationError);
       expect(() => Allocator.makeArenaUnsafe(-1)).toThrow(

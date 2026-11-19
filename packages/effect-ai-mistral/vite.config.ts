@@ -1,6 +1,6 @@
 import { type CoverageFloor, packageConfig } from "../../vite.package.ts";
 
-// Coverage ratchet (#100): the last measured % (in the comments),
+// Coverage ratchet: the last measured % (in the comments),
 // rounded down to the integer. Raise a metric as coverage rises; never lower one.
 export const coverageFloor: CoverageFloor = {
   lines: 96, // 96.47
@@ -11,5 +11,9 @@ export const coverageFloor: CoverageFloor = {
 
 export default packageConfig({
   coverageFloor,
-  entry: { index: "src/index.ts" },
+  entry: {
+    index: "src/index.ts",
+    MistralClient: "src/MistralClient.ts",
+    MistralLanguageModel: "src/MistralLanguageModel.ts",
+  },
 });

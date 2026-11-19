@@ -1,8 +1,7 @@
 import { type CoverageFloor, distExportsPackageConfig } from "../../vite.package.ts";
 
-// Coverage ratchet: the measured % (in the comments) when effect-numeric's
-// and effect-time's modules were merged in, rounded down to the integer.
-// It binds the whole package. Raise a metric as coverage rises; never lower one.
+// Coverage ratchet: the last measured % (in the comments), rounded down.
+// Raise a metric as coverage rises; never lower one.
 export const coverageFloor: CoverageFloor = {
   lines: 98, // 98.75
   branches: 93, // 93.61
@@ -10,7 +9,7 @@ export const coverageFloor: CoverageFloor = {
   statements: 98, // 98.03
 };
 
-/** The AI service abstractions (merged in from `@thomasfosterau/effect-ai-ext`). */
+/** The AI service abstractions. */
 const aiModules = [
   "ClassifierModel",
   "ImageModel",
@@ -21,10 +20,7 @@ const aiModules = [
   "VoiceConversionModel",
 ];
 
-/**
- * The evaluation toolkit (merged in from `@thomasfosterau/effect-evals`), one
- * subpath per module under `./evals/`, beside the `./evals` barrel.
- */
+/** The evals toolkit: one subpath per module under `./evals/`, beside the barrel. */
 const evalsModules = [
   "Cache",
   "Dataset",
@@ -56,11 +52,7 @@ const evalsModules = [
   "scorers/ToolCallCorrectness",
 ];
 
-/**
- * The floors the two merged-in families arrived with (#100), each measured
- * over its own files and kept on them, on top of `coverageFloor`. Never lower
- * one.
- */
+/** Stricter floors for two families, on top of `coverageFloor`. Never lower one. */
 export const coverageGlobFloors = {
   [`src/{${aiModules.join(",")}}.ts`]: {
     lines: 100, // 100

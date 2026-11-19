@@ -135,7 +135,7 @@ const isBareInvalidValue = (issue: SchemaIssue.Issue): boolean =>
  * filter either wraps it directly (a built-in check: "Expected a value with a
  * length of at least 3" rather than "Expected a valid value") or carries a
  * `message` of its own (a struct-level check returning `{ path, issue }`).
- * This is effect-jsonapi's `describedBy` rule (effect-ext#69).
+ * This is effect-jsonapi's `describedBy` rule.
  */
 const leafOf = (
   path: ReadonlyArray<PropertyKey>,

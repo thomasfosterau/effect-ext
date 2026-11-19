@@ -6,7 +6,7 @@
 
 Sitemap, sitemap index and JSON Feed 1.1 builders for Effect web applications (rendered or streamed), the low-churn edge cache policy they share, and the `Cache-Tag` purge-on-mutation seam.
 
-Invariant ids in doc comments and below (`CANON-001`, `PERF-CACHE-002`, …) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/main/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
+Invariant ids in doc comments and below (`CANON-001`, `PERF-CACHE-002`, …) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/trunk/docs/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
 
 ### Usage
 
@@ -120,7 +120,7 @@ const purgeAfterMutation = (ctx: CachePurgeContext, type: string) =>
 
 An RSS 2.0 feed builder for Effect web applications: the channel and item renderer, with escaped authored text and canonical absolute URLs, and the served `HttpServerResponse`.
 
-Invariant ids in doc comments and below (`CANON-001`, `PERF-CACHE-002`) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/main/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
+Invariant ids in doc comments and below (`CANON-001`, `PERF-CACHE-002`) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/trunk/docs/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
 
 ### Usage
 
@@ -160,7 +160,7 @@ Every piece of authored text and every URL is XML-escaped, and characters XML 1.
 
 An Atom (RFC 4287) feed builder for Effect web applications: the feed and entry renderer, with escaped authored text and canonical absolute URLs, and the served `HttpServerResponse`.
 
-Invariant ids in doc comments and below (`CANON-001`, `PERF-CACHE-002`) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/main/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
+Invariant ids in doc comments and below (`CANON-001`, `PERF-CACHE-002`) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/trunk/docs/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
 
 ### Usage
 
@@ -209,7 +209,7 @@ Every piece of authored text and every URL is XML-escaped, and characters XML 1.
 
 A JSON Feed 1.1 builder and reader for Effect web applications: the typed feed document, with canonical absolute URLs and omitted absent members, the served `HttpServerResponse`, and a lenient reader for JSON Feed 1.0 and 1.1 documents as real feeds publish them.
 
-Invariant ids in doc comments and below (`CANON-001`, `PERF-CACHE-002`) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/main/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
+Invariant ids in doc comments and below (`CANON-001`, `PERF-CACHE-002`) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/trunk/docs/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
 
 ### Usage
 

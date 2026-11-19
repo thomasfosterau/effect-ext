@@ -45,7 +45,7 @@ Every route has a binding variant (`make…`) and a binding-free `…FromUrl` va
 
 - [Source and API doc comments](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ai-cloudflare)
 - [Repository README](https://github.com/thomasfosterau/effect-ext/blob/trunk/README.md)
-- [Contributing](https://github.com/thomasfosterau/effect-ext/blob/trunk/CONTRIBUTING.md)
+- [Contributing](https://github.com/thomasfosterau/effect-ext/blob/trunk/docs/CONTRIBUTING.md)
 - [Cloudflare AI Gateway docs](https://developers.cloudflare.com/ai-gateway/)
 
 ## License

@@ -36,7 +36,13 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./Anthropic": "./src/Anthropic.ts",
+    "./Binding": "./src/Binding.ts",
+    "./Cohere": "./src/Cohere.ts",
+    "./OpenAiModeration": "./src/OpenAiModeration.ts",
+    "./Url": "./src/Url.ts",
+    "./WorkersAi": "./src/WorkersAi.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -46,6 +52,30 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./Anthropic": {
+        "types": "./dist/Anthropic.d.ts",
+        "import": "./dist/Anthropic.js"
+      },
+      "./Binding": {
+        "types": "./dist/Binding.d.ts",
+        "import": "./dist/Binding.js"
+      },
+      "./Cohere": {
+        "types": "./dist/Cohere.d.ts",
+        "import": "./dist/Cohere.js"
+      },
+      "./OpenAiModeration": {
+        "types": "./dist/OpenAiModeration.d.ts",
+        "import": "./dist/OpenAiModeration.js"
+      },
+      "./Url": {
+        "types": "./dist/Url.d.ts",
+        "import": "./dist/Url.js"
+      },
+      "./WorkersAi": {
+        "types": "./dist/WorkersAi.d.ts",
+        "import": "./dist/WorkersAi.js"
       }
     },
     "access": "public"

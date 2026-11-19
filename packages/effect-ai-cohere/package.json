@@ -32,7 +32,12 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./CohereClassifierModel": "./src/CohereClassifierModel.ts",
+    "./CohereClient": "./src/CohereClient.ts",
+    "./CohereEmbeddingModel": "./src/CohereEmbeddingModel.ts",
+    "./CohereLanguageModel": "./src/CohereLanguageModel.ts",
+    "./CohereRerankerModel": "./src/CohereRerankerModel.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -42,6 +47,26 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./CohereClassifierModel": {
+        "types": "./dist/CohereClassifierModel.d.ts",
+        "import": "./dist/CohereClassifierModel.js"
+      },
+      "./CohereClient": {
+        "types": "./dist/CohereClient.d.ts",
+        "import": "./dist/CohereClient.js"
+      },
+      "./CohereEmbeddingModel": {
+        "types": "./dist/CohereEmbeddingModel.d.ts",
+        "import": "./dist/CohereEmbeddingModel.js"
+      },
+      "./CohereLanguageModel": {
+        "types": "./dist/CohereLanguageModel.d.ts",
+        "import": "./dist/CohereLanguageModel.js"
+      },
+      "./CohereRerankerModel": {
+        "types": "./dist/CohereRerankerModel.d.ts",
+        "import": "./dist/CohereRerankerModel.js"
       }
     },
     "access": "public"
