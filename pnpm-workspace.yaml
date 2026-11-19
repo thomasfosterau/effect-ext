@@ -9,7 +9,7 @@ catalogMode: strict
 catalog:
   "@changesets/changelog-github": ^1.0.1
   "@changesets/cli": ^3.0.3
-  "@cloudflare/workers-types": ^5.20261115.1
+  "@cloudflare/workers-types": ^5.20261118.1
   # The Effect line: `effect` and every `@effect/*` runtime package below share
   # one exact version (Dependabot's `effect` group).
   "@effect/ai-anthropic": 4.1.3
