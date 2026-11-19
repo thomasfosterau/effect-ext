@@ -1,6 +1,11 @@
 # `uvx zizmor --offline .github`. Dependabot's cooldown is 1 day, longer than
-# pnpm's 8-hour `minimumReleaseAge`.
+# pnpm's 8-hour `minimumReleaseAge`. Actions are pinned by exact tag and locked
+# to commits by actions.lock, so a ref pin is enough here.
 rules:
   dependabot-cooldown:
     config:
       days: 1
+  unpinned-uses:
+    config:
+      policies:
+        "*": ref-pin
