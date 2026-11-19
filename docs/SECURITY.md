@@ -16,7 +16,7 @@ An AI provider client takes its API key only as a `Redacted` value you pass, or 
 - **No install scripts where it matters.** Release jobs install with `--frozen-lockfile --ignore-scripts`, with no cache, and set `pnpm_config_verify_deps_before_run: "false"` so a later `pnpm run` can't re-install with scripts; `scripts/release.sh` packs with scripts off. `allowBuilds` in `pnpm-workspace.yaml` names the only packages whose install scripts may run anywhere.
 - **Pinned actions.** Workflows pin actions by exact tag, locked to commits by `.github/workflows/actions.lock`; the Lockfile workflow and the release's `verify-lockfile` job check it.
 - **Least privilege.** Workflows default to `permissions: {}`; checkouts don't persist credentials; CI holds no secrets, so Dependabot PRs run it safely, and the release jobs never run for Dependabot.
-- **Delayed updates.** pnpm's `minimumReleaseAge` holds a new version for 8 hours and Dependabot's cooldown for a day. CI runs `pnpm audit --audit-level high`.
+- **Delayed updates.** pnpm's `minimumReleaseAge` holds a new version for 24 hours and Dependabot's cooldown for a day. CI runs `pnpm audit --audit-level high`.
 
 ## Invariant ids
 
