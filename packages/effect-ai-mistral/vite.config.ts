@@ -11,5 +11,9 @@ export const coverageFloor: CoverageFloor = {
 
 export default packageConfig({
   coverageFloor,
-  entry: { index: "src/index.ts" },
+  entry: {
+    index: "src/index.ts",
+    MistralClient: "src/MistralClient.ts",
+    MistralLanguageModel: "src/MistralLanguageModel.ts",
+  },
 });

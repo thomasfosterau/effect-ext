@@ -11,5 +11,12 @@ export const coverageFloor: CoverageFloor = {
 
 export default packageConfig({
   coverageFloor,
-  entry: { index: "src/index.ts" },
+  entry: {
+    index: "src/index.ts",
+    CohereClassifierModel: "src/CohereClassifierModel.ts",
+    CohereClient: "src/CohereClient.ts",
+    CohereEmbeddingModel: "src/CohereEmbeddingModel.ts",
+    CohereLanguageModel: "src/CohereLanguageModel.ts",
+    CohereRerankerModel: "src/CohereRerankerModel.ts",
+  },
 });

@@ -11,5 +11,10 @@ export const coverageFloor: CoverageFloor = {
 
 export default packageConfig({
   coverageFloor,
-  entry: { index: "src/index.ts" },
+  entry: {
+    index: "src/index.ts",
+    VoyageClient: "src/VoyageClient.ts",
+    VoyageEmbeddingModel: "src/VoyageEmbeddingModel.ts",
+    VoyageRerankerModel: "src/VoyageRerankerModel.ts",
+  },
 });

@@ -30,7 +30,10 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./VoyageClient": "./src/VoyageClient.ts",
+    "./VoyageEmbeddingModel": "./src/VoyageEmbeddingModel.ts",
+    "./VoyageRerankerModel": "./src/VoyageRerankerModel.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -40,6 +43,18 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./VoyageClient": {
+        "types": "./dist/VoyageClient.d.ts",
+        "import": "./dist/VoyageClient.js"
+      },
+      "./VoyageEmbeddingModel": {
+        "types": "./dist/VoyageEmbeddingModel.d.ts",
+        "import": "./dist/VoyageEmbeddingModel.js"
+      },
+      "./VoyageRerankerModel": {
+        "types": "./dist/VoyageRerankerModel.d.ts",
+        "import": "./dist/VoyageRerankerModel.js"
       }
     },
     "access": "public"

@@ -29,7 +29,9 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./MistralClient": "./src/MistralClient.ts",
+    "./MistralLanguageModel": "./src/MistralLanguageModel.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -39,6 +41,14 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./MistralClient": {
+        "types": "./dist/MistralClient.d.ts",
+        "import": "./dist/MistralClient.js"
+      },
+      "./MistralLanguageModel": {
+        "types": "./dist/MistralLanguageModel.d.ts",
+        "import": "./dist/MistralLanguageModel.js"
       }
     },
     "access": "public"

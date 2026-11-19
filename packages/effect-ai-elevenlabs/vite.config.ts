@@ -11,5 +11,11 @@ export const coverageFloor: CoverageFloor = {
 
 export default packageConfig({
   coverageFloor,
-  entry: { index: "src/index.ts" },
+  entry: {
+    index: "src/index.ts",
+    ElevenLabsClient: "src/ElevenLabsClient.ts",
+    ElevenLabsSpeechModel: "src/ElevenLabsSpeechModel.ts",
+    ElevenLabsTranscriptionModel: "src/ElevenLabsTranscriptionModel.ts",
+    ElevenLabsVoiceConversionModel: "src/ElevenLabsVoiceConversionModel.ts",
+  },
 });
