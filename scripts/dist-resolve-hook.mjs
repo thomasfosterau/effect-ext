@@ -6,7 +6,7 @@
  * `exports`. Everything else (`effect`, `@effect/*`, …) goes to Node's default
  * resolver, so the bundles load exactly as they would from `node_modules`.
  *
- * `check-dist.mjs` installs it in-thread with `module.registerHooks()` (#72),
+ * `check-dist.mjs` installs it in-thread with `module.registerHooks()`,
  * which has no `initialize` / `data` channel, so the entries map arrives by
  * closure.
  */

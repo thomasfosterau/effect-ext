@@ -1,5 +1,5 @@
 /**
- * Dist-level import check (issue #32): `vp run check:dist`, a root task that
+ * Dist-level import check: `vp run check:dist`, a root task that
  * depends on every package's `build`.
  *
  * For every published package and every subpath its published exports
@@ -14,7 +14,7 @@
  * src-level test passed.
  *
  * Every published package's bundled `dist/**\/*.d.ts` is also TYPE-CHECKED
- * with `skipLibCheck: false` (#111), keeping only diagnostics located in
+ * with `skipLibCheck: false`, keeping only diagnostics located in
  * that package's own `dist`: a declaration bundler can emit a reference to a
  * namespace the bundle never declares, which the value-export check cannot
  * see (see `checkDeclarations`).
@@ -23,7 +23,7 @@
  * probe with `@cloudflare/workers-types` loaded, proving a Worker's `env.AI`
  * is accepted unchanged (see `checkWorkersBinding`).
  *
- * Every published package's `files` must also name `CHANGELOG.md` (#72).
+ * Every published package's `files` must also name `CHANGELOG.md`.
  *
  * Every optional peer must be imported only by the subpaths listed for it in
  * `optionalPeerSubpaths`, following each built entry's chunk graph, so a
@@ -32,14 +32,13 @@
  *
  * Every published package that declares a `bin` is also PACKED (`pnpm pack`),
  * unpacked into `node_modules/` of a scratch directory and its bin launched
- * from there (issue #42). Node refuses to type-strip TypeScript under
+ * from there. Node refuses to type-strip TypeScript under
  * `node_modules`, so a bin that runs `src/*.ts` works from the workspace
  * (whose real path is outside `node_modules`) and fails for every consumer;
  * only a launch from an installed path proves the bin is built JavaScript.
  *
  * Workspace siblings (`@thomasfosterau/*`) resolve to their own `dist` through
- * `dist-resolve-hook.mjs` (installed in-thread with `module.registerHooks()`,
- * #72); everything else resolves as in a consumer's
+ * `dist-resolve-hook.mjs` (installed in-thread with `module.registerHooks()`); everything else resolves as in a consumer's
  * `node_modules`. The expected export names come from the TypeScript checker
  * over each emitted declaration file (value symbols only — types and
  * type-only namespaces have no runtime presence).
@@ -132,7 +131,7 @@ for (const { specifier, dts } of targets) {
 
 /**
  * Type-checks every bundled `dist/**\/*.d.ts` of the package in `dir` with
- * `skipLibCheck: false`, as a strict consumer's compiler would (#111). The
+ * `skipLibCheck: false`, as a strict consumer's compiler would. The
  * value-export check above cannot see a broken declaration: effect-ai-cloudflare's
  * bundle once typed two exports as `RerankerModel_d_exports.Service`, a
  * namespace it never declared: "Cannot find namespace" (TS2503, or TS2833
@@ -150,7 +149,7 @@ for (const { specifier, dts } of targets) {
  * effect-ai-cloudflare is therefore checked without workers-types, which proves its
  * `.d.ts` self-contained: it types the Worker binding with its own structural
  * slice rather than that package's ambient `Ai`, `AIGatewayProviders` and
- * `AIGatewayUniversalRequest` (#113). `lib` is pinned to the one
+ * `AIGatewayUniversalRequest`. `lib` is pinned to the one
  * `tsconfig.base.json` sets (`esnext`, `dom`, `dom.iterable`) rather than
  * left to the target's default: bundles name DOM globals the runtimes they
  * target provide (`Response` in effect-ai-cloudflare, `Blob` in elevenlabs).
@@ -225,7 +224,7 @@ for (const { dir, manifest } of published) {
   }
 }
 
-// Every published tarball ships its release notes (effect-ext#72): npm adds
+// Every published tarball ships its release notes: npm adds
 // only `package.json`, `README` and `LICENSE` on its own, so `CHANGELOG.md`
 // has to be named in `files` for a consumer to read it in `node_modules`.
 for (const { manifest } of published) {
@@ -242,7 +241,7 @@ for (const { manifest } of published) {
  * with `@cloudflare/workers-types` loaded (and no `lib.dom`, as a Workers
  * project is configured), expecting no diagnostics: a Worker's `env.AI`,
  * typed `Ai` by that package, is accepted unchanged wherever effect-ai-cloudflare
- * takes a binding (#113). `tests/workers-types-binding.test.ts` proves the
+ * takes a binding. `tests/workers-types-binding.test.ts` proves the
  * same against `src`; this proves the declaration bundler kept it so. The
  * probe is a virtual file beside effect-ai-cloudflare, so workers-types (its
  * devDependency) resolves from there.

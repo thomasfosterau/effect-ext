@@ -1,12 +1,6 @@
 name: CI
 
-# One command: `vp run ci` (the `ci` task in vite.config.ts), so CI and a local
-# run are the same gate. It runs on Node 22 and 24 (the supported lines
-# `engines.node` promises), the current LTS and the latest release. Rulesets
-# require each leg by name: `ci (node 22)`, `ci (node 24)`, `ci (node lts)`,
-# `ci (node latest)`.
-# Nothing here needs a database, a stage or a credential, so every PR runs the
-# whole gate.
+# One command, `vp run ci` (vite.config.ts), so a local run is the same gate.
 
 on:
   pull_request:
@@ -18,10 +12,6 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/trunk' }}
 
-# No permissions by default; the jobs grant only read access. Nothing needs
-# secrets or an OIDC token, so a Dependabot PR runs it with nothing to leak.
-# Every action is pinned (Dependabot's `github-actions` updates keep the pins
-# current).
 permissions: {}
 
 jobs:
@@ -34,21 +24,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The supported lines `engines.node` promises (22, 24), plus whatever
-        # setup-vp resolves as the current LTS and the latest release.
-        node: ["22", "24", lts, latest]
+        node: [lts, latest]
     env:
-      # A modest ceiling for every Node process in the pipeline. NODE_OPTIONS
-      # is inherited by every child, including each vitest fork.
+      # Inherited by every child process, each vitest fork included.
       NODE_OPTIONS: --max-old-space-size=2048
       VITEST_MAX_WORKERS: 2
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      # Vite+ (at the catalog's `vite-plus` pin), the matrix's Node and the
-      # `packageManager` pnpm, the pnpm store cache, then
-      # `vp install --frozen-lockfile`.
       - name: Setup Vite+
         id: setup
         uses: voidzero-dev/setup-vp@v1.22.0
@@ -56,14 +40,11 @@ jobs:
           node-version: ${{ matrix.node }}
           version-file: pnpm-workspace.yaml
           cache: true
-          run-install: |
-            - args: ["--frozen-lockfile"]
-      # Vite Task does not fingerprint the Node version, so the task cache is
-      # keyed on the version setup-vp resolved (`lts` / `latest` move):
-      # otherwise a run on a new release would replay the previous one's
-      # results for every task whose inputs are unchanged.
-      - name: Restore the Vite+ task cache (Node ${{ steps.setup.outputs.node-version }})
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+          run-install: true
+      # Keyed on the resolved Node version: Vite Task doesn't fingerprint it,
+      # so a new release would otherwise replay the previous one's results.
+      - name: Restore the Vite+ task cache
+        uses: actions/cache@v6.1.0
         with:
           path: node_modules/.vite/task-cache
           key: vp-task-v1-${{ runner.os }}-node-${{ steps.setup.outputs.node-version }}-${{ github.sha }}

@@ -121,9 +121,7 @@
   // (tests/numeric/Pipeable.test.ts), which fallow does not trace.
   "usedClassMembers": ["pipe"],
   "duplicates": {
-    // Reviewed clones, carried from thomasfosterau/effect-numeric (whose
-    // fingerprints changed with the reformat at the merge). A content change
-    // produces a new fingerprint and makes the group reportable again.
+    // Reviewed clones; a content change makes the group reportable again.
     // - The per-type instance lists (`I8` … `U128`, one documented export
     //   each) that `Saturating` / `Wrapping` and `Checked` / `Overflowing`
     //   expose, mirroring Rust's per-type impls.
@@ -164,8 +162,7 @@
       "file": "packages/effect-ext/src/evals/**/*.ts",
       "exports": ["make", "layer", "Options", "contramap"]
     },
-    // effect-ext's `Browser` / `BrowserTesting` modules (merged in from
-    // effect-web) share one service shape, re-exported as namespaces from
+    // effect-ext's `Browser` / `BrowserTesting` modules share one service shape, re-exported as namespaces from
     // their subpath barrels (`Locks.layer`, `TestLocks.Control`).
     {
       "file": "packages/effect-ext/src/browser/*.ts",

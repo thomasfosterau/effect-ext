@@ -1,21 +1,8 @@
 /**
- * Root workspace config: the repo-wide fmt / lint / staged passes and the root
- * `check`, `docgen`, `check:dist` and `test:coverage` aggregates. Every
- * package's own tasks come from `vite.package.ts`; this file compiles
- * nothing, but a new package adds itself to the aggregate lists below and to
- * `coverageFloors`.
- *
- * The lint config is one rule set for the whole workspace. The `effect-ai-*`
- * providers and effect-ext's AI abstractions and evals toolkit (merged in
- * from thomasfosterau/effect-ai-ext, by way of `@thomasfosterau/effect-ai-ext`
- * and `@thomasfosterau/effect-evals`) came with a looser one: their
- * relaxations are scoped to `aiPackages` in `overrides` below, each with its
- * reason, so the rest of effect-ext keeps the stricter set. The same holds for the effect-ext modules merged in
- * from thomasfosterau/effect-web (`webModules`), scoped to their files, and
- * for the few allowances the modules from thomasfosterau/effect-numeric and
- * thomasfosterau/effect-time arrived with, scoped to the files they name.
- *
- * @copyright Thomas Foster
+ * Root config: the repo-wide fmt / lint / staged passes and the root task
+ * aggregates. Package tasks come from `vite.package.ts`; a new package adds
+ * itself to `packageNames` and `coverageFloors`. Lint relaxations are scoped
+ * per file group in `overrides`, each with its reason.
  */
 
 import { defineConfig } from "vite-plus";
@@ -33,12 +20,8 @@ import {
 } from "./packages/effect-ext/vite.config.ts";
 
 /**
- * Each package's coverage ratchet, keyed by the glob of the files it binds
- * (a package's `src/**`, plus effect-ext's floors for the AI abstractions and
- * the evals toolkit it absorbed). The floors live next to each package's
- * config; listing them here makes the root `test:coverage` run enforce them
- * as glob thresholds, because Vitest reads `coverage` from the root config
- * only and ignores the projects' own.
+ * Each package's coverage floor, keyed by the files it binds. Vitest reads
+ * `coverage` from the root config only, so the root run enforces them here.
  */
 const coverageFloors = {
   "packages/effect-ai-cohere/src/**": cohereFloor,
@@ -55,18 +38,11 @@ const coverageFloors = {
   ),
 } satisfies Readonly<Record<string, CoverageFloor>>;
 
-/**
- * The AI abstractions in effect-ext (from `@thomasfosterau/effect-ai-ext`).
- * The same list as `aiModules` in packages/effect-ext/vite.config.ts.
- */
+/** effect-ext's AI abstractions; the same list as `aiModules` in its vite.config.ts. */
 const aiModuleFiles =
   "packages/effect-ext/src/{ClassifierModel,ImageModel,ModerationModel,RerankerModel,SpeechModel,TranscriptionModel,VoiceConversionModel}.ts";
 
-/**
- * The code that came from thomasfosterau/effect-ai-ext (see the header): the
- * provider packages, and effect-ext's AI abstractions, evals toolkit, the
- * `effect-evals` bin and their tests.
- */
+/** The AI providers, and effect-ext's AI abstractions, evals toolkit and their tests. */
 const aiPackages = [
   "packages/effect-ai-*/**",
   aiModuleFiles,
@@ -75,11 +51,7 @@ const aiPackages = [
   "packages/effect-ext/tests/{ai,evals}/**",
 ];
 
-/**
- * The effect-ext modules that came from thomasfosterau/effect-web (see
- * the header): their subpath files, the directories behind them and their
- * tests.
- */
+/** effect-ext's web-platform modules and their tests. */
 const webDirs =
   "{browser,browser-testing,css,encoding,json-feed,langtag,mime,observability,uri-template,web}";
 const webTests =
@@ -92,7 +64,6 @@ const webModules = [
   webTests,
 ];
 
-/** The tests that came from thomasfosterau/effect-time (see the header). */
 const timeTests = "packages/effect-ext/tests/time/**";
 
 /** Every package name, for the root aggregates. */
@@ -205,7 +176,7 @@ export default defineConfig({
       "vitest/valid-expect": ["error", { maxArgs: 2 }],
     },
     overrides: [
-      // ---- The AI packages: the rule set they arrived with ----
+      // ---- The AI packages ----
       {
         files: aiPackages,
         rules: {
@@ -230,8 +201,8 @@ export default defineConfig({
           // language service keeps it as an editor suggestion
           // (tsconfig.base.json).
           "effecttsgo/unstable-api-usage": "off",
-          // The AI suites provide layers per test with `Effect.provide`
-          // (AGENTS.md → Tests), not `@effect/vitest`'s `layer(...)`.
+          // The AI suites provide layers per test with `Effect.provide`, not
+          // `@effect/vitest`'s `layer(...)`.
           "effecttsgo/strict-effect-provide": "off",
         },
       },
@@ -394,10 +365,7 @@ export default defineConfig({
           "effect/require-effect-concurrency": "warn",
         },
       },
-      // ---- `effect/prefer-option-over-null`: where the nullable spelling is the contract ----
-      // The rule is at error everywhere else (#17, #31). These files spell
-      // absence as `null` / `undefined` because something outside the
-      // package fixes that spelling; each group says what.
+      // ---- `effect/prefer-option-over-null`: where a nullable spelling is the contract ----
       {
         // The `*Like` interfaces mirror platform objects (`NetworkInformation`,
         // `UserActivation`, `Lock`, `Document.fullscreenElement`,
@@ -435,11 +403,7 @@ export default defineConfig({
         ],
         rules: { "effect/prefer-option-over-null": "off" },
       },
-      // ---- effect-ext's web modules: the rule set they arrived with ----
-      // Merged in from thomasfosterau/effect-web, whose own lint config these
-      // lines carry over unchanged (its reasons, abridged). Unifying them
-      // with the rest of effect-ext (`Option` members, the `P` / `R`
-      // aliases, no assertions) is #31; delete each line as it reaches zero.
+      // ---- effect-ext's web modules: allowances still to pay down ----
       {
         files: webModules,
         rules: {
@@ -465,13 +429,9 @@ export default defineConfig({
           "vitest/require-to-throw-message": "off",
           // Misreads an exhaustive `switch` over a union as a missing return.
           "typescript/consistent-return": "off",
-          // Off, not warn: its fix (applied by the pre-commit `vp check
-          // --fix`) rewrites `const X: ReadonlyArray<T> = [...]` to
-          // `= new Set([...])` and `.includes` to `.has`, but leaves the
-          // annotation, which no longer type-checks, and the native `Set` it
-          // introduces is an `effect/avoid-native-object-helpers` error. That
-          // is how #32's wiring commit broke nine of these lookups. Whether
-          // they become `HashSet`s is #31's call.
+          // Off, not warn: its autofix (run by the pre-commit `vp check
+          // --fix`) swaps in a native `Set` but leaves the `ReadonlyArray`
+          // annotation, which then fails to type-check.
           "unicorn/prefer-set-has": "off",
         },
       },
@@ -512,9 +472,8 @@ export default defineConfig({
           "effect/avoid-sync-fs": "off",
         },
       },
-      // effect-web's suites run each case's program with `Effect.runPromise`
-      // / `runSync` and provide its layers there, rather than through
-      // `@effect/vitest`'s `it.effect` and `layer(...)`.
+      // The web suites run each program with `Effect.runPromise` / `runSync`
+      // rather than `@effect/vitest`'s `it.effect` and `layer(...)`.
       {
         files: [webTests],
         rules: {
@@ -522,11 +481,7 @@ export default defineConfig({
           "effecttsgo/strict-effect-provide": "off",
         },
       },
-      // ---- effect-ext's numeric modules: the allowances they arrived with ----
-      // Merged in from thomasfosterau/effect-numeric, whose own lint config
-      // scoped these exact relaxations (its reasons, abridged). Everything
-      // else in those files meets the rule set above.
-      //
+      // ---- effect-ext's numeric modules ----
       // The numeric kernels (Euclid, Newton's method, square-and-multiply,
       // Miller–Rabin, continued fractions, the lazy range generators). Each
       // iterates a scalar state until a numeric condition holds; there is no
@@ -580,14 +535,10 @@ export default defineConfig({
           "effect/avoid-node-imports": "off",
         },
       },
-      // ---- effect-ext's time modules: the allowances they arrived with ----
-      // effect-numeric's and effect-time's suites are plain vitest, without
-      // `@effect/vitest`: a test body runs the effect it asserts on
-      // (`Effect.runPromise`), which makes it the run boundary
-      // `effect-run-in-body` names. effect-time's suites assert in the
-      // `.then` of that promise, whose resolved value vitest discards, so the
-      // promise rules that want a return value there cannot apply (effect-time
-      // ran without the `promise` plugin for this reason).
+      // ---- effect-ext's numeric and time suites ----
+      // Plain vitest: a test body runs the effect it asserts on
+      // (`Effect.runPromise`), and the time suites assert in its `.then`,
+      // whose value vitest discards.
       {
         files: [timeTests, "packages/effect-ext/tests/numeric/**"],
         rules: {
@@ -649,9 +600,7 @@ export default defineConfig({
         files: ["**/tests/**/*.types.ts", "tests/dist-consumer/src/*.ts"],
         rules: {
           "eslint/no-unused-vars": "off",
-          // An expect-error directive above a statement that must fail to
-          // compile is the assertion itself (AGENTS.md), so this rule cannot
-          // apply here.
+          // An expect-error directive is the assertion itself.
           "effect/avoid-ts-ignore": "off",
           // `Equals<A, B>` compares `<X>() => X extends A ? 1 : 2` with its
           // twin: each `X` is used once by design, it is the standard exact
@@ -674,15 +623,9 @@ export default defineConfig({
         },
       },
     ],
-    // Type-aware rules on (oxlint-tsgolint, Effect-patched by `prepare`).
-    // tsgolint reads each file's nearest tsconfig.json, so the package's
-    // tests have `tests/tsconfig.json` (extending tsconfig.test.json).
-    // `typeCheck` stays off, measured 2026-10-30: on a clean tree (CI runs
-    // `vp check` before the build) it reports 10 false TS errors in
-    // `tests/dist-consumer`, whose fixture resolves the package to its
-    // not-yet-built `dist/` declarations (0 errors once `dist/` exists), and
-    // `src` + tests already pass the Effect-patched `tsc` in `vp run check`,
-    // which also builds and checks that fixture.
+    // `typeCheck` stays off: on a clean tree (CI runs `vp check` before the
+    // build) `tests/dist-consumer` resolves to unbuilt `dist/` declarations
+    // and reports false errors; `vp run check` is the type gate.
     options: {
       typeAware: true,
       typeCheck: false,
@@ -696,12 +639,7 @@ export default defineConfig({
   },
   run: {
     tasks: {
-      // The whole CI gate, in CI's order: `vp run ci` locally is exactly what
-      // `.github/workflows/ci.yml` runs on every matrix Node version. Each
-      // nested `vp run` is inlined as its own tasks (with its own cache
-      // settings), and an array runs its entries in order, stopping at the
-      // first failure. Gates 2–9 of AGENTS.md § Verification; `pnpm audit`
-      // needs the network.
+      // Everything CI runs, in order, stopping at the first failure.
       ci: {
         command: [
           "vp check",
@@ -715,12 +653,8 @@ export default defineConfig({
         ],
         cache: false,
       },
-      // The CI typecheck gate, as one task: the package's `check` (`src`
-      // under tsconfig.json, the type-level tests under tsconfig.test.json),
-      // plus the dist-consumer check that type-checks a consumer fixture
-      // against the EMITTED declarations (a brand that degrades to `string`,
-      // or a codec that emits as `any`, only shows up there). A pure graph
-      // node; a new package adds itself here and to `docgen` below.
+      // Every package's `check`, plus the dist-consumer check against the
+      // emitted declarations (where a brand degrading to `string` shows up).
       check: {
         command: "echo 'check: every type gate green'",
         dependsOn: [
@@ -729,35 +663,37 @@ export default defineConfig({
         ],
         cache: false,
       },
-      // Every package's docgen: compiles AND RUNS each JSDoc `@example`
-      // against the built `dist/`, then writes the API reference under that
-      // package's (git-ignored) `docs/`. Same pure-graph-node shape.
+      // Every package's docgen: compiles and runs each `@example` against `dist/`.
       docgen: {
         command: "echo 'docgen: every example compiled and ran'",
         dependsOn: packageNames.map((name) => `${name}#docgen`),
         cache: false,
       },
-      // Dist-level import check (scripts/check-dist.mjs): imports every
-      // built entry and subpath under Node ESM, fails on a value export the
-      // bundled `.d.ts` declares but the bundle lacks, type-checks every
-      // bundled `.d.ts` with `skipLibCheck: false`, and launches the
-      // `effect-evals` bin from a packed tarball under `node_modules`. Reads
-      // `dist/`, hence the build edges.
+      // Checks the built entries as a consumer sees them (scripts/check-dist.mjs).
       "check:dist": {
         command: "node scripts/check-dist.mjs",
         dependsOn: packageNames.map((name) => `${name}#build`),
         cache: false,
       },
-      // Every package's unit suite under one Istanbul coverage map
-      // (`coverage/coverage-final.json`), which `fallow audit` reads for exact
-      // per-function CRAP scores (`health.coverage` in .fallowrc.json).
-      // Without it fallow estimates every function as uncovered, and any
-      // function with cyclomatic complexity ≥ 5 fails the gate on its own.
-      // Run this before `fallow audit` (the Claude Code PreToolUse hook
-      // `.claude/hooks/fallow-gate.sh` runs the audit on `git commit` /
-      // `git push`).
+      // One Istanbul map over every suite, which `fallow audit` reads for its
+      // CRAP scores (`health.coverage` in .fallowrc.json).
       "test:coverage": {
         command: "vp test run --coverage",
+        cache: false,
+      },
+      fallow: { command: "vp exec fallow --summary", cache: false },
+      // The pre-commit gate (.vite-hooks/pre-commit): fails only on findings
+      // the change introduces.
+      "fallow:audit": {
+        command: "vp exec fallow audit --base origin/trunk --quiet",
+        dependsOn: ["test:coverage"],
+        cache: false,
+      },
+      // Changesets' version step (release.yml): Changesets' own formatter
+      // detection picks Vite+'s editor-only `oxfmt` shim, hence `format: false`
+      // in .changeset/config.json and `vp fmt` here.
+      version: {
+        command: ["changeset version", "vp fmt", "pnpm install --lockfile-only"],
         cache: false,
       },
     },
@@ -772,12 +708,8 @@ export default defineConfig({
       reportsDirectory: "./coverage",
       include: ["packages/*/src/**/*.ts"],
       exclude: ["**/*.d.ts", "packages/effect-ext/src/evals/cli/main.ts"],
-      // Per package, not global: a glob's numbers aggregate only the files it
-      // matches, so one package's surplus never offsets another's drop. A
-      // weaker extra check, not the gate: the map here merges every package's
-      // tests, so a package's files also count lines another package's tests
-      // reach. The gate is `vp run -r test:coverage`, where each package's
-      // own config measures it with only its own tests.
+      // Per package; a weaker check than `vp run -r test:coverage`, since
+      // here one package's tests also cover another's files.
       thresholds: Object.fromEntries(
         Object.entries(coverageFloors).map(([glob, floor]) => [
           glob,
