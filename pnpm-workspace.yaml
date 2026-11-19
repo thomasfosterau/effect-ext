@@ -97,7 +97,7 @@ peerDependencyRules:
     vitest: "*"
     typescript: "*"
 
-# Hold new versions for 8 hours (minutes); Dependabot's 1-day cooldown is longer.
-minimumReleaseAge: 480
+# Hold new versions for 24 hours (minutes); Dependabot's cooldown matches it.
+minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - "@thomasfosterau/*"
