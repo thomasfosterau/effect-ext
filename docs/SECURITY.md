@@ -12,19 +12,15 @@ An AI provider client takes its API key only as a `Redacted` value you pass, or 
 
 ## Supply-chain hardening
 
-These packages are published with a hardened, automated pipeline designed to resist supply-chain attacks (e.g. self-propagating npm worms that steal credentials and publish trojanized versions):
-
-- **No long-lived npm token.** Releases use npm [**OIDC Trusted Publishing**](https://docs.npmjs.com/trusted-publishers): GitHub Actions proves its identity to npm with a short-lived, workflow-bound OIDC token. There is no `NPM_TOKEN` secret to steal from CI. The publish step uses the npm CLI directly (`npm publish` of a `pnpm pack` tarball), pinned to an exact npm version in the release job (npm >= 11.5.1 is needed for OIDC, newer than the npm Node 22 bundles) rather than `npm@latest`, which would put whatever the registry serves that day into the job holding `id-token: write`. pnpm 11's `pnpm publish` also performs the OIDC exchange natively; the npm CLI path is kept for now.
-- **Provenance.** npm attaches [provenance](https://docs.npmjs.com/generating-provenance-statements) — the statement cryptographically linking an artifact to its source commit and workflow — automatically under trusted publishing when the source repository and the package are both public, as this repository is. Nothing requests it explicitly: do not add `--provenance` or `NPM_CONFIG_PROVENANCE=true`, which would fail the publish if the repository were ever made private.
-- **Install scripts disabled in the release job.** The release workflow installs dependencies with `pnpm install --frozen-lockfile --ignore-scripts`, and turns off pnpm 11's `verify-deps-before-run` for that job (`pnpm_config_verify_deps_before_run: "false"`) so a later `pnpm run` / `pnpm exec` cannot silently re-install with scripts (pnpm 11 reads only the `pnpm_config_*` spelling), and `scripts/release.sh` packs with `pnpm pack --config.ignore-scripts=true` (`pnpm pack` has no `--ignore-scripts` flag); a compromised (transitive) dependency cannot execute install hooks in the privileged publish job. CI installs with scripts because the type gate needs the Effect-patched `tsc` that `prepare` produces; `allowBuilds` in `pnpm-workspace.yaml` names the only packages whose install scripts may run.
-- **Pinned actions.** All GitHub Actions are pinned to full commit SHAs, so a hijacked tag cannot inject malicious workflow code.
-- **Least privilege.** Workflows default to `permissions: {}`; each job opts into only the scopes it needs. CI checks out with `persist-credentials: false`. Outside the Release workflow's `version` and `publish` jobs, the only write permission is `issues: write` on the scheduled `dependabot-failures` job, which tracks failing Dependabot PRs as issues: it runs from the default branch with the repository's own `GITHUB_TOKEN`, never on a pull-request or Dependabot event, reads check runs and statuses by commit SHA without checking out or running PR code, and passes PR text to the API only as JSON built by `jq`, never through a shell expansion.
-- **Manual approval gate.** Publishing runs in a protected `release` environment that requires manual approval. The Release workflow splits versioning from publishing (changesets/action's `select-mode`, `version` and `publish` sub-actions): only the `publish` job is in that environment and holds `id-token: write`; the job that refreshes the version PR has a write-scoped token but cannot publish.
-- **Locked dependencies.** Installs use `pnpm install --frozen-lockfile` against the committed `pnpm-lock.yaml`; Dependabot proposes updates for review. pnpm's `minimumReleaseAge` holds a newly published version for 8 hours before it installs, and Dependabot's `cooldown` waits a day. CI also runs `pnpm audit --audit-level high`.
+- **No npm token.** Releases use [npm trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC) from a protected `release` environment that needs the owner's approval; npm attaches provenance itself. Don't force `--provenance`: it fails from a private repository.
+- **No install scripts where it matters.** Release jobs install with `--frozen-lockfile --ignore-scripts`, with no cache, and set `pnpm_config_verify_deps_before_run: "false"` so a later `pnpm run` can't re-install with scripts; `scripts/release.sh` packs with scripts off. `allowBuilds` in `pnpm-workspace.yaml` names the only packages whose install scripts may run anywhere.
+- **Pinned actions.** Workflows pin actions by exact tag, locked to commits by `.github/workflows/actions.lock`; the Lockfile workflow and the release's `verify-lockfile` job check it.
+- **Least privilege.** Workflows default to `permissions: {}`; checkouts don't persist credentials; CI holds no secrets, so Dependabot PRs run it safely, and the release jobs never run for Dependabot.
+- **Delayed updates.** pnpm's `minimumReleaseAge` holds a new version for 8 hours and Dependabot's cooldown for a day. CI runs `pnpm audit --audit-level high`.
 
 ## Invariant ids
 
-Doc comments, tests and READMEs cite rules from the source applications' specs by id. The table restates the ones effect-ext's web modules cite (they came with them from thomasfosterau/effect-web), as they apply to those modules; "enforced by" names the export that carries the rule and the test that pins it. A rule enforced by review has no test.
+Doc comments, tests and READMEs cite rules from the source applications' specs by id. The table states the ones effect-ext's web modules cite, as they apply to those modules; "enforced by" names the export that carries the rule and the test that pins it. A rule enforced by review has no test.
 
 | ID | Rule | Enforced by |
 | --- | --- | --- |
@@ -49,4 +45,4 @@ Doc comments, tests and READMEs cite rules from the source applications' specs b
 
 ## Release pipeline
 
-The publishing pipeline and its one-time maintainer setup (trusted publisher, protected `release` environment, branch protection) are documented in [PUBLISHING.md](./PUBLISHING.md).
+The publishing pipeline and its one-time maintainer setup (trusted publisher, protected `release` environment, branch protection) are in [PUBLISHING.md](PUBLISHING.md).

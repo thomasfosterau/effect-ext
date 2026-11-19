@@ -84,7 +84,7 @@ export default defineConfig({
   fmt: {
     // CHANGELOG.md files are written by `changeset version` and never
     // hand-edited, so the formatter leaves them as Changesets wrote them.
-    ignorePatterns: ["**/dist/**", "**/docs/**", "**/coverage/**", "**/CHANGELOG.md"],
+    ignorePatterns: ["**/dist/**", "packages/*/docs/**", "**/coverage/**", "**/CHANGELOG.md"],
     overrides: [
       {
         files: ["**/*.md"],

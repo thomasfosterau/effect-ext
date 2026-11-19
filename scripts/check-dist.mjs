@@ -6,12 +6,8 @@
  * declare (`publishConfig.exports` where the development `exports` point at
  * `src/`, else `exports` itself, as in `effect-ext`), imports the BUILT `dist/*.js` under real Node ESM (never the
  * `src` the vitest suites resolve) and asserts that every value export its
- * bundled `.d.ts` promises exists at runtime. This is the check that catches
- * a bundler folding an `export *` into an internal object — the
- * `RerankerModel` re-export of `@thomasfosterau/effect-ai-gateway` (since
- * renamed `@thomasfosterau/effect-ai-cloudflare`) shipped that way in 0.1.x,
- * so `import { make }` from it threw a `SyntaxError` under Node while every
- * src-level test passed.
+ * bundled `.d.ts` promises exists at runtime, catching a bundler that folds
+ * an `export *` into an internal object.
  *
  * Every published package's bundled `dist/**\/*.d.ts` is also TYPE-CHECKED
  * with `skipLibCheck: false`, keeping only diagnostics located in

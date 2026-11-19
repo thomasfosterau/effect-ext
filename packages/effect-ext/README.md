@@ -165,8 +165,8 @@ Guide: [evals](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/
 - [Moving from effect-web](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/guides/web.md#moving-from-effect-web) (the old package names and their subpaths here)
 - [Source and API doc comments](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ext/src)
 - [Repository README](https://github.com/thomasfosterau/effect-ext/blob/trunk/README.md)
-- [Contributing](https://github.com/thomasfosterau/effect-ext/blob/trunk/CONTRIBUTING.md)
-- [Security and invariant ids](https://github.com/thomasfosterau/effect-ext/blob/trunk/SECURITY.md)
+- [Contributing](https://github.com/thomasfosterau/effect-ext/blob/trunk/docs/CONTRIBUTING.md)
+- [Security and invariant ids](https://github.com/thomasfosterau/effect-ext/blob/trunk/docs/SECURITY.md)
 - [Changelog](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/CHANGELOG.md)
 
 ## License
