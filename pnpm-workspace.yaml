@@ -34,7 +34,7 @@ catalog:
   "@types/node": ^26.6.6
   "@vitest/coverage-istanbul": 5.1.0
   effect: 4.1.4
-  fallow: 3.43.1
+  fallow: 3.43.2
   fast-check: ^4.10.3
   # Only because `@effect/docgen` spawns it to run examples.
   tsx: ^4.23.15
