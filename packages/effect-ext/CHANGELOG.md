@@ -1,5 +1,11 @@
 # @thomasfosterau/effect-ext
 
+## 0.3.2
+
+### Patch Changes
+
+- [#143](https://github.com/thomasfosterau/effect-ext/pull/143) [`6f13842`](https://github.com/thomasfosterau/effect-ext/commit/6f13842554e778bf908a3af35c84cfdc7d0f7607) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Doc comments no longer reference issues or history.
+
 ## 0.3.1
 
 ### Patch Changes
