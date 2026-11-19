@@ -22,8 +22,7 @@
  * required key and turns every omitted field into a clear.
  *
  * **The hazard every reader here guards against** is folding "carry forward"
- * into "clear": `col: input.col ?? null` on a write path is silent data loss
- * (website #1877). {@link read} / {@link readNullOr} keep the three states
+ * into "clear": `col: input.col ?? null` on a write path is silent data loss. {@link read} / {@link readNullOr} keep the three states
  * apart as a {@link TriState}; {@link toNullOr} converts the `Option` encoding
  * to the nullable one a SQL `SET` map takes without folding them;
  * {@link suppliedValue} / {@link suppliedNullOr} fold the two no-value states

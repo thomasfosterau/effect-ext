@@ -21,7 +21,7 @@ import * as Schema from "effect/Schema";
  * against a specific `effect/ai` `Toolkit`, so goldens and cases
  * stay plain, serialisable data — a `Toolkit` type parameter would force
  * every `Golden`/`EvalCase` consumer to close over the same tool set.
- * `scorers/ToolCallCorrectness.ts` (website#925) compares against this shape
+ * `scorers/ToolCallCorrectness.ts` compares against this shape
  * directly rather than extending it.
  *
  * @since 0.1.0

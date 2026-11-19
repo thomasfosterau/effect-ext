@@ -1,6 +1,6 @@
 /**
  * The 495-shape negotiation matrix gardeneria pins as its golden
- * (`packages/api/tests/__golden__/negotiate-matrix.txt`, gardeneria#1764),
+ * (`packages/api/tests/__golden__/negotiate-matrix.txt`),
  * replayed against the library: five paths × (two reads × 22 `Accept`
  * values + five writes × 11 `Content-Type` values).
  *
@@ -17,7 +17,7 @@
  * `/operations` must also declare the Atomic extension, an application rule
  * it keeps as a wrapper around this verdict, so its golden reads
  * `HUUUDDUUUHH` where the library alone answers `HDDDDDUUUHH`. The table
- * holds #103's two cases: `Accept` index 8 (one clean instance among
+ * holds two mixed cases: `Accept` index 8 (one clean instance among
  * parameterised ones) dispatches, and index 12 (HTML ranked above JSON:API by
  * `q`) falls through.
  */

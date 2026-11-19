@@ -5,7 +5,7 @@
  * JSON" question). An unparseable `output` (the `SyntaxError` `JSON.parse`
  * throws) scores `0` with the parse error as `reason`. Anything else thrown
  * while parsing is not a verdict on the output, so it is a defect that
- * fails the run rather than a silent `0` (#98).
+ * fails the run rather than a silent `0`.
  *
  * @module scorers/JsonValidity
  *

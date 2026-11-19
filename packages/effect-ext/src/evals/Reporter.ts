@@ -6,7 +6,7 @@
  * channel is always `never`. A reporter's own dependencies (the JSON
  * reporter's `FileSystem`) are provided via `Layer`/`Effect.provide` at the
  * call site, exactly like a {@link Scorer.Scorer}'s judge model, so the
- * package's core depends on `effect` alone (website#922).
+ * package's core depends on `effect` alone.
  *
  * `json`'s output is the {@link Result.SuiteResult} shape verbatim, `JSON.stringify`d:
  *

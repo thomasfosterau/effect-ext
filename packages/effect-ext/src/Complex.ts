@@ -261,7 +261,7 @@ export const sqrt = (a: Complex): Complex => {
       ? make(Math.sqrt(a.re), a.im)
       : make(0, Math.sqrt(-a.re) * (Object.is(a.im, -0) ? -1 : 1));
   }
-  // The stable form (effect-ext#39): `(m ± re) / 2` only ever adds two
+  // The stable form: `(m ± re) / 2` only ever adds two
   // non-negative terms, and the other part is recovered by division, so a
   // part that is tiny next to the other one is not lost to cancellation
   // (`sqrt(1 + 1e-10i)` is `1 + 5e-11i`, not `1 + 0i`).

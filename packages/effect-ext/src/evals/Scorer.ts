@@ -6,8 +6,7 @@
  * `self.error` mutation, no exceptions escaping a scorer's control flow.
  *
  * This module carries only the shape; concrete scorers (deterministic,
- * G-Eval, RAG, tool-call correctness) are later slices
- * (website#925–website#927).
+ * G-Eval, RAG, tool-call correctness) live in their own modules.
  *
  * @module Scorer
  *

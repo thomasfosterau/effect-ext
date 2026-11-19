@@ -144,7 +144,7 @@ describe("pointers", () => {
     ]);
   });
 
-  // effect-ext#69: a struct-level check that points its failure at a field
+  // A struct-level check that points its failure at a field
   // puts a `Pointer` between the `Filter` and its message-less `InvalidValue`.
   const Pair = Schema.Struct({ a: Schema.String, b: Schema.String }).check(
     Schema.makeFilter(

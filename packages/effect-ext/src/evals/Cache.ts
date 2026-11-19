@@ -21,7 +21,7 @@
  *
  * Only `effect` and the platform-standard `crypto.subtle` global (present in
  * Node 19+ and Workers, no import needed) are used here, because the
- * package's core depends on `effect` alone (website#922): the
+ * package's core depends on `effect` alone: the
  * concrete `FileSystem`/`Path` layer for {@link layerFileSystem} is supplied
  * by the caller (a test or the CLI) — exactly like a judge `LanguageModel` is
  * provided to a {@link Scorer.Scorer}.

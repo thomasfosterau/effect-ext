@@ -1,5 +1,5 @@
 /**
- * Module-load smoke test (issue #32).
+ * Module-load smoke test.
  *
  * Imports the package entry, so every top-level statement in every module
  * runs against the workspace's pinned `effect`, and checks the public surface

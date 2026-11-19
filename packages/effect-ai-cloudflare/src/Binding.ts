@@ -12,7 +12,7 @@
  * ({@link WorkersAiBinding}), not by `@cloudflare/workers-types`' ambient
  * `Ai`, so the published declarations name nothing from that package and a
  * consumer that never installs it still type-checks them with
- * `skipLibCheck: false` (#113). A Worker's `env.AI`, typed `Ai` by
+ * `skipLibCheck: false`. A Worker's `env.AI`, typed `Ai` by
  * `@cloudflare/workers-types`, is assignable to {@link WorkersAiBinding}
  * (`tests/workers-types-binding.test.ts` proves it). `@cloudflare/workers-types`
  * stays an optional peer (`>=4.20250312.0`, the first release whose
@@ -166,7 +166,7 @@ export const gatewayUrl = (
  * `Anthropic.ts` doesn't need this).
  *
  * The `signal` parameter is **declared** on the `Effect.tryPromise`
- * evaluator, not omitted — the website#706 / website#730 lesson:
+ * evaluator, not omitted:
  * `Effect.tryPromise` threads Effect's managed `AbortSignal` as part of its
  * contract when the evaluator declares the parameter, so a wrapping
  * `Effect.timeout` (or any interruption) cancels the in-flight gateway

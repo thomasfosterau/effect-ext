@@ -2,7 +2,7 @@
  * WHATWG URL parsing as an `Option`.
  *
  * `URL.parse` would do, but it needs Node 22.1 and the package's floor is
- * Node 22.0 (`engines.node`, #71); `URL.canParse` is Node 19.9.
+ * Node 22.0 (`engines.node`); `URL.canParse` is Node 19.9.
  *
  * @internal
  */

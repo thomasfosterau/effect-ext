@@ -1,6 +1,5 @@
 /**
- * Pins the glob boundary between the unit suite and eval files (#929
- * acceptance criterion): `test.include` in vite.config.ts (from the shared
+ * Pins the glob boundary between the unit suite and eval files: `test.include` in vite.config.ts (from the shared
  * vite.package.ts) must stay narrow enough that `vp test` never picks up `evals/**\/*.eval.ts` files
  * (which may need real provider credentials) alongside `tests/**\/*.test.ts`.
  * If this test breaks, `include` changed — check the new value still

@@ -1,5 +1,5 @@
 /**
- * Type-level proof that the gateway's local binding types (#113) accept a
+ * Type-level proof that the gateway's local binding types accept a
  * real Workers binding.
  *
  * `src/Binding.ts` types the Worker's `AI` binding with its own structural

@@ -1,5 +1,5 @@
 /**
- * Module-load smoke test (issue #32).
+ * Module-load smoke test.
  *
  * Imports the package entry, so every top-level statement in every module
  * runs against the workspace's pinned `effect`, and checks the public surface
@@ -9,7 +9,7 @@
  * The `effect-evals` bin is deliberately NOT launched here: it runs the built
  * `dist/evals/cli/main.js`, and the unit-test job runs without a build. It is proved
  * from a packed tarball unpacked under `node_modules` by `vp run
- * check:dist` (issue #42), which is the only place that can prove it.
+ * check:dist`, which is the only place that can prove it.
  *
  * @module tests/module-load
  */

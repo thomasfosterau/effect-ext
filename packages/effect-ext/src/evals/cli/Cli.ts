@@ -1,6 +1,6 @@
 /**
  * The `effect-evals` root command: `run` is its only subcommand for now
- * (watch mode is explicitly out of scope — see website#930).
+ * (no watch mode).
  *
  * @module cli/Cli
  *

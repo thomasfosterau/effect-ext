@@ -1,5 +1,5 @@
 /**
- * Module-load smoke test (issue #32).
+ * Module-load smoke test.
  *
  * Imports the package entry, so every top-level statement in every module
  * runs against the workspace's pinned `effect`, and checks the public surface
@@ -53,7 +53,7 @@ describe("module load", () => {
   });
 
   it.each(R.keys(RerankerModelExt))(
-    "re-exports no RerankerModel value %s (removed in 0.5.0, #97)",
+    "re-exports no RerankerModel value %s (removed in 0.5.0)",
     async (name) => {
       const entry: Record<string, unknown> = await import("@thomasfosterau/effect-ai-cloudflare");
 

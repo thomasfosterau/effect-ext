@@ -1,15 +1,14 @@
 /**
  * Tests for `cli/loader.mjs`, run the way `bin/effect-evals.js` runs it: a
  * child `node --import <loader.mjs>` resolves extensionless and directory
- * specifiers, and installing the hook (`module.registerHooks()`, #72) prints
+ * specifiers, and installing the hook (`module.registerHooks()`) prints
  * nothing to stderr — in particular no DEP0205 `module.register()`
- * deprecation warning — and leaves CommonJS `require()` resolution to Node
- * (#79).
+ * deprecation warning — and leaves CommonJS `require()` resolution to Node.
  *
  * Each child gets the bin's one warning flag,
  * `--disable-warning=ExperimentalWarning`: Node 23.x and early 24.x, inside
  * the CLI's `>=22.18` range, print a type-stripping `ExperimentalWarning`
- * on every run (#83). That flag hides only that warning type, so a
+ * on every run. That flag hides only that warning type, so a
  * `DeprecationWarning` such as DEP0205 still fails the empty-stderr checks.
  * Never `--no-warnings`: Node ignores its value and hides every warning.
  *
@@ -40,7 +39,7 @@ describe("cli/loader", () => {
 
   it("leaves CommonJS require() to Node and probes .ts first only for ESM import()", () => {
     // `module.registerHooks()` hooks also run for `require()`; the loader
-    // must not apply its `.ts`-first order there (#79).
+    // must not apply its `.ts`-first order there.
     const result = spawnSync(process.execPath, [...nodeFlags, "--import", loader, cjsEntry], {
       encoding: "utf8",
     });

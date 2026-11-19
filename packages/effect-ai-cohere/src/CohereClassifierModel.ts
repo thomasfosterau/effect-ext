@@ -25,8 +25,7 @@
  * surface. The decoded structured output flows through the same validation and
  * normalisation path as any native classifier.
  *
- * See the sibling `@effect/ai-*` posture and the issue #3 discussion for the
- * rationale. A future first-party binding against a fine-tuned `/v1/classify`
+ * A future first-party binding against a fine-tuned `/v1/classify`
  * model could be added alongside this without changing the public surface.
  *
  * @module CohereClassifierModel

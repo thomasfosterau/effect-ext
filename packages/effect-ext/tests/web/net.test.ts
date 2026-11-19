@@ -442,7 +442,7 @@ describe("fetchFollowingRedirects (SEC-SSRF-003)", () => {
     );
   });
 
-  // #131: a budget that never lands exactly on 0 used to recurse forever.
+  // A budget that never lands exactly on 0 must still terminate.
   it.each([
     [-1, 1],
     [Number.NaN, 1],

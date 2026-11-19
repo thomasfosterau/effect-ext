@@ -1,8 +1,7 @@
 /**
  * Unit tests for `EmbeddingSimilarity.embeddingSimilarity`. `EmbeddingModel`
  * lives in `R`, so these stub the service directly with `EmbeddingModel.make`
- * (no provider — the package takes no provider dependency; the Cohere layer
- * is wired at call sites in #931).
+ * (the package takes no provider dependency).
  *
  * @module tests/scorers/embedding-similarity
  */

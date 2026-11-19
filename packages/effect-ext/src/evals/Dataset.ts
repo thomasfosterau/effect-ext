@@ -1,5 +1,5 @@
 /**
- * `Dataset` — a named source of goldens for a runner (website#924) to
+ * `Dataset` — a named source of goldens for a runner to
  * iterate.
  * Just a seam for now: goldens can be given inline, or as an Effect that
  * yields them (file-loading, a remote source, synthetic generation later —

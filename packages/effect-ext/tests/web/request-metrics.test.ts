@@ -61,7 +61,7 @@ describe("countingProxy over a class-instance client", () => {
     expect(count).toBe(2);
   });
 
-  it("takes any iterable of method names: an array, a HashSet or a Set (#98)", async () => {
+  it("takes any iterable of method names: an array, a HashSet or a Set", async () => {
     const counts = await Promise.all(
       [["select"], HashSet.make("select"), new globalThis.Set(["select"])].map(async (names) => {
         const client = countingProxy(new FakeClient(), names);
@@ -76,7 +76,7 @@ describe("countingProxy over a class-instance client", () => {
     expect(counts).toStrictEqual([2, 2, 2]);
   });
 
-  it("reads the names once, when the proxy is made (#98)", async () => {
+  it("reads the names once, when the proxy is made", async () => {
     const names = ["select"];
     const client = countingProxy(new FakeClient(), names);
     names.push("insert");

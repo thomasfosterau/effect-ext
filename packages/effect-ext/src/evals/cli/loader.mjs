@@ -17,8 +17,7 @@
  * The hook is installed with the synchronous, in-thread
  * `module.registerHooks()` (Node 22.15+; the package's `engines.node` floor is
  * 22.18, for default type stripping),
- * not the off-thread `module.register()`, which Node 26 deprecates (DEP0205,
- * #72).
+ * not the off-thread `module.register()`, which Node 26 deprecates (DEP0205).
  *
  * This is a small, self-contained copy of the same strategy
  * the Alchemy stack once used (since retired — that graph's imports are all
@@ -75,9 +74,9 @@ function resolveRepoFile(specifier, parentURL = "") {
  * Whether `context` is a CommonJS resolution (`require()`, `createRequire()`,
  * `require.resolve()`): Node passes the `"require"` condition for those and
  * `"import"` for ESM. `module.registerHooks()` hooks, unlike the
- * `module.register()` ones they replaced (#72), also run for CommonJS, so
+ * `module.register()` ones they replaced, also run for CommonJS, so
  * without this check the `.ts`-first probing below would override Node's own
- * CommonJS order (`.js`, `.json`, `.node`, then `package.json` `main`) (#79).
+ * CommonJS order (`.js`, `.json`, `.node`, then `package.json` `main`).
  * On Node 22.18 `conditions` is a `Set` for CommonJS and an array for ESM, so
  * it is spread before the lookup.
  */

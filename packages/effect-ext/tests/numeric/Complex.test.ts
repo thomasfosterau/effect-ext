@@ -91,8 +91,7 @@ describe("Complex: remaining operations", () => {
     // num-complex: sqrt(-2i) = 1 - i, sqrt(2i) = 1 + i.
     expect(close(Complex.sqrt(Complex.make(0, -2)), Complex.make(1, -1))).toBe(true);
     expect(close(Complex.sqrt(Complex.make(0, 2)), Complex.make(1, 1))).toBe(true);
-    // effect-ext#39: a part tiny next to the other was lost to cancellation.
-    // Expected values are num-complex's.
+    // A part tiny next to the other must survive cancellation. Expected values are num-complex's.
     expect(Complex.sqrt(Complex.make(1, 1e-10))).toEqual(Complex.make(1, 5e-11));
     expect(Complex.sqrt(Complex.make(-1, 1e-10))).toEqual(Complex.make(5e-11, 1));
     expect(Complex.sqrt(Complex.make(-1, -1e-10))).toEqual(Complex.make(5e-11, -1));
