@@ -26,7 +26,6 @@ import {
 import { stubAiBinding } from "./helpers/ai";
 import { expectFailureInstanceOf, runTest } from "./helpers/effect";
 
-/**
 /** Expected embedding width for `embed-v4.0`. */
 const EMBEDDING_DIMENSIONS = 1024;
 
