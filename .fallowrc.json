@@ -194,26 +194,26 @@
       "file": "packages/effect-ext/src/evals/**/*.ts",
       "exports": ["make", "layer", "Options", "contramap"]
     },
-    // effect-ext's `Browser` / `BrowserTesting` modules share one service shape, re-exported as namespaces from
-    // their subpath barrels (`Locks.layer`, `TestLocks.Control`).
+    // effect-platform-browser's services and their doubles share one service shape, re-exported as namespaces
+    // (`Locks.layer`, `TestLocks.Control`).
     {
-      "file": "packages/effect-ext/src/browser/*.ts",
+      "file": "packages/effect-platform-browser/src/*.ts",
       "exports": ["make", "layer", "changes", "requestPermission", "withLock", "watch"]
     },
     // `Css` re-exports each of its modules as a namespace, so `Color.parse`,
     // `Font.parse` and `Length.parse` (and `serialize`) are one API shape;
-    // `internal/web/dom.ts`'s `watch` is the helper `IdleDetection.watch`
-    // shares a name with, never imported side by side.
+    // effect-platform-browser's `internal/dom.ts` `watch` is the helper
+    // `IdleDetection.watch` shares a name with, never imported side by side.
     {
       "file": "packages/effect-ext/src/css/*.ts",
       "exports": ["parse", "serialize"]
     },
     {
-      "file": "packages/effect-ext/src/internal/web/dom.ts",
+      "file": "packages/effect-platform-browser/src/internal/dom.ts",
       "exports": ["watch"]
     },
     {
-      "file": "packages/effect-ext/src/browser-testing/*.ts",
+      "file": "packages/effect-platform-browser/src/testing/*.ts",
       "exports": ["make", "layer", "Control", "Fixture", "Options"]
     }
   ]

@@ -3,8 +3,6 @@
   "exclude": [
     "src/index.ts",
     "src/internal/**",
-    "src/Browser.ts",
-    "src/BrowserTesting.ts",
     "src/Css.ts",
     "src/Encoding.ts",
     "src/Langtag.ts",

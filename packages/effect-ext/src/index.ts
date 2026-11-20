@@ -20,8 +20,7 @@
  * (`@thomasfosterau/effect-ext/Vec`, …); this barrel re-exports them as
  * namespaces (the fixed-width integer and `F32` modules as their one
  * value: `I8`, …, `U128`, `F32`), except the modules that import an
- * optional peer — `Browser` and `BrowserTesting`
- * (`@effect/platform-browser`), and `Robots` and the time parsers
+ * optional peer — `Robots` and the time parsers
  * `Rfc3339`, `Rfc9557`, `IsoDuration`, `PosixTz`, `CronExpression`,
  * `RRule`, `IanaTimeZone` and `Tzif` (`@thomasfosterau/effect-parse`) —
  * which are subpaths only, so importing the barrel never needs a peer the

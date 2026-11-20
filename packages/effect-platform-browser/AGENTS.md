@@ -1,20 +1,30 @@
 # @thomasfosterau/effect-platform-browser
 
-Browser main-thread APIs as Effect values, beyond what `@effect/platform-browser` ships: the page side of a service worker (`ServiceWorkerContainer`) and Web Push subscriptions (`PushManager`) today, and the services tracked in issue #152. Code that runs inside a worker belongs in the worker packages; an API a worker scope also exposes belongs in `effect-platform-worker-shared`, with only its window-side layer here.
+Browser main-thread APIs as Effect services, beside and on top of `@effect/platform-browser`: the platform services that were effect-ext's `Browser` (`Locks`, `Navigator`, `PageVisibility`, `MediaQuery`, `WakeLock`, `Broadcast`, `IdleDetection`, `Battery`, `Fullscreen`, `ScreenOrientation`, `Notifications`, `PermissionStatus`), the page side of a service worker (`ServiceWorkerContainer`), Web Push subscriptions (`PushManager`), and doubles for all of them (`BrowserTesting`). More services are tracked in issue #152. Code that runs inside a worker belongs in the worker packages; an API a worker scope also exposes belongs in `effect-platform-worker-shared`, with only its window-side layer here.
+
+Each service is its own subpath and a namespace on the `.` barrel. `Browser` holds only `layer`, every live service at once. `BrowserTesting` is a barrel over `src/testing/*.ts` and is not on the `.` barrel; docgen documents the `testing/` files and skips that barrel.
 
 ## Boundary
 
-Peer: `effect`. Dependency: `@thomasfosterau/effect-platform-worker-shared` (`.fallowrc.json` zone `browser`, allowed into `worker-shared` only). `ServiceWorkerContainer` builds its controller endpoint on `WorkerMessaging`. `PushManager` imports no module here: it reads a registration structurally, so a `ServiceWorkerContainer.RegistrationLike` from a real browser and a test stub both fit.
+Peers: `effect` and `@effect/platform-browser`. Dependency: `@thomasfosterau/effect-platform-worker-shared` (`.fallowrc.json` zone `browser`, allowed into `worker-shared` only). `ServiceWorkerContainer` builds its controller endpoint on `WorkerMessaging`. `PermissionStatus` and `Notifications` build on `@effect/platform-browser`'s `Permissions`; `BrowserTesting` imports the services (its doubles run the real adapters), and no service imports `BrowserTesting`. `PushManager` reads a registration structurally, so a `ServiceWorkerContainer.RegistrationLike` and a test stub both fit.
 
 ## Invariants
 
-- **No global is read at import.** A platform object the page reads ambiently (`navigator.serviceWorker`) is a `Context.Reference` of an `Option`, defaulting to the global on first read and `none` where it is missing (an insecure origin, Node), so every call fails `Unsupported` rather than throwing.
-- **Structural types, `dom` lib.** Each platform object is a `*Like` interface, the slice the code calls, so a test hands in an `EventTarget` and the real object stays assignable.
-- **The `*Like` interfaces keep the platform's `T | null` / `T | undefined`** where the DOM spells it so (`controller`, `installing` / `waiting` / `active`, `getRegistration`, `getSubscription`); every reading past the adapter is an `Option`.
+- **The ambient platform objects** (`navigator`, `document`, `matchMedia`, `BroadcastChannel`, `IdleDetector`, `screen.orientation`, `Notification`, `globalThis` as an event target) **are read in one place**, `src/internal/globals.ts`, and only from inside a live `layer`'s build: never at import, never in `make`. `ServiceWorkerContainer.Container` is the exception that proves the rule: a `Context.Reference` of an `Option`, defaulting to `navigator.serviceWorker` on first read.
+- **Every service has a `make` over a structural `*Like` interface** (the slice of the platform object it calls), so a double, a worker's own global or a test object can stand in, and the package compiles under the `dom` lib alone.
+- **Absence is an `Option` past the adapter boundary.** `globals.ts` returns an `Option` for each ambient read and the live `layer` unwraps it into `make`'s optional parameter (`make()` is the unsupported service); option members (`NavigatorEnvironment`, `NotificationsEnvironment`, `LockOptions`, every double's `Options`) are `?: T`. The `*Like` interfaces keep the platform's own `T | null` / `T | undefined` where the DOM spells it so (`Lock | null` in the `request` callback, `fullscreenElement`, `IdleDetector`'s `userState` / `screenState`, `sendBeacon`'s `data`, `controller`, `getRegistration`, `getSubscription`), so the real object stays assignable; the doubles mirror that spelling and convert at the adapter.
+- **A missing API degrades; it never fails the layer.** `supported: false` plus an `Unsupported` failure for a call, `Option.none()` for a reading, a single-value (or, with no value to report, empty) stream for a change stream. One layer serves every browser, a worker and a server render.
+- **Every change stream emits the current value first, after its listeners are attached** (`src/internal/dom.ts` `watch`), then each change, deduplicated, on a sliding buffer. `BrowserTesting`'s `observe` relies on this; so does every test that drives a `Control`.
+- **A `Scope` holds a platform resource; closing it releases the resource and waits for the platform to report the release** (a lock is free for another context once `withLock` returns). A grant that races an interruption is released, never leaked.
 - **Rejections map onto reasons by `DOMException` name** (`internal/dom.ts` `reasonOf`), read structurally; anything unmapped is `Failed` with the `cause` kept.
+- **The doubles in `BrowserTesting` run the real adapter** over an in-memory platform object, and drive it through the events the browser would fire. A double never re-implements a service's logic, and its getters read live state (`Object.assign` snapshots a getter: use a small `EventTarget` subclass).
+- **Nothing here wraps what `@effect/platform-browser` already provides** (`Clipboard`, `Geolocation`, `Permissions`, `IndexedDb`, `KeyValueStore`, workers, sockets); it builds beside or on top of them, and `BrowserTesting` doubles them.
 - **Messages go through `WorkerMessaging`**, never a second encoder; a received message is decoded against the caller's schema and dropped, with a warning log, if it does not decode.
 
 ## Terms
 
+- **`*Like` interface** — the structural slice of a platform object an adapter calls (`LockManagerLike`, `NavigatorLike`, `ServiceWorkerContainerLike`, …). The platform object satisfies it; so does a double.
+- **Double** — a `BrowserTesting` module: `make` (the real adapter over an in-memory platform object, plus its `Control`), `layer` (both, as a `Layer`).
+- **Control** — the per-double service a test drives the platform through and reads recorded calls from.
 - **Controller** — the service worker controlling this page (`navigator.serviceWorker.controller`); `None` on a first load or a hard reload.
 - **Waiting worker** — an installed worker held back until the old one's pages close or it calls `skipWaiting`: "a new version is ready".

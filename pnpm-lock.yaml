@@ -261,9 +261,6 @@ importers:
       '@effect/language-service':
         specifier: 'catalog:'
         version: 0.87.5
-      '@effect/platform-browser':
-        specifier: 'catalog:'
-        version: 4.1.4(effect@4.1.4)
       '@effect/platform-node':
         specifier: 'catalog:'
         version: 4.1.4(effect@4.1.4)(redis@6.3.0)
@@ -295,6 +292,9 @@ importers:
       '@effect/language-service':
         specifier: 'catalog:'
         version: 0.87.5
+      '@effect/platform-browser':
+        specifier: 'catalog:'
+        version: 4.1.4(effect@4.1.4)
       '@effect/vitest':
         specifier: 'catalog:'
         version: 4.1.4(effect@4.1.4)(vitest@5.1.0)

@@ -10,7 +10,6 @@
     "atom",
     "bcp47",
     "bigint",
-    "browser",
     "checked",
     "classifier",
     "complex",
@@ -114,14 +113,6 @@
     "./Bounded": {
       "types": "./dist/Bounded.d.ts",
       "default": "./dist/Bounded.js"
-    },
-    "./Browser": {
-      "types": "./dist/Browser.d.ts",
-      "default": "./dist/Browser.js"
-    },
-    "./BrowserTesting": {
-      "types": "./dist/BrowserTesting.d.ts",
-      "default": "./dist/BrowserTesting.js"
     },
     "./BufferStruct": {
       "types": "./dist/BufferStruct.d.ts",
@@ -517,7 +508,6 @@
   },
   "devDependencies": {
     "@effect/language-service": "catalog:",
-    "@effect/platform-browser": "catalog:",
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
     "@thomasfosterau/effect-parse": "catalog:",
@@ -527,15 +517,11 @@
     "fast-check": "catalog:"
   },
   "peerDependencies": {
-    "@effect/platform-browser": "catalog:peers",
     "@effect/platform-node": "catalog:peers",
     "@thomasfosterau/effect-parse": "catalog:peers",
     "effect": "catalog:peers"
   },
   "peerDependenciesMeta": {
-    "@effect/platform-browser": {
-      "optional": true
-    },
     "@effect/platform-node": {
       "optional": true
     },
