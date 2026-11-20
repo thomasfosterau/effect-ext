@@ -787,6 +787,13 @@ export default defineConfig({
         dependsOn: packageNames.map((name) => `${name}#build`),
         cache: false,
       },
+      // Each package's type gate and unit tests on the lowest versions its
+      // peer ranges allow (scripts/peer-floors.mjs). Reinstalls, so it stays
+      // out of `ci`; the `peer-floors` CI job runs it once per group.
+      "peer-floors": {
+        command: "node scripts/peer-floors.mjs",
+        cache: false,
+      },
       // The publish job's script (.github/workflows/release.yml), after the
       // offline `check:dist` on the same commit: pnpm publishes each public
       // package whose version isn't on npm yet, in dependency order, under

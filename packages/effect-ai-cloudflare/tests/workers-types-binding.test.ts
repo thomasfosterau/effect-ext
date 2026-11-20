@@ -84,11 +84,12 @@ type Equals<A, B> =
 export const sameSlugs: Equals<Literals<GatewayProvider>, AIGatewayProviders> = true;
 
 // A release whose run() options predate \`signal\` ({ gateway?, extraHeaders? })
-// still fits: GatewayRunOptions names both, as never.
+// still fits: GatewayRunOptions names both, as never. \`GatewayOptions\`, not
+// the later \`UniversalGatewayOptions\`, so the probe compiles on the peer floor.
 declare const olderGateway: {
   run(
     data: AIGatewayUniversalRequest,
-    options?: { gateway?: UniversalGatewayOptions; extraHeaders?: object },
+    options?: { gateway?: GatewayOptions; extraHeaders?: object },
   ): Promise<Response>;
   getUrl(provider?: AIGatewayProviders | string): Promise<string>;
 };
