@@ -4,6 +4,8 @@
   "description": "Effect platform utilities shared by every web worker scope: the worker global as a context reference, a worker runMain, and schema-typed message ports.",
   "keywords": [
     "effect",
+    "eventsource",
+    "server-sent-events",
     "web-worker",
     "worker"
   ],
@@ -31,6 +33,7 @@
     "./WorkerScope": "./src/WorkerScope.ts",
     "./WorkerRuntime": "./src/WorkerRuntime.ts",
     "./WorkerMessaging": "./src/WorkerMessaging.ts",
+    "./EventSource": "./src/EventSource.ts",
     "./Performance": "./src/Performance.ts",
     "./BrowserFileSystem": "./src/BrowserFileSystem.ts",
     "./MemoryFileSystemHandle": "./src/MemoryFileSystemHandle.ts"
@@ -55,6 +58,10 @@
       "./WorkerMessaging": {
         "types": "./dist/WorkerMessaging.d.ts",
         "import": "./dist/WorkerMessaging.js"
+      },
+      "./EventSource": {
+        "types": "./dist/EventSource.d.ts",
+        "import": "./dist/EventSource.js"
       },
       "./Performance": {
         "types": "./dist/Performance.d.ts",

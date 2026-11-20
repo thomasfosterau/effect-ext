@@ -20,6 +20,9 @@
  *   back and forward.
  * - `TestPerformance` — a performance timeline on a manual clock, for
  *   `Performance` (from `effect-platform-worker-shared`) and `WebVitals`.
+ * - `TestEventSource` — a server-sent events server, for `EventSource`
+ *   (from `effect-platform-worker-shared`), with a `Control` that sends
+ *   events, drops connections and refuses them.
  * - `TestFilePicker` — pickers over an in-memory disk, with a `Control`
  *   that seeds the disk and chooses what the user picks.
  * - `TestMediaDevices` — cameras, microphones and a recorder, with a
@@ -45,6 +48,7 @@ export * as TestBroadcast from "./testing/broadcast.ts";
 export * as TestClipboard from "./testing/clipboard.ts";
 export * as TestCredentials from "./testing/credentials.ts";
 export * as TestDomObservers from "./testing/dom-observers.ts";
+export * as TestEventSource from "./testing/event-source.ts";
 export * as TestFilePicker from "./testing/file-picker.ts";
 export * as TestFullscreen from "./testing/fullscreen.ts";
 export * as TestGeolocation from "./testing/geolocation.ts";
