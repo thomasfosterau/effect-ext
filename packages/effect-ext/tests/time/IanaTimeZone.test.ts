@@ -3,7 +3,7 @@
  * runtime's tz data, aliases and case, the runtime's list, and the `Schema`.
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -75,10 +75,12 @@ describe("IanaTimeZone.supported", () => {
 });
 
 describe("IanaTimeZone.parse", () => {
-  it("fails with a ParseError", () =>
-    Effect.runPromise(Effect.flip(IanaTimeZone.parse("Nowhere/Special"))).then((error) => {
+  it.effect("fails with a ParseError", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(IanaTimeZone.parse("Nowhere/Special"));
       expect(error._tag).toBe("ParseError");
-    }));
+    }),
+  );
 });
 
 describe("IanaTimeZone.FromString", () => {

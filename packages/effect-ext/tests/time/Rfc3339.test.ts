@@ -3,7 +3,7 @@
  * offset → `Utc` / `Zoned` mapping, and the `Schema` round trip.
  */
 
-import { assert, describe, expect, it } from "vite-plus/test";
+import { assert, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
@@ -84,16 +84,20 @@ describe("Rfc3339.parser", () => {
 });
 
 describe("Rfc3339.parse", () => {
-  it("succeeds with the DateTime", () =>
-    Effect.runPromise(Rfc3339.parse("2026-10-22T09:30:00+10:00")).then((dt) => {
+  it.effect("succeeds with the DateTime", () =>
+    Effect.gen(function* () {
+      const dt = yield* Rfc3339.parse("2026-10-22T09:30:00+10:00");
       expect(DateTime.formatIso(dt)).toBe("2026-10-21T23:30:00.000Z");
-    }));
+    }),
+  );
 
-  it("fails with the ParseError", () =>
-    Effect.runPromise(Effect.flip(Rfc3339.parse("2026-02-30T00:00:00Z"))).then((error) => {
+  it.effect("fails with the ParseError", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(Rfc3339.parse("2026-02-30T00:00:00Z"));
       expect(error._tag).toBe("ParseError");
       expect(error.message).toContain("day of month (01-28)");
-    }));
+    }),
+  );
 });
 
 describe("Rfc3339.format", () => {

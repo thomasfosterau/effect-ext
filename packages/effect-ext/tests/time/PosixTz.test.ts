@@ -4,7 +4,7 @@
  * transition times, the errors, and the `Schema` and `format` round trip.
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
@@ -110,10 +110,12 @@ describe("PosixTz.parser", () => {
 });
 
 describe("PosixTz.parse", () => {
-  it("fails with a ParseError on trailing input", () =>
-    Effect.runPromise(Effect.flip(PosixTz.parse("JST-9 "))).then((error) => {
+  it.effect("fails with a ParseError on trailing input", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(PosixTz.parse("JST-9 "));
       expect(error._tag).toBe("ParseError");
-    }));
+    }),
+  );
 });
 
 describe("PosixTz.format", () => {

@@ -3,7 +3,7 @@
  * (leap seconds, indicators), and every structural check the parser makes.
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -248,15 +248,17 @@ describe("Tzif.parser checks", () => {
 });
 
 describe("Tzif.parse", () => {
-  it("parses a whole file as an Effect", () =>
-    Effect.runPromise(Tzif.parse(Zoneinfo.utc)).then((utc) => {
+  it.effect("parses a whole file as an Effect", () =>
+    Effect.gen(function* () {
+      const utc = yield* Tzif.parse(Zoneinfo.utc);
       expect(utc.localTimeTypes[0]?.designation).toBe("UTC");
-    }));
+    }),
+  );
 
-  it("fails with a ParseError on trailing bytes", () =>
-    Effect.runPromise(Effect.flip(Tzif.parse(new Uint8Array([...Zoneinfo.utc, 0])))).then(
-      (error) => {
-        expect(error._tag).toBe("ParseError");
-      },
-    ));
+  it.effect("fails with a ParseError on trailing bytes", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(Tzif.parse(new Uint8Array([...Zoneinfo.utc, 0])));
+      expect(error._tag).toBe("ParseError");
+    }),
+  );
 });

@@ -89,8 +89,6 @@ const webModules = [
   ...browserModules,
 ];
 
-const timeTests = "packages/effect-ext/tests/time/**";
-
 /** Every package name, for the root aggregates. */
 const packageNames = [
   "@thomasfosterau/effect-ai-cohere",
@@ -645,23 +643,6 @@ export default defineConfig({
         rules: {
           "effect/avoid-direct-json": "off",
           "effect/avoid-node-imports": "off",
-        },
-      },
-      // ---- effect-ext's numeric and time suites ----
-      // Plain vitest: a test body runs the effect it asserts on
-      // (`Effect.runPromise`), and the time suites assert in its `.then`,
-      // whose value vitest discards.
-      {
-        files: [timeTests, "packages/effect-ext/tests/numeric/**"],
-        rules: {
-          "effect/effect-run-in-body": "off",
-        },
-      },
-      {
-        files: [timeTests],
-        rules: {
-          "promise/always-return": "off",
-          "promise/no-callback-in-promise": "off",
         },
       },
       // ---- effect-ext ----

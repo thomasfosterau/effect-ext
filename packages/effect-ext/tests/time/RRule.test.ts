@@ -4,7 +4,7 @@
  * and the `Schema` and `format` round trip.
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
@@ -150,10 +150,12 @@ describe("RRule.parser", () => {
 });
 
 describe("RRule.parse", () => {
-  it("fails with a ParseError", () =>
-    Effect.runPromise(Effect.flip(RRule.parse("FREQ=DAILY;COUNT=x"))).then((error) => {
+  it.effect("fails with a ParseError", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(RRule.parse("FREQ=DAILY;COUNT=x"));
       expect(error._tag).toBe("ParseError");
-    }));
+    }),
+  );
 });
 
 describe("RRule.format", () => {
