@@ -12,7 +12,9 @@
  * @since 0.1.0
  */
 import type * as Duration from "effect/Duration";
+import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import { constVoid } from "effect/Function";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
@@ -55,6 +57,12 @@ export class FetchFailed extends Schema.TaggedError<FetchFailed>()("FetchFailed"
 export interface FetchEventLike extends ExtendableEventLike {
   readonly request: Request;
   readonly respondWith: (response: Response | PromiseLike<Response>) => void;
+  /**
+   * The navigation preload response: a `Response` once the preload is in,
+   * `undefined` without one. Absent where the browser has no navigation
+   * preload.
+   */
+  readonly preloadResponse?: Promise<unknown>;
 }
 
 /**
@@ -414,6 +422,89 @@ export const cacheOnly =
       return yield* new CacheMiss({ cacheName: options.cacheName, url: request.url });
     });
 
+const noPreload: Effect.Effect<Option.Option<Response>> = Effect.succeedNone;
+
+/**
+ * The navigation preload response for the request being answered: inside
+ * {@link fetchListener}, the event's `preloadResponse`, `None` when the
+ * browser sent no preload (it was not enabled, or this is not a navigation)
+ * or the preload failed. Outside a listener it is always `None`.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import * as Option from "effect/Option"
+ * import { PreloadResponse } from "@thomasfosterau/effect-platform-service-worker/Fetch"
+ *
+ * const program = Effect.gen(function* () {
+ *   const preload = yield* PreloadResponse
+ *   return yield* preload
+ * })
+ * Effect.runPromise(program).then((response) => console.log(Option.isNone(response))) // true
+ * ```
+ *
+ * @since 0.1.0
+ * @category context
+ */
+export const PreloadResponse: Context.Reference<Effect.Effect<Option.Option<Response>>> =
+  /*#__PURE__*/ Context.Reference(
+    "@thomasfosterau/effect-platform-service-worker/Fetch/PreloadResponse",
+    { defaultValue: () => noPreload },
+  );
+
+/** Reads an event's preload as an effect: a `Response`, or `None` for anything else. */
+const preloadOf = (preload: Promise<unknown>): Effect.Effect<Option.Option<Response>> =>
+  Effect.tryPromise({ try: () => preload, catch: Option.none }).pipe(
+    Effect.match({
+      // A failed preload is a failed network request: the fallback retries it.
+      onFailure: Option.none,
+      onSuccess: (value) => (value instanceof Response ? Option.some(value) : Option.none()),
+    }),
+  );
+
+/**
+ * Answers a navigation with its preload response (see
+ * `NavigationPreload.enable`), falling back to `strategy` when there is
+ * none. The preload is the network request the browser starts while the
+ * worker boots, so it saves the boot time on a cold navigation; it is not
+ * written to any cache.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import { fetchListener, isNavigationRequest, networkOnly, route, withNavigationPreload } from "@thomasfosterau/effect-platform-service-worker/Fetch"
+ *
+ * const onFetch = Effect.runSync(
+ *   fetchListener([route(isNavigationRequest, withNavigationPreload(networkOnly))]),
+ * )
+ *
+ * // In a worker the browser dispatches this event, with the preload in flight.
+ * const navigation = Object.defineProperty(new Request("https://example.com/"), "mode", { value: "navigate" })
+ * const answers: Array<Response | PromiseLike<Response>> = []
+ * onFetch({
+ *   request: navigation,
+ *   preloadResponse: Promise.resolve(new Response("preloaded")),
+ *   respondWith: (response) => { answers.push(response) },
+ *   waitUntil: () => {},
+ * })
+ * Promise.resolve(answers[0]).then((response) => response?.text()).then(console.log) // "preloaded"
+ * ```
+ *
+ * @since 0.1.0
+ * @category strategies
+ */
+export const withNavigationPreload =
+  <E, R>(strategy: Strategy<E, R>): Strategy<E, R> =>
+  (request) =>
+    PreloadResponse.use((preload) =>
+      Effect.flatMap(preload, (response) =>
+        Option.match(response, {
+          onNone: () => strategy(request),
+          onSome: Effect.succeed,
+        }),
+      ),
+    );
+
 /**
  * Answers from the network only, writing nothing: {@link fetchRequest} as a
  * {@link Strategy}, for a route that must never be served stale.
@@ -613,11 +704,23 @@ export const fetchListener = <const Routes extends ReadonlyArray<Route<unknown, 
     return (event: FetchEventLike) => {
       const matched = routes.find((candidate) => candidate.match(event.request));
       if (matched === undefined) return;
+      const preload = event.preloadResponse;
+      if (preload !== undefined) {
+        // Keeps the worker alive until the preload settles, used or not:
+        // the browser cancels an unsettled one when the event ends.
+        event.waitUntil(preload.then(constVoid, constVoid));
+      }
       event.respondWith(
         run(
           matched
             .handle(event.request)
-            .pipe(Effect.provideService(EventLifetime, eventLifetime(event))),
+            .pipe(
+              Effect.provideService(EventLifetime, eventLifetime(event)),
+              Effect.provideService(
+                PreloadResponse,
+                preload === undefined ? noPreload : preloadOf(preload),
+              ),
+            ),
         ),
       );
     };

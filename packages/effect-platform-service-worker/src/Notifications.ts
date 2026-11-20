@@ -248,7 +248,7 @@ const notificationListener =
   ): Effect.Effect<(event: Event) => void, never, R | S["DecodingServices"]> =>
     decodedListener(
       schema,
-      (event: Event) => event.notification.data,
+      (event: Event) => Effect.succeed(event.notification.data),
       `service-worker: ${kind} dropped`,
       handle,
     );

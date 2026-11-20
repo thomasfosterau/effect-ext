@@ -5,6 +5,8 @@
  */
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import * as R from "effect/Record";
 import * as Schema from "effect/Schema";
 
 /** See `Events.ExtendableEventLike`. */
@@ -70,10 +72,17 @@ export const extendableListener = <Event extends ExtendableEventLike, E, R>(
       );
   });
 
+/** A payload a listener could not read (a push whose data is not JSON). */
+export class UnreadablePayload extends Schema.TaggedError<UnreadablePayload>()(
+  "UnreadablePayload",
+  { cause: Schema.Unknown },
+) {}
+
 /**
- * An {@link extendableListener} that decodes `read(event)` with `schema`
- * first: an undecodable payload is logged at `Warning` as `dropped` and
- * the handler is skipped.
+ * An {@link extendableListener} that reads a payload with `read` and
+ * decodes it with `schema` first: a payload that cannot be read or does
+ * not decode is logged at `Warning` as `dropped` and the handler is
+ * skipped.
  */
 export const decodedListener = <
   S extends Schema.Constraint,
@@ -82,13 +91,13 @@ export const decodedListener = <
   R,
 >(
   schema: S,
-  read: (event: Event) => S["Encoded"],
+  read: (event: Event) => Effect.Effect<unknown, UnreadablePayload>,
   dropped: string,
   handle: (decoded: S["Type"], event: Event) => Effect.Effect<unknown, E, R>,
 ): Effect.Effect<(event: Event) => void, never, R | S["DecodingServices"]> => {
   const decode = Schema.decodeUnknownEffect(schema);
   return extendableListener((event: Event) =>
-    decode(read(event)).pipe(
+    Effect.flatMap(read(event), decode).pipe(
       Effect.matchEffect({
         onFailure: (error) => Effect.logWarning(dropped, error),
         onSuccess: (decoded) => handle(decoded, event),
@@ -96,3 +105,41 @@ export const decodedListener = <
     ),
   );
 };
+
+/** The `tag` an event carries (`sync`, `periodicsync`). */
+export interface TaggedEventLike extends ExtendableEventLike {
+  readonly tag: string;
+}
+
+/** A tag's handler. Its services are read back by {@link HandlerServices}. */
+// oxlint-disable-next-line effect/avoid-any -- a table mixes handlers needing different services; `HandlerServices` recovers their union.
+export type TagHandler<Event> = (event: Event) => Effect.Effect<unknown, unknown, any>;
+
+/** The services a handler table needs: the union across its handlers. */
+export type HandlerServices<Handlers> = {
+  readonly [K in keyof Handlers]: Handlers[K] extends (
+    event: never,
+  ) => Effect.Effect<unknown, unknown, infer R>
+    ? R
+    : never;
+}[keyof Handlers];
+
+/**
+ * An {@link extendableListener} that runs the handler `handlers` names for
+ * the event's `tag`; an event whose tag has none is logged at `Warning`
+ * and left to settle at once.
+ */
+export const taggedListener =
+  (kind: string) =>
+  <
+    Event extends TaggedEventLike,
+    const Handlers extends Readonly<Record<string, TagHandler<Event>>>,
+  >(
+    handlers: Handlers,
+  ): Effect.Effect<(event: Event) => void, never, HandlerServices<Handlers>> =>
+    extendableListener<Event, unknown, HandlerServices<Handlers>>((event) =>
+      Option.match(R.get(handlers, event.tag), {
+        onNone: () => Effect.logWarning(`service-worker: ${kind} with no handler`, event.tag),
+        onSome: (handle) => handle(event),
+      }),
+    );
