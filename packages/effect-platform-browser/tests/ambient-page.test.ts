@@ -12,6 +12,7 @@ import {
   Battery,
   Browser,
   DomObservers,
+  FilePicker,
   MediaQuery,
   Navigation,
   Navigator,
@@ -42,6 +43,13 @@ class FakeNavigator {
 }
 const navigator = new FakeNavigator();
 
+/** Each picker records what `this` it was called with, and is closed. */
+const pickedBy: Array<unknown> = [];
+function closedPicker(this: unknown) {
+  pickedBy.push(this);
+  return Promise.reject(new DOMException("closed", "AbortError"));
+}
+
 /** Stands in for each observer constructor: the layer only reads that it exists. */
 class FakeObserver {
   observe() {}
@@ -68,6 +76,9 @@ installGlobals({
     }),
   },
   matchMedia,
+  showOpenFilePicker: closedPicker,
+  showSaveFilePicker: closedPicker,
+  showDirectoryPicker: closedPicker,
   navigation: {
     currentEntry: { url: "https://example.com/page", getState: () => undefined },
     addEventListener: () => {},
@@ -92,6 +103,16 @@ describe("Browser.layer over a page's globals", () => {
       const wakeLock = yield* WakeLock.WakeLock;
       const observers = yield* DomObservers.DomObservers;
       const navigation = yield* Navigation.Navigation;
+      const filePicker = yield* FilePicker.FilePicker;
+      const picked = yield* Effect.forEach(
+        [
+          Effect.asVoid(filePicker.open()),
+          Effect.asVoid(filePicker.save()),
+          Effect.asVoid(filePicker.directory()),
+        ],
+        (pick) => FilePicker.optional(pick),
+        { concurrency: 1 },
+      );
       expect({
         battery: Option.map(battery, (state) => state.level),
         dark,
@@ -103,6 +124,9 @@ describe("Browser.layer over a page's globals", () => {
         observers: observers.supported,
         navigation: navigation.supported,
         url: Option.map(yield* Navigation.current, (url) => url.pathname),
+        filePicker: filePicker.supported,
+        picked,
+        pickedBy: pickedBy.map((self) => self === globalThis),
       }).toStrictEqual({
         battery: Option.some(0.5),
         dark: true,
@@ -114,6 +138,9 @@ describe("Browser.layer over a page's globals", () => {
         observers: { intersection: true, resize: true, mutation: true },
         navigation: { navigation: true, history: true },
         url: Option.some("/page"),
+        filePicker: true,
+        picked: [Option.none(), Option.none(), Option.none()],
+        pickedBy: [true, true, true],
       });
     }).pipe(Effect.provide(Browser.layer)),
   );

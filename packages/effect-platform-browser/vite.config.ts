@@ -30,6 +30,7 @@ export default packageConfig({
     PushManager: "src/PushManager.ts",
     ScreenOrientation: "src/ScreenOrientation.ts",
     ServiceWorkerContainer: "src/ServiceWorkerContainer.ts",
+    FilePicker: "src/FilePicker.ts",
     WakeLock: "src/WakeLock.ts",
     WebVitals: "src/WebVitals.ts",
   },

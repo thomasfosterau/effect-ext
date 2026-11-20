@@ -17,5 +17,7 @@ export default packageConfig({
     WorkerRuntime: "src/WorkerRuntime.ts",
     WorkerMessaging: "src/WorkerMessaging.ts",
     Performance: "src/Performance.ts",
+    BrowserFileSystem: "src/BrowserFileSystem.ts",
+    MemoryFileSystemHandle: "src/MemoryFileSystemHandle.ts",
   },
 });

@@ -423,6 +423,9 @@ export default defineConfig({
           // `mark` and `measure`, which return no entry in older agents.
           "packages/effect-platform-worker-shared/src/Performance.ts",
           "packages/effect-platform-browser/src/testing/performance.ts",
+          // `FileSystem`'s own option types (`recursive?: boolean | undefined`,
+          // `prefix?: string | undefined`), which the OPFS adapter implements.
+          "packages/effect-platform-worker-shared/src/BrowserFileSystem.ts",
         ],
         rules: { "effect/prefer-option-over-null": "off" },
       },
