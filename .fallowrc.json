@@ -1,13 +1,13 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "entry": [
-    "packages/effect-ext/src/*.ts",
+    "packages/effect-ext/src/[A-Z]*.ts",
     "packages/*/tests/**/*.test.ts",
     "packages/*/tests/**/*.types.ts",
     "tests/dist-consumer/src/*.ts",
     "packages/*/src/index.ts",
     "packages/effect-ext/src/evals/index.ts",
-    "packages/effect-ext/src/evals/*.ts",
+    "packages/effect-ext/src/evals/[A-Z]*.ts",
     "packages/effect-ext/src/evals/metrics/*.ts",
     "packages/effect-ext/src/evals/metrics/rag/*.ts",
     "packages/effect-ext/src/evals/scorers/{EmbeddingSimilarity,ExactMatch,JsonValidity,Levenshtein,SchemaMatch,ToolCallCorrectness}.ts",
@@ -183,7 +183,7 @@
       "exports": ["runTestExit", "recordingTracer", "RecordedSpan", "RecordingTracer"]
     },
     {
-      "file": "packages/effect-ai-*/src/*.ts",
+      "file": "packages/effect-ai-*/src/[A-Z]*.ts",
       "exports": ["make", "layer", "Options", "contramap"]
     },
     {
@@ -197,7 +197,7 @@
     // effect-platform-browser's services and their doubles share one service shape, re-exported as namespaces
     // (`Locks.layer`, `TestLocks.Control`).
     {
-      "file": "packages/effect-platform-browser/src/*.ts",
+      "file": "packages/effect-platform-browser/src/[A-Z]*.ts",
       "exports": ["make", "layer", "changes", "requestPermission", "withLock", "watch"]
     },
     // `Css` re-exports each of its modules as a namespace, so `Color.parse`,
