@@ -25,6 +25,9 @@
  * - `TestMediaDevices` — cameras, microphones and a recorder, with a
  *   `Control` that plugs devices in, fails captures, ends tracks and feeds
  *   the recorder.
+ * - `TestSpeechSynthesis` and `TestSpeechRecognition` — a synthesiser that
+ *   speaks at once (or holds until told) and a recogniser that hears what a
+ *   `Control` says.
  * - `TestNavigator`, `TestPageVisibility`, `TestMediaQuery`, `TestWakeLock`,
  *   `TestBroadcast`, `TestIdleDetection`, `TestBattery`, `TestFullscreen`,
  *   `TestScreenOrientation`, `TestNotifications` — this package's services.
@@ -53,4 +56,6 @@ export * as TestPerformance from "./testing/performance.ts";
 export * as TestPageVisibility from "./testing/page-visibility.ts";
 export * as TestPermissions from "./testing/permissions.ts";
 export * as TestScreenOrientation from "./testing/screen-orientation.ts";
+export * as TestSpeechRecognition from "./testing/speech-recognition.ts";
+export * as TestSpeechSynthesis from "./testing/speech-synthesis.ts";
 export * as TestWakeLock from "./testing/wake-lock.ts";

@@ -9,6 +9,8 @@ import {
   MediaDevices,
   Navigation,
   Navigator,
+  SpeechRecognition,
+  SpeechSynthesis,
   WakeLock,
 } from "@thomasfosterau/effect-platform-browser";
 
@@ -26,6 +28,8 @@ describe("Browser.layer without a navigator", () => {
         filePicker: (yield* FilePicker.FilePicker).supported,
         media: (yield* MediaDevices.MediaDevices).supported,
         history: (yield* Navigation.Navigation).supported.history,
+        speech: (yield* SpeechSynthesis.SpeechSynthesis).supported,
+        recognition: (yield* SpeechRecognition.SpeechRecognition).supported,
       }).toStrictEqual({
         userAgent: "",
         languages: [],
@@ -34,6 +38,8 @@ describe("Browser.layer without a navigator", () => {
         filePicker: false,
         media: { userMedia: false, displayMedia: false, recorder: false },
         history: false,
+        speech: false,
+        recognition: false,
       });
     }).pipe(Effect.provide(Browser.layer)),
   );

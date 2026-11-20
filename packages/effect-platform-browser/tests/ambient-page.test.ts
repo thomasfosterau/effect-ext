@@ -20,6 +20,8 @@ import {
   Navigator,
   Notifications,
   ScreenOrientation,
+  SpeechRecognition,
+  SpeechSynthesis,
   WakeLock,
 } from "@thomasfosterau/effect-platform-browser";
 import { observe } from "@thomasfosterau/effect-platform-browser/BrowserTesting";
@@ -81,6 +83,35 @@ class FakeObserver {
   disconnect() {}
 }
 
+/** A synthesiser that finishes each utterance as soon as it is queued. */
+const utterances: Array<string> = [];
+class FakeUtterance extends EventTarget {
+  readonly text: string;
+  constructor(text: string) {
+    super();
+    this.text = text;
+  }
+}
+const speechSynthesis = Object.assign(new EventTarget(), {
+  getVoices: () => [],
+  speak: (utterance: FakeUtterance) => {
+    utterances.push(utterance.text);
+    queueMicrotask(() => utterance.dispatchEvent(new Event("end")));
+  },
+  cancel: () => {},
+  pause: () => {},
+  resume: () => {},
+});
+
+/** Chromium's prefixed recogniser, which hears nothing and ends. */
+class FakeRecognition extends EventTarget {
+  start() {
+    queueMicrotask(() => this.dispatchEvent(new Event("end")));
+  }
+  stop() {}
+  abort() {}
+}
+
 const queries: Array<{ readonly self: unknown; readonly query: string }> = [];
 function matchMedia(this: unknown, query: string) {
   queries.push({ self: this, query });
@@ -102,6 +133,9 @@ installGlobals({
   },
   matchMedia,
   MediaRecorder: FakeMediaRecorder,
+  speechSynthesis,
+  SpeechSynthesisUtterance: FakeUtterance,
+  webkitSpeechRecognition: FakeRecognition,
   showOpenFilePicker: closedPicker,
   showSaveFilePicker: closedPicker,
   showDirectoryPicker: closedPicker,
@@ -133,6 +167,7 @@ describe("Browser.layer over a page's globals", () => {
       const media = yield* MediaDevices.MediaDevices;
       const stream = { id: "s", getTracks: () => [] };
       yield* Stream.runDrain(media.record(stream, { mimeType: "audio/webm" }));
+      yield* SpeechSynthesis.speak("Hello");
       const picked = yield* Effect.forEach(
         [
           Effect.asVoid(filePicker.open()),
@@ -161,6 +196,8 @@ describe("Browser.layer over a page's globals", () => {
         webm: yield* media.isTypeSupported("audio/webm"),
         recordedStream: recorded[0] === stream,
         recordedOptions: recorded[1],
+        spoken: utterances,
+        heard: yield* SpeechRecognition.once(),
       }).toStrictEqual({
         battery: Option.some(0.5),
         dark: true,
@@ -180,6 +217,8 @@ describe("Browser.layer over a page's globals", () => {
         webm: true,
         recordedStream: true,
         recordedOptions: { mimeType: "audio/webm" },
+        spoken: ["Hello"],
+        heard: Option.none(),
       });
     }).pipe(Effect.provide(Browser.layer)),
   );

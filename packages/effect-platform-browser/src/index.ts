@@ -83,6 +83,16 @@ export * as ServiceWorkerContainer from "./ServiceWorkerContainer.ts";
 /**
  * @since 0.1.0
  */
+export * as SpeechRecognition from "./SpeechRecognition.ts";
+
+/**
+ * @since 0.1.0
+ */
+export * as SpeechSynthesis from "./SpeechSynthesis.ts";
+
+/**
+ * @since 0.1.0
+ */
 export * as WakeLock from "./WakeLock.ts";
 
 /**
