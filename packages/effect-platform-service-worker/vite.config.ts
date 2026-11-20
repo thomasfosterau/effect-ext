@@ -17,6 +17,8 @@ export default packageConfig({
     Clients: "src/Clients.ts",
     Events: "src/Events.ts",
     Fetch: "src/Fetch.ts",
+    NavigationPreload: "src/NavigationPreload.ts",
     Notifications: "src/Notifications.ts",
+    ServiceWorkerRunner: "src/ServiceWorkerRunner.ts",
   },
 });

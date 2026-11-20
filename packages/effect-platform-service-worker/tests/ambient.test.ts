@@ -10,7 +10,15 @@ import {
 } from "../../effect-platform-worker-shared/tests/globals.ts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import { Caches, Clients, Notifications } from "@thomasfosterau/effect-platform-service-worker";
+import * as P from "effect/Predicate";
+import * as WorkerRunner from "effect/workers/WorkerRunner";
+import {
+  Caches,
+  Clients,
+  NavigationPreload,
+  Notifications,
+  ServiceWorkerRunner,
+} from "@thomasfosterau/effect-platform-service-worker";
 import { clientsStub } from "./helpers.ts";
 
 const shown: Array<string> = [];
@@ -24,7 +32,15 @@ installGlobals({
       shown.push(title);
     },
     getNotifications: async () => [],
+    navigationPreload: {
+      enable: async () => {},
+      disable: async () => {},
+      setHeaderValue: async () => {},
+      getState: async () => ({ enabled: true }),
+    },
   },
+  addEventListener: () => {},
+  removeEventListener: () => {},
 });
 
 describe("the ambient defaults", () => {
@@ -46,6 +62,22 @@ describe("the ambient defaults", () => {
     Effect.gen(function* () {
       yield* Caches.openCache("v1");
       expect(yield* Caches.cacheNames).toEqual(["v1"]);
+    }),
+  );
+
+  it.effect("is self.registration.navigationPreload", () =>
+    Effect.gen(function* () {
+      expect(yield* NavigationPreload.state).toEqual({ enabled: true, headerValue: "true" });
+    }),
+  );
+
+  it.effect("builds the runner over globalThis", () =>
+    Effect.gen(function* () {
+      const platform = yield* Effect.provide(
+        Effect.service(WorkerRunner.WorkerRunnerPlatform),
+        ServiceWorkerRunner.layer,
+      );
+      expect(P.isFunction(platform.start)).toBe(true);
     }),
   );
 });

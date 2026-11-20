@@ -389,8 +389,9 @@ export default defineConfig({
         files: [
           "packages/effect-ext/src/browser/{fullscreen,idle-detection,locks,navigator}.ts",
           "packages/effect-ext/src/browser-testing/{fullscreen,idle-detection,locks,navigator,permissions}.ts",
-          // The service worker mirrors: `openWindow`, `navigate`, `Clients.get`.
-          "packages/effect-platform-service-worker/src/Clients.ts",
+          // The service worker mirrors: `openWindow`, `navigate`, `Clients.get`,
+          // and `PushEvent.data`, `null` for a push without a payload.
+          "packages/effect-platform-service-worker/src/{Clients,Events}.ts",
           // The page's mirrors: `controller`, the registration's workers,
           // `getRegistration`, `getSubscription`.
           "packages/effect-platform-browser/src/{ServiceWorkerContainer,PushManager}.ts",
@@ -515,7 +516,12 @@ export default defineConfig({
       // `Route<unknown, any>`: a matched handler's failure is `unknown` (a
       // rejection is what `respondWith` turns into a network error).
       {
-        files: ["packages/effect-platform-service-worker/src/Fetch.ts"],
+        // The `sync` / `periodicsync` handler tables mix handlers with
+        // different services and errors in the same way.
+        files: [
+          "packages/effect-platform-service-worker/src/Fetch.ts",
+          "packages/effect-platform-service-worker/src/internal/events.ts",
+        ],
         rules: {
           "effecttsgo/any-unknown-in-error-context": "off",
         },
