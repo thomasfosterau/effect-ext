@@ -36,4 +36,5 @@ WorkerRuntime.runMain(program);
 | --- | --- |
 | `WorkerScope` | The worker global as a `Context.Reference` (stubbable), `location`, `isSecureContext`, `crossOriginIsolated`, and uncaught exceptions / unhandled rejections as a `Stream`. |
 | `WorkerRuntime` | `runMain` for a worker: logs uncaught errors through the main fiber's logger; `closeOnExit` ends the worker with its program. |
+| `Performance` | High-resolution time, user timing and the performance timeline, the same in a window and every worker: a `Context.Reference` defaulting to the ambient `performance` and `PerformanceObserver`; `now`, `mark`, `measure` (`Option` of the entry), `observe(type, options?)` as a stream (buffered entries first), and `timed(name)`, which records how long an effect ran as a measure. Every failure is a `PerformanceError`. |
 | `WorkerMessaging` | Schema-typed `postMessage` endpoints over any port, collecting transferables through `effect/workers/Transferable`; a scoped `MessageChannel`. |

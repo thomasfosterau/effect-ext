@@ -49,7 +49,8 @@
     "./PushManager": "./src/PushManager.ts",
     "./ScreenOrientation": "./src/ScreenOrientation.ts",
     "./ServiceWorkerContainer": "./src/ServiceWorkerContainer.ts",
-    "./WakeLock": "./src/WakeLock.ts"
+    "./WakeLock": "./src/WakeLock.ts",
+    "./WebVitals": "./src/WebVitals.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -127,6 +128,10 @@
       "./WakeLock": {
         "types": "./dist/WakeLock.d.ts",
         "import": "./dist/WakeLock.js"
+      },
+      "./WebVitals": {
+        "types": "./dist/WebVitals.d.ts",
+        "import": "./dist/WebVitals.js"
       }
     },
     "access": "public"

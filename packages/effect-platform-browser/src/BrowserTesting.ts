@@ -15,6 +15,8 @@
  * - `TestLocks` — a lock manager following the Web Locks request algorithm;
  *   share one between layers to model several tabs.
  * - `TestDomObservers` — intersection, resize and mutation observers.
+ * - `TestPerformance` — a performance timeline on a manual clock, for
+ *   `Performance` (from `effect-platform-worker-shared`) and `WebVitals`.
  * - `TestNavigator`, `TestPageVisibility`, `TestMediaQuery`, `TestWakeLock`,
  *   `TestBroadcast`, `TestIdleDetection`, `TestBattery`, `TestFullscreen`,
  *   `TestScreenOrientation`, `TestNotifications` — this package's services.
@@ -36,6 +38,7 @@ export * as TestLocks from "./testing/locks.ts";
 export * as TestMediaQuery from "./testing/media-query.ts";
 export * as TestNavigator from "./testing/navigator.ts";
 export * as TestNotifications from "./testing/notifications.ts";
+export * as TestPerformance from "./testing/performance.ts";
 export * as TestPageVisibility from "./testing/page-visibility.ts";
 export * as TestPermissions from "./testing/permissions.ts";
 export * as TestScreenOrientation from "./testing/screen-orientation.ts";

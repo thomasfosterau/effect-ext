@@ -30,7 +30,8 @@
     ".": "./src/index.ts",
     "./WorkerScope": "./src/WorkerScope.ts",
     "./WorkerRuntime": "./src/WorkerRuntime.ts",
-    "./WorkerMessaging": "./src/WorkerMessaging.ts"
+    "./WorkerMessaging": "./src/WorkerMessaging.ts",
+    "./Performance": "./src/Performance.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -52,6 +53,10 @@
       "./WorkerMessaging": {
         "types": "./dist/WorkerMessaging.d.ts",
         "import": "./dist/WorkerMessaging.js"
+      },
+      "./Performance": {
+        "types": "./dist/Performance.d.ts",
+        "import": "./dist/Performance.js"
       }
     },
     "access": "public"

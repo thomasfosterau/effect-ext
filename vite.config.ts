@@ -416,6 +416,9 @@ export default defineConfig({
           // `attributeName` and `oldValue`.
           "packages/effect-platform-browser/src/DomObservers.ts",
           "packages/effect-platform-browser/src/testing/dom-observers.ts",
+          // `mark` and `measure`, which return no entry in older agents.
+          "packages/effect-platform-worker-shared/src/Performance.ts",
+          "packages/effect-platform-browser/src/testing/performance.ts",
         ],
         rules: { "effect/prefer-option-over-null": "off" },
       },
@@ -480,7 +483,7 @@ export default defineConfig({
       // parse step these functions are.
       {
         files: [
-          "packages/effect-platform-worker-shared/src/{WorkerMessaging,WorkerScope,WorkerRuntime}.ts",
+          "packages/effect-platform-worker-shared/src/{WorkerMessaging,WorkerScope,WorkerRuntime,Performance}.ts",
           "packages/effect-platform-worker/src/*.ts",
           "packages/effect-platform-service-worker/src/**/*.ts",
           "packages/effect-platform-browser/src/**/*.ts",
