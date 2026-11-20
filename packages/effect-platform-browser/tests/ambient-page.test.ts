@@ -5,6 +5,8 @@
  */
 import { describe, expect, it } from "@effect/vitest";
 import { installGlobals } from "../../effect-platform-worker-shared/tests/globals.ts";
+import * as Arr from "effect/Array";
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
@@ -15,6 +17,7 @@ import {
   Credentials,
   DomObservers,
   FilePicker,
+  Frames,
   MediaDevices,
   MediaQuery,
   Navigation,
@@ -117,6 +120,33 @@ class FakeRecognition extends EventTarget {
   abort() {}
 }
 
+/** The window's frame and idle functions, recording whether each was called on the window. */
+const frameCalls: Array<string> = [];
+const frameTimers: Array<ReturnType<typeof setTimeout>> = [];
+function requestAnimationFrame(this: unknown, callback: (time: number) => void) {
+  frameCalls.push(`request frame on window: ${this === globalThis}`);
+  return frameTimers.push(setTimeout(() => callback(16), 0)) - 1;
+}
+function cancelAnimationFrame(this: unknown, handle: number) {
+  frameCalls.push(`cancel frame on window: ${this === globalThis}`);
+  clearTimeout(frameTimers[handle]);
+}
+/** Calls back only when given a timeout, so the other request waits to be cancelled. */
+function requestIdleCallback(
+  this: unknown,
+  callback: (deadline: { didTimeout: boolean; timeRemaining: () => number }) => void,
+  options?: { readonly timeout?: number },
+) {
+  frameCalls.push(`request idle on window: ${this === globalThis}, timeout ${options?.timeout}`);
+  if (options !== undefined) {
+    queueMicrotask(() => callback({ didTimeout: false, timeRemaining: () => 10 }));
+  }
+  return 2;
+}
+function cancelIdleCallback(this: unknown, _handle: number) {
+  frameCalls.push(`cancel idle on window: ${this === globalThis}`);
+}
+
 const queries: Array<{ readonly self: unknown; readonly query: string }> = [];
 function matchMedia(this: unknown, query: string) {
   queries.push({ self: this, query });
@@ -137,6 +167,10 @@ installGlobals({
     }),
   },
   matchMedia,
+  requestAnimationFrame,
+  cancelAnimationFrame,
+  requestIdleCallback,
+  cancelIdleCallback,
   MediaRecorder: FakeMediaRecorder,
   PublicKeyCredential: { isConditionalMediationAvailable: () => Promise.resolve(true) },
   speechSynthesis,
@@ -213,6 +247,13 @@ describe("Browser.layer over a page's globals", () => {
           }),
         ).pipe(Effect.map((error) => error.reason)),
         capabilities: yield* Credentials.capabilities,
+        frame: yield* Frames.next,
+        tick: Arr.map(yield* Stream.runCollect(Stream.take(Frames.ticks, 1)), (tick) => tick.time),
+        idle: Duration.toMillis((yield* Frames.idle({ timeout: "1 second" })).timeRemaining),
+        abandonedIdle: yield* Effect.flatMap(Effect.forkChild(Frames.idle()), (fiber) =>
+          Effect.andThen(Effect.yieldNow, Fiber.interrupt(fiber)),
+        ).pipe(Effect.as("interrupted")),
+        frameCalls,
       }).toStrictEqual({
         battery: Option.some(0.5),
         dark: true,
@@ -236,6 +277,19 @@ describe("Browser.layer over a page's globals", () => {
         heard: Option.none(),
         passkey: "NotAllowed",
         capabilities: { conditionalGet: true },
+        frame: 16,
+        tick: [16],
+        idle: 10,
+        abandonedIdle: "interrupted",
+        frameCalls: [
+          "request frame on window: true",
+          "request frame on window: true",
+          "request frame on window: true",
+          "cancel frame on window: true",
+          "request idle on window: true, timeout 1000",
+          "request idle on window: true, timeout undefined",
+          "cancel idle on window: true",
+        ],
       });
     }).pipe(Effect.provide(Browser.layer)),
   );

@@ -12,6 +12,7 @@ import * as TestCredentials from "./credentials.ts";
 import * as TestDomObservers from "./dom-observers.ts";
 import * as TestEventSource from "./event-source.ts";
 import * as TestFilePicker from "./file-picker.ts";
+import * as TestFrames from "./frames.ts";
 import * as TestFullscreen from "./fullscreen.ts";
 import * as TestGeolocation from "./geolocation.ts";
 import * as TestIdleDetection from "./idle-detection.ts";
@@ -62,6 +63,7 @@ export const layer = Layer.mergeAll(
   TestDomObservers.layer(),
   TestEventSource.layer(),
   TestFilePicker.layer(),
+  TestFrames.layer(),
   TestFullscreen.layer(),
   TestGeolocation.layer(),
   TestIdleDetection.layer(),

@@ -6,6 +6,7 @@
     "cookies",
     "effect",
     "eventsource",
+    "scheduler",
     "server-sent-events",
     "web-worker",
     "worker"
@@ -37,6 +38,7 @@
     "./CookieStore": "./src/CookieStore.ts",
     "./EventSource": "./src/EventSource.ts",
     "./Performance": "./src/Performance.ts",
+    "./TaskScheduler": "./src/TaskScheduler.ts",
     "./BrowserFileSystem": "./src/BrowserFileSystem.ts",
     "./MemoryFileSystemHandle": "./src/MemoryFileSystemHandle.ts"
   },
@@ -72,6 +74,10 @@
       "./Performance": {
         "types": "./dist/Performance.d.ts",
         "import": "./dist/Performance.js"
+      },
+      "./TaskScheduler": {
+        "types": "./dist/TaskScheduler.d.ts",
+        "import": "./dist/TaskScheduler.js"
       },
       "./BrowserFileSystem": {
         "types": "./dist/BrowserFileSystem.d.ts",
