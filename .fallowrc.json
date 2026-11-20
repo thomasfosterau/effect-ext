@@ -82,6 +82,18 @@
       {
         "name": "elevenlabs",
         "patterns": ["packages/effect-ai-elevenlabs/**"]
+      },
+      {
+        "name": "worker-shared",
+        "patterns": ["packages/effect-platform-worker-shared/**"]
+      },
+      {
+        "name": "worker",
+        "patterns": ["packages/effect-platform-worker/**"]
+      },
+      {
+        "name": "service-worker",
+        "patterns": ["packages/effect-platform-service-worker/**"]
       }
     ],
     "rules": [
@@ -112,6 +124,18 @@
       {
         "from": "elevenlabs",
         "allow": ["effect-ext"]
+      },
+      {
+        "from": "worker-shared",
+        "allow": []
+      },
+      {
+        "from": "worker",
+        "allow": ["worker-shared"]
+      },
+      {
+        "from": "service-worker",
+        "allow": ["worker-shared"]
       }
     ]
   },

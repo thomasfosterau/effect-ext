@@ -8,6 +8,9 @@
     { "path": "packages/effect-ai-cohere" },
     { "path": "packages/effect-ai-voyage" },
     { "path": "packages/effect-ai-elevenlabs" },
+    { "path": "packages/effect-platform-worker-shared" },
+    { "path": "packages/effect-platform-worker" },
+    { "path": "packages/effect-platform-service-worker" },
     { "path": "tests/dist-consumer" }
   ]
 }

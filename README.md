@@ -35,6 +35,9 @@ TriState.read(Schema.decodeUnknownSync(Update)({ summary: null }).summary); // {
 | [`@thomasfosterau/effect-ai-voyage`](packages/effect-ai-voyage) | Voyage AI embed, rerank |
 | [`@thomasfosterau/effect-ai-elevenlabs`](packages/effect-ai-elevenlabs) | ElevenLabs speech, transcription, voice conversion |
 | [`@thomasfosterau/effect-ai-cloudflare`](packages/effect-ai-cloudflare) | `@effect/ai-cloudflare` plus providers routed through a Cloudflare AI Gateway (BYOK) |
+| [`@thomasfosterau/effect-platform-worker-shared`](packages/effect-platform-worker-shared) | What every web worker scope shares: the worker global, a worker `runMain`, schema-typed message ports |
+| [`@thomasfosterau/effect-platform-worker`](packages/effect-platform-worker) | Dedicated and shared web workers |
+| [`@thomasfosterau/effect-platform-service-worker`](packages/effect-platform-service-worker) | Service workers |
 
 Each package README lists its entry points and peers; effect-ext's topic guides are in [`packages/effect-ext/guides/`](packages/effect-ext/guides).
 

@@ -1,0 +1,68 @@
+{
+  "name": "@thomasfosterau/effect-platform-service-worker",
+  "version": "0.0.0",
+  "description": "Effect platform utilities for service workers.",
+  "keywords": [
+    "effect",
+    "pwa",
+    "service-worker"
+  ],
+  "homepage": "https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-platform-service-worker#readme",
+  "bugs": {
+    "url": "https://github.com/thomasfosterau/effect-ext/issues"
+  },
+  "license": "MIT",
+  "author": "Thomas Foster <me@thomasfoster.au>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomasfosterau/effect-ext.git",
+    "directory": "packages/effect-platform-service-worker"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./Clients": "./src/Clients.ts",
+    "./ServiceWorkerContainer": "./src/ServiceWorkerContainer.ts"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./Clients": {
+        "types": "./dist/Clients.d.ts",
+        "import": "./dist/Clients.js"
+      },
+      "./ServiceWorkerContainer": {
+        "types": "./dist/ServiceWorkerContainer.d.ts",
+        "import": "./dist/ServiceWorkerContainer.js"
+      }
+    },
+    "access": "public"
+  },
+  "dependencies": {
+    "@thomasfosterau/effect-platform-worker-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@effect/language-service": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@vitest/coverage-istanbul": "catalog:",
+    "effect": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "catalog:peers"
+  }
+}
