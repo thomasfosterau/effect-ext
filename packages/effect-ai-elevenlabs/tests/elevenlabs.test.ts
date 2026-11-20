@@ -19,8 +19,9 @@
  * @module tests/elevenlabs
  */
 
-import { assert, describe, expect, it } from "vite-plus/test";
+import { assert, describe, expect, layer } from "@effect/vitest";
 import { SpeechModel, TranscriptionModel, VoiceConversionModel } from "@thomasfosterau/effect-ext";
+import * as Cause from "effect/Cause";
 import * as Config from "effect/Config";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -38,7 +39,7 @@ import {
   ElevenLabsTranscriptionModel,
   ElevenLabsVoiceConversionModel,
 } from "@thomasfosterau/effect-ai-elevenlabs";
-import { expectFailureInstanceOf, runTest } from "./helpers/effect";
+import { expectFailureInstanceOf } from "./helpers/effect";
 
 // ── Fetch stubbing ────────────────────────────────────────────────────
 
@@ -79,10 +80,14 @@ const firstRequest = (calls: ReadonlyArray<Captured>): Request => {
   return call.request;
 };
 
-const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
+/** Reads a captured body (`json()`, `formData()`, …); an unreadable one fails the test. */
+const readBody = <A>(read: () => Promise<A>) =>
+  Effect.tryPromise({
+    try: read,
+    catch: (cause) => new Cause.UnknownError(cause, "unreadable request body"),
+  });
 
-const httpLayer = (fetch: typeof globalThis.fetch) =>
-  FetchHttpClient.layer.pipe(Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch)));
+const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 
 // `None` omits the content-type header entirely (undici adds none for a byte body).
 const audioResponse = (
@@ -103,174 +108,206 @@ const bytes = (...values: ReadonlyArray<number>): Uint8Array => Uint8Array.from(
 
 // ── Layers ────────────────────────────────────────────────────────────
 
-const clientLayer = (fetch: typeof globalThis.fetch, apiKey = "test-key") =>
-  ElevenLabsClient.layer({ apiKey: Redacted.make(apiKey) }).pipe(Layer.provide(httpLayer(fetch)));
-
-const speechLayer = (fetch: typeof globalThis.fetch, settings?: ElevenLabsSpeechModel.Settings) =>
-  ElevenLabsSpeechModel.layer(settings).pipe(Layer.provide(clientLayer(fetch)));
-
-const transcriptionLayer = (
-  fetch: typeof globalThis.fetch,
-  settings?: ElevenLabsTranscriptionModel.Settings,
-) => ElevenLabsTranscriptionModel.layer(settings).pipe(Layer.provide(clientLayer(fetch)));
-
-const voiceConversionLayer = (
-  fetch: typeof globalThis.fetch,
-  settings?: ElevenLabsVoiceConversionModel.Settings,
-) => ElevenLabsVoiceConversionModel.layer(settings).pipe(Layer.provide(clientLayer(fetch)));
-
-const generate = (
-  fetch: typeof globalThis.fetch,
-  options: SpeechModel.SpeechOptions,
-  settings?: ElevenLabsSpeechModel.Settings,
-) =>
-  runTest(
-    Effect.flatMap(SpeechModel.SpeechModel, (model) => model.generate(options)).pipe(
-      Effect.provide(speechLayer(fetch, settings)),
-    ),
+const clientLayer = (apiKey = "test-key") =>
+  ElevenLabsClient.layer({ apiKey: Redacted.make(apiKey) }).pipe(
+    Layer.provide(FetchHttpClient.layer),
   );
+
+const speechLayer = (settings?: ElevenLabsSpeechModel.Settings) =>
+  ElevenLabsSpeechModel.layer(settings).pipe(Layer.provide(clientLayer()));
+
+const transcriptionLayer = (settings?: ElevenLabsTranscriptionModel.Settings) =>
+  ElevenLabsTranscriptionModel.layer(settings).pipe(Layer.provide(clientLayer()));
+
+const voiceConversionLayer = (settings?: ElevenLabsVoiceConversionModel.Settings) =>
+  ElevenLabsVoiceConversionModel.layer(settings).pipe(Layer.provide(clientLayer()));
+
+const generate = (options: SpeechModel.SpeechOptions) =>
+  Effect.flatMap(SpeechModel.SpeechModel, (model) => model.generate(options));
 
 // ── Text-to-speech (one-shot) ─────────────────────────────────────────
 
 describe("ElevenLabsSpeechModel.generate", () => {
-  it("posts to the text-to-speech endpoint with xi-api-key and decodes the audio", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1, 2, 3, 4)));
+  layer(speechLayer({ voiceId: "voice_1", modelId: "eleven_multilingual_v2" }))((t) => {
+    t.effect("posts to the text-to-speech endpoint with xi-api-key and decodes the audio", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1, 2, 3, 4)));
 
-    const response = await generate(
-      fetch,
-      { text: "hello world" },
-      { voiceId: "voice_1", modelId: "eleven_multilingual_v2" },
-    );
+        const response = yield* generate({ text: "hello world" }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/text-to-speech/voice_1");
-    expect(calls[0]?.method).toBe("POST");
-    expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
+        expect(calls).toHaveLength(1);
+        expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/text-to-speech/voice_1");
+        expect(calls[0]?.method).toBe("POST");
+        expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
 
-    const body = (await firstRequest(calls).json()) as Record<string, unknown>;
-    expect(body.text).toBe("hello world");
-    expect(body.model_id).toBe("eleven_multilingual_v2");
+        const body = (yield* readBody(() => firstRequest(calls).json())) as Record<string, unknown>;
+        expect(body.text).toBe("hello world");
+        expect(body.model_id).toBe("eleven_multilingual_v2");
 
-    expect(Array.from(response.audio)).toEqual([1, 2, 3, 4]);
-    expect(response.mediaType).toBe("audio/mpeg");
-    expect(response.usage.inputCharacters).toStrictEqual(Option.some("hello world".length));
-  });
-
-  it("sends voice settings and a per-call voice override", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(9)));
-
-    await generate(
-      fetch,
-      { text: "hi", voice: "override_voice" },
-      { voiceId: "default_voice", voiceSettings: { stability: 0.4, similarity_boost: 0.8 } },
-    );
-
-    expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/text-to-speech/override_voice");
-    const body = (await firstRequest(calls).json()) as { voice_settings?: Record<string, number> };
-    expect(body.voice_settings).toEqual({ stability: 0.4, similarity_boost: 0.8 });
-  });
-
-  it("derives output_format from neutral format + sampleRate and its media type", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
-
-    const response = await generate(
-      fetch,
-      { text: "hi", format: "pcm", sampleRate: 24000 },
-      { voiceId: "voice_1" },
-    );
-
-    expect(calls[0]?.outputFormat).toEqual(Option.some("pcm_24000"));
-    // No content-type header on the response → media type derived from format.
-    expect(response.mediaType).toBe("audio/pcm");
-  });
-
-  it("sends no output_format for a bare mp3 and falls back to the mpeg media type", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
-
-    const response = await generate(fetch, { text: "hi", format: "mp3" }, { voiceId: "voice_1" });
-
-    expect(calls[0]?.outputFormat).toEqual(Option.none());
-    expect(response.mediaType).toBe("audio/mpeg");
-  });
-
-  it("derives mp3_<rate>_128 from an mp3 format with a sample rate", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
-
-    await generate(fetch, { text: "hi", format: "mp3", sampleRate: 22050 }, { voiceId: "v" });
-
-    expect(calls[0]?.outputFormat).toEqual(Option.some("mp3_22050_128"));
-  });
-
-  it("uses the bare codec when no sample rate is given", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
-
-    const response = await generate(fetch, { text: "hi", format: "ulaw" }, { voiceId: "v" });
-
-    expect(calls[0]?.outputFormat).toEqual(Option.some("ulaw"));
-    expect(response.mediaType).toBe("audio/basic");
-  });
-
-  it("omits optional body fields that are not configured", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
-
-    await generate(fetch, { text: "hi" }, { voiceId: "v" });
-
-    expect(await firstRequest(calls).json()).toEqual({ text: "hi" });
-  });
-
-  it("passes an explicit model output_format through unchanged", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
-
-    await generate(fetch, { text: "hi" }, { voiceId: "v", outputFormat: "mp3_22050_32" });
-
-    expect(calls[0]?.outputFormat).toEqual(Option.some("mp3_22050_32"));
-  });
-
-  it("fails with an AiError when no voice id is available", async () => {
-    const { fetch } = makeFetch(() => audioResponse(bytes(1)));
-
-    await expectFailureInstanceOf(
-      Effect.flatMap(SpeechModel.SpeechModel, (model) => model.generate({ text: "hi" })).pipe(
-        Effect.provide(speechLayer(fetch)),
-      ),
-      AiError.AiError,
+        expect(Array.from(response.audio)).toEqual([1, 2, 3, 4]);
+        expect(response.mediaType).toBe("audio/mpeg");
+        expect(response.usage.inputCharacters).toStrictEqual(Option.some("hello world".length));
+      }),
     );
   });
 
-  it("maps a non-2xx status to an AiError", async () => {
-    const { fetch } = makeFetch(() => jsonResponse({ detail: "rate limited" }, 429));
+  layer(
+    speechLayer({
+      voiceId: "default_voice",
+      voiceSettings: { stability: 0.4, similarity_boost: 0.8 },
+    }),
+  )((t) => {
+    t.effect("sends voice settings and a per-call voice override", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(9)));
 
-    await expectFailureInstanceOf(
-      Effect.flatMap(SpeechModel.SpeechModel, (model) =>
-        model.generate({ text: "hi", voice: "v" }),
-      ).pipe(Effect.provide(speechLayer(fetch))),
-      AiError.AiError,
+        yield* generate({ text: "hi", voice: "override_voice" }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
+
+        expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/text-to-speech/override_voice");
+        const body = (yield* readBody(() => firstRequest(calls).json())) as {
+          voice_settings?: Record<string, number>;
+        };
+        expect(body.voice_settings).toEqual({ stability: 0.4, similarity_boost: 0.8 });
+      }),
     );
   });
 
-  it("rejects an empty audio buffer via the abstraction's validation", async () => {
-    const { fetch } = makeFetch(() => audioResponse(new Uint8Array(0)));
+  layer(speechLayer({ voiceId: "voice_1" }))((t) => {
+    t.effect("derives output_format from neutral format + sampleRate and its media type", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
 
-    await expectFailureInstanceOf(
-      Effect.flatMap(SpeechModel.SpeechModel, (model) =>
-        model.generate({ text: "hi", voice: "v" }),
-      ).pipe(Effect.provide(speechLayer(fetch))),
-      AiError.AiError,
+        const response = yield* generate({ text: "hi", format: "pcm", sampleRate: 24000 }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
+
+        expect(calls[0]?.outputFormat).toEqual(Option.some("pcm_24000"));
+        // No content-type header on the response → media type derived from format.
+        expect(response.mediaType).toBe("audio/pcm");
+      }),
+    );
+
+    t.effect("sends no output_format for a bare mp3 and falls back to the mpeg media type", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
+
+        const response = yield* generate({ text: "hi", format: "mp3" }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
+
+        expect(calls[0]?.outputFormat).toEqual(Option.none());
+        expect(response.mediaType).toBe("audio/mpeg");
+      }),
     );
   });
 
-  it("omits the xi-api-key header when constructed without a key", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
+  layer(speechLayer({ voiceId: "v" }))((t) => {
+    t.effect("derives mp3_<rate>_128 from an mp3 format with a sample rate", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
 
-    const keylessClient = ElevenLabsClient.layer({}).pipe(Layer.provide(httpLayer(fetch)));
+        yield* generate({ text: "hi", format: "mp3", sampleRate: 22050 }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
 
-    await runTest(
-      Effect.flatMap(SpeechModel.SpeechModel, (model) =>
-        model.generate({ text: "hi", voice: "v" }),
-      ).pipe(Effect.provide(ElevenLabsSpeechModel.layer().pipe(Layer.provide(keylessClient)))),
+        expect(calls[0]?.outputFormat).toEqual(Option.some("mp3_22050_128"));
+      }),
     );
 
-    expect(calls[0]?.apiKey).toEqual(Option.none());
+    t.effect("uses the bare codec when no sample rate is given", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
+
+        const response = yield* generate({ text: "hi", format: "ulaw" }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
+
+        expect(calls[0]?.outputFormat).toEqual(Option.some("ulaw"));
+        expect(response.mediaType).toBe("audio/basic");
+      }),
+    );
+
+    t.effect("omits optional body fields that are not configured", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
+
+        yield* generate({ text: "hi" }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
+
+        expect(yield* readBody(() => firstRequest(calls).json())).toEqual({ text: "hi" });
+      }),
+    );
+  });
+
+  layer(speechLayer({ voiceId: "v", outputFormat: "mp3_22050_32" }))((t) => {
+    t.effect("passes an explicit model output_format through unchanged", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
+
+        yield* generate({ text: "hi" }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
+
+        expect(calls[0]?.outputFormat).toEqual(Option.some("mp3_22050_32"));
+      }),
+    );
+  });
+
+  layer(speechLayer())((t) => {
+    t.effect("fails with an AiError when no voice id is available", () =>
+      Effect.gen(function* () {
+        const { fetch } = makeFetch(() => audioResponse(bytes(1)));
+
+        yield* expectFailureInstanceOf(
+          Effect.flatMap(SpeechModel.SpeechModel, (model) => model.generate({ text: "hi" })).pipe(
+            Effect.provideService(FetchHttpClient.Fetch, fetch),
+          ),
+          AiError.AiError,
+        );
+      }),
+    );
+
+    t.effect("maps a non-2xx status to an AiError", () =>
+      Effect.gen(function* () {
+        const { fetch } = makeFetch(() => jsonResponse({ detail: "rate limited" }, 429));
+
+        yield* expectFailureInstanceOf(
+          Effect.flatMap(SpeechModel.SpeechModel, (model) =>
+            model.generate({ text: "hi", voice: "v" }),
+          ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+          AiError.AiError,
+        );
+      }),
+    );
+
+    t.effect("rejects an empty audio buffer via the abstraction's validation", () =>
+      Effect.gen(function* () {
+        const { fetch } = makeFetch(() => audioResponse(new Uint8Array(0)));
+
+        yield* expectFailureInstanceOf(
+          Effect.flatMap(SpeechModel.SpeechModel, (model) =>
+            model.generate({ text: "hi", voice: "v" }),
+          ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+          AiError.AiError,
+        );
+      }),
+    );
+  });
+
+  const keylessClient = ElevenLabsClient.layer({}).pipe(Layer.provide(FetchHttpClient.layer));
+  layer(ElevenLabsSpeechModel.layer().pipe(Layer.provide(keylessClient)))((t) => {
+    t.effect("omits the xi-api-key header when constructed without a key", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
+
+        yield* Effect.flatMap(SpeechModel.SpeechModel, (model) =>
+          model.generate({ text: "hi", voice: "v" }),
+        ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
+
+        expect(calls[0]?.apiKey).toEqual(Option.none());
+      }),
+    );
   });
 });
 
@@ -302,81 +339,83 @@ const makeChunkedStream = (chunks: ReadonlyArray<Uint8Array>) => {
   return { body, state };
 };
 
-describe("ElevenLabsSpeechModel.stream", () => {
-  it("posts to the /stream endpoint and yields the audio as multiple chunks", async () => {
-    const chunks = [bytes(1, 1), bytes(2, 2), bytes(3, 3)];
-    const { body } = makeChunkedStream(chunks);
-    const { calls, fetch } = makeFetch(
-      () => new Response(body, { status: 200, headers: { "content-type": "audio/mpeg" } }),
-    );
+layer(speechLayer())("ElevenLabsSpeechModel.stream", (t) => {
+  t.effect("posts to the /stream endpoint and yields the audio as multiple chunks", () =>
+    Effect.gen(function* () {
+      const chunks = [bytes(1, 1), bytes(2, 2), bytes(3, 3)];
+      const { body } = makeChunkedStream(chunks);
+      const { calls, fetch } = makeFetch(
+        () => new Response(body, { status: 200, headers: { "content-type": "audio/mpeg" } }),
+      );
 
-    const received = await runTest(
-      Effect.flatMap(SpeechModel.SpeechModel, (model) =>
+      const received = yield* Effect.flatMap(SpeechModel.SpeechModel, (model) =>
         Stream.runCollect(model.stream({ text: "hi", voice: "v" })),
-      ).pipe(Effect.provide(speechLayer(fetch))),
-    );
+      ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-    expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/text-to-speech/v/stream");
-    // Proven multiple chunks (not one coalesced buffer).
-    expect(received.length).toBeGreaterThanOrEqual(2);
-    const flat = received.flatMap((chunk) => Array.from(chunk));
-    expect(flat).toEqual([1, 1, 2, 2, 3, 3]);
-  });
+      expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/text-to-speech/v/stream");
+      // Proven multiple chunks (not one coalesced buffer).
+      expect(received.length).toBeGreaterThanOrEqual(2);
+      const flat = received.flatMap((chunk) => Array.from(chunk));
+      expect(flat).toEqual([1, 1, 2, 2, 3, 3]);
+    }),
+  );
 
-  it("fails the stream with an AiError when no voice id is available", async () => {
-    const { fetch } = makeFetch(() => audioResponse(bytes(1)));
+  t.effect("fails the stream with an AiError when no voice id is available", () =>
+    Effect.gen(function* () {
+      const { fetch } = makeFetch(() => audioResponse(bytes(1)));
 
-    await expectFailureInstanceOf(
-      Effect.flatMap(SpeechModel.SpeechModel, (model) =>
-        Stream.runDrain(model.stream({ text: "hi" })),
-      ).pipe(Effect.provide(speechLayer(fetch))),
-      AiError.AiError,
-    );
-  });
+      yield* expectFailureInstanceOf(
+        Effect.flatMap(SpeechModel.SpeechModel, (model) =>
+          Stream.runDrain(model.stream({ text: "hi" })),
+        ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+        AiError.AiError,
+      );
+    }),
+  );
 
-  it("respects backpressure — a partial consumer does not drain the whole body", async () => {
-    const chunks = Array.from({ length: 8 }, (_, i) => bytes(i));
-    const { body, state } = makeChunkedStream(chunks);
-    const { fetch } = makeFetch(
-      () => new Response(body, { status: 200, headers: { "content-type": "audio/mpeg" } }),
-    );
+  t.effect("respects backpressure — a partial consumer does not drain the whole body", () =>
+    Effect.gen(function* () {
+      const chunks = Array.from({ length: 8 }, (_, i) => bytes(i));
+      const { body, state } = makeChunkedStream(chunks);
+      const { fetch } = makeFetch(
+        () => new Response(body, { status: 200, headers: { "content-type": "audio/mpeg" } }),
+      );
 
-    const received = await runTest(
-      Effect.flatMap(SpeechModel.SpeechModel, (model) =>
+      const received = yield* Effect.flatMap(SpeechModel.SpeechModel, (model) =>
         Stream.runCollect(Stream.take(model.stream({ text: "hi", voice: "v" }), 2)),
-      ).pipe(Effect.provide(speechLayer(fetch))),
-    );
+      ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-    expect(received.length).toBe(2);
-    // The source was never fully pulled: backpressure held, no unbounded buffering.
-    expect(state.pulled).toBeLessThan(chunks.length);
-    // Ending consumption early cancelled the underlying HTTP body stream.
-    expect(state.cancelled).toBe(true);
-  });
+      expect(received.length).toBe(2);
+      // The source was never fully pulled: backpressure held, no unbounded buffering.
+      expect(state.pulled).toBeLessThan(chunks.length);
+      // Ending consumption early cancelled the underlying HTTP body stream.
+      expect(state.cancelled).toBe(true);
+    }),
+  );
 
-  it("aborts the in-flight HTTP stream when the consuming Effect is interrupted", async () => {
-    const state = { pulled: 0, cancelled: false };
-    const first = bytes(7, 7, 7);
-    const body = new ReadableStream<Uint8Array>({
-      pull(controller) {
-        state.pulled += 1;
-        if (state.pulled === 1) {
-          controller.enqueue(first);
-          return undefined;
-        }
-        // Keep the body open indefinitely so the consumer blocks until interrupted.
-        return new Promise<void>(() => {});
-      },
-      cancel() {
-        state.cancelled = true;
-      },
-    });
-    const { calls, fetch } = makeFetch(
-      () => new Response(body, { status: 200, headers: { "content-type": "audio/mpeg" } }),
-    );
+  t.effect("aborts the in-flight HTTP stream when the consuming Effect is interrupted", () =>
+    Effect.gen(function* () {
+      const state = { pulled: 0, cancelled: false };
+      const first = bytes(7, 7, 7);
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          state.pulled += 1;
+          if (state.pulled === 1) {
+            controller.enqueue(first);
+            return undefined;
+          }
+          // Keep the body open indefinitely so the consumer blocks until interrupted.
+          return new Promise<void>(() => {});
+        },
+        cancel() {
+          state.cancelled = true;
+        },
+      });
+      const { calls, fetch } = makeFetch(
+        () => new Response(body, { status: 200, headers: { "content-type": "audio/mpeg" } }),
+      );
 
-    const signal = await runTest(
-      Effect.gen(function* () {
+      const signal = yield* Effect.gen(function* () {
         const latch = yield* Deferred.make<void>();
         const model = yield* SpeechModel.SpeechModel;
         const fiber = yield* Effect.forkChild(
@@ -388,14 +427,14 @@ describe("ElevenLabsSpeechModel.stream", () => {
         yield* Deferred.await(latch);
         yield* Fiber.interrupt(fiber);
         return calls[0]?.signal ?? Option.none();
-      }).pipe(Effect.provide(speechLayer(fetch))),
-    );
+      }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-    // Interrupting the Effect aborted the in-flight HTTP request…
-    expect(Option.map(signal, (aborted) => aborted.aborted)).toEqual(Option.some(true));
-    // …and cancelled the response body stream.
-    expect(state.cancelled).toBe(true);
-  });
+      // Interrupting the Effect aborted the in-flight HTTP request…
+      expect(Option.map(signal, (aborted) => aborted.aborted)).toEqual(Option.some(true));
+      // …and cancelled the response body stream.
+      expect(state.cancelled).toBe(true);
+    }),
+  );
 });
 
 // ── Speech-to-text (Scribe) ───────────────────────────────────────────
@@ -412,201 +451,218 @@ const scribeResponse = (over?: Record<string, unknown>) => ({
   ...over,
 });
 
-describe("ElevenLabsTranscriptionModel.transcribe", () => {
-  it("uploads audio as multipart and maps the transcript, segments and language", async () => {
-    const { calls, fetch } = makeFetch(() => jsonResponse(scribeResponse()));
+layer(transcriptionLayer())("ElevenLabsTranscriptionModel.transcribe", (t) => {
+  t.effect("uploads audio as multipart and maps the transcript, segments and language", () =>
+    Effect.gen(function* () {
+      const { calls, fetch } = makeFetch(() => jsonResponse(scribeResponse()));
 
-    const response = await runTest(
-      Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
+      const response = yield* Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
         model.transcribe({ audio: bytes(1, 2, 3), mediaType: "audio/mpeg" }),
-      ).pipe(Effect.provide(transcriptionLayer(fetch))),
-    );
+      ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-    expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/speech-to-text");
-    expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
-    expect(Option.getOrElse(calls[0]?.contentType ?? Option.none(), () => "")).toMatch(
-      /^multipart\/form-data/,
-    );
+      expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/speech-to-text");
+      expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
+      expect(Option.getOrElse(calls[0]?.contentType ?? Option.none(), () => "")).toMatch(
+        /^multipart\/form-data/,
+      );
 
-    const form = await firstRequest(calls).formData();
-    expect(form.get("model_id")).toBe("scribe_v1");
-    expect(form.get("file")).toBeInstanceOf(Blob);
-    // Options left undefined are omitted, never sent as the string "undefined".
-    expect(form.has("language_code")).toBe(false);
-    expect(form.has("timestamps_granularity")).toBe(false);
-    expect(form.has("diarize")).toBe(false);
-    expect(form.has("tag_audio_events")).toBe(false);
+      const form = yield* readBody(() => firstRequest(calls).formData());
+      expect(form.get("model_id")).toBe("scribe_v1");
+      expect(form.get("file")).toBeInstanceOf(Blob);
+      // Options left undefined are omitted, never sent as the string "undefined".
+      expect(form.has("language_code")).toBe(false);
+      expect(form.has("timestamps_granularity")).toBe(false);
+      expect(form.has("diarize")).toBe(false);
+      expect(form.has("tag_audio_events")).toBe(false);
 
-    expect(response.text).toBe("hello world");
-    expect(response.language).toStrictEqual(Option.some("en"));
-    // Only spoken `word` tokens become segments (the spacing token is dropped).
-    expect(
-      Option.map(response.segments, (segments) => segments.map((segment) => segment.text)),
-    ).toStrictEqual(Option.some(["hello", "world"]));
-    expect(Option.map(response.segments, (segments) => segments[0])).toMatchObject(
-      Option.some({ start: 0, end: 0.5 }),
-    );
-    expect(response.usage.durationSeconds).toStrictEqual(Option.some(1.0));
-  });
+      expect(response.text).toBe("hello world");
+      expect(response.language).toStrictEqual(Option.some("en"));
+      // Only spoken `word` tokens become segments (the spacing token is dropped).
+      expect(
+        Option.map(response.segments, (segments) => segments.map((segment) => segment.text)),
+      ).toStrictEqual(Option.some(["hello", "world"]));
+      expect(Option.map(response.segments, (segments) => segments[0])).toMatchObject(
+        Option.some({ start: 0, end: 0.5 }),
+      );
+      expect(response.usage.durationSeconds).toStrictEqual(Option.some(1.0));
+    }),
+  );
 
-  it("leaves segments and duration unset for a transcript with no timed words", async () => {
-    const { fetch } = makeFetch(() =>
-      jsonResponse({
-        text: "hi",
-        words: [
-          { text: "hi", type: "word" },
-          { text: "[laughs]", type: "audio_event", start: 0 },
-        ],
-      }),
-    );
+  t.effect("leaves segments and duration unset for a transcript with no timed words", () =>
+    Effect.gen(function* () {
+      const { fetch } = makeFetch(() =>
+        jsonResponse({
+          text: "hi",
+          words: [
+            { text: "hi", type: "word" },
+            { text: "[laughs]", type: "audio_event", start: 0 },
+          ],
+        }),
+      );
 
-    const response = await runTest(
-      Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
+      const response = yield* Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
         model.transcribe({ audio: bytes(1) }),
-      ).pipe(Effect.provide(transcriptionLayer(fetch))),
-    );
+      ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-    expect(response.text).toBe("hi");
-    expect(response.segments).toStrictEqual(Option.none());
-    expect(response.usage.durationSeconds).toStrictEqual(Option.none());
-  });
+      expect(response.text).toBe("hi");
+      expect(response.segments).toStrictEqual(Option.none());
+      expect(response.usage.durationSeconds).toStrictEqual(Option.none());
+    }),
+  );
 
-  it("collects a streamed audio input into the upload", async () => {
-    const { calls, fetch } = makeFetch(() => jsonResponse(scribeResponse()));
+  t.effect("collects a streamed audio input into the upload", () =>
+    Effect.gen(function* () {
+      const { calls, fetch } = makeFetch(() => jsonResponse(scribeResponse()));
 
-    const audio = Stream.fromIterable([bytes(1, 2), bytes(3, 4)]);
+      const audio = Stream.fromIterable([bytes(1, 2), bytes(3, 4)]);
 
-    await runTest(
-      Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
+      yield* Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
         model.transcribe({ audio, language: "fr" }),
-      ).pipe(Effect.provide(transcriptionLayer(fetch))),
-    );
+      ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-    const form = await firstRequest(calls).formData();
-    const file = form.get("file") as File;
-    expect(file).toBeInstanceOf(Blob);
-    expect(await file.arrayBuffer().then((b) => Array.from(new Uint8Array(b)))).toEqual([
-      1, 2, 3, 4,
-    ]);
-    // The per-call language overrides the model default.
-    expect(form.get("language_code")).toBe("fr");
-  });
+      const form = yield* readBody(() => firstRequest(calls).formData());
+      const file = form.get("file") as File;
+      expect(file).toBeInstanceOf(Blob);
+      expect(Array.from(new Uint8Array(yield* readBody(() => file.arrayBuffer())))).toEqual([
+        1, 2, 3, 4,
+      ]);
+      // The per-call language overrides the model default.
+      expect(form.get("language_code")).toBe("fr");
+    }),
+  );
 
-  it("maps a transcript body that is not JSON at all to an InvalidOutputError", async () => {
-    const { fetch } = makeFetch(
-      () =>
-        new Response("not json", { status: 200, headers: { "content-type": "application/json" } }),
-    );
+  t.effect("maps a transcript body that is not JSON at all to an InvalidOutputError", () =>
+    Effect.gen(function* () {
+      const { fetch } = makeFetch(
+        () =>
+          new Response("not json", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+      );
 
-    const error = await expectFailureInstanceOf(
-      Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
-        model.transcribe({ audio: bytes(1) }),
-      ).pipe(Effect.provide(transcriptionLayer(fetch))),
-      AiError.AiError,
-    );
-    expect(error.reason._tag).toBe("InvalidOutputError");
-  });
+      const error = yield* expectFailureInstanceOf(
+        Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
+          model.transcribe({ audio: bytes(1) }),
+        ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+        AiError.AiError,
+      );
+      expect(error.reason._tag).toBe("InvalidOutputError");
+    }),
+  );
 
-  it("maps a transcript body that does not decode to an AiError", async () => {
-    const { fetch } = makeFetch(() => jsonResponse({ text: 42 }));
+  t.effect("maps a transcript body that does not decode to an AiError", () =>
+    Effect.gen(function* () {
+      const { fetch } = makeFetch(() => jsonResponse({ text: 42 }));
 
-    const error = await expectFailureInstanceOf(
-      Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
-        model.transcribe({ audio: bytes(1) }),
-      ).pipe(Effect.provide(transcriptionLayer(fetch))),
-      AiError.AiError,
-    );
-    expect(error.reason._tag).toBe("InvalidOutputError");
-  });
+      const error = yield* expectFailureInstanceOf(
+        Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
+          model.transcribe({ audio: bytes(1) }),
+        ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+        AiError.AiError,
+      );
+      expect(error.reason._tag).toBe("InvalidOutputError");
+    }),
+  );
 
-  it("maps a non-2xx status to an AiError", async () => {
-    const { fetch } = makeFetch(() => jsonResponse({ detail: "bad audio" }, 422));
+  t.effect("maps a non-2xx status to an AiError", () =>
+    Effect.gen(function* () {
+      const { fetch } = makeFetch(() => jsonResponse({ detail: "bad audio" }, 422));
 
-    await expectFailureInstanceOf(
-      Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
-        model.transcribe({ audio: bytes(1) }),
-      ).pipe(Effect.provide(transcriptionLayer(fetch))),
-      AiError.AiError,
-    );
-  });
+      yield* expectFailureInstanceOf(
+        Effect.flatMap(TranscriptionModel.TranscriptionModel, (model) =>
+          model.transcribe({ audio: bytes(1) }),
+        ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+        AiError.AiError,
+      );
+    }),
+  );
 });
 
 // ── Speech-to-speech (voice conversion) ───────────────────────────────
 
 describe("ElevenLabsVoiceConversionModel.convert", () => {
-  it("uploads source audio as multipart and returns the re-voiced audio", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(5, 6, 7)));
+  layer(voiceConversionLayer({ modelId: "eleven_multilingual_sts_v2" }))((t) => {
+    t.effect("uploads source audio as multipart and returns the re-voiced audio", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(5, 6, 7)));
 
-    const response = await runTest(
-      Effect.flatMap(VoiceConversionModel.VoiceConversionModel, (model) =>
-        model.convert({ audio: bytes(1, 2), targetVoice: "target_voice" }),
-      ).pipe(
-        Effect.provide(voiceConversionLayer(fetch, { modelId: "eleven_multilingual_sts_v2" })),
-      ),
+        const response = yield* Effect.flatMap(VoiceConversionModel.VoiceConversionModel, (model) =>
+          model.convert({ audio: bytes(1, 2), targetVoice: "target_voice" }),
+        ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
+
+        expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/speech-to-speech/target_voice");
+        expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
+        expect(Option.getOrElse(calls[0]?.contentType ?? Option.none(), () => "")).toMatch(
+          /^multipart\/form-data/,
+        );
+
+        const form = yield* readBody(() => firstRequest(calls).formData());
+        expect(form.get("model_id")).toBe("eleven_multilingual_sts_v2");
+        expect(form.get("audio")).toBeInstanceOf(Blob);
+        // Options left undefined are omitted, never sent as the string "undefined".
+        expect(form.has("seed")).toBe(false);
+        expect(form.has("voice_settings")).toBe(false);
+        expect(form.has("remove_background_noise")).toBe(false);
+
+        expect(Array.from(response.audio)).toEqual([5, 6, 7]);
+        expect(response.mediaType).toBe("audio/mpeg");
+      }),
     );
-
-    expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/speech-to-speech/target_voice");
-    expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
-    expect(Option.getOrElse(calls[0]?.contentType ?? Option.none(), () => "")).toMatch(
-      /^multipart\/form-data/,
-    );
-
-    const form = await firstRequest(calls).formData();
-    expect(form.get("model_id")).toBe("eleven_multilingual_sts_v2");
-    expect(form.get("audio")).toBeInstanceOf(Blob);
-    // Options left undefined are omitted, never sent as the string "undefined".
-    expect(form.has("seed")).toBe(false);
-    expect(form.has("voice_settings")).toBe(false);
-    expect(form.has("remove_background_noise")).toBe(false);
-
-    expect(Array.from(response.audio)).toEqual([5, 6, 7]);
-    expect(response.mediaType).toBe("audio/mpeg");
   });
 
-  it("threads an explicit output_format query and encodes voice settings", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
+  layer(voiceConversionLayer({ voiceSettings: { stability: 0.3 } }))((t) => {
+    t.effect("threads an explicit output_format query and encodes voice settings", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
 
-    await runTest(
-      Effect.flatMap(VoiceConversionModel.VoiceConversionModel, (model) =>
-        model.convert({ audio: bytes(1), targetVoice: "v", format: "mp3_44100_128" }),
-      ).pipe(Effect.provide(voiceConversionLayer(fetch, { voiceSettings: { stability: 0.3 } }))),
+        yield* Effect.flatMap(VoiceConversionModel.VoiceConversionModel, (model) =>
+          model.convert({ audio: bytes(1), targetVoice: "v", format: "mp3_44100_128" }),
+        ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
+
+        expect(calls[0]?.outputFormat).toEqual(Option.some("mp3_44100_128"));
+        const form = yield* readBody(() => firstRequest(calls).formData());
+        expect(form.get("voice_settings")).toBe(encodeJson({ stability: 0.3 }));
+      }),
     );
-
-    expect(calls[0]?.outputFormat).toEqual(Option.some("mp3_44100_128"));
-    const form = await firstRequest(calls).formData();
-    expect(form.get("voice_settings")).toBe(encodeJson({ stability: 0.3 }));
   });
 
-  it.each([
-    ["ulaw_8000", "audio/basic"],
-    ["alaw_8000", "audio/x-alaw-basic"],
-    ["opus_48000_64", "audio/opus"],
-    ["wav_44100", "audio/wav"],
-    ["pcm_16000", "audio/pcm"],
-    ["flac_44100", "application/octet-stream"],
-  ])(
-    "derives the media type from output_format %s when the response has no content type",
-    async (format, mediaType) => {
-      const { fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
+  layer(voiceConversionLayer())((t) => {
+    t.effect.each([
+      ["ulaw_8000", "audio/basic"],
+      ["alaw_8000", "audio/x-alaw-basic"],
+      ["opus_48000_64", "audio/opus"],
+      ["wav_44100", "audio/wav"],
+      ["pcm_16000", "audio/pcm"],
+      ["flac_44100", "application/octet-stream"],
+    ])(
+      "derives the media type from output_format %s when the response has no content type",
+      ([format, mediaType]) =>
+        Effect.gen(function* () {
+          const { fetch } = makeFetch(() => audioResponse(bytes(1), Option.none()));
 
-      const response = await runTest(
-        Effect.flatMap(VoiceConversionModel.VoiceConversionModel, (model) =>
-          model.convert({ audio: bytes(1), targetVoice: "v", format }),
-        ).pipe(Effect.provide(voiceConversionLayer(fetch))),
-      );
+          const response = yield* Effect.flatMap(
+            VoiceConversionModel.VoiceConversionModel,
+            (model) => model.convert({ audio: bytes(1), targetVoice: "v", format }),
+          ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-      expect(response.mediaType).toBe(mediaType);
-    },
-  );
+          expect(response.mediaType).toBe(mediaType);
+        }),
+    );
+  });
 
-  it("maps a non-2xx status to an AiError", async () => {
-    const { fetch } = makeFetch(() => jsonResponse({ detail: "unknown voice" }, 404));
+  layer(voiceConversionLayer())((t) => {
+    t.effect("maps a non-2xx status to an AiError", () =>
+      Effect.gen(function* () {
+        const { fetch } = makeFetch(() => jsonResponse({ detail: "unknown voice" }, 404));
 
-    await expectFailureInstanceOf(
-      Effect.flatMap(VoiceConversionModel.VoiceConversionModel, (model) =>
-        model.convert({ audio: bytes(1), targetVoice: "v" }),
-      ).pipe(Effect.provide(voiceConversionLayer(fetch))),
-      AiError.AiError,
+        yield* expectFailureInstanceOf(
+          Effect.flatMap(VoiceConversionModel.VoiceConversionModel, (model) =>
+            model.convert({ audio: bytes(1), targetVoice: "v" }),
+          ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+          AiError.AiError,
+        );
+      }),
     );
   });
 });
@@ -619,48 +675,52 @@ const networkDownFetch: typeof globalThis.fetch = async () => {
 };
 
 describe("ElevenLabsClient", () => {
-  it("routes through the apiUrl override (BYOK) from a Config-driven layer", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
+  const configClient = ElevenLabsClient.layerConfig({
+    apiKey: Config.succeed(Redacted.make("cfg-key")),
+    apiUrl: Config.succeed("https://gateway.example/eleven"),
+  }).pipe(Layer.provide(FetchHttpClient.layer));
+  layer(ElevenLabsSpeechModel.layer().pipe(Layer.provide(configClient)))((t) => {
+    t.effect("routes through the apiUrl override (BYOK) from a Config-driven layer", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
 
-    const client = ElevenLabsClient.layerConfig({
-      apiKey: Config.succeed(Redacted.make("cfg-key")),
-      apiUrl: Config.succeed("https://gateway.example/eleven"),
-    }).pipe(Layer.provide(httpLayer(fetch)));
+        yield* Effect.flatMap(SpeechModel.SpeechModel, (model) =>
+          model.generate({ text: "hi", voice: "v" }),
+        ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-    await runTest(
-      Effect.flatMap(SpeechModel.SpeechModel, (model) =>
-        model.generate({ text: "hi", voice: "v" }),
-      ).pipe(Effect.provide(ElevenLabsSpeechModel.layer().pipe(Layer.provide(client)))),
+        expect(calls[0]?.url).toBe("https://gateway.example/eleven/v1/text-to-speech/v");
+        expect(calls[0]?.apiKey).toEqual(Option.some("cfg-key"));
+      }),
     );
-
-    expect(calls[0]?.url).toBe("https://gateway.example/eleven/v1/text-to-speech/v");
-    expect(calls[0]?.apiKey).toEqual(Option.some("cfg-key"));
   });
 
-  it("applies a transformClient to outgoing requests", async () => {
-    const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
+  const transformedClient = ElevenLabsClient.layer({
+    apiKey: Redacted.make("k"),
+    transformClient: (httpClient) =>
+      HttpClient.mapRequest(httpClient, HttpClientRequest.setHeader("x-test", "1")),
+  }).pipe(Layer.provide(FetchHttpClient.layer));
+  layer(ElevenLabsSpeechModel.layer().pipe(Layer.provide(transformedClient)))((t) => {
+    t.effect("applies a transformClient to outgoing requests", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => audioResponse(bytes(1)));
 
-    const client = ElevenLabsClient.layer({
-      apiKey: Redacted.make("k"),
-      transformClient: (httpClient) =>
-        HttpClient.mapRequest(httpClient, HttpClientRequest.setHeader("x-test", "1")),
-    }).pipe(Layer.provide(httpLayer(fetch)));
+        yield* Effect.flatMap(SpeechModel.SpeechModel, (model) =>
+          model.generate({ text: "hi", voice: "v" }),
+        ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-    await runTest(
-      Effect.flatMap(SpeechModel.SpeechModel, (model) =>
-        model.generate({ text: "hi", voice: "v" }),
-      ).pipe(Effect.provide(ElevenLabsSpeechModel.layer().pipe(Layer.provide(client)))),
+        expect(calls[0]?.request.headers.get("x-test")).toBe("1");
+      }),
     );
-
-    expect(calls[0]?.request.headers.get("x-test")).toBe("1");
   });
 
-  it("maps a transport failure to an AiError", async () => {
-    await expectFailureInstanceOf(
-      Effect.flatMap(SpeechModel.SpeechModel, (model) =>
-        model.generate({ text: "hi", voice: "v" }),
-      ).pipe(Effect.provide(speechLayer(networkDownFetch))),
-      AiError.AiError,
+  layer(speechLayer())((t) => {
+    t.effect("maps a transport failure to an AiError", () =>
+      expectFailureInstanceOf(
+        Effect.flatMap(SpeechModel.SpeechModel, (model) =>
+          model.generate({ text: "hi", voice: "v" }),
+        ).pipe(Effect.provideService(FetchHttpClient.Fetch, networkDownFetch)),
+        AiError.AiError,
+      ),
     );
   });
 });
