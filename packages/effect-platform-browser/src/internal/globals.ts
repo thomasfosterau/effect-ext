@@ -15,6 +15,8 @@ import type { FilePickerLike } from "../FilePicker.ts";
 import type { MediaDevicesLike, MediaRecorderFactoryLike } from "../MediaDevices.ts";
 import type { IdleDetectorLike } from "../IdleDetection.ts";
 import type { NavigationLike } from "../Navigation.ts";
+import type { RecognitionLike, SpeechRecognitionFactoryLike } from "../SpeechRecognition.ts";
+import type { SpeechSynthesisLike, UtteranceLike } from "../SpeechSynthesis.ts";
 
 /** `globalThis.navigator`, where the context has one. */
 export const ambientNavigator = (): Option.Option<Navigator> =>
@@ -139,3 +141,45 @@ export const ambientMediaRecorder = (): Option.Option<MediaRecorderFactoryLike> 
       isTypeSupported: (mimeType) => Recorder.isTypeSupported(mimeType),
     }),
   );
+
+/**
+ * `globalThis.speechSynthesis` and the utterance constructor, where the
+ * context has both (a window).
+ */
+export const ambientSpeechSynthesis = (): Option.Option<{
+  readonly synthesis: SpeechSynthesisLike;
+  readonly utterance: (text: string) => UtteranceLike;
+}> =>
+  Option.map(
+    Option.all([
+      Option.fromUndefinedOr<SpeechSynthesis>(globalThis.speechSynthesis),
+      Option.fromUndefinedOr<typeof globalThis.SpeechSynthesisUtterance>(
+        globalThis.SpeechSynthesisUtterance,
+      ),
+    ]),
+    ([synthesis, Utterance]) => ({
+      synthesis,
+      utterance: (text: string) => new Utterance(text),
+    }),
+  );
+
+/**
+ * `globalThis.SpeechRecognition`, or Chromium's and Safari's prefixed
+ * `webkitSpeechRecognition`, as a factory, where the context has one.
+ */
+export const ambientSpeechRecognition = (): Option.Option<SpeechRecognitionFactoryLike> => {
+  // The DOM lib has no `SpeechRecognition`; `navigator` keeps the type from
+  // being weak, as for `ambientIdleDetector`.
+  const scope: Partial<
+    Record<"SpeechRecognition" | "webkitSpeechRecognition", new () => RecognitionLike>
+  > &
+    Pick<typeof globalThis, "navigator"> = globalThis;
+  return Option.map(
+    Option.orElse(Option.fromUndefinedOr(scope.SpeechRecognition), () =>
+      Option.fromUndefinedOr(scope.webkitSpeechRecognition),
+    ),
+    (Recognition): SpeechRecognitionFactoryLike =>
+      () =>
+        new Recognition(),
+  );
+};

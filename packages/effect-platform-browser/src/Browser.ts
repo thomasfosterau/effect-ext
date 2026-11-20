@@ -22,12 +22,14 @@ import * as Navigator from "./Navigator.ts";
 import * as Notifications from "./Notifications.ts";
 import * as PageVisibility from "./PageVisibility.ts";
 import * as ScreenOrientation from "./ScreenOrientation.ts";
+import * as SpeechRecognition from "./SpeechRecognition.ts";
+import * as SpeechSynthesis from "./SpeechSynthesis.ts";
 import * as WakeLock from "./WakeLock.ts";
 
 /**
  * Every live service this package defines (`Battery`, `Broadcast`,
  * `DomObservers`, `FilePicker`, `Fullscreen`, `IdleDetection`, `Locks`, `MediaDevices`, `MediaQuery`, `Navigation`, `Navigator`,
- * `Notifications`, `PageVisibility`, `ScreenOrientation`, `WakeLock`) and the
+ * `Notifications`, `PageVisibility`, `ScreenOrientation`, `SpeechRecognition`, `SpeechSynthesis`, `WakeLock`) and the
  * `@effect/platform-browser` `Clipboard`, `Geolocation` and `Permissions`
  * services, over the ambient globals. Each degrades where its API is
  * missing, so the layer builds in any context — but provide only the
@@ -65,6 +67,8 @@ export const layer: Layer.Layer<
   | Notifications.Notifications
   | PageVisibility.PageVisibility
   | ScreenOrientation.ScreenOrientation
+  | SpeechRecognition.SpeechRecognition
+  | SpeechSynthesis.SpeechSynthesis
   | WakeLock.WakeLock
   | Clipboard.Clipboard
   | Geolocation.Geolocation
@@ -84,6 +88,8 @@ export const layer: Layer.Layer<
   Notifications.layer,
   PageVisibility.layer,
   ScreenOrientation.layer,
+  SpeechRecognition.layer,
+  SpeechSynthesis.layer,
   WakeLock.layer,
   Clipboard.layer,
   Geolocation.layer,

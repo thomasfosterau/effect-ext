@@ -52,6 +52,8 @@
     "./PushManager": "./src/PushManager.ts",
     "./ScreenOrientation": "./src/ScreenOrientation.ts",
     "./ServiceWorkerContainer": "./src/ServiceWorkerContainer.ts",
+    "./SpeechRecognition": "./src/SpeechRecognition.ts",
+    "./SpeechSynthesis": "./src/SpeechSynthesis.ts",
     "./WakeLock": "./src/WakeLock.ts",
     "./WebVitals": "./src/WebVitals.ts"
   },
@@ -139,6 +141,14 @@
       "./ServiceWorkerContainer": {
         "types": "./dist/ServiceWorkerContainer.d.ts",
         "import": "./dist/ServiceWorkerContainer.js"
+      },
+      "./SpeechRecognition": {
+        "types": "./dist/SpeechRecognition.d.ts",
+        "import": "./dist/SpeechRecognition.js"
+      },
+      "./SpeechSynthesis": {
+        "types": "./dist/SpeechSynthesis.d.ts",
+        "import": "./dist/SpeechSynthesis.js"
       },
       "./WakeLock": {
         "types": "./dist/WakeLock.d.ts",

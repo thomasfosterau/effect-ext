@@ -420,6 +420,9 @@ export default defineConfig({
           // and an event's `downloadRequest`.
           "packages/effect-platform-browser/src/Navigation.ts",
           "packages/effect-platform-browser/src/testing/navigation.ts",
+          // An utterance's `voice`, `null` for the default voice.
+          "packages/effect-platform-browser/src/SpeechSynthesis.ts",
+          "packages/effect-platform-browser/src/testing/speech-synthesis.ts",
           // `mark` and `measure`, which return no entry in older agents.
           "packages/effect-platform-worker-shared/src/Performance.ts",
           "packages/effect-platform-browser/src/testing/performance.ts",
