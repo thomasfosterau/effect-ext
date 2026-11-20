@@ -1,8 +1,8 @@
 # Web platform
 
-Framework-neutral request / response policies, an SSRF-guarded fetch, structured logging and span tracing, content negotiation, service-worker caching strategies, browser APIs as Effect services with in-memory test doubles, and robots.txt. No SvelteKit, Alchemy or Cloudflare dependency. These modules were `@thomasfosterau/effect-web` and its sibling packages; the import map is at the end ("Moving from effect-web"). Feeds and sitemaps are in [feeds](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/guides/feeds.md); URI templates, language tags, CSS, encodings and MIME types are in [text-formats](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/guides/text-formats.md).
+Framework-neutral request / response policies, an SSRF-guarded fetch, structured logging and span tracing, content negotiation browser APIs as Effect services with in-memory test doubles, and robots.txt. No SvelteKit, Alchemy or Cloudflare dependency. These modules were `@thomasfosterau/effect-web` and its sibling packages; the import map is at the end ("Moving from effect-web"). Feeds and sitemaps are in [feeds](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/guides/feeds.md); URI templates, language tags, CSS, encodings and MIME types are in [text-formats](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/guides/text-formats.md).
 
-## Web, Net, Observability, Negotiate, ServiceWorker, Browser, BrowserTesting
+## Web, Net, Observability, Negotiate, Browser, BrowserTesting
 
 Framework-neutral web request/response utilities on `effect/http`: cache-control and security headers, Vary, the cross-origin guard, client IP, an SSRF-guarded fetch, structured logging and an allow-listed span tracer, with no SvelteKit, Alchemy or Cloudflare dependency, so it serves a SvelteKit hook, an `HttpApi` middleware or a bare Worker equally. On the client side, browser platform APIs (Web Locks, `navigator`, page visibility, media queries, the screen wake lock, `BroadcastChannel`, permission state) as Effect services, alongside `@effect/platform-browser`, with in-memory test doubles for every one.
 
@@ -221,69 +221,6 @@ Nothing about any one media type is built in: you declare the `Representation`s 
 - `chooseNegotiatedResponse(markdown: Option<A>, onHtml: () => B)` — the Markdown response or the framework's render, which runs only on `None`.
 - `MARKDOWN_MEDIA_TYPE`.
 
-#### `ServiceWorker` — caching strategies and event listeners
-
-The two globals a worker talks to are context references with global defaults, so a worker provides nothing and a test swaps each: `Caches` (the `CacheStorage`, default `globalThis.caches`) and Effect's own `FetchHttpClient.Fetch` (default `globalThis.fetch`). Event types are structural (`FetchEventLike`, `ExtendableEventLike`, `ExtendableMessageEventLike`), so the entry compiles under the `dom` lib and the `webworker` lib's events satisfy them.
-
-```ts
-/// <reference lib="webworker" />
-import * as Effect from "effect/Effect";
-import * as Schema from "effect/Schema";
-import {
-  cacheFirst,
-  deleteCachesExcept,
-  extendableListener,
-  fetchListener,
-  isNavigationRequest,
-  messageListener,
-  networkFirst,
-  precache,
-  route,
-  staleWhileRevalidate,
-} from "@thomasfosterau/effect-ext/ServiceWorker";
-
-declare const self: ServiceWorkerGlobalScope;
-const SHELL = "shell-v3";
-const CACHES = [SHELL, "pages", "assets", "images"];
-
-// Listeners must be added while the script first evaluates, so the effects
-// that build them run synchronously.
-const listeners = Effect.gen(function* () {
-  const onInstall = yield* extendableListener(() => precache(SHELL, ["/", "/offline", "/app.css"]));
-  const onActivate = yield* extendableListener(() => deleteCachesExcept(CACHES));
-  const onFetch = yield* fetchListener([
-    route(isNavigationRequest, networkFirst({ cacheName: "pages", timeout: "3 seconds" })),
-    route(
-      (r) => new URL(r.url).pathname.startsWith("/_app/immutable/"),
-      cacheFirst({ cacheName: "assets" }),
-    ),
-    route((r) => r.destination === "image", staleWhileRevalidate({ cacheName: "images" })),
-  ]);
-  const onMessage = yield* messageListener(
-    Schema.Struct({ type: Schema.Literal("SKIP_WAITING") }),
-    () => Effect.promise(() => self.skipWaiting()),
-  );
-  return { onInstall, onActivate, onFetch, onMessage };
-});
-
-const { onInstall, onActivate, onFetch, onMessage } = Effect.runSync(listeners);
-self.addEventListener("install", onInstall);
-self.addEventListener("activate", onActivate);
-self.addEventListener("fetch", onFetch);
-self.addEventListener("message", onMessage);
-```
-
-- `openCache(name): Effect<CacheHandle, CacheError>` — the cache's `match` (an `Option`), `put`, `delete`, `keys` as effects. `deleteCache(name)`, `cacheNames`, and `deleteCachesExcept(keep)` (a list or a predicate; returns the names deleted) for the `activate` sweep. Every Cache Storage rejection is a `CacheError` naming the `operation` and `cacheName`.
-- `fetchRequest(request): Effect<Response, FetchFailed>` — through `FetchHttpClient.Fetch`, keeping the native `Response` that `respondWith` needs; interruption aborts. `FetchFailed` is `Net`'s class.
-- `isCacheable(request, response)` — the default write-back filter: a `GET`, status `200` (so never an opaque `0` or a partial `206`), no `Vary: *`, no `Cache-Control: no-store`.
-- Strategies, each `(options) => (request) => Effect<Response, …>`: `cacheFirst`, `networkFirst` (optional `timeout`: on a cache hit after it elapses the network is aborted; on a miss the network keeps its chance), `staleWhileRevalidate`, `cacheOnly` (fails with `CacheMiss`), `networkOnly`. `StrategyOptions`: `cacheName`, `cacheable?`, `matchOptions?`. Write-backs run in the background through `EventLifetime`, so the page never waits on `Cache.put`.
-- `precache(cacheName, urls)` — fetches every URL with `cache: "reload"`, writes only once all are `200` (`PrecacheRejected` otherwise), so a failed `install` leaves the previous worker in charge.
-- `route(match, handle)`, `fetchListener(routes)` — `match` is synchronous because `respondWith` must be called during dispatch; the first match answers, and no match leaves the request to the browser. A failed answer rejects `respondWith` (a network error to the page).
-- `extendableListener(handle)` — `install` / `activate`: the effect's promise goes to `waitUntil`, so a failure fails the install. `messageListener(schema, handle)` — decodes `event.data` first; an undecodable message is logged and dropped.
-- `EventLifetime` — how background work outlives a response: bound to the event's `waitUntil` inside a listener, detached outside one. Background failures are logged at `Warning`.
-- Persistent notifications, shown through the worker's registration (here, not in `Browser`: they outlive the page, and their events reach the worker). `Registration` is a context reference holding an `Option` of the registration, defaulting to `self.registration` (`Option.none()` where there is none; a page provides `Option.some(await navigator.serviceWorker.ready)`); `showNotification(title, options?)` and `getNotifications({ tag? })` fail with `ShowNotificationError` (`operation`, `reason`: `Unsupported`, `NotAllowed`, `InvalidData`, `Failed`). `notificationClickListener(schema, handle)` / `notificationCloseListener(schema, handle)` decode `notification.data` first, as `messageListener` does, and run `handle` inside `waitUntil`.
-- `memoryCacheStorage({ fetch? })` — an in-memory `CacheStorage` for tests, rejecting what the browser's `put` rejects.
-
 #### `Browser` — platform services
 
 Each module is a namespace: `import { Locks } from "@thomasfosterau/effect-ext/Browser"`, then `Locks.Locks` (the tag), `Locks.layer`, `Locks.make`, `Locks.withLock`, ….
@@ -297,7 +234,7 @@ Each module is a namespace: `import { Locks } from "@thomasfosterau/effect-ext/B
 - `Battery` — `navigator.getBattery()` (Chromium-only; Firefox and Safari removed it). Its own service, not part of `Navigator`, because the manager is promise-acquired (once, on the first reading). `status` is an `Option<BatteryState>` — `{ charging, level (0–1), chargingTime, dischargingTime }`, the times `Option<Duration>` with the API's `Infinity` (unknown) as `None` — and `changes` follows the four change events; `None` / empty where the API is missing or `getBattery()` rejects.
 - `Fullscreen` — `enter(element, options?): Effect<void, FullscreenError, Scope>` shows an element fullscreen; closing the scope calls `exitFullscreen()` only if that element is still the fullscreen one. `withFullscreen(element, options?)` is the combinator form (the user leaving with Esc does not interrupt it). `element` (`Option`) and `changes` follow `fullscreenchange`. Unprefixed API only; Safari on iPhone reads as unsupported. `FullscreenError.reason`: `Unsupported` (no API, or `fullscreenEnabled` is `false`), `NotAllowed` (no user activation, a permissions policy), `Failed`.
 - `ScreenOrientation` — `type`, `angle` (`Option`), `current`, and `changes` (follows `change`; empty where missing). `lock(orientation)` is scoped and unlocks when the scope closes; `withLock(orientation)` is the combinator form, and composes inside `Fullscreen.withFullscreen`, where browsers allow a lock. `OrientationError.reason`: `Unsupported` (no API or no `lock`, or a `NotSupportedError` refusal), `NotAllowed` (`SecurityError`), `Aborted` (a newer lock superseded it), `Failed`.
-- `Notifications` — the page's own `Notification`s. `permission` (`None` where unsupported); `requestPermission` returns the user's answer and fails `NotAllowed` without transient user activation; `show(title, options?): Effect<ShownNotification, NotificationError, Scope>` closes the notification when the scope closes, and its `clicks` / `closes` streams replay from when it was shown, end once it closes and fail `Failed` on the browser's `error` event; `permissionChanges` follows `PermissionStatus.changes("notifications")`. `NotificationError.reason`: `Unsupported`, `NotAllowed` (not yet granted, or no activation), `Denied`, `InvalidData`, `Failed`. Service-worker-registration notifications (`registration.showNotification`, `notificationclick`) are not here: they outlive the page and their events reach the worker, so they belong with `ServiceWorker`.
+- `Notifications` — the page's own `Notification`s. `permission` (`None` where unsupported); `requestPermission` returns the user's answer and fails `NotAllowed` without transient user activation; `show(title, options?): Effect<ShownNotification, NotificationError, Scope>` closes the notification when the scope closes, and its `clicks` / `closes` streams replay from when it was shown, end once it closes and fail `Failed` on the browser's `error` event; `permissionChanges` follows `PermissionStatus.changes("notifications")`. `NotificationError.reason`: `Unsupported`, `NotAllowed` (not yet granted, or no activation), `Denied`, `InvalidData`, `Failed`. Service-worker-registration notifications (`registration.showNotification`, `notificationclick`) are not here: they outlive the page and their events reach the worker, so they belong with `@thomasfosterau/effect-platform-service-worker`'s `Notifications`.
 - `Broadcast` — `BroadcastChannel`. `channel(name, schema)` opens a scoped channel whose `publish` encodes and whose messages are decoded through the schema (an undecodable message from another tab — an older deploy — is dropped with a warning log). `subscribe` starts listening when it runs, so nothing posted before the stream is consumed is lost; `messages` listens from when it runs. `open(name)` is the undecoded form.
 - `PermissionStatus` — over `@effect/platform-browser`'s `Permissions`: `state(name)`, `changes(name)` (follows the status's `change` event), `awaitGranted(name)`.
 - `layer` — every live service above plus `@effect/platform-browser`'s `Clipboard`, `Geolocation` and `Permissions`. Prefer the per-service layers where bundle size matters.
@@ -435,7 +372,7 @@ Each `@thomasfosterau/effect-web` entry point, and each of its sibling packages,
 | `@thomasfosterau/effect-web/net` | `@thomasfosterau/effect-ext/Net` |
 | `@thomasfosterau/effect-web/observability` | `@thomasfosterau/effect-ext/Observability` |
 | `@thomasfosterau/effect-web/negotiate` | `@thomasfosterau/effect-ext/Negotiate` |
-| `@thomasfosterau/effect-web/service-worker` | `@thomasfosterau/effect-ext/ServiceWorker` |
+| `@thomasfosterau/effect-web/service-worker` | `@thomasfosterau/effect-platform-service-worker` (`Caches`, `Events`, `Fetch`, `Notifications`) |
 | `@thomasfosterau/effect-web/browser` | `@thomasfosterau/effect-ext/Browser` |
 | `@thomasfosterau/effect-web/testing` | `@thomasfosterau/effect-ext/BrowserTesting` |
 | `@thomasfosterau/effect-robots` | `@thomasfosterau/effect-ext/Robots` |

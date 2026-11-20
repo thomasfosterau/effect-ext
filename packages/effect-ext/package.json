@@ -50,7 +50,6 @@
     "saturating",
     "schema",
     "scorer",
-    "service-worker",
     "sitemap",
     "slug",
     "struct-of-arrays",
@@ -319,10 +318,6 @@
     "./Saturating": {
       "types": "./dist/Saturating.d.ts",
       "default": "./dist/Saturating.js"
-    },
-    "./ServiceWorker": {
-      "types": "./dist/ServiceWorker.d.ts",
-      "default": "./dist/ServiceWorker.js"
     },
     "./Sitemap": {
       "types": "./dist/Sitemap.d.ts",

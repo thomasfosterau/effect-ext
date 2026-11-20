@@ -8,7 +8,8 @@
  * registration (`registration.showNotification`) are a different contract —
  * they outlive the page, and their `notificationclick` /
  * `notificationclose` events are dispatched in the worker, not on a handle —
- * so they belong with `ServiceWorker`, not here.
+ * so they belong with `@thomasfosterau/effect-platform-service-worker`'s
+ * `Notifications`, not here.
  *
  * Permission state as it changes is {@link permissionChanges}, which follows
  * the browser's `PermissionStatus` for `"notifications"` (over

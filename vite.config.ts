@@ -14,6 +14,9 @@ import { coverageFloor as elevenlabsFloor } from "./packages/effect-ai-elevenlab
 import { coverageFloor as cloudflareFloor } from "./packages/effect-ai-cloudflare/vite.config.ts";
 import { coverageFloor as mistralFloor } from "./packages/effect-ai-mistral/vite.config.ts";
 import { coverageFloor as voyageFloor } from "./packages/effect-ai-voyage/vite.config.ts";
+import { coverageFloor as workerSharedFloor } from "./packages/effect-platform-worker-shared/vite.config.ts";
+import { coverageFloor as workerFloor } from "./packages/effect-platform-worker/vite.config.ts";
+import { coverageFloor as serviceWorkerFloor } from "./packages/effect-platform-service-worker/vite.config.ts";
 import {
   coverageFloor as effectExtFloor,
   coverageGlobFloors as effectExtGlobFloors,
@@ -30,6 +33,9 @@ const coverageFloors = {
   "packages/effect-ai-mistral/src/**": mistralFloor,
   "packages/effect-ai-voyage/src/**": voyageFloor,
   "packages/effect-ext/src/**": effectExtFloor,
+  "packages/effect-platform-worker-shared/src/**": workerSharedFloor,
+  "packages/effect-platform-worker/src/**": workerFloor,
+  "packages/effect-platform-service-worker/src/**": serviceWorkerFloor,
   ...Object.fromEntries(
     Object.entries(effectExtGlobFloors).map(([glob, floor]) => [
       `packages/effect-ext/${glob}`,
@@ -57,7 +63,7 @@ const webDirs =
 const webTests =
   "packages/effect-ext/tests/{atom-feed,css,encoding,json-feed,langtag,mime,robots,rss-feed,sitemap,uri-template,web}/**";
 const webModules = [
-  "packages/effect-ext/src/{AtomFeed,Browser,BrowserTesting,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,ServiceWorker,Sitemap,UriTemplate,Web}.ts",
+  "packages/effect-ext/src/{AtomFeed,Browser,BrowserTesting,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,Sitemap,UriTemplate,Web}.ts",
   `packages/effect-ext/src/${webDirs}/**`,
   `packages/effect-ext/src/internal/${webDirs}/**`,
   "packages/effect-ext/src/internal/xml.ts",
@@ -74,6 +80,9 @@ const packageNames = [
   "@thomasfosterau/effect-ai-mistral",
   "@thomasfosterau/effect-ai-voyage",
   "@thomasfosterau/effect-ext",
+  "@thomasfosterau/effect-platform-worker-shared",
+  "@thomasfosterau/effect-platform-worker",
+  "@thomasfosterau/effect-platform-service-worker",
 ];
 
 export default defineConfig({
@@ -377,6 +386,8 @@ export default defineConfig({
         files: [
           "packages/effect-ext/src/browser/{fullscreen,idle-detection,locks,navigator}.ts",
           "packages/effect-ext/src/browser-testing/{fullscreen,idle-detection,locks,navigator,permissions}.ts",
+          // The service worker mirrors: `openWindow`, `navigate`, `Clients.get`.
+          "packages/effect-platform-service-worker/src/Clients.ts",
         ],
         rules: { "effect/prefer-option-over-null": "off" },
       },
@@ -435,6 +446,44 @@ export default defineConfig({
           "unicorn/prefer-set-has": "off",
         },
       },
+      // The worker platform packages' boundary with `postMessage` and the
+      // worker globals: a message, an event and a received value are
+      // `unknown` until a schema or `toUncaught` reads them, which is the
+      // parse step these functions are.
+      {
+        files: [
+          "packages/effect-platform-worker-shared/src/{WorkerMessaging,WorkerScope,WorkerRuntime}.ts",
+          "packages/effect-platform-worker/src/*.ts",
+          "packages/effect-platform-service-worker/src/**/*.ts",
+        ],
+        rules: {
+          "effect/no-unknown-parameters": "off",
+          // `effect/workers`' `Transferable` (the transfer-list collector)
+          // is marked unstable throughout Effect 4.
+          "effecttsgo/unstable-api-usage": "off",
+        },
+      },
+      // The worker platform suites run a program under `WorkerRuntime`'s
+      // `runMain`, an entry point, with a capturing logger; their stubs
+      // mirror `postMessage(message: any)`, and the fake globals they
+      // install are whatever the platform puts there.
+      {
+        files: ["packages/effect-platform-{worker-shared,worker,service-worker}/tests/**/*.ts"],
+        rules: {
+          "effect/no-unsafe-dictionary-type": "off",
+          "effecttsgo/strict-effect-provide": "off",
+          "effect/no-unknown-parameters": "off",
+        },
+      },
+      // The service worker's cache, strategy and notification suites came
+      // from effect-ext's web suites and, like them, run each program with
+      // `Effect.runPromise` rather than `@effect/vitest`'s `it.effect`.
+      {
+        files: ["packages/effect-platform-service-worker/tests/{Fetch,Notifications}.test.ts"],
+        rules: {
+          "effect/effect-run-in-body": "off",
+        },
+      },
       // `describeError`'s documented last resort stringifies an object
       // (`String(error)`), whatever its `toString` gives: that text is the
       // contract, so no property can be picked instead.
@@ -457,7 +506,7 @@ export default defineConfig({
       // `Route<unknown, any>`: a matched handler's failure is `unknown` (a
       // rejection is what `respondWith` turns into a network error).
       {
-        files: ["packages/effect-ext/src/ServiceWorker.ts"],
+        files: ["packages/effect-platform-service-worker/src/Fetch.ts"],
         rules: {
           "effecttsgo/any-unknown-in-error-context": "off",
         },

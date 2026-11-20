@@ -1,0 +1,68 @@
+{
+  "name": "@thomasfosterau/effect-platform-worker",
+  "version": "0.0.0",
+  "description": "Effect platform utilities for dedicated and shared web workers.",
+  "keywords": [
+    "effect",
+    "web-worker",
+    "worker"
+  ],
+  "homepage": "https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-platform-worker#readme",
+  "bugs": {
+    "url": "https://github.com/thomasfosterau/effect-ext/issues"
+  },
+  "license": "MIT",
+  "author": "Thomas Foster <me@thomasfoster.au>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomasfosterau/effect-ext.git",
+    "directory": "packages/effect-platform-worker"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./DedicatedWorker": "./src/DedicatedWorker.ts",
+    "./SharedWorker": "./src/SharedWorker.ts"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./DedicatedWorker": {
+        "types": "./dist/DedicatedWorker.d.ts",
+        "import": "./dist/DedicatedWorker.js"
+      },
+      "./SharedWorker": {
+        "types": "./dist/SharedWorker.d.ts",
+        "import": "./dist/SharedWorker.js"
+      }
+    },
+    "access": "public"
+  },
+  "dependencies": {
+    "@thomasfosterau/effect-platform-worker-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@effect/language-service": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@vitest/coverage-istanbul": "catalog:",
+    "effect": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "catalog:peers"
+  }
+}
