@@ -87,6 +87,6 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "effect": "catalog:peers"
+    "effect": "catalog:platform-peers"
   }
 }

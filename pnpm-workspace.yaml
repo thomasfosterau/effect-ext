@@ -68,6 +68,12 @@ catalogs:
   # details and `Response` metadata, so they can't support 4.0 and 4.1 at once.
   ai-4-1-peers:
     effect: ^4.1.0
+  # The effect-platform-* packages: BrowserFileSystem needs FileSystem's
+  # DirectoryEntry and lstat, and SpeechSynthesis `Semaphore.takeScoped`,
+  # all first in Effect 4.1.0.
+  platform-peers:
+    "@effect/platform-browser": ^4.1.0
+    effect: ^4.1.0
 
 overrides:
   # Security floors on transitive dependencies; drop each once its parent

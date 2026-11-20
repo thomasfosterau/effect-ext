@@ -64,7 +64,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [peers, ai-cloudflare-peers, ai-4-1-peers]
+        group: [peers, ai-cloudflare-peers, ai-4-1-peers, platform-peers]
     env:
       NODE_OPTIONS: --max-old-space-size=2048
       VITEST_MAX_WORKERS: 2
