@@ -13,6 +13,7 @@ import * as TestFullscreen from "./fullscreen.ts";
 import * as TestGeolocation from "./geolocation.ts";
 import * as TestIdleDetection from "./idle-detection.ts";
 import * as TestLocks from "./locks.ts";
+import * as TestMediaDevices from "./media-devices.ts";
 import * as TestMediaQuery from "./media-query.ts";
 import * as TestNavigation from "./navigation.ts";
 import * as TestNavigator from "./navigator.ts";
@@ -57,6 +58,7 @@ export const layer = Layer.mergeAll(
   TestGeolocation.layer(),
   TestIdleDetection.layer(),
   TestLocks.layer(),
+  TestMediaDevices.layer(),
   TestMediaQuery.layer(),
   TestNavigation.layer(),
   TestNavigator.layer(),

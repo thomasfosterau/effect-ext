@@ -6,6 +6,7 @@ import {
   Browser,
   FilePicker,
   Locks,
+  MediaDevices,
   Navigation,
   Navigator,
   WakeLock,
@@ -23,6 +24,7 @@ describe("Browser.layer without a navigator", () => {
         locks: (yield* Locks.Locks).supported,
         wakeLock: (yield* WakeLock.WakeLock).supported,
         filePicker: (yield* FilePicker.FilePicker).supported,
+        media: (yield* MediaDevices.MediaDevices).supported,
         history: (yield* Navigation.Navigation).supported.history,
       }).toStrictEqual({
         userAgent: "",
@@ -30,6 +32,7 @@ describe("Browser.layer without a navigator", () => {
         locks: false,
         wakeLock: false,
         filePicker: false,
+        media: { userMedia: false, displayMedia: false, recorder: false },
         history: false,
       });
     }).pipe(Effect.provide(Browser.layer)),
