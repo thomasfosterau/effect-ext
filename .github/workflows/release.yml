@@ -3,7 +3,8 @@ name: Release
 # Changesets, split so only publishing waits for approval: `select` picks
 # `version` (open/update the version PR), `publish` (some version isn't on npm
 # yet) or `none`. Only `publish` runs in the protected `release` environment
-# and holds `id-token: write` (npm trusted publishing; no NPM_TOKEN).
+# and holds `id-token: write` (trusted publishing through pnpm's OIDC
+# exchange; no NPM_TOKEN).
 # Privileged jobs install with `--ignore-scripts` and no cache.
 
 on:
@@ -113,7 +114,7 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write # push tags, create GitHub releases
-      id-token: write # npm trusted publishing
+      id-token: write # trusted publishing (pnpm's OIDC exchange)
     env:
       pnpm_config_verify_deps_before_run: "false"
     steps:
@@ -121,7 +122,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      # Node LTS bundles npm >= 11.5.1, which trusted publishing needs.
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@v1.22.0
         with:
@@ -133,8 +133,9 @@ jobs:
       # `vp pack` needs no `prepare`: the tsgo patch only adds diagnostics.
       - name: Build
         run: vp run -r build
-      # Don't force provenance (`--provenance`): npm adds it for a public repo
-      # and package, and forcing it fails from a private one.
+      # `pnpm run release`: `pnpm -r publish` (skips versions already on npm,
+      # does the OIDC exchange and adds provenance for a public repo itself),
+      # then `changeset tag`.
       - name: Publish to npm
         uses: changesets/action/publish@v2.1.2
         with:

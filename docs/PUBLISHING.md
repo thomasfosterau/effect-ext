@@ -6,7 +6,7 @@ Releases use [Changesets](https://github.com/changesets/changesets) and npm [tru
 
 1. A PR that changes a published package adds a changeset (`vp exec changeset`).
 2. On `trunk`, [release.yml](../.github/workflows/release.yml) opens or updates the "chore: version packages" PR. Its version step is the `version` task (`changeset version`, then `vp fmt`, then a lockfile refresh): `.changeset/config.json` sets `"format": false` because Changesets would otherwise pick Vite+'s editor-only `oxfmt` shim.
-3. Merging that PR leaves versions not yet on npm, so the `publish` job waits for approval in the `release` environment, then `scripts/release.sh` packs each package with `pnpm pack` (which rewrites `catalog:` / `workspace:` specifiers), publishes it with `npm publish`, skips versions already on npm, and runs `changeset tag` for the GitHub releases.
+3. Merging that PR leaves versions not yet on npm, so the `publish` job waits for approval in the `release` environment, then the job builds every package and `pnpm run release` runs `pnpm -r publish`, which rewrites `catalog:` / `workspace:` specifiers, skips versions already on npm and does the OIDC exchange itself, then `changeset tag` for the GitHub releases.
 
 Every job in the release workflow first waits on `verify-lockfile`, so nothing runs unless `.github/workflows/actions.lock` verifies.
 
