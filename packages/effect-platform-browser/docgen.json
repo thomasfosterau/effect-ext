@@ -3,7 +3,7 @@
   "runExamples": true,
   "srcLink": "https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-platform-browser/src/",
   "enforceVersion": false,
-  "exclude": ["src/index.ts", "src/internal/**/*.ts"],
+  "exclude": ["src/index.ts", "src/internal/**/*.ts", "src/BrowserTesting.ts"],
   "parseCompilerOptions": {
     "noEmit": true,
     "module": "esnext",

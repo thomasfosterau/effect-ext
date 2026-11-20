@@ -1,10 +1,10 @@
 # Web platform
 
-Framework-neutral request / response policies, an SSRF-guarded fetch, structured logging and span tracing, content negotiation browser APIs as Effect services with in-memory test doubles, and robots.txt. No SvelteKit, Alchemy or Cloudflare dependency. These modules were `@thomasfosterau/effect-web` and its sibling packages; the import map is at the end ("Moving from effect-web"). Feeds and sitemaps are in [feeds](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/guides/feeds.md); URI templates, language tags, CSS, encodings and MIME types are in [text-formats](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/guides/text-formats.md).
+Framework-neutral request / response policies, an SSRF-guarded fetch, structured logging and span tracing, content negotiation and robots.txt. The browser platform services that were here (`Browser`, `BrowserTesting`) are now [`@thomasfosterau/effect-platform-browser`](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-platform-browser). No SvelteKit, Alchemy or Cloudflare dependency. These modules were `@thomasfosterau/effect-web` and its sibling packages; the import map is at the end ("Moving from effect-web"). Feeds and sitemaps are in [feeds](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/guides/feeds.md); URI templates, language tags, CSS, encodings and MIME types are in [text-formats](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/effect-ext/guides/text-formats.md).
 
-## Web, Net, Observability, Negotiate, Browser, BrowserTesting
+## Web, Net, Observability, Negotiate
 
-Framework-neutral web request/response utilities on `effect/http`: cache-control and security headers, Vary, the cross-origin guard, client IP, an SSRF-guarded fetch, structured logging and an allow-listed span tracer, with no SvelteKit, Alchemy or Cloudflare dependency, so it serves a SvelteKit hook, an `HttpApi` middleware or a bare Worker equally. On the client side, browser platform APIs (Web Locks, `navigator`, page visibility, media queries, the screen wake lock, `BroadcastChannel`, permission state) as Effect services, alongside `@effect/platform-browser`, with in-memory test doubles for every one.
+Framework-neutral web request/response utilities on `effect/http`: cache-control and security headers, Vary, the cross-origin guard, client IP, an SSRF-guarded fetch, structured logging and an allow-listed span tracer, with no SvelteKit, Alchemy or Cloudflare dependency, so it serves a SvelteKit hook, an `HttpApi` middleware or a bare Worker equally.
 
 Invariant ids in doc comments and below (`CACHE-AUTH-003`, `SEC-SSRF-003`, …) name the rule an export enforces; [`SECURITY.md`](https://github.com/thomasfosterau/effect-ext/blob/trunk/docs/SECURITY.md#invariant-ids) states each rule and the exports that enforce it.
 
@@ -119,49 +119,6 @@ export const makeHandle = (app: App): Handle => {
 
 A response that bypasses the middleware (an auth short-circuit) still gets the safety net: `updateWebHeaders(response, ensureCacheControl)`. A `NotAcceptable` / `UnsupportedMediaType` verdict is answered with the error document your API's library defines (the example uses bare 406 / 415 responses).
 
-#### In a browser
-
-Every `Browser` module has the same shape: a `Context.Service` tag, a `make` over a structural `*Like` slice of the platform object (omit the argument for the unsupported service), a live `layer` that reads the ambient global when it is built (never at import), a tagged error whose `reason` maps the platform's `DOMException` names, and accessors. A live layer builds in any context — a missing API degrades (`supported: false`, an `Unsupported` failure, `Option.none()`) rather than failing the layer — so one layer serves every browser, a worker and a server render.
-
-```ts
-import * as Effect from "effect/Effect";
-import { Locks, Navigator, PageVisibility, layer } from "@thomasfosterau/effect-ext/Browser";
-
-// One tab refreshes the session on behalf of every tab of the origin.
-const refresh = Effect.gen(function* () {
-  yield* Navigator.awaitOnLine;
-  return yield* fetchFreshToken; // your effect
-}).pipe(Locks.withLock("auth-refresh"));
-
-// Poll only while somebody can see the page.
-const poll = PageVisibility.whileVisible(syncInbox.pipe(Effect.repeat(everyMinute)));
-
-Effect.runFork(Effect.provide(Effect.all([refresh, poll], { concurrency: 2 }), layer));
-```
-
-#### Testing browser code
-
-`BrowserTesting`'s doubles run the **real** `Browser` adapter over an in-memory platform object, so a test exercises the code that runs in the browser. Each module's `layer` provides the service and its `Control`; drive the platform through the `Control` (the double fires the events the browser would), and read back what the code under test asked of it.
-
-```ts
-import * as Effect from "effect/Effect";
-import * as Fiber from "effect/Fiber";
-import { Navigator } from "@thomasfosterau/effect-ext/Browser";
-import { TestNavigator, observe } from "@thomasfosterau/effect-ext/BrowserTesting";
-
-const program = Effect.gen(function* () {
-  const control = yield* TestNavigator.Control;
-  // Subscribe first: `observe` returns once the stream has emitted its current value.
-  const seen = yield* observe(Navigator.onLineChanges, 2);
-  yield* control.setOnLine(false);
-  return yield* Fiber.join(seen); // [true, false]
-});
-
-Effect.runPromise(Effect.provide(program, TestNavigator.layer()));
-```
-
-Fork-then-sleep is a race (the child may not have subscribed yet); `observe` is the sync point. `TestLocks.makeLockManager()` is one origin: build several `Locks` services over it (`Locks.make(manager.forClient("tab-b"))`) to test contention between tabs.
-
 ### API
 
 #### `Web` — headers, guards, adapters
@@ -220,35 +177,6 @@ Nothing about any one media type is built in: you declare the `Representation`s 
 - `requestForRouter(request)` / `requestForRouterWeb(request)` — relabels a dispatched write's `Content-Type` to `application/json` for a router that registers JSON payloads under the default encoding.
 - `chooseNegotiatedResponse(markdown: Option<A>, onHtml: () => B)` — the Markdown response or the framework's render, which runs only on `None`.
 - `MARKDOWN_MEDIA_TYPE`.
-
-#### `Browser` — platform services
-
-Each module is a namespace: `import { Locks } from "@thomasfosterau/effect-ext/Browser"`, then `Locks.Locks` (the tag), `Locks.layer`, `Locks.make`, `Locks.withLock`, ….
-
-- `Locks` — Web Locks. `acquire(name, { mode?, steal? }): Effect<HeldLock, LockError, Scope>` holds an origin-wide lock until the scope closes; waiting is interruptible (the request is withdrawn), and closing the scope waits for the browser to report the release. `tryAcquire` is `ifAvailable` (`None` instead of queueing). `withLock(name, options?)` runs an effect under the lock and, if another context steals it, interrupts the effect and fails `Stolen`; `withLockIfAvailable` runs it only when the lock is free (leader election). `query` is a diagnostic snapshot. `LockError.reason`: `Unsupported`, `Stolen`, `InvalidRequest`, `NotAllowed`, `InvalidState`, `Failed`.
-- `Navigator` — `info` (user agent, languages, `hardwareConcurrency`, `deviceMemoryGiB`, touch points, cookies, `webdriver`, Global Privacy Control); `onLine` / `onLineChanges` / `awaitOnLine`; `languages` / `languageChanges`; `connection` / `connectionChanges` (Network Information, `None` where missing); `userActivation`; `canShare` / `share`; `sendBeacon`; `vibrate`; `storage.estimate` / `persisted` / `persist`. `NavigatorError` carries the `operation` and a `reason` (`Unsupported`, `NotAllowed`, `Aborted` — the user dismissed the share sheet, `InvalidData`, `InvalidState`, `Rejected` — the beacon was not queued, `Failed`).
-- `PageVisibility` — `state`, `changes`, `awaitVisible`, and `whileVisible(effect)`: started whenever the page becomes visible, interrupted whenever it is hidden.
-- `MediaQuery` — `matches(query)`, `changes(query)`, and the preference streams `colorScheme`, `reducedMotion`, `moreContrast`, `reducedData`.
-- `WakeLock` — the Screen Wake Lock. `acquire` is scoped; `keepAwake(effect)` holds one lock for the effect and fails `WakeLockError` without one; `keepAwakeWhileVisible(effect)` re-acquires each time the page returns (the browser drops the lock on hide) and never fails the effect over a lock it could not get.
-- `IdleDetection` — `IdleDetector` (Chromium-only, behind a permission: treat it as optional; `supported: false` is the common case). `requestPermission` (from a user gesture) returns `"granted" | "denied"`; `watch({ threshold })` is a `Stream<IdleState, IdleError>` of `{ user: "active" | "idle", screen: "locked" | "unlocked" }`, current state first, and its detector is aborted when the stream ends. `threshold` is a `Duration.Input` of at least `minimumThreshold` (one minute). `IdleError.reason`: `Unsupported`, `NotAllowed` (permission not granted, or no activation to ask with), `InvalidRequest` (threshold under a minute), `Failed`.
-- `Battery` — `navigator.getBattery()` (Chromium-only; Firefox and Safari removed it). Its own service, not part of `Navigator`, because the manager is promise-acquired (once, on the first reading). `status` is an `Option<BatteryState>` — `{ charging, level (0–1), chargingTime, dischargingTime }`, the times `Option<Duration>` with the API's `Infinity` (unknown) as `None` — and `changes` follows the four change events; `None` / empty where the API is missing or `getBattery()` rejects.
-- `Fullscreen` — `enter(element, options?): Effect<void, FullscreenError, Scope>` shows an element fullscreen; closing the scope calls `exitFullscreen()` only if that element is still the fullscreen one. `withFullscreen(element, options?)` is the combinator form (the user leaving with Esc does not interrupt it). `element` (`Option`) and `changes` follow `fullscreenchange`. Unprefixed API only; Safari on iPhone reads as unsupported. `FullscreenError.reason`: `Unsupported` (no API, or `fullscreenEnabled` is `false`), `NotAllowed` (no user activation, a permissions policy), `Failed`.
-- `ScreenOrientation` — `type`, `angle` (`Option`), `current`, and `changes` (follows `change`; empty where missing). `lock(orientation)` is scoped and unlocks when the scope closes; `withLock(orientation)` is the combinator form, and composes inside `Fullscreen.withFullscreen`, where browsers allow a lock. `OrientationError.reason`: `Unsupported` (no API or no `lock`, or a `NotSupportedError` refusal), `NotAllowed` (`SecurityError`), `Aborted` (a newer lock superseded it), `Failed`.
-- `Notifications` — the page's own `Notification`s. `permission` (`None` where unsupported); `requestPermission` returns the user's answer and fails `NotAllowed` without transient user activation; `show(title, options?): Effect<ShownNotification, NotificationError, Scope>` closes the notification when the scope closes, and its `clicks` / `closes` streams replay from when it was shown, end once it closes and fail `Failed` on the browser's `error` event; `permissionChanges` follows `PermissionStatus.changes("notifications")`. `NotificationError.reason`: `Unsupported`, `NotAllowed` (not yet granted, or no activation), `Denied`, `InvalidData`, `Failed`. Service-worker-registration notifications (`registration.showNotification`, `notificationclick`) are not here: they outlive the page and their events reach the worker, so they belong with `@thomasfosterau/effect-platform-service-worker`'s `Notifications`.
-- `Broadcast` — `BroadcastChannel`. `channel(name, schema)` opens a scoped channel whose `publish` encodes and whose messages are decoded through the schema (an undecodable message from another tab — an older deploy — is dropped with a warning log). `subscribe` starts listening when it runs, so nothing posted before the stream is consumed is lost; `messages` listens from when it runs. `open(name)` is the undecoded form.
-- `PermissionStatus` — over `@effect/platform-browser`'s `Permissions`: `state(name)`, `changes(name)` (follows the status's `change` event), `awaitGranted(name)`.
-- `layer` — every live service above plus `@effect/platform-browser`'s `Clipboard`, `Geolocation` and `Permissions`. Prefer the per-service layers where bundle size matters.
-
-#### `BrowserTesting` — doubles
-
-- `TestLocks` — `makeLockManager({ clientId? })`, an in-memory lock manager following the Web Locks request algorithm (FIFO per name, shared/exclusive, `ifAvailable`, `steal`, `signal`, `query`), with `forClient(id)` views for other tabs; `layer(manager?)`.
-- `TestNavigator` — `layer(options?)` / `make(options?)` with `Control`: `setOnLine`, `setLanguages`, `setConnection`, `setUserActivation`, and the recorded `shares`, `beacons`, `vibrations`. Options choose how `share` (`succeed` / `abort` / `deny` / `unsupported`) and `sendBeacon` (`queue` / `reject` / `unsupported`) answer.
-- `TestPageVisibility`, `TestMediaQuery`, `TestWakeLock` (`held`, `requests`, `releaseAll`, `setDenied`), `TestBroadcast` (an in-memory hub with structured-clone semantics; `posted`, `deliver` a message from "another context").
-- `TestIdleDetection` — `Control`: `setUser`, `setScreen` (fire `change` on running detectors), `setPermission`, `setAnswer`, `running`, `thresholds`. `TestBattery` — `Control`: `set({ charging?, level?, chargingTime?, dischargingTime? })` (fires the matching events), `requests`; options set the readings, `supported` and `reject`.
-- `TestFullscreen` — `Control`: `element(id)`, `setAllowed`, `exit` (the user pressing Esc), `requests`. `TestScreenOrientation` — `Control`: `rotate(type, angle?)`, `locked`, `setRefusal(refusal?)` (no argument grants locks again); options choose the starting orientation and whether `lock` exists.
-- `TestNotifications` — `layer(options?)` / `make(options?)` with `Control`: `setPermission`, `setAnswer` (what a prompt resolves to), `setUserActivation`, `click` / `dismiss` / `fail` the `index`th notification, and the recorded `shown` (each entry's `options` is an `Option`) and `requests`.
-- `TestPermissions`, `TestClipboard`, `TestGeolocation` — doubles for the `@effect/platform-browser` services.
-- `layer` — every double and every `Control` at once. `observe(stream, count)` — forks the first `count` elements and returns once the first is out.
 
 ## Robots
 
@@ -373,8 +301,8 @@ Each `@thomasfosterau/effect-web` entry point, and each of its sibling packages,
 | `@thomasfosterau/effect-web/observability` | `@thomasfosterau/effect-ext/Observability` |
 | `@thomasfosterau/effect-web/negotiate` | `@thomasfosterau/effect-ext/Negotiate` |
 | `@thomasfosterau/effect-web/service-worker` | `@thomasfosterau/effect-platform-service-worker` (`Caches`, `Events`, `Fetch`, `Notifications`) |
-| `@thomasfosterau/effect-web/browser` | `@thomasfosterau/effect-ext/Browser` |
-| `@thomasfosterau/effect-web/testing` | `@thomasfosterau/effect-ext/BrowserTesting` |
+| `@thomasfosterau/effect-web/browser` | `@thomasfosterau/effect-platform-browser` (one namespace per service; `layer` is `Browser.layer`) |
+| `@thomasfosterau/effect-web/testing` | `@thomasfosterau/effect-platform-browser/BrowserTesting` |
 | `@thomasfosterau/effect-robots` | `@thomasfosterau/effect-ext/Robots` |
 | `@thomasfosterau/effect-sitemap` | `@thomasfosterau/effect-ext/Sitemap` |
 | `@thomasfosterau/effect-rss-feed` | `@thomasfosterau/effect-ext/RssFeed` |
@@ -388,4 +316,4 @@ Each `@thomasfosterau/effect-web` entry point, and each of its sibling packages,
 | `@thomasfosterau/effect-encoding/{japanese,gb18030,big5,euc-kr}` | `@thomasfosterau/effect-ext/Encoding{Japanese,Gb18030,Big5,EucKr}` |
 | `@thomasfosterau/effect-mime` | `@thomasfosterau/effect-ext/Mime` |
 
-Two things change beyond the path: the `effect` peer range is `^4.0.0` (effect-web's was `>=4.0.0-rc.118`), and each service's `Context` key moved with it (`@thomasfosterau/effect-web/browser/Locks` is now `@thomasfosterau/effect-ext/Browser/Locks`), so a layer built from the old package does not satisfy a service from the new one. Move every import at once.
+Two things change beyond the path: the `effect` peer range is `^4.0.0` (effect-web's was `>=4.0.0-rc.118`), and each service's `Context` key moved with it (`@thomasfosterau/effect-web/browser/Locks` is now `@thomasfosterau/effect-platform-browser/Locks`), so a layer built from the old package does not satisfy a service from the new one. Move every import at once.

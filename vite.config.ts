@@ -60,16 +60,33 @@ const aiPackages = [
 ];
 
 /** effect-ext's web-platform modules and their tests. */
-const webDirs =
-  "{browser,browser-testing,css,encoding,json-feed,langtag,mime,observability,uri-template,web}";
+const webDirs = "{css,encoding,json-feed,langtag,mime,observability,uri-template,web}";
 const webTests =
   "packages/effect-ext/tests/{atom-feed,css,encoding,json-feed,langtag,mime,robots,rss-feed,sitemap,uri-template,web}/**";
+/**
+ * effect-platform-browser's platform services and doubles, which were
+ * effect-ext's `Browser` / `BrowserTesting` and keep those modules' web
+ * allowances until they are paid down; and their suites.
+ */
+const browserServices =
+  "{Battery,Broadcast,Browser,BrowserTesting,Fullscreen,IdleDetection,Locks,MediaQuery,Navigator,Notifications,PageVisibility,PermissionStatus,ScreenOrientation,WakeLock}";
+const browserTests = [
+  `packages/effect-platform-browser/tests/${browserServices}.{test,types}.ts`,
+  "packages/effect-platform-browser/tests/testing/**",
+];
+const browserModules = [
+  `packages/effect-platform-browser/src/${browserServices}.ts`,
+  "packages/effect-platform-browser/src/testing/**",
+  "packages/effect-platform-browser/src/internal/{dom,globals}.ts",
+  ...browserTests,
+];
 const webModules = [
-  "packages/effect-ext/src/{AtomFeed,Browser,BrowserTesting,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,Sitemap,UriTemplate,Web}.ts",
+  "packages/effect-ext/src/{AtomFeed,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,Sitemap,UriTemplate,Web}.ts",
   `packages/effect-ext/src/${webDirs}/**`,
   `packages/effect-ext/src/internal/${webDirs}/**`,
   "packages/effect-ext/src/internal/xml.ts",
   webTests,
+  ...browserModules,
 ];
 
 const timeTests = "packages/effect-ext/tests/time/**";
@@ -387,8 +404,8 @@ export default defineConfig({
         // the adapter converts each one to `Option` at the boundary. The
         // `BrowserTesting` doubles implement the same mirrors.
         files: [
-          "packages/effect-ext/src/browser/{fullscreen,idle-detection,locks,navigator}.ts",
-          "packages/effect-ext/src/browser-testing/{fullscreen,idle-detection,locks,navigator,permissions}.ts",
+          "packages/effect-platform-browser/src/{Fullscreen,IdleDetection,Locks,Navigator}.ts",
+          "packages/effect-platform-browser/src/testing/{fullscreen,idle-detection,locks,navigator,permissions}.ts",
           // The service worker mirrors: `openWindow`, `navigate`, `Clients.get`,
           // and `PushEvent.data`, `null` for a push without a payload.
           "packages/effect-platform-service-worker/src/{Clients,Events}.ts",
@@ -539,7 +556,7 @@ export default defineConfig({
       // The web suites run each program with `Effect.runPromise` / `runSync`
       // rather than `@effect/vitest`'s `it.effect` and `layer(...)`.
       {
-        files: [webTests],
+        files: [webTests, ...browserTests],
         rules: {
           "effect/effect-run-in-body": "off",
           "effecttsgo/strict-effect-provide": "off",

@@ -3,10 +3,10 @@ import { type CoverageFloor, distExportsPackageConfig } from "../../vite.package
 // Coverage ratchet: the last measured % (in the comments), rounded down.
 // Raise a metric as coverage rises; never lower one.
 export const coverageFloor: CoverageFloor = {
-  lines: 98, // 98.75
-  branches: 93, // 93.61
-  functions: 97, // 97.75
-  statements: 98, // 98.03
+  lines: 99, // 99.01
+  branches: 93, // 93.88
+  functions: 98, // 98.14
+  statements: 98, // 98.23
 };
 
 /** The AI service abstractions. */
@@ -83,8 +83,6 @@ export default distExportsPackageConfig({
     "Ast",
     "AtomFeed",
     "Bounded",
-    "Browser",
-    "BrowserTesting",
     "BufferStruct",
     "Checked",
     "Clamped",

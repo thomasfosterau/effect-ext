@@ -12,7 +12,6 @@ pnpm add @thomasfosterau/effect-ext effect
 
 `effect` (`^4.0.0`) is a peer dependency: it must be a single copy across your app. Optional peers, each needed only by the subpaths that import it (those subpaths are not on the root barrel, so importing it never needs a peer you did not install):
 
-- `@effect/platform-browser` `^4.0.0`: `Browser`, `BrowserTesting`.
 - `@thomasfosterau/effect-parse` `^0.4.1 || ^0.5.0 || ^0.6.0`: `Robots` and the eight time modules.
 - `@effect/platform-node` `^4.0.0`: the `effect-evals` CLI only.
 
@@ -80,8 +79,6 @@ Guide: [web](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/ef
 | `Net` | The SSRF host block list, the URL safety check and the redirect-revalidating fetch. |
 | `Observability` | The structured JSON-line sink, the allow-listed span tracer, the `logEvent` trio, `describeError`, the auth-outcome signal and per-request metrics. |
 | `Negotiate` | The content-negotiation verdict over the representations you declare. |
-| `Browser` | Browser platform APIs as Effect services, and one `layer` with every live service. Needs `@effect/platform-browser`. |
-| `BrowserTesting` | In-memory doubles for every `Browser` service, each with a `Control`; `observe`. Needs `@effect/platform-browser`. |
 | `Robots` | The Robots Exclusion Protocol (RFC 9309): the library, the crawler side and the serving side. Needs `@thomasfosterau/effect-parse`. |
 
 ### Sitemaps and feeds

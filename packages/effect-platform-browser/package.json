@@ -5,9 +5,12 @@
   "keywords": [
     "browser",
     "effect",
+    "notifications",
     "push",
     "pwa",
-    "service-worker"
+    "service-worker",
+    "wake-lock",
+    "web-locks"
   ],
   "homepage": "https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-platform-browser#readme",
   "bugs": {
@@ -30,8 +33,22 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./Battery": "./src/Battery.ts",
+    "./Broadcast": "./src/Broadcast.ts",
+    "./Browser": "./src/Browser.ts",
+    "./BrowserTesting": "./src/BrowserTesting.ts",
+    "./Fullscreen": "./src/Fullscreen.ts",
+    "./IdleDetection": "./src/IdleDetection.ts",
+    "./Locks": "./src/Locks.ts",
+    "./MediaQuery": "./src/MediaQuery.ts",
+    "./Navigator": "./src/Navigator.ts",
+    "./Notifications": "./src/Notifications.ts",
+    "./PageVisibility": "./src/PageVisibility.ts",
+    "./PermissionStatus": "./src/PermissionStatus.ts",
     "./PushManager": "./src/PushManager.ts",
-    "./ServiceWorkerContainer": "./src/ServiceWorkerContainer.ts"
+    "./ScreenOrientation": "./src/ScreenOrientation.ts",
+    "./ServiceWorkerContainer": "./src/ServiceWorkerContainer.ts",
+    "./WakeLock": "./src/WakeLock.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -42,13 +59,69 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
       },
+      "./Battery": {
+        "types": "./dist/Battery.d.ts",
+        "import": "./dist/Battery.js"
+      },
+      "./Broadcast": {
+        "types": "./dist/Broadcast.d.ts",
+        "import": "./dist/Broadcast.js"
+      },
+      "./Browser": {
+        "types": "./dist/Browser.d.ts",
+        "import": "./dist/Browser.js"
+      },
+      "./BrowserTesting": {
+        "types": "./dist/BrowserTesting.d.ts",
+        "import": "./dist/BrowserTesting.js"
+      },
+      "./Fullscreen": {
+        "types": "./dist/Fullscreen.d.ts",
+        "import": "./dist/Fullscreen.js"
+      },
+      "./IdleDetection": {
+        "types": "./dist/IdleDetection.d.ts",
+        "import": "./dist/IdleDetection.js"
+      },
+      "./Locks": {
+        "types": "./dist/Locks.d.ts",
+        "import": "./dist/Locks.js"
+      },
+      "./MediaQuery": {
+        "types": "./dist/MediaQuery.d.ts",
+        "import": "./dist/MediaQuery.js"
+      },
+      "./Navigator": {
+        "types": "./dist/Navigator.d.ts",
+        "import": "./dist/Navigator.js"
+      },
+      "./Notifications": {
+        "types": "./dist/Notifications.d.ts",
+        "import": "./dist/Notifications.js"
+      },
+      "./PageVisibility": {
+        "types": "./dist/PageVisibility.d.ts",
+        "import": "./dist/PageVisibility.js"
+      },
+      "./PermissionStatus": {
+        "types": "./dist/PermissionStatus.d.ts",
+        "import": "./dist/PermissionStatus.js"
+      },
       "./PushManager": {
         "types": "./dist/PushManager.d.ts",
         "import": "./dist/PushManager.js"
       },
+      "./ScreenOrientation": {
+        "types": "./dist/ScreenOrientation.d.ts",
+        "import": "./dist/ScreenOrientation.js"
+      },
       "./ServiceWorkerContainer": {
         "types": "./dist/ServiceWorkerContainer.d.ts",
         "import": "./dist/ServiceWorkerContainer.js"
+      },
+      "./WakeLock": {
+        "types": "./dist/WakeLock.d.ts",
+        "import": "./dist/WakeLock.js"
       }
     },
     "access": "public"
@@ -58,6 +131,7 @@
   },
   "devDependencies": {
     "@effect/language-service": "catalog:",
+    "@effect/platform-browser": "catalog:",
     "@effect/vitest": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
     "effect": "catalog:",
@@ -65,6 +139,7 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
+    "@effect/platform-browser": "catalog:peers",
     "effect": "catalog:peers"
   }
 }

@@ -38,7 +38,6 @@ import * as TriStateEntry from "@thomasfosterau/effect-ext/TriState";
 import * as BoundedEntry from "@thomasfosterau/effect-ext/Bounded";
 import { Langtag, Mime, Sitemap, UriTemplate, Web } from "@thomasfosterau/effect-ext";
 import * as Robots from "@thomasfosterau/effect-ext/Robots";
-import * as Browser from "@thomasfosterau/effect-ext/Browser";
 import * as Negotiate from "@thomasfosterau/effect-ext/Negotiate";
 import { Ratio, U8, U64 } from "@thomasfosterau/effect-ext";
 import { I8 } from "@thomasfosterau/effect-ext/I8";
@@ -226,7 +225,6 @@ export type Checks = [
   Assert<Not<IsAny<typeof Web.appendVary>>>,
   Assert<Not<IsAny<typeof Sitemap.renderSitemap>>>,
   Assert<Not<IsAny<typeof Robots.isAllowed>>>,
-  Assert<Not<IsAny<typeof Browser.Locks.withLock>>>,
   Assert<Not<IsAny<typeof Negotiate.negotiateRepresentation>>>,
   Assert<Equals<ReturnType<typeof Negotiate.negotiateRepresentation>, Negotiate.Negotiation>>,
   Assert<
