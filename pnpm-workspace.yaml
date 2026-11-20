@@ -30,7 +30,7 @@ catalog:
   "@effect/tsgo": 0.69.0
   "@effect/vitest": 4.1.4
   "@enfect/oxlint": 0.10.0
-  "@thomasfosterau/effect-parse": ^0.6.1
+  "@thomasfosterau/effect-parse": ^0.6.2
   "@types/node": ^26.6.6
   "@vitest/coverage-istanbul": 5.1.0
   effect: 4.1.4
