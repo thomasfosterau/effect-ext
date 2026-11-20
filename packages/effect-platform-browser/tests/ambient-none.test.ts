@@ -4,6 +4,7 @@ import { installGlobals } from "../../effect-platform-worker-shared/tests/global
 import * as Effect from "effect/Effect";
 import {
   Browser,
+  Credentials,
   FilePicker,
   Locks,
   MediaDevices,
@@ -29,6 +30,7 @@ describe("Browser.layer without a navigator", () => {
         media: (yield* MediaDevices.MediaDevices).supported,
         history: (yield* Navigation.Navigation).supported.history,
         speech: (yield* SpeechSynthesis.SpeechSynthesis).supported,
+        credentials: (yield* Credentials.Credentials).supported,
         recognition: (yield* SpeechRecognition.SpeechRecognition).supported,
       }).toStrictEqual({
         userAgent: "",
@@ -39,6 +41,7 @@ describe("Browser.layer without a navigator", () => {
         media: { userMedia: false, displayMedia: false, recorder: false },
         history: false,
         speech: false,
+        credentials: false,
         recognition: false,
       });
     }).pipe(Effect.provide(Browser.layer)),

@@ -25,6 +25,8 @@
  * - `TestMediaDevices` — cameras, microphones and a recorder, with a
  *   `Control` that plugs devices in, fails captures, ends tracks and feeds
  *   the recorder.
+ * - `TestCredentials` — an in-memory passkey authenticator, with a
+ *   `Control` that fails ceremonies and picks a passkey from autofill.
  * - `TestSpeechSynthesis` and `TestSpeechRecognition` — a synthesiser that
  *   speaks at once (or holds until told) and a recogniser that hears what a
  *   `Control` says.
@@ -41,6 +43,7 @@ export { observe } from "./testing/stream.ts";
 export * as TestBattery from "./testing/battery.ts";
 export * as TestBroadcast from "./testing/broadcast.ts";
 export * as TestClipboard from "./testing/clipboard.ts";
+export * as TestCredentials from "./testing/credentials.ts";
 export * as TestDomObservers from "./testing/dom-observers.ts";
 export * as TestFilePicker from "./testing/file-picker.ts";
 export * as TestFullscreen from "./testing/fullscreen.ts";

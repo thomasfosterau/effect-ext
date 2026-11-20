@@ -12,6 +12,7 @@ import * as Stream from "effect/Stream";
 import {
   Battery,
   Browser,
+  Credentials,
   DomObservers,
   FilePicker,
   MediaDevices,
@@ -35,6 +36,10 @@ class FakeNavigator {
   onLine = true;
   readonly userActivation = { isActive: true, hasBeenActive: true };
   readonly wakeLock = { request: () => new Promise<never>(() => {}) };
+  readonly credentials = {
+    create: () => Promise.reject(new DOMException("cancelled", "NotAllowedError")),
+    get: () => Promise.reject(new DOMException("cancelled", "NotAllowedError")),
+  };
   readonly mediaDevices = Object.assign(new EventTarget(), {
     getUserMedia: () => Promise.reject(new DOMException("denied", "NotAllowedError")),
     enumerateDevices: () => Promise.resolve([]),
@@ -133,6 +138,7 @@ installGlobals({
   },
   matchMedia,
   MediaRecorder: FakeMediaRecorder,
+  PublicKeyCredential: { isConditionalMediationAvailable: () => Promise.resolve(true) },
   speechSynthesis,
   SpeechSynthesisUtterance: FakeUtterance,
   webkitSpeechRecognition: FakeRecognition,
@@ -198,6 +204,15 @@ describe("Browser.layer over a page's globals", () => {
         recordedOptions: recorded[1],
         spoken: utterances,
         heard: yield* SpeechRecognition.once(),
+        passkey: yield* Effect.flip(
+          Credentials.register({
+            rp: { name: "Example" },
+            user: { id: "AA", name: "ada", displayName: "Ada" },
+            challenge: "AA",
+            pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+          }),
+        ).pipe(Effect.map((error) => error.reason)),
+        capabilities: yield* Credentials.capabilities,
       }).toStrictEqual({
         battery: Option.some(0.5),
         dark: true,
@@ -219,6 +234,8 @@ describe("Browser.layer over a page's globals", () => {
         recordedOptions: { mimeType: "audio/webm" },
         spoken: ["Hello"],
         heard: Option.none(),
+        passkey: "NotAllowed",
+        capabilities: { conditionalGet: true },
       });
     }).pipe(Effect.provide(Browser.layer)),
   );

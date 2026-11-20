@@ -420,6 +420,10 @@ export default defineConfig({
           // and an event's `downloadRequest`.
           "packages/effect-platform-browser/src/Navigation.ts",
           "packages/effect-platform-browser/src/testing/navigation.ts",
+          // WebAuthn's `authenticatorAttachment`, `getPublicKey()` and
+          // `userHandle`, each `null` where the authenticator gives none.
+          "packages/effect-platform-browser/src/Credentials.ts",
+          "packages/effect-platform-browser/src/testing/credentials.ts",
           // An utterance's `voice`, `null` for the default voice.
           "packages/effect-platform-browser/src/SpeechSynthesis.ts",
           "packages/effect-platform-browser/src/testing/speech-synthesis.ts",

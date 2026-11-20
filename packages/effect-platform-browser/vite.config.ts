@@ -17,6 +17,7 @@ export default packageConfig({
     Broadcast: "src/Broadcast.ts",
     Browser: "src/Browser.ts",
     BrowserTesting: "src/BrowserTesting.ts",
+    Credentials: "src/Credentials.ts",
     DomObservers: "src/DomObservers.ts",
     Fullscreen: "src/Fullscreen.ts",
     IdleDetection: "src/IdleDetection.ts",

@@ -11,6 +11,7 @@
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import type { BatteryManagerLike } from "../Battery.ts";
+import type { WebAuthnLike } from "../Credentials.ts";
 import type { FilePickerLike } from "../FilePicker.ts";
 import type { MediaDevicesLike, MediaRecorderFactoryLike } from "../MediaDevices.ts";
 import type { IdleDetectorLike } from "../IdleDetection.ts";
@@ -183,3 +184,18 @@ export const ambientSpeechRecognition = (): Option.Option<SpeechRecognitionFacto
         new Recognition(),
   );
 };
+
+/**
+ * WebAuthn: `navigator.credentials` and `PublicKeyCredential`, where the
+ * context has both (a secure window).
+ */
+export const ambientWebAuthn = (): Option.Option<WebAuthnLike> =>
+  Option.map(
+    Option.all([
+      Option.flatMap(ambientNavigator(), (navigator) =>
+        Option.fromUndefinedOr<CredentialsContainer>(navigator.credentials),
+      ),
+      Option.fromUndefinedOr<typeof globalThis.PublicKeyCredential>(globalThis.PublicKeyCredential),
+    ]),
+    ([container, statics]): WebAuthnLike => ({ container, statics }),
+  );
