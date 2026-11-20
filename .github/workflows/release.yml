@@ -130,13 +130,13 @@ jobs:
           cache: false
           run-install: |
             - args: ["--frozen-lockfile", "--ignore-scripts"]
-      # `vp pack` needs no `prepare`: the tsgo patch only adds diagnostics.
-      - name: Build
-        run: vp run -r build
-      # `pnpm run release`: `pnpm -r publish` (skips versions already on npm,
-      # does the OIDC exchange and adds provenance for a public repo itself),
-      # then `changeset tag`.
+      # `vp run release` (vite.config.ts): builds (`vp pack` needs no `prepare`:
+      # the tsgo patch only adds diagnostics), runs the offline `check:dist`,
+      # publishes each unpublished version with `vp pm publish -r` (pnpm does
+      # the OIDC exchange and adds provenance for a public repo itself), then
+      # `changeset git-tag` reports the new tags through CHANGESETS_OUTPUT, and
+      # the action pushes them and creates the releases.
       - name: Publish to npm
         uses: changesets/action/publish@v2.1.2
         with:
-          script: pnpm run release
+          script: vp run release

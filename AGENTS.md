@@ -14,6 +14,7 @@ Read [README.md](README.md) and [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) fir
 - `vp run docgen` executes every `@example`: each must be a complete program that runs offline, imports what it uses and never uses `declare const`. Docgen doesn't compare output, so update `// →` comments by hand.
 - `String` / `Str` lengths and offsets are UTF-8 bytes, as in Rust; test with multi-byte text.
 - `Arr.makeBy` and `Arr.range` never return an empty array.
+- Publish only through the Release workflow (`vp run release`: `vp pm publish -r`, then `changeset git-tag`). Release-path registry calls go through `vp pm`, never `npm` / `pnpm` directly, and `release` depends only on the build and offline checks (`check:dist`).
 - Running every package's type check in parallel can exhaust a small container's memory; if `vp run check` is killed, run it per package (`vp run --filter ./packages/<name> check`).
 
 ## Process

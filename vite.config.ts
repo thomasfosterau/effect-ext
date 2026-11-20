@@ -756,6 +756,30 @@ export default defineConfig({
         dependsOn: packageNames.map((name) => `${name}#build`),
         cache: false,
       },
+      // The publish job's script (.github/workflows/release.yml), after the
+      // offline `check:dist` on the same commit: pnpm publishes each public
+      // package whose version isn't on npm yet, in dependency order, under
+      // OIDC trusted publishing; then `changeset git-tag` tags each untagged
+      // version and reports the tags to `changesets/action` through
+      // `CHANGESETS_OUTPUT`, which pushes them and creates the GitHub releases.
+      // A failed publish stops before tagging; a re-run publishes only what is
+      // missing. Uncached, so it sees the job's full environment. Nothing that
+      // installs or fetches packages may join `dependsOn`: this job holds
+      // `id-token: write`.
+      release: {
+        command: [
+          "vp pm publish -r --access public --no-git-checks -- --ignore-scripts",
+          "changeset git-tag",
+        ],
+        dependsOn: ["check:dist"],
+        cache: false,
+      },
+      // What `release` would publish, without publishing or tagging.
+      "release:dry-run": {
+        command: "vp pm publish -r --access public --dry-run --no-git-checks -- --ignore-scripts",
+        dependsOn: ["check:dist"],
+        cache: false,
+      },
       // One Istanbul map over every suite, which `fallow audit` reads for its
       // CRAP scores (`health.coverage` in .fallowrc.json).
       "test:coverage": {
