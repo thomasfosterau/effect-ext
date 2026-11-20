@@ -236,6 +236,15 @@ export default defineConfig({
           "effecttsgo/strict-effect-provide": "off",
         },
       },
+      // The binding-free URL constructors hand back a ready model, not a
+      // layer, so each provides its own `FetchHttpClient` (documented on the
+      // export): the constructor is that model's entry point.
+      {
+        files: ["packages/effect-ai-cloudflare/src/{Cohere,OpenAiModeration}.ts"],
+        rules: {
+          "effecttsgo/strict-effect-provide": "off",
+        },
+      },
       // `unsafeCoerce<T>` is the evals suites' one deliberate escape hatch:
       // the caller names `T` to hand an ill-typed input to a failure path, so
       // the type parameter appears only in the return type by design.

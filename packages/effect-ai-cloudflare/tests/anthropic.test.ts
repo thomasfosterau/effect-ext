@@ -13,7 +13,7 @@
  * @module tests/unit/anthropic
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, layer } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -24,7 +24,6 @@ import {
   type WorkersAiBinding,
 } from "@thomasfosterau/effect-ai-cloudflare";
 import { stubAiBinding } from "./helpers/ai";
-import { runTest } from "./helpers/effect";
 
 const GATEWAY_URL = "https://gateway.ai.cloudflare.com/v1/acct/website/anthropic";
 
@@ -41,7 +40,7 @@ interface CapturedRequest {
   readonly body: unknown;
 }
 
-/** Builds a Layer providing a `FetchHttpClient` whose fetch is a stub. */
+/** A `FetchHttpClient.Fetch` stub that records each request. */
 const stubFetch = (response: { status: number; body: unknown }) => {
   const calls: CapturedRequest[] = [];
   const fetch: typeof globalThis.fetch = async (input, init) => {
@@ -54,10 +53,7 @@ const stubFetch = (response: { status: number; body: unknown }) => {
     });
     return Response.json(response.body, { status: response.status });
   };
-  const layer = FetchHttpClient.layer.pipe(
-    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch)),
-  );
-  return { calls, layer };
+  return { calls, fetch };
 };
 
 const anthropicMessageResponse = (text: string) => ({
@@ -80,53 +76,51 @@ const anthropicMessageResponse = (text: string) => ({
 });
 
 describe("anthropicLanguageModelLayer", () => {
-  it("routes generateText through the resolved gateway URL with no x-api-key", async () => {
-    const { calls, layer: fetchLayer } = stubFetch({
-      status: 200,
-      body: anthropicMessageResponse("hello from the gateway"),
-    });
-    const ai = stubAi(GATEWAY_URL);
+  const ai = stubAi(GATEWAY_URL);
 
-    const response = await runTest(
-      LanguageModel.generateText({ prompt: "say hello" }).pipe(
-        Effect.provide(
-          anthropicLanguageModelLayer(
-            { ai, gatewayId: "website" },
-            { model: "claude-sonnet-4-6" },
-          ).pipe(Layer.provide(fetchLayer)),
-        ),
-      ),
+  layer(
+    anthropicLanguageModelLayer({ ai, gatewayId: "website" }, { model: "claude-sonnet-4-6" }).pipe(
+      Layer.provide(FetchHttpClient.layer),
+    ),
+  )((t) => {
+    t.effect("routes generateText through the resolved gateway URL with no x-api-key", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = stubFetch({
+          status: 200,
+          body: anthropicMessageResponse("hello from the gateway"),
+        });
+
+        const response = yield* LanguageModel.generateText({ prompt: "say hello" }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0]?.url).toBe(`${GATEWAY_URL}/v1/messages?beta=true`);
+        expect(calls[0]?.apiKeyHeader).toEqual(Option.none());
+        expect(calls[0]?.versionHeader).toEqual(Option.some("2023-06-01"));
+        expect(calls[0]?.body).toMatchObject({ model: "claude-sonnet-4-6" });
+        expect(response.text).toBe("hello from the gateway");
+      }),
     );
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe(`${GATEWAY_URL}/v1/messages?beta=true`);
-    expect(calls[0]?.apiKeyHeader).toEqual(Option.none());
-    expect(calls[0]?.versionHeader).toEqual(Option.some("2023-06-01"));
-    expect(calls[0]?.body).toMatchObject({ model: "claude-sonnet-4-6" });
-    expect(response.text).toBe("hello from the gateway");
-  });
+    t.effect("fails with AiError when the gateway responds with an error status", () =>
+      Effect.gen(function* () {
+        const { fetch } = stubFetch({
+          status: 401,
+          body: {
+            type: "error",
+            error: { type: "authentication_error", message: "no BYOK key configured" },
+          },
+        });
 
-  it("fails with AiError when the gateway responds with an error status", async () => {
-    const { layer: fetchLayer } = stubFetch({
-      status: 401,
-      body: {
-        type: "error",
-        error: { type: "authentication_error", message: "no BYOK key configured" },
-      },
-    });
-    const ai = stubAi(GATEWAY_URL);
+        const exit = yield* Effect.exit(
+          LanguageModel.generateText({ prompt: "say hello" }).pipe(
+            Effect.provideService(FetchHttpClient.Fetch, fetch),
+          ),
+        );
 
-    const exit = await Effect.runPromiseExit(
-      LanguageModel.generateText({ prompt: "say hello" }).pipe(
-        Effect.provide(
-          anthropicLanguageModelLayer(
-            { ai, gatewayId: "website" },
-            { model: "claude-sonnet-4-6" },
-          ).pipe(Layer.provide(fetchLayer)),
-        ),
-      ),
+        expect(exit._tag).toBe("Failure");
+      }),
     );
-
-    expect(exit._tag).toBe("Failure");
   });
 });

@@ -12,11 +12,10 @@
  * @module tests/unit/cohere-url
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Layer from "effect/Layer";
 import { AiError } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
 import {
@@ -25,7 +24,7 @@ import {
   makeCohereEmbeddingModelFromUrl,
   makeCohereRerankerFromUrl,
 } from "@thomasfosterau/effect-ai-cloudflare";
-import { expectFailureInstanceOf, runTest, runTestExit } from "./helpers/effect";
+import { expectFailureInstanceOf } from "./helpers/effect";
 
 interface CapturedRequest {
   readonly url: string;
@@ -44,10 +43,7 @@ const stubFetch = (response: { status: number; body: unknown }) => {
     });
     return Response.json(response.body, { status: response.status });
   };
-  const layer = FetchHttpClient.layer.pipe(
-    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch)),
-  );
-  return { calls, layer };
+  return { calls, fetch };
 };
 
 /** A fetch stub that returns a 200 response whose body is not valid JSON. */
@@ -57,27 +53,13 @@ const malformedBodyFetch: typeof globalThis.fetch = async () =>
     headers: { "content-type": "application/json" },
   });
 
-const stubFetchMalformedBody = () => {
-  const layer = FetchHttpClient.layer.pipe(
-    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, malformedBodyFetch)),
-  );
-  return { layer };
-};
-
 /** A fetch stub that rejects, simulating a transport-level failure. */
 const rejectingFetch: typeof globalThis.fetch = async () => {
   throw new TypeError("network unreachable");
 };
 
-const stubFetchReject = () => {
-  const layer = FetchHttpClient.layer.pipe(
-    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, rejectingFetch)),
-  );
-  return { layer };
-};
-
 const stubConfig = (values: Record<string, string>) =>
-  ConfigProvider.layer(ConfigProvider.fromUnknown(values));
+  Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromUnknown(values));
 
 const GATEWAY_CONFIG = {
   CF_ACCOUNT_ID: "acct",
@@ -86,104 +68,118 @@ const GATEWAY_CONFIG = {
 };
 
 describe("makeCohereEmbeddingModelFromUrl", () => {
-  it("posts the embed request to the config-resolved gateway URL with the cf-aig-authorization header", async () => {
-    const { calls, layer: fetchLayer } = stubFetch({
-      status: 200,
-      body: {
-        embeddings: {
-          float: [
-            [0.1, 0.2],
-            [0.3, 0.4],
-          ],
-        },
-        meta: { billed_units: { input_tokens: 5 } },
-      },
-    });
-
-    const response = await runTest(
+  it.effect(
+    "posts the embed request to the config-resolved gateway URL with the cf-aig-authorization header",
+    () =>
       Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
-        return yield* model.embedMany(["first", "second"]);
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-    );
+        const { calls, fetch } = stubFetch({
+          status: 200,
+          body: {
+            embeddings: {
+              float: [
+                [0.1, 0.2],
+                [0.3, 0.4],
+              ],
+            },
+            meta: { billed_units: { input_tokens: 5 } },
+          },
+        });
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe("https://gateway.ai.cloudflare.com/v1/acct/website/cohere/v2/embed");
-    expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
-    expect(calls[0]?.body).toEqual({
-      model: COHERE_EMBEDDING_MODEL,
-      input_type: "search_document",
-      texts: ["first", "second"],
-      output_dimension: 1024,
-      embedding_types: ["float"],
-    });
-    expect(response.embeddings.map((embedded) => [...embedded.vector])).toEqual([
-      [0.1, 0.2],
-      [0.3, 0.4],
-    ]);
-    expect(response.usage.inputTokens).toBe(5);
-  });
+        const response = yield* Effect.gen(function* () {
+          const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
+          return yield* model.embedMany(["first", "second"]);
+        }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG));
 
-  it("fails with AiError on a non-2xx status", async () => {
-    const { layer: fetchLayer } = stubFetch({
-      status: 401,
-      body: { message: "invalid token" },
-    });
+        expect(calls).toHaveLength(1);
+        expect(calls[0]?.url).toBe(
+          "https://gateway.ai.cloudflare.com/v1/acct/website/cohere/v2/embed",
+        );
+        expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
+        expect(calls[0]?.body).toEqual({
+          model: COHERE_EMBEDDING_MODEL,
+          input_type: "search_document",
+          texts: ["first", "second"],
+          output_dimension: 1024,
+          embedding_types: ["float"],
+        });
+        expect(response.embeddings.map((embedded) => [...embedded.vector])).toEqual([
+          [0.1, 0.2],
+          [0.3, 0.4],
+        ]);
+        expect(response.usage.inputTokens).toBe(5);
+      }),
+  );
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
-        return yield* model.embedMany(["text"]);
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-      AiError.AiError,
-    );
+  it.effect("fails with AiError on a non-2xx status", () =>
+    Effect.gen(function* () {
+      const { fetch } = stubFetch({
+        status: 401,
+        body: { message: "invalid token" },
+      });
 
-    expect(failure.reason._tag).toBe("AuthenticationError");
-  });
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
+          return yield* model.embedMany(["text"]);
+        }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG)),
+        AiError.AiError,
+      );
 
-  it("fails with AiError when the response body cannot be parsed as JSON", async () => {
-    const { layer: fetchLayer } = stubFetchMalformedBody();
+      expect(failure.reason._tag).toBe("AuthenticationError");
+    }),
+  );
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
-        return yield* model.embedMany(["text"]);
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-      AiError.AiError,
-    );
+  it.effect("fails with AiError when the response body cannot be parsed as JSON", () =>
+    Effect.gen(function* () {
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
+          return yield* model.embedMany(["text"]);
+        }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, malformedBodyFetch),
+          stubConfig(GATEWAY_CONFIG),
+        ),
+        AiError.AiError,
+      );
 
-    expect(failure.message).toContain("response body");
-  });
+      expect(failure.message).toContain("response body");
+    }),
+  );
 
-  it("fails with AiError (not a defect) when the transport call rejects", async () => {
-    const { layer: fetchLayer } = stubFetchReject();
+  it.effect("fails with AiError (not a defect) when the transport call rejects", () =>
+    Effect.gen(function* () {
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
+          return yield* model.embedMany(["text"]);
+        }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, rejectingFetch),
+          stubConfig(GATEWAY_CONFIG),
+        ),
+        AiError.AiError,
+      );
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
-        return yield* model.embedMany(["text"]);
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-      AiError.AiError,
-    );
+      expect(failure.message).toContain("gateway call failed");
+    }),
+  );
 
-    expect(failure.message).toContain("gateway call failed");
-  });
+  it.effect("fails layer construction with a typed ConfigError when CF_ACCOUNT_ID is missing", () =>
+    Effect.gen(function* () {
+      const { fetch } = stubFetch({ status: 200, body: {} });
 
-  it("fails layer construction with a typed ConfigError when CF_ACCOUNT_ID is missing", async () => {
-    const { layer: fetchLayer } = stubFetch({ status: 200, body: {} });
+      const exit = yield* Effect.exit(
+        Effect.gen(function* () {
+          const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
+          return yield* model.embedMany(["text"]);
+        }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+          stubConfig({ CF_AIG_TOKEN: "test-token" }),
+        ),
+      );
 
-    const exit = await runTestExit(
-      Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
-        return yield* model.embedMany(["text"]);
-      }).pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig({ CF_AIG_TOKEN: "test-token" })),
-      ),
-    );
-
-    expect(exit._tag).toBe("Failure");
-  });
+      expect(exit._tag).toBe("Failure");
+    }),
+  );
 });
 
 describe("makeCohereRerankerFromUrl", () => {
@@ -195,139 +191,153 @@ describe("makeCohereRerankerFromUrl", () => {
     meta: { billed_units: { search_units: 1 } },
   };
 
-  it("posts the rerank request to the config-resolved gateway URL with the cf-aig-authorization header", async () => {
-    const { calls, layer: fetchLayer } = stubFetch({ status: 200, body: rerankResponse });
-
-    const response = await runTest(
+  it.effect(
+    "posts the rerank request to the config-resolved gateway URL with the cf-aig-authorization header",
+    () =>
       Effect.gen(function* () {
-        const reranker = yield* makeCohereRerankerFromUrl;
-        return yield* reranker.rerank({ query: "monstera", documents: ["a", "b"], topN: 2 });
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-    );
+        const { calls, fetch } = stubFetch({ status: 200, body: rerankResponse });
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe(
-      "https://gateway.ai.cloudflare.com/v1/acct/website/cohere/v2/rerank",
-    );
-    expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
-    expect(calls[0]?.body).toEqual({
-      model: COHERE_RERANK_MODEL,
-      query: "monstera",
-      documents: ["a", "b"],
-      top_n: 2,
-    });
-    // `RerankerModel.make` normalises to descending relevance regardless of
-    // the provider's ordering.
-    expect(response.results.map((entry) => [entry.index, entry.relevanceScore])).toEqual([
-      [0, 0.9],
-      [1, 0.2],
-    ]);
-    expect(response.usage.inputTokens).toStrictEqual(Option.some(1));
-  });
+        const response = yield* Effect.gen(function* () {
+          const reranker = yield* makeCohereRerankerFromUrl;
+          return yield* reranker.rerank({ query: "monstera", documents: ["a", "b"], topN: 2 });
+        }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG));
 
-  it("omits top_n when the caller gives none", async () => {
-    const { calls, layer: fetchLayer } = stubFetch({ status: 200, body: rerankResponse });
+        expect(calls).toHaveLength(1);
+        expect(calls[0]?.url).toBe(
+          "https://gateway.ai.cloudflare.com/v1/acct/website/cohere/v2/rerank",
+        );
+        expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
+        expect(calls[0]?.body).toEqual({
+          model: COHERE_RERANK_MODEL,
+          query: "monstera",
+          documents: ["a", "b"],
+          top_n: 2,
+        });
+        // `RerankerModel.make` normalises to descending relevance regardless of
+        // the provider's ordering.
+        expect(response.results.map((entry) => [entry.index, entry.relevanceScore])).toEqual([
+          [0, 0.9],
+          [1, 0.2],
+        ]);
+        expect(response.usage.inputTokens).toStrictEqual(Option.some(1));
+      }),
+  );
 
-    await runTest(
-      Effect.gen(function* () {
+  it.effect("omits top_n when the caller gives none", () =>
+    Effect.gen(function* () {
+      const { calls, fetch } = stubFetch({ status: 200, body: rerankResponse });
+
+      yield* Effect.gen(function* () {
         const reranker = yield* makeCohereRerankerFromUrl;
         return yield* reranker.rerank({ query: "monstera", documents: ["a", "b"] });
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-    );
+      }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG));
 
-    expect(calls[0]?.body).toEqual({
-      model: COHERE_RERANK_MODEL,
-      query: "monstera",
-      documents: ["a", "b"],
-    });
-  });
+      expect(calls[0]?.body).toEqual({
+        model: COHERE_RERANK_MODEL,
+        query: "monstera",
+        documents: ["a", "b"],
+      });
+    }),
+  );
 
-  it("resolves config once at construction, not per request", async () => {
-    const { calls, layer: fetchLayer } = stubFetch({ status: 200, body: rerankResponse });
+  it.effect("resolves config once at construction, not per request", () =>
+    Effect.gen(function* () {
+      const { calls, fetch } = stubFetch({ status: 200, body: rerankResponse });
 
-    await runTest(
-      Effect.gen(function* () {
+      yield* Effect.gen(function* () {
         const reranker = yield* makeCohereRerankerFromUrl;
         yield* reranker.rerank({ query: "one", documents: ["a", "b"] });
         yield* reranker.rerank({ query: "two", documents: ["a", "b"] });
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-    );
+      }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG));
 
-    expect(calls.map((call) => call.url)).toEqual([
-      "https://gateway.ai.cloudflare.com/v1/acct/website/cohere/v2/rerank",
-      "https://gateway.ai.cloudflare.com/v1/acct/website/cohere/v2/rerank",
-    ]);
-  });
+      expect(calls.map((call) => call.url)).toEqual([
+        "https://gateway.ai.cloudflare.com/v1/acct/website/cohere/v2/rerank",
+        "https://gateway.ai.cloudflare.com/v1/acct/website/cohere/v2/rerank",
+      ]);
+    }),
+  );
 
-  it("fails with AiError on a non-2xx status", async () => {
-    const { layer: fetchLayer } = stubFetch({ status: 429, body: { message: "slow down" } });
+  it.effect("fails with AiError on a non-2xx status", () =>
+    Effect.gen(function* () {
+      const { fetch } = stubFetch({ status: 429, body: { message: "slow down" } });
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const reranker = yield* makeCohereRerankerFromUrl;
-        return yield* reranker.rerank({ query: "q", documents: ["a"] });
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-      AiError.AiError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const reranker = yield* makeCohereRerankerFromUrl;
+          return yield* reranker.rerank({ query: "q", documents: ["a"] });
+        }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG)),
+        AiError.AiError,
+      );
 
-    expect(failure.module).toBe("Cohere");
-    expect(failure.method).toBe("rerank");
-    expect(failure.reason._tag).toBe("RateLimitError");
-  });
+      expect(failure.module).toBe("Cohere");
+      expect(failure.method).toBe("rerank");
+      expect(failure.reason._tag).toBe("RateLimitError");
+    }),
+  );
 
-  it("fails with AiError when the response body cannot be parsed as JSON", async () => {
-    const { layer: fetchLayer } = stubFetchMalformedBody();
+  it.effect("fails with AiError when the response body cannot be parsed as JSON", () =>
+    Effect.gen(function* () {
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const reranker = yield* makeCohereRerankerFromUrl;
+          return yield* reranker.rerank({ query: "q", documents: ["a"] });
+        }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, malformedBodyFetch),
+          stubConfig(GATEWAY_CONFIG),
+        ),
+        AiError.AiError,
+      );
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const reranker = yield* makeCohereRerankerFromUrl;
-        return yield* reranker.rerank({ query: "q", documents: ["a"] });
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-      AiError.AiError,
-    );
+      expect(failure.message).toContain("response body");
+    }),
+  );
 
-    expect(failure.message).toContain("response body");
-  });
+  it.effect("fails with AiError (not a defect) when the transport call rejects", () =>
+    Effect.gen(function* () {
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const reranker = yield* makeCohereRerankerFromUrl;
+          return yield* reranker.rerank({ query: "q", documents: ["a"] });
+        }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, rejectingFetch),
+          stubConfig(GATEWAY_CONFIG),
+        ),
+        AiError.AiError,
+      );
 
-  it("fails with AiError (not a defect) when the transport call rejects", async () => {
-    const { layer: fetchLayer } = stubFetchReject();
+      expect(failure.message).toContain("gateway call failed");
+    }),
+  );
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const reranker = yield* makeCohereRerankerFromUrl;
-        return yield* reranker.rerank({ query: "q", documents: ["a"] });
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-      AiError.AiError,
-    );
+  it.effect("fails with AiError when the response does not match the rerank shape", () =>
+    Effect.gen(function* () {
+      const { fetch } = stubFetch({ status: 200, body: { results: "nope" } });
 
-    expect(failure.message).toContain("gateway call failed");
-  });
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const reranker = yield* makeCohereRerankerFromUrl;
+          return yield* reranker.rerank({ query: "q", documents: ["a"] });
+        }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG)),
+        AiError.AiError,
+      );
 
-  it("fails with AiError when the response does not match the rerank shape", async () => {
-    const { layer: fetchLayer } = stubFetch({ status: 200, body: { results: "nope" } });
+      expect(failure.reason._tag).toBe("InvalidOutputError");
+    }),
+  );
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const reranker = yield* makeCohereRerankerFromUrl;
-        return yield* reranker.rerank({ query: "q", documents: ["a"] });
-      }).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-      AiError.AiError,
-    );
+  it.effect("fails construction with a typed ConfigError when CF_AIG_TOKEN is missing", () =>
+    Effect.gen(function* () {
+      const { calls, fetch } = stubFetch({ status: 200, body: rerankResponse });
 
-    expect(failure.reason._tag).toBe("InvalidOutputError");
-  });
+      const exit = yield* Effect.exit(
+        makeCohereRerankerFromUrl.pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+          stubConfig({ CF_ACCOUNT_ID: "acct" }),
+        ),
+      );
 
-  it("fails construction with a typed ConfigError when CF_AIG_TOKEN is missing", async () => {
-    const { calls, layer: fetchLayer } = stubFetch({ status: 200, body: rerankResponse });
-
-    const exit = await runTestExit(
-      makeCohereRerankerFromUrl.pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig({ CF_ACCOUNT_ID: "acct" })),
-      ),
-    );
-
-    expect(exit._tag).toBe("Failure");
-    expect(calls).toHaveLength(0);
-  });
+      expect(exit._tag).toBe("Failure");
+      expect(calls).toHaveLength(0);
+    }),
+  );
 });
