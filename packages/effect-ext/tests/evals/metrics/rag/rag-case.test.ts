@@ -7,10 +7,10 @@
  * @module tests/metrics/rag/rag-case
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import { GEval, RagCase } from "../../../../src/evals/index.ts";
-import { expectFailureInstanceOf, runTest } from "../../helpers/effect.ts";
+import { expectFailureInstanceOf } from "../../helpers/effect.ts";
 
 describe("RagCase.renderValue", () => {
   it("returns a string field as-is", () => {
@@ -54,50 +54,59 @@ describe("RagCase.renderContext", () => {
 describe("RagCase require* helpers", () => {
   const metricName = "test-metric";
 
-  it("requireInput fails with GEval.MissingEvaluationParamError when golden.input is null or undefined", async () => {
-    const missingUndefined = await expectFailureInstanceOf(
-      RagCase.requireInput(metricName, { golden: { input: undefined }, output: "y" }).pipe(
-        Effect.asVoid,
-      ),
-      GEval.MissingEvaluationParamError,
-    );
-    expect(missingUndefined.param).toBe("input");
+  it.effect(
+    "requireInput fails with GEval.MissingEvaluationParamError when golden.input is null or undefined",
+    () =>
+      Effect.gen(function* () {
+        const missingUndefined = yield* expectFailureInstanceOf(
+          RagCase.requireInput(metricName, { golden: { input: undefined }, output: "y" }).pipe(
+            Effect.asVoid,
+          ),
+          GEval.MissingEvaluationParamError,
+        );
+        expect(missingUndefined.param).toBe("input");
 
-    const missingNull = await expectFailureInstanceOf(
-      RagCase.requireInput(metricName, { golden: { input: null }, output: "y" }).pipe(
-        Effect.asVoid,
-      ),
-      GEval.MissingEvaluationParamError,
-    );
-    expect(missingNull.param).toBe("input");
-  });
+        const missingNull = yield* expectFailureInstanceOf(
+          RagCase.requireInput(metricName, { golden: { input: null }, output: "y" }).pipe(
+            Effect.asVoid,
+          ),
+          GEval.MissingEvaluationParamError,
+        );
+        expect(missingNull.param).toBe("input");
+      }),
+  );
 
-  it("requireInput succeeds with the raw value when present", async () => {
-    const value = await runTest(
-      RagCase.requireInput(metricName, { golden: { input: "x" }, output: "y" }),
-    );
-    expect(value).toBe("x");
-  });
+  it.effect("requireInput succeeds with the raw value when present", () =>
+    Effect.gen(function* () {
+      const value = yield* RagCase.requireInput(metricName, {
+        golden: { input: "x" },
+        output: "y",
+      });
+      expect(value).toBe("x");
+    }),
+  );
 
-  it("requireRetrievedContext treats an empty array as present, not missing", async () => {
-    const value = await runTest(
-      RagCase.requireRetrievedContext(metricName, {
+  it.effect("requireRetrievedContext treats an empty array as present, not missing", () =>
+    Effect.gen(function* () {
+      const value = yield* RagCase.requireRetrievedContext(metricName, {
         golden: { input: "x" },
         output: "y",
         retrievedContext: [],
-      }),
-    );
-    expect(value).toEqual([]);
-  });
+      });
+      expect(value).toEqual([]);
+    }),
+  );
 
-  it("requireRetrievedContext fails when the field is absent", async () => {
-    const failure = await expectFailureInstanceOf(
-      RagCase.requireRetrievedContext(metricName, { golden: { input: "x" }, output: "y" }).pipe(
-        Effect.asVoid,
-      ),
-      GEval.MissingEvaluationParamError,
-    );
-    expect(failure.param).toBe("retrievedContext");
-    expect(failure.metric).toBe(metricName);
-  });
+  it.effect("requireRetrievedContext fails when the field is absent", () =>
+    Effect.gen(function* () {
+      const failure = yield* expectFailureInstanceOf(
+        RagCase.requireRetrievedContext(metricName, { golden: { input: "x" }, output: "y" }).pipe(
+          Effect.asVoid,
+        ),
+        GEval.MissingEvaluationParamError,
+      );
+      expect(failure.param).toBe("retrievedContext");
+      expect(failure.metric).toBe(metricName);
+    }),
+  );
 });

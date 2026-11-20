@@ -6,17 +6,16 @@
  * @module tests/scorers/embedding-similarity
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
 import { AiError, EmbeddingModel } from "effect/ai";
 import { EmbeddingSimilarity } from "../../../src/evals/index.ts";
-import { expectFailureInstanceOf, runTest } from "../helpers/effect.ts";
+import { expectFailureInstanceOf } from "../helpers/effect.ts";
 
 /** Stubs `EmbeddingModel` to return a fixed vector per input text, recording every `embedMany` call. */
 const stubEmbeddingModel = (vectors: Record<string, ReadonlyArray<number>>) => {
   const calls: ReadonlyArray<string>[] = [];
-  const layer = Layer.effect(
+  const withModel = Effect.provideServiceEffect(
     EmbeddingModel.EmbeddingModel,
     EmbeddingModel.make({
       embedMany: ({ inputs }) => {
@@ -28,10 +27,10 @@ const stubEmbeddingModel = (vectors: Record<string, ReadonlyArray<number>>) => {
       },
     }),
   );
-  return { layer, calls };
+  return { withModel, calls };
 };
 
-const failingEmbeddingModel = Layer.effect(
+const withFailingModel = Effect.provideServiceEffect(
   EmbeddingModel.EmbeddingModel,
   EmbeddingModel.make({
     embedMany: () =>
@@ -46,74 +45,74 @@ const failingEmbeddingModel = Layer.effect(
 );
 
 describe("EmbeddingSimilarity.embeddingSimilarity", () => {
-  it("scores 1 for identical-direction vectors", async () => {
-    const { layer, calls } = stubEmbeddingModel({ same: [1, 0] });
+  it.effect("scores 1 for identical-direction vectors", () =>
+    Effect.gen(function* () {
+      const { withModel, calls } = stubEmbeddingModel({ same: [1, 0] });
 
-    const score = await runTest(
-      EmbeddingSimilarity.embeddingSimilarity
+      const score = yield* EmbeddingSimilarity.embeddingSimilarity
         .evaluate({ golden: { expected: "same" }, output: "same" })
-        .pipe(Effect.provide(layer)),
-    );
+        .pipe(withModel);
 
-    expect(score.score).toBeCloseTo(1);
-    expect(calls).toEqual([["same", "same"]]);
-  });
+      expect(score.score).toBeCloseTo(1);
+      expect(calls).toEqual([["same", "same"]]);
+    }),
+  );
 
-  it("scores 0.5 for orthogonal vectors", async () => {
-    const { layer } = stubEmbeddingModel({ output: [1, 0], expected: [0, 1] });
+  it.effect("scores 0.5 for orthogonal vectors", () =>
+    Effect.gen(function* () {
+      const { withModel } = stubEmbeddingModel({ output: [1, 0], expected: [0, 1] });
 
-    const score = await runTest(
-      EmbeddingSimilarity.embeddingSimilarity
+      const score = yield* EmbeddingSimilarity.embeddingSimilarity
         .evaluate({ golden: { expected: "expected" }, output: "output" })
-        .pipe(Effect.provide(layer)),
-    );
+        .pipe(withModel);
 
-    expect(score.score).toBeCloseTo(0.5);
-  });
+      expect(score.score).toBeCloseTo(0.5);
+    }),
+  );
 
-  it("scores 0 for opposite-direction vectors, clamped at the floor", async () => {
-    const { layer } = stubEmbeddingModel({ output: [1, 0], expected: [-1, 0] });
+  it.effect("scores 0 for opposite-direction vectors, clamped at the floor", () =>
+    Effect.gen(function* () {
+      const { withModel } = stubEmbeddingModel({ output: [1, 0], expected: [-1, 0] });
 
-    const score = await runTest(
-      EmbeddingSimilarity.embeddingSimilarity
+      const score = yield* EmbeddingSimilarity.embeddingSimilarity
         .evaluate({ golden: { expected: "expected" }, output: "output" })
-        .pipe(Effect.provide(layer)),
-    );
+        .pipe(withModel);
 
-    expect(score.score).toBeCloseTo(0);
-  });
+      expect(score.score).toBeCloseTo(0);
+    }),
+  );
 
-  it("embeds output and expected together, in that order", async () => {
-    const { layer, calls } = stubEmbeddingModel({ hello: [1, 1], world: [1, -1] });
+  it.effect("embeds output and expected together, in that order", () =>
+    Effect.gen(function* () {
+      const { withModel, calls } = stubEmbeddingModel({ hello: [1, 1], world: [1, -1] });
 
-    await runTest(
-      EmbeddingSimilarity.embeddingSimilarity
+      yield* EmbeddingSimilarity.embeddingSimilarity
         .evaluate({ golden: { expected: "world" }, output: "hello" })
-        .pipe(Effect.provide(layer)),
-    );
+        .pipe(withModel);
 
-    expect(calls).toEqual([["hello", "world"]]);
-  });
+      expect(calls).toEqual([["hello", "world"]]);
+    }),
+  );
 
-  it("scores 0 without calling the model when golden has no expected output", async () => {
-    const { layer, calls } = stubEmbeddingModel({});
+  it.effect("scores 0 without calling the model when golden has no expected output", () =>
+    Effect.gen(function* () {
+      const { withModel, calls } = stubEmbeddingModel({});
 
-    const score = await runTest(
-      EmbeddingSimilarity.embeddingSimilarity
+      const score = yield* EmbeddingSimilarity.embeddingSimilarity
         .evaluate({ golden: {}, output: "anything" })
-        .pipe(Effect.provide(layer)),
-    );
+        .pipe(withModel);
 
-    expect(score).toEqual({ score: 0, reason: "golden.expected is undefined" });
-    expect(calls).toHaveLength(0);
-  });
+      expect(score).toEqual({ score: 0, reason: "golden.expected is undefined" });
+      expect(calls).toHaveLength(0);
+    }),
+  );
 
-  it("surfaces the model's typed AiError rather than throwing", async () => {
-    await expectFailureInstanceOf(
+  it.effect("surfaces the model's typed AiError rather than throwing", () =>
+    expectFailureInstanceOf(
       EmbeddingSimilarity.embeddingSimilarity
         .evaluate({ golden: { expected: "expected" }, output: "output" })
-        .pipe(Effect.provide(failingEmbeddingModel), Effect.asVoid),
+        .pipe(withFailingModel, Effect.asVoid),
       AiError.AiError,
-    );
-  });
+    ),
+  );
 });

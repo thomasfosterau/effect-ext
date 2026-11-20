@@ -11,12 +11,12 @@
  * @module tests/metrics/ranking
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
+import * as Effect from "effect/Effect";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
 import * as R from "effect/Record";
 import { Metric, Ranking, Threshold } from "../../../src/evals/index.ts";
-import { runTest } from "../helpers/effect.ts";
 
 /** Two relevant documents, graded 3 and 1, in a five-document corpus. */
 const evidence = (ranked: ReadonlyArray<string>, k = 5): Ranking.Evidence => ({
@@ -141,42 +141,48 @@ describe("Ranking scorers", () => {
     expect(Ranking.precisionAtK(10).name).toBe("precision@10");
   });
 
-  it("scores a RankingCase exactly as the pure function does, with a reason", async () => {
-    const score = await runTest(Ranking.ndcgAtK(5).evaluate(rankingCase(["b", "a"])));
-    expect(score.score).toBeCloseTo(5.4165 / 7.63093, 5);
-    expect(score.reason).toBe("2 of 2 relevant in the top 5; nDCG 0.710");
+  it.effect("scores a RankingCase exactly as the pure function does, with a reason", () =>
+    Effect.gen(function* () {
+      const score = yield* Ranking.ndcgAtK(5).evaluate(rankingCase(["b", "a"]));
+      expect(score.score).toBeCloseTo(5.4165 / 7.63093, 5);
+      expect(score.reason).toBe("2 of 2 relevant in the top 5; nDCG 0.710");
 
-    const recall = await runTest(Ranking.recallAtK(2).evaluate(rankingCase(["a", "x", "b"])));
-    expect(recall).toEqual({ score: 0.5, reason: "1 of 2 relevant reached the top 2" });
+      const recall = yield* Ranking.recallAtK(2).evaluate(rankingCase(["a", "x", "b"]));
+      expect(recall).toEqual({ score: 0.5, reason: "1 of 2 relevant reached the top 2" });
 
-    const precision = await runTest(Ranking.precisionAtK(5).evaluate(rankingCase(["a", "b", "c"])));
-    expect(precision).toEqual({ score: 0.4, reason: "2 of the top 5 are relevant" });
+      const precision = yield* Ranking.precisionAtK(5).evaluate(rankingCase(["a", "b", "c"]));
+      expect(precision).toEqual({ score: 0.4, reason: "2 of the top 5 are relevant" });
 
-    const mrr = await runTest(Ranking.mrrAtK(5).evaluate(rankingCase(["x", "a"])));
-    expect(mrr).toEqual({ score: 0.5, reason: "first relevant document at rank 2" });
+      const mrr = yield* Ranking.mrrAtK(5).evaluate(rankingCase(["x", "a"]));
+      expect(mrr).toEqual({ score: 0.5, reason: "first relevant document at rank 2" });
 
-    const miss = await runTest(Ranking.mrrAtK(2).evaluate(rankingCase(["x", "y", "a"])));
-    expect(miss).toEqual({ score: 0, reason: "no relevant document in the top 2" });
-  });
+      const miss = yield* Ranking.mrrAtK(2).evaluate(rankingCase(["x", "y", "a"]));
+      expect(miss).toEqual({ score: 0, reason: "no relevant document in the top 2" });
+    }),
+  );
 
-  it("re-applies k itself rather than trusting the output's length", async () => {
-    const score = await runTest(Ranking.recallAtK(1).evaluate(rankingCase(["x", "a", "b"])));
-    expect(score.score).toBe(0);
-  });
+  it.effect("re-applies k itself rather than trusting the output's length", () =>
+    Effect.gen(function* () {
+      const score = yield* Ranking.recallAtK(1).evaluate(rankingCase(["x", "a", "b"]));
+      expect(score.score).toBe(0);
+    }),
+  );
 
-  it("builds metrics that never fail a case unless a threshold is given", async () => {
-    const lenient = Ranking.metricAtK("recall", 5);
-    expect(lenient.name).toBe("recall@5");
-    const miss = await runTest(Metric.evaluate(lenient, rankingCase(["x"])));
-    expect(miss).toEqual({
-      score: { score: 0, reason: "0 of 2 relevant reached the top 5" },
-      passed: true,
-    });
+  it.effect("builds metrics that never fail a case unless a threshold is given", () =>
+    Effect.gen(function* () {
+      const lenient = Ranking.metricAtK("recall", 5);
+      expect(lenient.name).toBe("recall@5");
+      const miss = yield* Metric.evaluate(lenient, rankingCase(["x"]));
+      expect(miss).toEqual({
+        score: { score: 0, reason: "0 of 2 relevant reached the top 5" },
+        passed: true,
+      });
 
-    const strict = Ranking.metricAtK("recall", 5, Threshold.minScore(0.75));
-    const half = await runTest(Metric.evaluate(strict, rankingCase(["a", "x"])));
-    expect(half.passed).toBe(false);
-  });
+      const strict = Ranking.metricAtK("recall", 5, Threshold.minScore(0.75));
+      const half = yield* Metric.evaluate(strict, rankingCase(["a", "x"]));
+      expect(half.passed).toBe(false);
+    }),
+  );
 
   it("metricsAtK builds every metric in report order, threading per-metric thresholds", () => {
     const metrics = Ranking.metricsAtK(10, { thresholds: { ndcg: Threshold.minScore(0.8) } });

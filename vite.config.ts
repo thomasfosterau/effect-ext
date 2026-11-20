@@ -231,9 +231,6 @@ export default defineConfig({
           // language service keeps it as an editor suggestion
           // (tsconfig.base.json).
           "effecttsgo/unstable-api-usage": "off",
-          // The AI suites provide layers per test with `Effect.provide`, not
-          // `@effect/vitest`'s `layer(...)`.
-          "effecttsgo/strict-effect-provide": "off",
         },
       },
       // The binding-free URL constructors hand back a ready model, not a
@@ -305,9 +302,7 @@ export default defineConfig({
           "oxc/no-map-spread": "off",
         },
       },
-      // Each AI package's `tests/helpers/effect.ts` IS the test harness
-      // boundary `effect-run-in-body` names as the place to run an Effect
-      // (`runTest` wraps `Effect.runPromise`), and its recording tracer must
+      // Each AI package's `tests/helpers/effect.ts` recording tracer must
       // hand Effect a mutable native `Map`: `Tracer.Span.attributes` is a
       // `ReadonlyMap` the span's own `attribute(key, value)` writes through.
       {
@@ -316,7 +311,6 @@ export default defineConfig({
           "packages/effect-ext/tests/{ai,evals}/helpers/effect.ts",
         ],
         rules: {
-          "effect/effect-run-in-body": "off",
           "effect/avoid-native-object-helpers": "off",
         },
       },

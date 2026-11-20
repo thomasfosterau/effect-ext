@@ -7,7 +7,7 @@
  * @module tests/metrics/rag/contextual-precision
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import {
@@ -19,7 +19,7 @@ import {
   Metric,
   Threshold,
 } from "../../../../src/evals/index.ts";
-import { expectFailureInstanceOf, runTest } from "../../helpers/effect.ts";
+import { expectFailureInstanceOf } from "../../helpers/effect.ts";
 import { deadJudge, makeJudgeStub, provideJudge } from "./helpers.ts";
 
 const RagGolden = Golden.Golden(Schema.String, Schema.String);
@@ -71,137 +71,148 @@ describe("ContextualPrecision.contextualPrecision", () => {
     ],
   };
 
-  it("classifies ranked chunks against expected with no extraction call, then weights by rank", async () => {
-    const metric = ContextualPrecision.contextualPrecision({ threshold: Threshold.minScore(0.5) });
+  it.effect(
+    "classifies ranked chunks against expected with no extraction call, then weights by rank",
+    () =>
+      Effect.gen(function* () {
+        const metric = ContextualPrecision.contextualPrecision({
+          threshold: Threshold.minScore(0.5),
+        });
 
-    const { model, calls } = await runTest(
-      makeJudgeStub([
-        () => ({
-          verdicts: [
-            { statement: "The Eiffel Tower is in Paris, France.", verdict: "yes" },
-            {
-              statement: "The Louvre is also in Paris.",
-              verdict: "no",
-              reason: "not about the Eiffel Tower",
-            },
-            { statement: "Paris is the capital of France.", verdict: "yes" },
-          ],
-        }),
-      ]),
-    );
+        const { model, calls } = yield* makeJudgeStub([
+          () => ({
+            verdicts: [
+              { statement: "The Eiffel Tower is in Paris, France.", verdict: "yes" },
+              {
+                statement: "The Louvre is also in Paris.",
+                verdict: "no",
+                reason: "not about the Eiffel Tower",
+              },
+              { statement: "Paris is the capital of France.", verdict: "yes" },
+            ],
+          }),
+        ]);
 
-    const result = await runTest(
-      Metric.evaluate(metric, ragCase).pipe(Effect.provide(provideJudge(model))),
-    );
+        const result = yield* Metric.evaluate(metric, ragCase).pipe(provideJudge(model));
 
-    // relevance = [true, false, true] -> 1 + 2/3 = 1.6666...; / 2 = 0.8333...
-    expect(result.score.score).toBeCloseTo(0.8333333333);
-    expect(result.score.reason).toBe(
-      "2/3 retrieved chunks relevant.\n- [2] The Louvre is also in Paris.: not about the Eiffel Tower",
-    );
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.user).toContain("expected:\nIt is located in Paris, France.");
-    expect(calls[0]?.user).toContain(
-      "retrieved context chunks:\n1. The Eiffel Tower is in Paris, France.",
-    );
-    expect(calls[0]?.user).toContain("3. Paris is the capital of France.");
-  });
+        // relevance = [true, false, true] -> 1 + 2/3 = 1.6666...; / 2 = 0.8333...
+        expect(result.score.score).toBeCloseTo(0.8333333333);
+        expect(result.score.reason).toBe(
+          "2/3 retrieved chunks relevant.\n- [2] The Louvre is also in Paris.: not about the Eiffel Tower",
+        );
+        expect(calls).toHaveLength(1);
+        expect(calls[0]?.user).toContain("expected:\nIt is located in Paris, France.");
+        expect(calls[0]?.user).toContain(
+          "retrieved context chunks:\n1. The Eiffel Tower is in Paris, France.",
+        );
+        expect(calls[0]?.user).toContain("3. Paris is the capital of France.");
+      }),
+  );
 
-  it("lists an irrelevant chunk the judge gave no reason for by its text alone, and records verdicts without a reason key", async () => {
-    const metric = ContextualPrecision.contextualPrecision({ threshold: Threshold.minScore(0.5) });
+  it.effect(
+    "lists an irrelevant chunk the judge gave no reason for by its text alone, and records verdicts without a reason key",
+    () =>
+      Effect.gen(function* () {
+        const metric = ContextualPrecision.contextualPrecision({
+          threshold: Threshold.minScore(0.5),
+        });
 
-    const { model } = await runTest(
-      makeJudgeStub([
-        () => ({
-          verdicts: [
-            { statement: "The Eiffel Tower is in Paris, France.", verdict: "yes" },
-            { statement: "The Louvre is also in Paris.", verdict: "no", reason: "" },
-            { statement: "Paris is the capital of France.", verdict: "no" },
-          ],
-        }),
-      ]),
-    );
+        const { model } = yield* makeJudgeStub([
+          () => ({
+            verdicts: [
+              { statement: "The Eiffel Tower is in Paris, France.", verdict: "yes" },
+              { statement: "The Louvre is also in Paris.", verdict: "no", reason: "" },
+              { statement: "Paris is the capital of France.", verdict: "no" },
+            ],
+          }),
+        ]);
 
-    const result = await runTest(
-      Metric.evaluate(metric, ragCase).pipe(Effect.provide(provideJudge(model))),
-    );
+        const result = yield* Metric.evaluate(metric, ragCase).pipe(provideJudge(model));
 
-    expect(result.score.reason).toBe(
-      "1/3 retrieved chunks relevant.\n- [2] The Louvre is also in Paris.\n- [3] Paris is the capital of France.",
-    );
-    expect(result.score.metadata?.verdicts).toStrictEqual([
-      { statement: "The Eiffel Tower is in Paris, France.", verdict: "yes" },
-      { statement: "The Louvre is also in Paris.", verdict: "no" },
-      { statement: "Paris is the capital of France.", verdict: "no" },
-    ]);
-  });
+        expect(result.score.reason).toBe(
+          "1/3 retrieved chunks relevant.\n- [2] The Louvre is also in Paris.\n- [3] Paris is the capital of France.",
+        );
+        expect(result.score.metadata?.verdicts).toStrictEqual([
+          { statement: "The Eiffel Tower is in Paris, France.", verdict: "yes" },
+          { statement: "The Louvre is also in Paris.", verdict: "no" },
+          { statement: "Paris is the capital of France.", verdict: "no" },
+        ]);
+      }),
+  );
 
-  it("fails with the typed count-mismatch error, not a corrupted score, when the judge drops a verdict", async () => {
-    const metric = ContextualPrecision.contextualPrecision({ threshold: Threshold.minScore(0.5) });
+  it.effect(
+    "fails with the typed count-mismatch error, not a corrupted score, when the judge drops a verdict",
+    () =>
+      Effect.gen(function* () {
+        const metric = ContextualPrecision.contextualPrecision({
+          threshold: Threshold.minScore(0.5),
+        });
 
-    // The judge returns only 2 verdicts for 3 chunks — exactly the
-    // structured-output flakiness that would otherwise silently misalign
-    // `retrievedContext`'s rank order against `weightedCumulativePrecision`.
-    const { model } = await runTest(
-      makeJudgeStub([
-        () => ({
-          verdicts: [
-            { statement: "The Eiffel Tower is in Paris, France.", verdict: "yes" },
-            { statement: "Paris is the capital of France.", verdict: "yes" },
-          ],
-        }),
-      ]),
-    );
+        // The judge returns only 2 verdicts for 3 chunks — exactly the
+        // structured-output flakiness that would otherwise silently misalign
+        // `retrievedContext`'s rank order against `weightedCumulativePrecision`.
+        const { model } = yield* makeJudgeStub([
+          () => ({
+            verdicts: [
+              { statement: "The Eiffel Tower is in Paris, France.", verdict: "yes" },
+              { statement: "Paris is the capital of France.", verdict: "yes" },
+            ],
+          }),
+        ]);
 
-    const failure = await expectFailureInstanceOf(
-      Metric.evaluate(metric, ragCase).pipe(Effect.provide(provideJudge(model)), Effect.asVoid),
-      ExtractThenClassify.VerdictCountMismatchError,
-    );
+        const failure = yield* expectFailureInstanceOf(
+          Metric.evaluate(metric, ragCase).pipe(provideJudge(model), Effect.asVoid),
+          ExtractThenClassify.VerdictCountMismatchError,
+        );
 
-    expect(failure.expected).toBe(3);
-    expect(failure.actual).toBe(2);
-  });
+        expect(failure.expected).toBe(3);
+        expect(failure.actual).toBe(2);
+      }),
+  );
 
-  it("scores 0 without calling the judge when retrievedContext is empty", async () => {
-    const metric = ContextualPrecision.contextualPrecision({ threshold: Threshold.minScore(0.5) });
-    const emptyContextCase: RagTestCase = {
-      golden: { input: "x", expected: "y" },
-      output: "z",
-      retrievedContext: [],
-    };
+  it.effect("scores 0 without calling the judge when retrievedContext is empty", () =>
+    Effect.gen(function* () {
+      const metric = ContextualPrecision.contextualPrecision({
+        threshold: Threshold.minScore(0.5),
+      });
+      const emptyContextCase: RagTestCase = {
+        golden: { input: "x", expected: "y" },
+        output: "z",
+        retrievedContext: [],
+      };
 
-    const model = await deadJudge();
+      const model = yield* deadJudge;
 
-    const result = await runTest(
-      Metric.evaluate(metric, emptyContextCase).pipe(Effect.provide(provideJudge(model))),
-    );
+      const result = yield* Metric.evaluate(metric, emptyContextCase).pipe(provideJudge(model));
 
-    expect(result.score).toEqual({
-      score: 0,
-      reason: "No retrieved context to evaluate.",
-      metadata: { verdicts: [] },
-    });
-  });
+      expect(result.score).toEqual({
+        score: 0,
+        reason: "No retrieved context to evaluate.",
+        metadata: { verdicts: [] },
+      });
+    }),
+  );
 
-  it("fails with the typed error, never calling the judge, when expected is absent", async () => {
-    const metric = ContextualPrecision.contextualPrecision({ threshold: Threshold.minScore(0.5) });
-    const caseWithoutExpected: RagTestCase = {
-      golden: { input: "x" },
-      output: "y",
-      retrievedContext: ["z"],
-    };
+  it.effect("fails with the typed error, never calling the judge, when expected is absent", () =>
+    Effect.gen(function* () {
+      const metric = ContextualPrecision.contextualPrecision({
+        threshold: Threshold.minScore(0.5),
+      });
+      const caseWithoutExpected: RagTestCase = {
+        golden: { input: "x" },
+        output: "y",
+        retrievedContext: ["z"],
+      };
 
-    const model = await deadJudge();
+      const model = yield* deadJudge;
 
-    const failure = await expectFailureInstanceOf(
-      Metric.evaluate(metric, caseWithoutExpected).pipe(
-        Effect.provide(provideJudge(model)),
-        Effect.asVoid,
-      ),
-      GEval.MissingEvaluationParamError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        Metric.evaluate(metric, caseWithoutExpected).pipe(provideJudge(model), Effect.asVoid),
+        GEval.MissingEvaluationParamError,
+      );
 
-    expect(failure.param).toBe("expected");
-    expect(failure.metric).toBe("contextual-precision");
-  });
+      expect(failure.param).toBe("expected");
+      expect(failure.metric).toBe("contextual-precision");
+    }),
+  );
 });

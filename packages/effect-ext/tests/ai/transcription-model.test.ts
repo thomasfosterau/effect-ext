@@ -5,7 +5,7 @@
  * @module tests/unit/transcription-model
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
@@ -15,12 +15,10 @@ import {
   type ProviderResponse,
   type Service,
 } from "@thomasfosterau/effect-ext/TranscriptionModel";
-import { expectFailureInstanceOf, runTest } from "./helpers/effect";
+import { expectFailureInstanceOf } from "./helpers/effect";
 
-const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
-  const failure = await expectFailureInstanceOf(program, AiError.AiError);
-  return failure.message;
-};
+const expectAiError = <A, R>(program: Effect.Effect<A, AiError.AiError, R>) =>
+  Effect.map(expectFailureInstanceOf(program, AiError.AiError), (failure) => failure.message);
 
 const makeStub = (
   behaviour:
@@ -49,9 +47,9 @@ const makeStub = (
 const audio = new Uint8Array([1, 2, 3]);
 
 describe("TranscriptionModel", () => {
-  it("returns text, segments, language, and usage; passes options through", async () => {
-    const { response, calls } = await runTest(
-      Effect.gen(function* () {
+  it.effect("returns text, segments, language, and usage; passes options through", () =>
+    Effect.gen(function* () {
+      const { response, calls } = yield* Effect.gen(function* () {
         const { model, calls: stubCalls } = yield* makeStub({
           respond: () => ({
             text: "hello world",
@@ -65,21 +63,21 @@ describe("TranscriptionModel", () => {
         });
         const result = yield* model.transcribe({ audio, mediaType: "audio/wav", language: "en" });
         return { response: result, calls: stubCalls };
-      }),
-    );
+      });
 
-    expect(response.text).toBe("hello world");
-    expect(Option.map(response.segments, (segments) => segments.length)).toStrictEqual(
-      Option.some(2),
-    );
-    expect(response.language).toStrictEqual(Option.some("en"));
-    expect(response.usage.durationSeconds).toStrictEqual(Option.some(1));
-    expect(calls).toEqual([{ audio, mediaType: "audio/wav", language: "en" }]);
-  });
+      expect(response.text).toBe("hello world");
+      expect(Option.map(response.segments, (segments) => segments.length)).toStrictEqual(
+        Option.some(2),
+      );
+      expect(response.language).toStrictEqual(Option.some("en"));
+      expect(response.usage.durationSeconds).toStrictEqual(Option.some(1));
+      expect(calls).toEqual([{ audio, mediaType: "audio/wav", language: "en" }]);
+    }),
+  );
 
-  it("returns no segments or language when the provider omits them", async () => {
-    const response = await runTest(
-      Effect.gen(function* () {
+  it.effect("returns no segments or language when the provider omits them", () =>
+    Effect.gen(function* () {
+      const response = yield* Effect.gen(function* () {
         const { model } = yield* makeStub({
           respond: () => ({
             text: "bare",
@@ -89,57 +87,63 @@ describe("TranscriptionModel", () => {
           }),
         });
         return yield* model.transcribe({ audio });
-      }),
-    );
+      });
 
-    expect(response.segments).toStrictEqual(Option.none());
-    expect(response.language).toStrictEqual(Option.none());
-  });
+      expect(response.segments).toStrictEqual(Option.none());
+      expect(response.language).toStrictEqual(Option.none());
+    }),
+  );
 
-  it("fails with AiError when a segment ends before it starts", async () => {
-    const message = await expectAiError(
-      Effect.gen(function* () {
-        const { model } = yield* makeStub({
-          respond: () => ({
-            text: "x",
-            segments: Option.some([{ text: "x", start: 1, end: 0.5 }]),
-            language: Option.none(),
-            usage: { durationSeconds: Option.none() },
-          }),
-        });
-        return yield* model.transcribe({ audio });
-      }),
-    );
+  it.effect("fails with AiError when a segment ends before it starts", () =>
+    Effect.gen(function* () {
+      const message = yield* expectAiError(
+        Effect.gen(function* () {
+          const { model } = yield* makeStub({
+            respond: () => ({
+              text: "x",
+              segments: Option.some([{ text: "x", start: 1, end: 0.5 }]),
+              language: Option.none(),
+              usage: { durationSeconds: Option.none() },
+            }),
+          });
+          return yield* model.transcribe({ audio });
+        }),
+      );
 
-    expect(message).toContain("before it starts");
-  });
+      expect(message).toContain("before it starts");
+    }),
+  );
 
-  it("fails with AiError when a segment has non-finite timestamps", async () => {
-    const message = await expectAiError(
-      Effect.gen(function* () {
-        const { model } = yield* makeStub({
-          respond: () => ({
-            text: "x",
-            segments: Option.some([{ text: "x", start: 0, end: Number.NaN }]),
-            language: Option.none(),
-            usage: { durationSeconds: Option.none() },
-          }),
-        });
-        return yield* model.transcribe({ audio });
-      }),
-    );
+  it.effect("fails with AiError when a segment has non-finite timestamps", () =>
+    Effect.gen(function* () {
+      const message = yield* expectAiError(
+        Effect.gen(function* () {
+          const { model } = yield* makeStub({
+            respond: () => ({
+              text: "x",
+              segments: Option.some([{ text: "x", start: 0, end: Number.NaN }]),
+              language: Option.none(),
+              usage: { durationSeconds: Option.none() },
+            }),
+          });
+          return yield* model.transcribe({ audio });
+        }),
+      );
 
-    expect(message).toContain("non-finite");
-  });
+      expect(message).toContain("non-finite");
+    }),
+  );
 
-  it("propagates provider failures as AiError", async () => {
-    const message = await expectAiError(
-      Effect.gen(function* () {
-        const { model } = yield* makeStub({ fail: true });
-        return yield* model.transcribe({ audio });
-      }),
-    );
+  it.effect("propagates provider failures as AiError", () =>
+    Effect.gen(function* () {
+      const message = yield* expectAiError(
+        Effect.gen(function* () {
+          const { model } = yield* makeStub({ fail: true });
+          return yield* model.transcribe({ audio });
+        }),
+      );
 
-    expect(message).toContain("stubbed failure");
-  });
+      expect(message).toContain("stubbed failure");
+    }),
+  );
 });

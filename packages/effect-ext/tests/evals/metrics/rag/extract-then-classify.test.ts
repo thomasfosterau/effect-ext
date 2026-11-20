@@ -7,13 +7,13 @@
  * @module tests/metrics/rag/extract-then-classify
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import { AiError, LanguageModel } from "effect/ai";
 import { ExtractThenClassify } from "../../../../src/evals/index.ts";
-import { expectFailureInstanceOf, runTest } from "../../helpers/effect.ts";
+import { expectFailureInstanceOf } from "../../helpers/effect.ts";
 import { makeJudgeStub, provideJudge } from "./helpers.ts";
 
 describe("ExtractThenClassify.ratioScore", () => {
@@ -74,92 +74,98 @@ describe("ExtractThenClassify.summarizeVerdicts", () => {
 });
 
 describe("ExtractThenClassify.classifyStatements", () => {
-  it("labels the classified items 'statements' by default", async () => {
-    const { model, calls } = await runTest(
-      makeJudgeStub([() => ({ verdicts: [{ statement: "a", verdict: "yes" }] })]),
-    );
+  it.effect("labels the classified items 'statements' by default", () =>
+    Effect.gen(function* () {
+      const { model, calls } = yield* makeJudgeStub([
+        () => ({ verdicts: [{ statement: "a", verdict: "yes" }] }),
+      ]);
 
-    await runTest(
-      ExtractThenClassify.classifyStatements({
+      yield* ExtractThenClassify.classifyStatements({
         instructions: "classify",
         statements: ["a"],
         referenceLabel: "context",
         referenceText: "the context text",
-      }).pipe(Effect.provide(provideJudge(model))),
-    );
+      }).pipe(provideJudge(model));
 
-    expect(calls[0]?.user).toContain("statements:\n1. a");
-  });
+      expect(calls[0]?.user).toContain("statements:\n1. a");
+    }),
+  );
 
-  it("uses a custom itemsLabel when given, for classifying non-statement items (e.g. ranked chunks)", async () => {
-    const { model, calls } = await runTest(
-      makeJudgeStub([() => ({ verdicts: [{ statement: "a", verdict: "yes" }] })]),
-    );
+  it.effect(
+    "uses a custom itemsLabel when given, for classifying non-statement items (e.g. ranked chunks)",
+    () =>
+      Effect.gen(function* () {
+        const { model, calls } = yield* makeJudgeStub([
+          () => ({ verdicts: [{ statement: "a", verdict: "yes" }] }),
+        ]);
 
-    await runTest(
-      ExtractThenClassify.classifyStatements({
-        instructions: "classify",
-        statements: ["a"],
-        referenceLabel: "context",
-        referenceText: "the context text",
-        itemsLabel: "retrieved context chunks",
-      }).pipe(Effect.provide(provideJudge(model))),
-    );
+        yield* ExtractThenClassify.classifyStatements({
+          instructions: "classify",
+          statements: ["a"],
+          referenceLabel: "context",
+          referenceText: "the context text",
+          itemsLabel: "retrieved context chunks",
+        }).pipe(provideJudge(model));
 
-    expect(calls[0]?.user).toContain("retrieved context chunks:\n1. a");
-    expect(calls[0]?.user).not.toContain("statements:");
-  });
+        expect(calls[0]?.user).toContain("retrieved context chunks:\n1. a");
+        expect(calls[0]?.user).not.toContain("statements:");
+      }),
+  );
 
-  it("fails with VerdictCountMismatchError, rather than returning a misaligned array, when the judge returns too few verdicts", async () => {
-    const { model } = await runTest(
-      makeJudgeStub([() => ({ verdicts: [{ statement: "a", verdict: "yes" }] })]),
-    );
+  it.effect(
+    "fails with VerdictCountMismatchError, rather than returning a misaligned array, when the judge returns too few verdicts",
+    () =>
+      Effect.gen(function* () {
+        const { model } = yield* makeJudgeStub([
+          () => ({ verdicts: [{ statement: "a", verdict: "yes" }] }),
+        ]);
 
-    const failure = await expectFailureInstanceOf(
-      ExtractThenClassify.classifyStatements({
-        instructions: "classify",
-        statements: ["a", "b", "c"],
-        referenceLabel: "context",
-        referenceText: "the context text",
-      }).pipe(Effect.provide(provideJudge(model)), Effect.asVoid),
-      ExtractThenClassify.VerdictCountMismatchError,
-    );
+        const failure = yield* expectFailureInstanceOf(
+          ExtractThenClassify.classifyStatements({
+            instructions: "classify",
+            statements: ["a", "b", "c"],
+            referenceLabel: "context",
+            referenceText: "the context text",
+          }).pipe(provideJudge(model), Effect.asVoid),
+          ExtractThenClassify.VerdictCountMismatchError,
+        );
 
-    expect(failure.expected).toBe(3);
-    expect(failure.actual).toBe(1);
-  });
+        expect(failure.expected).toBe(3);
+        expect(failure.actual).toBe(1);
+      }),
+  );
 
-  it("fails with VerdictCountMismatchError when the judge returns too many verdicts", async () => {
-    const { model } = await runTest(
-      makeJudgeStub([
+  it.effect("fails with VerdictCountMismatchError when the judge returns too many verdicts", () =>
+    Effect.gen(function* () {
+      const { model } = yield* makeJudgeStub([
         () => ({
           verdicts: [
             { statement: "a", verdict: "yes" },
             { statement: "b", verdict: "yes" },
           ],
         }),
-      ]),
-    );
+      ]);
 
-    const failure = await expectFailureInstanceOf(
-      ExtractThenClassify.classifyStatements({
-        instructions: "classify",
-        statements: ["a"],
-        referenceLabel: "context",
-        referenceText: "the context text",
-      }).pipe(Effect.provide(provideJudge(model)), Effect.asVoid),
-      ExtractThenClassify.VerdictCountMismatchError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        ExtractThenClassify.classifyStatements({
+          instructions: "classify",
+          statements: ["a"],
+          referenceLabel: "context",
+          referenceText: "the context text",
+        }).pipe(provideJudge(model), Effect.asVoid),
+        ExtractThenClassify.VerdictCountMismatchError,
+      );
 
-    expect(failure.expected).toBe(1);
-    expect(failure.actual).toBe(2);
-  });
+      expect(failure.expected).toBe(1);
+      expect(failure.actual).toBe(2);
+    }),
+  );
 });
 
 describe("ExtractThenClassify.extractThenClassifyRatio", () => {
-  it("extracts, then classifies, then scores the ratio with verdicts in metadata", async () => {
-    const { model, calls } = await runTest(
-      makeJudgeStub([
+  it.effect("extracts, then classifies, then scores the ratio with verdicts in metadata", () =>
+    Effect.gen(function* () {
+      const { model, calls } = yield* makeJudgeStub([
         () => ({ statements: ["claim one", "claim two"] }),
         () => ({
           verdicts: [
@@ -167,58 +173,56 @@ describe("ExtractThenClassify.extractThenClassifyRatio", () => {
             { statement: "claim two", verdict: "no", reason: "contradicted" },
           ],
         }),
-      ]),
-    );
+      ]);
 
-    const score = await runTest(
-      ExtractThenClassify.extractThenClassifyRatio({
+      const score = yield* ExtractThenClassify.extractThenClassifyRatio({
         extract: { instructions: "extract", label: "output", text: "the output text" },
         classify: {
           instructions: "classify",
           referenceLabel: "context",
           referenceText: "the context text",
         },
-      }).pipe(Effect.provide(provideJudge(model))),
-    );
+      }).pipe(provideJudge(model));
 
-    expect(score.score).toBe(0.5);
-    expect(score.reason).toBe("1/2 statements passed.\n- claim two: contradicted");
-    expect(score.metadata?.statements).toEqual(["claim one", "claim two"]);
-    expect(score.metadata?.verdicts).toEqual([
-      { statement: "claim one", verdict: "yes", reason: "supported" },
-      { statement: "claim two", verdict: "no", reason: "contradicted" },
-    ]);
-    expect(calls[0]?.user).toContain("output:\nthe output text");
-    expect(calls[1]?.user).toContain("context:\nthe context text");
-    expect(calls[1]?.user).toContain("1. claim one");
-    expect(calls[1]?.user).toContain("2. claim two");
-  });
+      expect(score.score).toBe(0.5);
+      expect(score.reason).toBe("1/2 statements passed.\n- claim two: contradicted");
+      expect(score.metadata?.statements).toEqual(["claim one", "claim two"]);
+      expect(score.metadata?.verdicts).toEqual([
+        { statement: "claim one", verdict: "yes", reason: "supported" },
+        { statement: "claim two", verdict: "no", reason: "contradicted" },
+      ]);
+      expect(calls[0]?.user).toContain("output:\nthe output text");
+      expect(calls[1]?.user).toContain("context:\nthe context text");
+      expect(calls[1]?.user).toContain("1. claim one");
+      expect(calls[1]?.user).toContain("2. claim two");
+    }),
+  );
 
-  it("skips the classify call and scores a vacuous 1 when no statements are extracted", async () => {
-    const { model, calls } = await runTest(makeJudgeStub([() => ({ statements: [] })]));
+  it.effect("skips the classify call and scores a vacuous 1 when no statements are extracted", () =>
+    Effect.gen(function* () {
+      const { model, calls } = yield* makeJudgeStub([() => ({ statements: [] })]);
 
-    const score = await runTest(
-      ExtractThenClassify.extractThenClassifyRatio({
+      const score = yield* ExtractThenClassify.extractThenClassifyRatio({
         extract: { instructions: "extract", label: "output", text: "nothing here" },
         classify: {
           instructions: "classify",
           referenceLabel: "context",
           referenceText: "the context text",
         },
-      }).pipe(Effect.provide(provideJudge(model))),
-    );
+      }).pipe(provideJudge(model));
 
-    expect(score).toEqual({
-      score: 1,
-      reason: "No statements to evaluate.",
-      metadata: { statements: [], verdicts: [] },
-    });
-    expect(calls).toHaveLength(1);
-  });
+      expect(score).toEqual({
+        score: 1,
+        reason: "No statements to evaluate.",
+        metadata: { statements: [], verdicts: [] },
+      });
+      expect(calls).toHaveLength(1);
+    }),
+  );
 
-  it("propagates a judge failure as the typed AiError", async () => {
-    const model = await runTest(
-      LanguageModel.make({
+  it.effect("propagates a judge failure as the typed AiError", () =>
+    Effect.gen(function* () {
+      const model = yield* LanguageModel.make({
         generateText: () =>
           Effect.fail(
             AiError.make({
@@ -228,19 +232,19 @@ describe("ExtractThenClassify.extractThenClassifyRatio", () => {
             }),
           ),
         streamText: () => Stream.die("not used"),
-      }),
-    );
+      });
 
-    await expectFailureInstanceOf(
-      ExtractThenClassify.extractThenClassifyRatio({
-        extract: { instructions: "extract", label: "output", text: "the output text" },
-        classify: {
-          instructions: "classify",
-          referenceLabel: "context",
-          referenceText: "the context text",
-        },
-      }).pipe(Effect.provide(provideJudge(model)), Effect.asVoid),
-      AiError.AiError,
-    );
-  });
+      yield* expectFailureInstanceOf(
+        ExtractThenClassify.extractThenClassifyRatio({
+          extract: { instructions: "extract", label: "output", text: "the output text" },
+          classify: {
+            instructions: "classify",
+            referenceLabel: "context",
+            referenceText: "the context text",
+          },
+        }).pipe(provideJudge(model), Effect.asVoid),
+        AiError.AiError,
+      );
+    }),
+  );
 });

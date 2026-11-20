@@ -13,15 +13,14 @@
  * @module tests/metrics/geval
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { LanguageModel } from "effect/ai";
 import * as Prompt from "effect/ai/Prompt";
 import { EvalCase, GEval, Golden, Metric, Threshold } from "../../../src/evals/index.ts";
-import { expectFailureInstanceOf, runTest } from "../helpers/effect.ts";
+import { expectFailureInstanceOf } from "../helpers/effect.ts";
 import { unsafeCoerce } from "../helpers/unsafe.ts";
 
 // ── Stub judge model ─────────────────────────────────────────────────
@@ -63,16 +62,13 @@ const makeJudgeStub = (
   });
 
 const provideJudge = (model: LanguageModel.LanguageModel) =>
-  Layer.succeed(LanguageModel.LanguageModel, model);
+  Effect.provideService(LanguageModel.LanguageModel, model);
 
 /** A judge that dies if actually called — for tests expecting the model is never reached. */
-const deadJudge = (): Promise<LanguageModel.LanguageModel> =>
-  runTest(
-    LanguageModel.make({
-      generateText: () => Effect.die("gEval should not have called the judge"),
-      streamText: () => Stream.die("gEval should not have called the judge"),
-    }),
-  );
+const deadJudge = LanguageModel.make({
+  generateText: () => Effect.die("gEval should not have called the judge"),
+  streamText: () => Stream.die("gEval should not have called the judge"),
+});
 
 // ── Fixtures ─────────────────────────────────────────────────────────
 
@@ -94,188 +90,184 @@ const ragCase: TranslationCase = {
 // ── Score normalisation ──────────────────────────────────────────────
 
 describe("gEval — score normalisation", () => {
-  it("normalises the judge's raw score against a rubric's scale", async () => {
-    const rubric = GEval.makeRubric([
-      { min: 0, max: 3, description: "poor" },
-      { min: 4, max: 7, description: "adequate" },
-      { min: 8, max: 10, description: "excellent" },
-    ]);
+  it.effect("normalises the judge's raw score against a rubric's scale", () =>
+    Effect.gen(function* () {
+      const rubric = GEval.makeRubric([
+        { min: 0, max: 3, description: "poor" },
+        { min: 4, max: 7, description: "adequate" },
+        { min: 8, max: 10, description: "excellent" },
+      ]);
 
-    const metric: Metric.Metric<TranslationCase, GEval.GEvalError, LanguageModel.LanguageModel> =
-      GEval.gEval({
+      const metric: Metric.Metric<TranslationCase, GEval.GEvalError, LanguageModel.LanguageModel> =
+        GEval.gEval({
+          name: "translation-quality",
+          evaluationSteps: ["Check meaning is preserved", "Check the translation reads fluently"],
+          rubric,
+          evaluationParams: ["input", "output"],
+          threshold: Threshold.minScore(0.7),
+        });
+
+      const { model } = yield* makeJudgeStub(() => ({ score: 8, reason: "Faithful and fluent" }));
+
+      const result = yield* Metric.evaluate(metric, translationCase).pipe(provideJudge(model));
+
+      expect(result.score.score).toBeCloseTo(0.8);
+      expect(result.score.reason).toBe("Faithful and fluent");
+      expect(result.passed).toBe(true);
+      expect(result.score.metadata?.evaluationSteps).toEqual([
+        "Check meaning is preserved",
+        "Check the translation reads fluently",
+      ]);
+      expect(result.score.metadata?.rubric).toEqual(rubric);
+    }),
+  );
+
+  it.effect("clamps an out-of-range raw score to the rubric's scale before normalising", () =>
+    Effect.gen(function* () {
+      const rubric = GEval.makeRubric([{ min: 0, max: 10, description: "any" }]);
+      const metric = GEval.gEval<TranslationCase>({
         name: "translation-quality",
-        evaluationSteps: ["Check meaning is preserved", "Check the translation reads fluently"],
+        evaluationSteps: ["Check meaning is preserved"],
         rubric,
-        evaluationParams: ["input", "output"],
-        threshold: Threshold.minScore(0.7),
+        evaluationParams: ["output"],
+        threshold: Threshold.minScore(0),
       });
 
-    const { model } = await runTest(
-      makeJudgeStub(() => ({ score: 8, reason: "Faithful and fluent" })),
-    );
+      const { model } = yield* makeJudgeStub(() => ({ score: 15, reason: "over-scale" }));
+      const result = yield* Metric.evaluate(metric, translationCase).pipe(provideJudge(model));
 
-    const result = await runTest(
-      Metric.evaluate(metric, translationCase).pipe(Effect.provide(provideJudge(model))),
-    );
+      expect(result.score.score).toBe(1);
+    }),
+  );
 
-    expect(result.score.score).toBeCloseTo(0.8);
-    expect(result.score.reason).toBe("Faithful and fluent");
-    expect(result.passed).toBe(true);
-    expect(result.score.metadata?.evaluationSteps).toEqual([
-      "Check meaning is preserved",
-      "Check the translation reads fluently",
-    ]);
-    expect(result.score.metadata?.rubric).toEqual(rubric);
-  });
+  it.effect("treats the judge's score as already 0..1 when no rubric is given", () =>
+    Effect.gen(function* () {
+      const metric = GEval.gEval<TranslationCase>({
+        name: "translation-quality",
+        evaluationSteps: ["Check meaning is preserved"],
+        evaluationParams: ["output"],
+        threshold: Threshold.minScore(0),
+      });
 
-  it("clamps an out-of-range raw score to the rubric's scale before normalising", async () => {
-    const rubric = GEval.makeRubric([{ min: 0, max: 10, description: "any" }]);
-    const metric = GEval.gEval<TranslationCase>({
-      name: "translation-quality",
-      evaluationSteps: ["Check meaning is preserved"],
-      rubric,
-      evaluationParams: ["output"],
-      threshold: Threshold.minScore(0),
-    });
+      const { model } = yield* makeJudgeStub(() => ({ score: 0.42, reason: "partial credit" }));
+      const result = yield* Metric.evaluate(metric, translationCase).pipe(provideJudge(model));
 
-    const { model } = await runTest(makeJudgeStub(() => ({ score: 15, reason: "over-scale" })));
-    const result = await runTest(
-      Metric.evaluate(metric, translationCase).pipe(Effect.provide(provideJudge(model))),
-    );
+      expect(result.score.score).toBe(0.42);
+      expect(result.score.metadata?.rubric).toBeUndefined();
+    }),
+  );
 
-    expect(result.score.score).toBe(1);
-  });
+  it.effect("normalises against a rubric whose bands don't start at 0", () =>
+    Effect.gen(function* () {
+      const rubric = GEval.makeRubric([
+        { min: 3, max: 6, description: "adequate" },
+        { min: 7, max: 10, description: "excellent" },
+      ]);
+      const metric = GEval.gEval<TranslationCase>({
+        name: "translation-quality",
+        evaluationSteps: ["Check meaning is preserved"],
+        rubric,
+        evaluationParams: ["output"],
+        threshold: Threshold.minScore(0),
+      });
 
-  it("treats the judge's score as already 0..1 when no rubric is given", async () => {
-    const metric = GEval.gEval<TranslationCase>({
-      name: "translation-quality",
-      evaluationSteps: ["Check meaning is preserved"],
-      evaluationParams: ["output"],
-      threshold: Threshold.minScore(0),
-    });
+      // A raw score of 3 is the rubric's floor, so it should normalise to 0,
+      // not (3 - 0) / 10 = 0.3 as a hardcoded 0-floor would compute.
+      const { model } = yield* makeJudgeStub(() => ({ score: 3, reason: "floor" }));
+      const result = yield* Metric.evaluate(metric, translationCase).pipe(provideJudge(model));
 
-    const { model } = await runTest(
-      makeJudgeStub(() => ({ score: 0.42, reason: "partial credit" })),
-    );
-    const result = await runTest(
-      Metric.evaluate(metric, translationCase).pipe(Effect.provide(provideJudge(model))),
-    );
+      expect(result.score.score).toBe(0);
+    }),
+  );
 
-    expect(result.score.score).toBe(0.42);
-    expect(result.score.metadata?.rubric).toBeUndefined();
-  });
+  it.effect("normalises a below-floor raw score to 0 rather than silently accepting it", () =>
+    Effect.gen(function* () {
+      const rubric = GEval.makeRubric([{ min: 3, max: 10, description: "any" }]);
+      const metric = GEval.gEval<TranslationCase>({
+        name: "translation-quality",
+        evaluationSteps: ["Check meaning is preserved"],
+        rubric,
+        evaluationParams: ["output"],
+        threshold: Threshold.minScore(0),
+      });
 
-  it("normalises against a rubric whose bands don't start at 0", async () => {
-    const rubric = GEval.makeRubric([
-      { min: 3, max: 6, description: "adequate" },
-      { min: 7, max: 10, description: "excellent" },
-    ]);
-    const metric = GEval.gEval<TranslationCase>({
-      name: "translation-quality",
-      evaluationSteps: ["Check meaning is preserved"],
-      rubric,
-      evaluationParams: ["output"],
-      threshold: Threshold.minScore(0),
-    });
+      const { model } = yield* makeJudgeStub(() => ({ score: 1, reason: "below floor" }));
+      const result = yield* Metric.evaluate(metric, translationCase).pipe(provideJudge(model));
 
-    // A raw score of 3 is the rubric's floor, so it should normalise to 0,
-    // not (3 - 0) / 10 = 0.3 as a hardcoded 0-floor would compute.
-    const { model } = await runTest(makeJudgeStub(() => ({ score: 3, reason: "floor" })));
-    const result = await runTest(
-      Metric.evaluate(metric, translationCase).pipe(Effect.provide(provideJudge(model))),
-    );
+      expect(result.score.score).toBe(0);
+    }),
+  );
 
-    expect(result.score.score).toBe(0);
-  });
+  it.effect("normalises a single-point rubric to a perfect score", () =>
+    Effect.gen(function* () {
+      const rubric = GEval.makeRubric([{ min: 5, max: 5, description: "only valid value" }]);
+      const metric = GEval.gEval<TranslationCase>({
+        name: "translation-quality",
+        evaluationSteps: ["Check meaning is preserved"],
+        rubric,
+        evaluationParams: ["output"],
+        threshold: Threshold.minScore(0),
+      });
 
-  it("normalises a below-floor raw score to 0 rather than silently accepting it", async () => {
-    const rubric = GEval.makeRubric([{ min: 3, max: 10, description: "any" }]);
-    const metric = GEval.gEval<TranslationCase>({
-      name: "translation-quality",
-      evaluationSteps: ["Check meaning is preserved"],
-      rubric,
-      evaluationParams: ["output"],
-      threshold: Threshold.minScore(0),
-    });
+      const { model } = yield* makeJudgeStub(() => ({ score: 5, reason: "the only value" }));
+      const result = yield* Metric.evaluate(metric, translationCase).pipe(provideJudge(model));
 
-    const { model } = await runTest(makeJudgeStub(() => ({ score: 1, reason: "below floor" })));
-    const result = await runTest(
-      Metric.evaluate(metric, translationCase).pipe(Effect.provide(provideJudge(model))),
-    );
-
-    expect(result.score.score).toBe(0);
-  });
-
-  it("normalises a single-point rubric to a perfect score", async () => {
-    const rubric = GEval.makeRubric([{ min: 5, max: 5, description: "only valid value" }]);
-    const metric = GEval.gEval<TranslationCase>({
-      name: "translation-quality",
-      evaluationSteps: ["Check meaning is preserved"],
-      rubric,
-      evaluationParams: ["output"],
-      threshold: Threshold.minScore(0),
-    });
-
-    const { model } = await runTest(makeJudgeStub(() => ({ score: 5, reason: "the only value" })));
-    const result = await runTest(
-      Metric.evaluate(metric, translationCase).pipe(Effect.provide(provideJudge(model))),
-    );
-
-    expect(result.score.score).toBe(1);
-  });
+      expect(result.score.score).toBe(1);
+    }),
+  );
 });
 
 // ── Evaluation param field selection ─────────────────────────────────
 
 describe("gEval — evaluationParams field selection", () => {
-  it("shows the judge context and retrievedContext fields when named", async () => {
-    const metric = GEval.gEval<TranslationCase>({
-      name: "translation-quality",
-      evaluationSteps: ["Check the translation is grounded in the given context"],
-      evaluationParams: ["context", "retrievedContext"],
-      threshold: Threshold.minScore(0),
-    });
+  it.effect("shows the judge context and retrievedContext fields when named", () =>
+    Effect.gen(function* () {
+      const metric = GEval.gEval<TranslationCase>({
+        name: "translation-quality",
+        evaluationSteps: ["Check the translation is grounded in the given context"],
+        evaluationParams: ["context", "retrievedContext"],
+        threshold: Threshold.minScore(0),
+      });
 
-    const { model, calls } = await runTest(makeJudgeStub(() => ({ score: 1, reason: "grounded" })));
-    await runTest(Metric.evaluate(metric, ragCase).pipe(Effect.provide(provideJudge(model))));
+      const { model, calls } = yield* makeJudgeStub(() => ({ score: 1, reason: "grounded" }));
+      yield* Metric.evaluate(metric, ragCase).pipe(provideJudge(model));
 
-    expect(calls[0]?.user).toContain("context:\ngreeting phrase");
-    expect(calls[0]?.user).toContain("retrievedContext:\nBonjour is a common French greeting");
-  });
+      expect(calls[0]?.user).toContain("context:\ngreeting phrase");
+      expect(calls[0]?.user).toContain("retrievedContext:\nBonjour is a common French greeting");
+    }),
+  );
 });
 
 // ── Criteria-derived vs. explicit evaluation steps ──────────────────
 
 describe("gEval — criteria XOR evaluationSteps", () => {
-  it("asks the judge to derive and report evaluation steps when criteria is given", async () => {
-    const metric = GEval.gEval<TranslationCase>({
-      name: "translation-quality",
-      criteria: "Is this a faithful, fluent translation of the source?",
-      evaluationParams: ["input", "output"],
-      threshold: Threshold.minScore(0.5),
-    });
+  it.effect("asks the judge to derive and report evaluation steps when criteria is given", () =>
+    Effect.gen(function* () {
+      const metric = GEval.gEval<TranslationCase>({
+        name: "translation-quality",
+        criteria: "Is this a faithful, fluent translation of the source?",
+        evaluationParams: ["input", "output"],
+        threshold: Threshold.minScore(0.5),
+      });
 
-    const { model, calls } = await runTest(
-      makeJudgeStub(() => ({
+      const { model, calls } = yield* makeJudgeStub(() => ({
         steps: ["Compare meaning against the source", "Judge fluency in the target language"],
         score: 0.9,
         reason: "Accurate and fluent",
-      })),
-    );
+      }));
 
-    const result = await runTest(
-      Metric.evaluate(metric, translationCase).pipe(Effect.provide(provideJudge(model))),
-    );
+      const result = yield* Metric.evaluate(metric, translationCase).pipe(provideJudge(model));
 
-    expect(result.score.score).toBe(0.9);
-    expect(result.score.metadata?.evaluationSteps).toEqual([
-      "Compare meaning against the source",
-      "Judge fluency in the target language",
-    ]);
-    expect(calls[0]?.system).toContain(
-      "First derive a numbered list of concrete evaluation steps that operationalise this criteria",
-    );
-  });
+      expect(result.score.score).toBe(0.9);
+      expect(result.score.metadata?.evaluationSteps).toEqual([
+        "Compare meaning against the source",
+        "Judge fluency in the target language",
+      ]);
+      expect(calls[0]?.system).toContain(
+        "First derive a numbered list of concrete evaluation steps that operationalise this criteria",
+      );
+    }),
+  );
 
   it("throws when both criteria and evaluationSteps are given", () => {
     expect(() =>
@@ -378,83 +370,82 @@ describe("GEval.makeRubric", () => {
 // ── Missing evaluation param ─────────────────────────────────────────
 
 describe("gEval — missing evaluation params", () => {
-  it("fails with a typed error, and never calls the judge, when a required field is absent", async () => {
-    const metric = GEval.gEval<TranslationCase>({
-      name: "translation-quality",
-      evaluationSteps: ["Check meaning is preserved"],
-      evaluationParams: ["input", "expected"],
-      threshold: Threshold.minScore(0.5),
-    });
+  it.effect(
+    "fails with a typed error, and never calls the judge, when a required field is absent",
+    () =>
+      Effect.gen(function* () {
+        const metric = GEval.gEval<TranslationCase>({
+          name: "translation-quality",
+          evaluationSteps: ["Check meaning is preserved"],
+          evaluationParams: ["input", "expected"],
+          threshold: Threshold.minScore(0.5),
+        });
 
-    const caseWithoutExpected: TranslationCase = {
-      golden: { input: "Bonjour" },
-      output: "Hello",
-    };
+        const caseWithoutExpected: TranslationCase = {
+          golden: { input: "Bonjour" },
+          output: "Hello",
+        };
 
-    const model = await deadJudge();
+        const model = yield* deadJudge;
 
-    const failure = await expectFailureInstanceOf(
-      Metric.evaluate(metric, caseWithoutExpected).pipe(
-        Effect.provide(provideJudge(model)),
-        Effect.asVoid,
-      ),
-      GEval.MissingEvaluationParamError,
-    );
+        const failure = yield* expectFailureInstanceOf(
+          Metric.evaluate(metric, caseWithoutExpected).pipe(provideJudge(model), Effect.asVoid),
+          GEval.MissingEvaluationParamError,
+        );
 
-    expect(failure.param).toBe("expected");
-    expect(failure.metric).toBe("translation-quality");
-  });
+        expect(failure.param).toBe("expected");
+        expect(failure.metric).toBe("translation-quality");
+      }),
+  );
 
-  it("treats an explicit null field the same as a missing one", async () => {
-    const metric = GEval.gEval<TranslationCase>({
-      name: "translation-quality",
-      evaluationSteps: ["Check meaning is preserved"],
-      evaluationParams: ["expected"],
-      threshold: Threshold.minScore(0.5),
-    });
+  it.effect("treats an explicit null field the same as a missing one", () =>
+    Effect.gen(function* () {
+      const metric = GEval.gEval<TranslationCase>({
+        name: "translation-quality",
+        evaluationSteps: ["Check meaning is preserved"],
+        evaluationParams: ["expected"],
+        threshold: Threshold.minScore(0.5),
+      });
 
-    const caseWithNullExpected: TranslationCase = {
-      golden: { input: "Bonjour", expected: unsafeCoerce<string>(null) },
-      output: "Hello",
-    };
+      const caseWithNullExpected: TranslationCase = {
+        golden: { input: "Bonjour", expected: unsafeCoerce<string>(null) },
+        output: "Hello",
+      };
 
-    const model = await deadJudge();
+      const model = yield* deadJudge;
 
-    const failure = await expectFailureInstanceOf(
-      Metric.evaluate(metric, caseWithNullExpected).pipe(
-        Effect.provide(provideJudge(model)),
-        Effect.asVoid,
-      ),
-      GEval.MissingEvaluationParamError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        Metric.evaluate(metric, caseWithNullExpected).pipe(provideJudge(model), Effect.asVoid),
+        GEval.MissingEvaluationParamError,
+      );
 
-    expect(failure.param).toBe("expected");
-  });
+      expect(failure.param).toBe("expected");
+    }),
+  );
 
-  it("fails with the typed error for an unknown param an untyped eval file passes", async () => {
-    // Eval files are type-stripped, never type-checked, so a typo in
-    // `evaluationParams` reaches the metric at runtime. It must be the typed
-    // `MissingEvaluationParamError`, not a defect.
-    const metric = GEval.gEval<TranslationCase>({
-      name: "translation-quality",
-      evaluationSteps: ["Check meaning is preserved"],
-      evaluationParams: ["input", unsafeCoerce<GEval.EvaluationParam>("inptu")],
-      threshold: Threshold.minScore(0.5),
-    });
+  it.effect("fails with the typed error for an unknown param an untyped eval file passes", () =>
+    Effect.gen(function* () {
+      // Eval files are type-stripped, never type-checked, so a typo in
+      // `evaluationParams` reaches the metric at runtime. It must be the typed
+      // `MissingEvaluationParamError`, not a defect.
+      const metric = GEval.gEval<TranslationCase>({
+        name: "translation-quality",
+        evaluationSteps: ["Check meaning is preserved"],
+        evaluationParams: ["input", unsafeCoerce<GEval.EvaluationParam>("inptu")],
+        threshold: Threshold.minScore(0.5),
+      });
 
-    const model = await deadJudge();
+      const model = yield* deadJudge;
 
-    const failure = await expectFailureInstanceOf(
-      Metric.evaluate(metric, translationCase).pipe(
-        Effect.provide(provideJudge(model)),
-        Effect.asVoid,
-      ),
-      GEval.MissingEvaluationParamError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        Metric.evaluate(metric, translationCase).pipe(provideJudge(model), Effect.asVoid),
+        GEval.MissingEvaluationParamError,
+      );
 
-    expect(failure.param).toBe("inptu");
-    expect(failure.metric).toBe("translation-quality");
-  });
+      expect(failure.param).toBe("inptu");
+      expect(failure.metric).toBe("translation-quality");
+    }),
+  );
 });
 
 // ── Conversational rendering ─────────────────────────────────────────
@@ -471,47 +462,55 @@ describe("gEvalConversational", () => {
     scenario: "delayed-order",
   };
 
-  it("renders the full turn history for the judge and scores the exchange holistically", async () => {
-    const metric = GEval.gEvalConversational<SupportCase>({
-      name: "helpfulness",
-      evaluationSteps: ["Check the assistant asks for information it needs to help"],
-      evaluationParams: ["scenario"],
-      threshold: Threshold.minScore(0.5),
-    });
+  it.effect(
+    "renders the full turn history for the judge and scores the exchange holistically",
+    () =>
+      Effect.gen(function* () {
+        const metric = GEval.gEvalConversational<SupportCase>({
+          name: "helpfulness",
+          evaluationSteps: ["Check the assistant asks for information it needs to help"],
+          evaluationParams: ["scenario"],
+          threshold: Threshold.minScore(0.5),
+        });
 
-    const { model, calls } = await runTest(
-      makeJudgeStub(() => ({ score: 0.75, reason: "Asked a clarifying question" })),
-    );
+        const { model, calls } = yield* makeJudgeStub(() => ({
+          score: 0.75,
+          reason: "Asked a clarifying question",
+        }));
 
-    const result = await runTest(
-      Metric.evaluate(metric, supportCase).pipe(Effect.provide(provideJudge(model))),
-    );
+        const result = yield* Metric.evaluate(metric, supportCase).pipe(provideJudge(model));
 
-    expect(result.score.score).toBe(0.75);
-    expect(result.score.reason).toBe("Asked a clarifying question");
-    expect(calls[0]?.user).toContain("[user] My order hasn't arrived");
-    expect(calls[0]?.user).toContain("[assistant] Can you share the order number?");
-    expect(calls[0]?.user).toContain("scenario:\ndelayed-order");
-  });
+        expect(result.score.score).toBe(0.75);
+        expect(result.score.reason).toBe("Asked a clarifying question");
+        expect(calls[0]?.user).toContain("[user] My order hasn't arrived");
+        expect(calls[0]?.user).toContain("[assistant] Can you share the order number?");
+        expect(calls[0]?.user).toContain("scenario:\ndelayed-order");
+      }),
+  );
 
-  it("fails with the typed error for an unknown param an untyped eval file passes", async () => {
-    const metric = GEval.gEvalConversational<SupportCase>({
-      name: "helpfulness",
-      evaluationSteps: ["Check the assistant asks for information it needs to help"],
-      evaluationParams: ["scenario", unsafeCoerce<GEval.ConversationalEvaluationParam>("senario")],
-      threshold: Threshold.minScore(0.5),
-    });
+  it.effect("fails with the typed error for an unknown param an untyped eval file passes", () =>
+    Effect.gen(function* () {
+      const metric = GEval.gEvalConversational<SupportCase>({
+        name: "helpfulness",
+        evaluationSteps: ["Check the assistant asks for information it needs to help"],
+        evaluationParams: [
+          "scenario",
+          unsafeCoerce<GEval.ConversationalEvaluationParam>("senario"),
+        ],
+        threshold: Threshold.minScore(0.5),
+      });
 
-    const model = await deadJudge();
+      const model = yield* deadJudge;
 
-    const failure = await expectFailureInstanceOf(
-      Metric.evaluate(metric, supportCase).pipe(Effect.provide(provideJudge(model)), Effect.asVoid),
-      GEval.MissingEvaluationParamError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        Metric.evaluate(metric, supportCase).pipe(provideJudge(model), Effect.asVoid),
+        GEval.MissingEvaluationParamError,
+      );
 
-    expect(failure.param).toBe("senario");
-    expect(failure.metric).toBe("helpfulness");
-  });
+      expect(failure.param).toBe("senario");
+      expect(failure.metric).toBe("helpfulness");
+    }),
+  );
 
   it("renders turns via the exported renderTurns helper", () => {
     const rendered = GEval.renderTurns(supportCase.turns);
@@ -528,28 +527,28 @@ describe("gEvalConversational", () => {
     expect(GEval.renderTurns(turns)).toBe("[system] You are a support agent.\n\n[user] Hi");
   });
 
-  it("shows the judge expectedOutcome and context fields when named", async () => {
-    const caseWithMoreParams: SupportCase = {
-      ...supportCase,
-      expectedOutcome: "asks for the order number",
-      context: ["order-support"],
-    };
+  it.effect("shows the judge expectedOutcome and context fields when named", () =>
+    Effect.gen(function* () {
+      const caseWithMoreParams: SupportCase = {
+        ...supportCase,
+        expectedOutcome: "asks for the order number",
+        context: ["order-support"],
+      };
 
-    const metric = GEval.gEvalConversational<SupportCase>({
-      name: "helpfulness",
-      evaluationSteps: ["Check the assistant asks for information it needs to help"],
-      evaluationParams: ["expectedOutcome", "context"],
-      threshold: Threshold.minScore(0),
-    });
+      const metric = GEval.gEvalConversational<SupportCase>({
+        name: "helpfulness",
+        evaluationSteps: ["Check the assistant asks for information it needs to help"],
+        evaluationParams: ["expectedOutcome", "context"],
+        threshold: Threshold.minScore(0),
+      });
 
-    const { model, calls } = await runTest(makeJudgeStub(() => ({ score: 0.5, reason: "n/a" })));
-    await runTest(
-      Metric.evaluate(metric, caseWithMoreParams).pipe(Effect.provide(provideJudge(model))),
-    );
+      const { model, calls } = yield* makeJudgeStub(() => ({ score: 0.5, reason: "n/a" }));
+      yield* Metric.evaluate(metric, caseWithMoreParams).pipe(provideJudge(model));
 
-    expect(calls[0]?.user).toContain("expectedOutcome:\nasks for the order number");
-    expect(calls[0]?.user).toContain("context:\norder-support");
-  });
+      expect(calls[0]?.user).toContain("expectedOutcome:\nasks for the order number");
+      expect(calls[0]?.user).toContain("context:\norder-support");
+    }),
+  );
 });
 
 // ── Default template ─────────────────────────────────────────────────

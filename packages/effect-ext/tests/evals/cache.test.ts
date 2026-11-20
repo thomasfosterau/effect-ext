@@ -5,13 +5,13 @@
  * @module tests/cache
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, layer } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 import { Cache } from "../../src/evals/index.ts";
-import { runTest } from "./helpers/effect.ts";
 
-const hash = (input: Cache.CacheKeyInput) => runTest(Cache.hashKey(input));
+const hash = (input: Cache.CacheKeyInput) => Cache.hashKey(input);
 
 describe("Cache.hashKey", () => {
   const base = {
@@ -30,121 +30,145 @@ describe("Cache.hashKey", () => {
 
   const withSet = (values: Array<string>) => ({ ...base, golden: { tags: new Set(values) } });
 
-  it("is a full SHA-256 hex digest, not a small structural hash", async () => {
-    expect(await hash(base)).toMatch(/^[0-9a-f]{64}$/);
-  });
+  it.effect("is a full SHA-256 hex digest, not a small structural hash", () =>
+    Effect.gen(function* () {
+      expect(yield* hash(base)).toMatch(/^[0-9a-f]{64}$/);
+    }),
+  );
 
-  it("keys a BigInt as its digits, where JSON.stringify would throw, distinct from the number and the string", async () => {
-    const big = await hash({ ...base, golden: { input: 1n } });
-    expect(big).toMatch(/^[0-9a-f]{64}$/);
-    expect(big).toBe(await hash({ ...base, golden: { input: 1n } }));
-    expect(big).not.toBe(await hash({ ...base, golden: { input: 1 } }));
-    expect(big).not.toBe(await hash({ ...base, golden: { input: "1" } }));
-  });
+  it.effect(
+    "keys a BigInt as its digits, where JSON.stringify would throw, distinct from the number and the string",
+    () =>
+      Effect.gen(function* () {
+        const big = yield* hash({ ...base, golden: { input: 1n } });
+        expect(big).toMatch(/^[0-9a-f]{64}$/);
+        expect(big).toBe(yield* hash({ ...base, golden: { input: 1n } }));
+        expect(big).not.toBe(yield* hash({ ...base, golden: { input: 1 } }));
+        expect(big).not.toBe(yield* hash({ ...base, golden: { input: "1" } }));
+      }),
+  );
 
-  it("keeps the digest of a varied golden pinned, so existing cache entries stay addressable", async () => {
-    const golden = {
-      b: 2,
-      a: [
-        1,
-        "x",
-        null,
-        undefined,
-        () => 1,
-        Symbol("s"),
-        DateTime.toDateUtc(DateTime.makeUnsafe(0)),
-      ],
-      m: new Map<unknown, unknown>([["k", { z: 1, y: [new Set([1, 2])] }]]),
-      f: () => 2,
-      u: undefined,
-      n: { d: DateTime.toDateUtc(DateTime.makeUnsafe(86400000)), e: true },
-    };
-    expect(await hash({ golden, taskId: "t@v1", trial: 2, metric: "m" })).toBe(
-      "a8b2f547bbad801e410ff90962419c384ff47772926185330d6a4f3f704fe37f",
-    );
-  });
+  it.effect(
+    "keeps the digest of a varied golden pinned, so existing cache entries stay addressable",
+    () =>
+      Effect.gen(function* () {
+        const golden = {
+          b: 2,
+          a: [
+            1,
+            "x",
+            null,
+            undefined,
+            () => 1,
+            Symbol("s"),
+            DateTime.toDateUtc(DateTime.makeUnsafe(0)),
+          ],
+          m: new Map<unknown, unknown>([["k", { z: 1, y: [new Set([1, 2])] }]]),
+          f: () => 2,
+          u: undefined,
+          n: { d: DateTime.toDateUtc(DateTime.makeUnsafe(86400000)), e: true },
+        };
+        expect(yield* hash({ golden, taskId: "t@v1", trial: 2, metric: "m" })).toBe(
+          "a8b2f547bbad801e410ff90962419c384ff47772926185330d6a4f3f704fe37f",
+        );
+      }),
+  );
 
-  it("is deterministic for identical inputs", async () => {
-    expect(await hash(base)).toBe(await hash({ ...base }));
-  });
+  it.effect("is deterministic for identical inputs", () =>
+    Effect.gen(function* () {
+      expect(yield* hash(base)).toBe(yield* hash({ ...base }));
+    }),
+  );
 
-  it("is independent of object key order", async () => {
-    const reordered = {
-      trial: 1,
-      metric: "exact-match",
-      taskId: "translate@v1",
-      golden: { input: "Bonjour" },
-    };
-    expect(await hash(base)).toBe(await hash(reordered));
-  });
+  it.effect("is independent of object key order", () =>
+    Effect.gen(function* () {
+      const reordered = {
+        trial: 1,
+        metric: "exact-match",
+        taskId: "translate@v1",
+        golden: { input: "Bonjour" },
+      };
+      expect(yield* hash(base)).toBe(yield* hash(reordered));
+    }),
+  );
 
-  it("changes when the golden changes", async () => {
-    expect(await hash(base)).not.toBe(await hash({ ...base, golden: { input: "Ciao" } }));
-  });
+  it.effect("changes when the golden changes", () =>
+    Effect.gen(function* () {
+      expect(yield* hash(base)).not.toBe(yield* hash({ ...base, golden: { input: "Ciao" } }));
+    }),
+  );
 
-  it("changes when the trial changes", async () => {
-    expect(await hash(base)).not.toBe(await hash({ ...base, trial: 2 }));
-  });
+  it.effect("changes when the trial changes", () =>
+    Effect.gen(function* () {
+      expect(yield* hash(base)).not.toBe(yield* hash({ ...base, trial: 2 }));
+    }),
+  );
 
-  it("changes when the metric changes", async () => {
-    expect(await hash(base)).not.toBe(await hash({ ...base, metric: "other-metric" }));
-  });
+  it.effect("changes when the metric changes", () =>
+    Effect.gen(function* () {
+      expect(yield* hash(base)).not.toBe(yield* hash({ ...base, metric: "other-metric" }));
+    }),
+  );
 
-  it("changes when the judge model id changes", async () => {
-    expect(await hash(base)).not.toBe(await hash({ ...base, judgeModelId: "claude-sonnet-5" }));
-  });
+  it.effect("changes when the judge model id changes", () =>
+    Effect.gen(function* () {
+      expect(yield* hash(base)).not.toBe(yield* hash({ ...base, judgeModelId: "claude-sonnet-5" }));
+    }),
+  );
 
-  it("distinguishes goldens that differ only by a Date field", async () => {
-    expect(await hash(withDate(DateTime.toDateUtc(DateTime.makeUnsafe("2026-01-01"))))).not.toBe(
-      await hash(withDate(DateTime.toDateUtc(DateTime.makeUnsafe("2026-07-16")))),
-    );
-  });
+  it.effect("distinguishes goldens that differ only by a Date field", () =>
+    Effect.gen(function* () {
+      expect(yield* hash(withDate(DateTime.toDateUtc(DateTime.makeUnsafe("2026-01-01"))))).not.toBe(
+        yield* hash(withDate(DateTime.toDateUtc(DateTime.makeUnsafe("2026-07-16")))),
+      );
+    }),
+  );
 
-  it("distinguishes goldens that differ only by a Map's contents", async () => {
-    expect(await hash(withMap([["a", "1"]]))).not.toBe(await hash(withMap([["a", "2"]])));
-  });
+  it.effect("distinguishes goldens that differ only by a Map's contents", () =>
+    Effect.gen(function* () {
+      expect(yield* hash(withMap([["a", "1"]]))).not.toBe(yield* hash(withMap([["a", "2"]])));
+    }),
+  );
 
-  it("distinguishes goldens that differ only by a Set's contents", async () => {
-    expect(await hash(withSet(["a"]))).not.toBe(await hash(withSet(["b"])));
-  });
+  it.effect("distinguishes goldens that differ only by a Set's contents", () =>
+    Effect.gen(function* () {
+      expect(yield* hash(withSet(["a"]))).not.toBe(yield* hash(withSet(["b"])));
+    }),
+  );
 });
 
 describe("Cache.layerMemory", () => {
-  it("round-trips a set value through get", async () => {
-    const value = await runTest(
+  layer(Cache.layerMemory, { buildPerTest: true })((t) => {
+    t.effect("round-trips a set value through get", () =>
       Effect.gen(function* () {
         const kv = yield* Cache.KeyValueStore.KeyValueStore;
         yield* kv.set("key", "value");
-        return yield* kv.get("key");
-      }).pipe(Effect.provide(Cache.layerMemory)),
+        expect(yield* kv.get("key")).toBe("value");
+      }),
     );
-    expect(value).toBe("value");
-  });
 
-  it("returns undefined for a missing key", async () => {
-    const value = await runTest(
+    t.effect("returns undefined for a missing key", () =>
       Effect.gen(function* () {
         const kv = yield* Cache.KeyValueStore.KeyValueStore;
-        return yield* kv.get("missing");
-      }).pipe(Effect.provide(Cache.layerMemory)),
+        expect(yield* kv.get("missing")).toBeUndefined();
+      }),
     );
-    expect(value).toBeUndefined();
   });
 
-  it("starts fresh on every independent run, even from the same layer constant", async () => {
-    await runTest(
-      Effect.gen(function* () {
+  it.effect("starts fresh on every independent run, even from the same layer constant", () =>
+    Effect.gen(function* () {
+      const first = yield* Layer.build(Cache.layerMemory);
+      yield* Effect.gen(function* () {
         const kv = yield* Cache.KeyValueStore.KeyValueStore;
         yield* kv.set("key", "from-first-run");
-      }).pipe(Effect.provide(Cache.layerMemory)),
-    );
+      }).pipe(Effect.provideContext(first));
 
-    const value = await runTest(
-      Effect.gen(function* () {
+      const second = yield* Layer.build(Cache.layerMemory);
+      const value = yield* Effect.gen(function* () {
         const kv = yield* Cache.KeyValueStore.KeyValueStore;
         return yield* kv.get("key");
-      }).pipe(Effect.provide(Cache.layerMemory)),
-    );
-    expect(value).toBeUndefined();
-  });
+      }).pipe(Effect.provideContext(second));
+      expect(value).toBeUndefined();
+    }),
+  );
 });

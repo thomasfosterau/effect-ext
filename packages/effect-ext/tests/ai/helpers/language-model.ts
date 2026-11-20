@@ -17,7 +17,6 @@
  */
 
 import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { AiError, LanguageModel, type Response } from "effect/ai";
@@ -28,7 +27,7 @@ class NotStubbed extends Schema.TaggedError<NotStubbed>()("NotStubbed", {
 }) {}
 
 /**
- * A `LanguageModel` layer whose `generateObject` resolves to the given value,
+ * A `LanguageModel` service whose `generateObject` resolves to the given value,
  * wrapped in a `GenerateObjectResponse` carrying `content` (response parts
  * such as metadata). `onCall` captures each request's
  * `prompt`, `objectName` and `schema` for pass-through assertions (the
@@ -43,45 +42,37 @@ export const stubLanguageModel = (
     readonly schema: Schema.Codec<unknown, unknown>;
   }) => void,
   content: ReadonlyArray<Response.AnyPart> = [],
-): Layer.Layer<LanguageModel.LanguageModel> =>
-  Layer.succeed(
-    LanguageModel.LanguageModel,
-    LanguageModel.LanguageModel.of({
-      [LanguageModel.TypeId]: LanguageModel.TypeId,
-      generateObject: ((options: {
-        prompt: unknown;
-        objectName: unknown;
-        schema: Schema.Codec<unknown, unknown>;
-      }) => {
-        onCall?.({
-          prompt: options.prompt,
-          objectName: options.objectName,
-          schema: options.schema,
-        });
-        return Effect.succeed(
-          new LanguageModel.GenerateObjectResponse(value, [...content] as never),
-        );
-      }) as never,
-      generateText: () => Effect.die(new NotStubbed({ method: "generateText" })),
-      streamText: () => Stream.die(new NotStubbed({ method: "streamText" })),
-    }),
-  );
+): LanguageModel.LanguageModel =>
+  LanguageModel.LanguageModel.of({
+    [LanguageModel.TypeId]: LanguageModel.TypeId,
+    generateObject: ((options: {
+      prompt: unknown;
+      objectName: unknown;
+      schema: Schema.Codec<unknown, unknown>;
+    }) => {
+      onCall?.({
+        prompt: options.prompt,
+        objectName: options.objectName,
+        schema: options.schema,
+      });
+      return Effect.succeed(new LanguageModel.GenerateObjectResponse(value, [...content] as never));
+    }) as never,
+    generateText: () => Effect.die(new NotStubbed({ method: "generateText" })),
+    streamText: () => Stream.die(new NotStubbed({ method: "streamText" })),
+  });
 
-/** A `LanguageModel` layer whose `generateObject` fails with an `AiError`. */
-export const failingLanguageModel = (): Layer.Layer<LanguageModel.LanguageModel> =>
-  Layer.succeed(
-    LanguageModel.LanguageModel,
-    LanguageModel.LanguageModel.of({
-      [LanguageModel.TypeId]: LanguageModel.TypeId,
-      generateObject: (() =>
-        Effect.fail(
-          AiError.make({
-            module: "test",
-            method: "generateObject",
-            reason: new AiError.UnknownError({ description: "stubbed failure" }),
-          }),
-        )) as never,
-      generateText: () => Effect.die(new NotStubbed({ method: "generateText" })),
-      streamText: () => Stream.die(new NotStubbed({ method: "streamText" })),
-    }),
-  );
+/** A `LanguageModel` service whose `generateObject` fails with an `AiError`. */
+export const failingLanguageModel = (): LanguageModel.LanguageModel =>
+  LanguageModel.LanguageModel.of({
+    [LanguageModel.TypeId]: LanguageModel.TypeId,
+    generateObject: (() =>
+      Effect.fail(
+        AiError.make({
+          module: "test",
+          method: "generateObject",
+          reason: new AiError.UnknownError({ description: "stubbed failure" }),
+        }),
+      )) as never,
+    generateText: () => Effect.die(new NotStubbed({ method: "generateText" })),
+    streamText: () => Stream.die(new NotStubbed({ method: "streamText" })),
+  });
