@@ -1,5 +1,5 @@
 {
-  // tsgolint (type-aware `vp lint`, with `typeCheck`) resolves each file's
+  // tsrs (type-aware `vp lint`, with `typeCheck`) resolves each file's
   // NEAREST `tsconfig.json` and never loads `tsconfig.test.json`. Without
   // this file the tests fell under ../tsconfig.json (`src` only, no `paths`),
   // so the package name did not resolve and every test reported false errors.

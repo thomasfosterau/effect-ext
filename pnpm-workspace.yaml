@@ -23,7 +23,7 @@ catalog:
   # it can't float ahead of `effect`. No manifest names it: bump it by hand.
   "@effect/platform-node-shared": 4.1.4
   # `effect-tsgo patch` (the `prepare` script) supports only the TypeScript /
-  # oxlint pairs in the `components` table of
+  # oxlint / tsrs versions in the `components` table of
   # node_modules/@effect/tsgo/dist/effect-tsgo.cjs, and fails `pnpm install`
   # on anything else: check it before moving this, `@typescript/native` or
   # `vite-plus`.
@@ -32,7 +32,7 @@ catalog:
   "@enfect/oxlint": 0.10.0
   "@thomasfosterau/effect-parse": ^0.6.1
   "@types/node": ^26.6.6
-  "@vitest/coverage-istanbul": 5.1.1
+  "@vitest/coverage-istanbul": 5.1.0
   effect: 4.1.4
   fallow: 3.43.2
   fast-check: ^4.10.3
@@ -42,10 +42,11 @@ catalog:
   # get TS6 as `typescript`; the native TS7 `tsc` is `@typescript/native`.
   typescript: "npm:@typescript/typescript6@6.0.2"
   "@typescript/native": "npm:typescript@7.0.2"
-  # `vite` equals `vite-plus`, and `vitest` is vite-plus's exact pin.
+  # `vite` and `vitest` equal what vite-plus itself depends on
+  # (`npm view vite-plus@<v> dependencies`); `vite` no longer equals vite-plus.
   vite-plus: 1.7.0
-  vite: npm:@voidzero-dev/vite-plus-core@1.6.0
-  vitest: 5.1.1
+  vite: npm:@voidzero-dev/vite-plus-core@8.3.8000
+  vitest: 5.1.0
 
 # Peer ranges of the published packages. `effect` is `^4.0.0` unless a
 # package's own dependency needs more, in a catalog of its own that says why.
@@ -97,13 +98,9 @@ skills:
   dirs: [.claude/skills]
 peerDependencyRules:
   allowAny:
-    - vite
-    - vitest
     # @effect/docgen declares `typescript: ^5`; ours is the TS6 alias.
     - typescript
   allowedVersions:
-    vite: "*"
-    vitest: "*"
     typescript: "*"
 
 # Hold new versions for 24 hours (minutes); Dependabot's cooldown matches it.
