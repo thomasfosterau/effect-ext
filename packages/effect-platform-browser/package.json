@@ -38,6 +38,7 @@
     "./Browser": "./src/Browser.ts",
     "./BrowserTesting": "./src/BrowserTesting.ts",
     "./DomObservers": "./src/DomObservers.ts",
+    "./FilePicker": "./src/FilePicker.ts",
     "./Fullscreen": "./src/Fullscreen.ts",
     "./IdleDetection": "./src/IdleDetection.ts",
     "./Locks": "./src/Locks.ts",
@@ -81,6 +82,10 @@
       "./DomObservers": {
         "types": "./dist/DomObservers.d.ts",
         "import": "./dist/DomObservers.js"
+      },
+      "./FilePicker": {
+        "types": "./dist/FilePicker.d.ts",
+        "import": "./dist/FilePicker.js"
       },
       "./Fullscreen": {
         "types": "./dist/Fullscreen.d.ts",

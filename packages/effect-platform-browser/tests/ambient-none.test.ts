@@ -4,6 +4,7 @@ import { installGlobals } from "../../effect-platform-worker-shared/tests/global
 import * as Effect from "effect/Effect";
 import {
   Browser,
+  FilePicker,
   Locks,
   Navigation,
   Navigator,
@@ -21,12 +22,14 @@ describe("Browser.layer without a navigator", () => {
         languages: info.languages,
         locks: (yield* Locks.Locks).supported,
         wakeLock: (yield* WakeLock.WakeLock).supported,
+        filePicker: (yield* FilePicker.FilePicker).supported,
         history: (yield* Navigation.Navigation).supported.history,
       }).toStrictEqual({
         userAgent: "",
         languages: [],
         locks: false,
         wakeLock: false,
+        filePicker: false,
         history: false,
       });
     }).pipe(Effect.provide(Browser.layer)),

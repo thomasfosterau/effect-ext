@@ -34,6 +34,7 @@ export * as TestBattery from "./testing/battery.ts";
 export * as TestBroadcast from "./testing/broadcast.ts";
 export * as TestClipboard from "./testing/clipboard.ts";
 export * as TestDomObservers from "./testing/dom-observers.ts";
+export * as TestFilePicker from "./testing/file-picker.ts";
 export * as TestFullscreen from "./testing/fullscreen.ts";
 export * as TestGeolocation from "./testing/geolocation.ts";
 export * as TestIdleDetection from "./testing/idle-detection.ts";

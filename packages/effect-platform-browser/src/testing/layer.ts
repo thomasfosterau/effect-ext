@@ -8,6 +8,7 @@ import * as TestBattery from "./battery.ts";
 import * as TestBroadcast from "./broadcast.ts";
 import * as TestClipboard from "./clipboard.ts";
 import * as TestDomObservers from "./dom-observers.ts";
+import * as TestFilePicker from "./file-picker.ts";
 import * as TestFullscreen from "./fullscreen.ts";
 import * as TestGeolocation from "./geolocation.ts";
 import * as TestIdleDetection from "./idle-detection.ts";
@@ -51,6 +52,7 @@ export const layer = Layer.mergeAll(
   TestBroadcast.layer,
   TestClipboard.layer(),
   TestDomObservers.layer(),
+  TestFilePicker.layer(),
   TestFullscreen.layer(),
   TestGeolocation.layer(),
   TestIdleDetection.layer(),

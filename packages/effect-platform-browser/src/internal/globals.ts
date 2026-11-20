@@ -11,6 +11,7 @@
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import type { BatteryManagerLike } from "../Battery.ts";
+import type { FilePickerLike } from "../FilePicker.ts";
 import type { IdleDetectorLike } from "../IdleDetection.ts";
 import type { NavigationLike } from "../Navigation.ts";
 
@@ -98,3 +99,24 @@ export const ambientLocation = (): Option.Option<Location> =>
   Option.filter(Option.fromUndefinedOr(globalThis.location), (location) =>
     P.hasProperty(location, "assign"),
   );
+
+/**
+ * The File System Access pickers, bound to `globalThis`, where the agent has
+ * all three (Chromium, in a window).
+ */
+export const ambientFilePicker = (): Option.Option<FilePickerLike> => {
+  // The DOM lib has no pickers; `navigator` as for `ambientIdleDetector`.
+  const scope: Partial<FilePickerLike> & Pick<typeof globalThis, "navigator"> = globalThis;
+  return Option.map(
+    Option.all([
+      Option.fromUndefinedOr(scope.showOpenFilePicker),
+      Option.fromUndefinedOr(scope.showSaveFilePicker),
+      Option.fromUndefinedOr(scope.showDirectoryPicker),
+    ]),
+    ([open, save, directory]): FilePickerLike => ({
+      showOpenFilePicker: (options) => open.call(globalThis, options),
+      showSaveFilePicker: (options) => save.call(globalThis, options),
+      showDirectoryPicker: (options) => directory.call(globalThis, options),
+    }),
+  );
+};

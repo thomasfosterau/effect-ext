@@ -31,7 +31,9 @@
     "./WorkerScope": "./src/WorkerScope.ts",
     "./WorkerRuntime": "./src/WorkerRuntime.ts",
     "./WorkerMessaging": "./src/WorkerMessaging.ts",
-    "./Performance": "./src/Performance.ts"
+    "./Performance": "./src/Performance.ts",
+    "./BrowserFileSystem": "./src/BrowserFileSystem.ts",
+    "./MemoryFileSystemHandle": "./src/MemoryFileSystemHandle.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -57,6 +59,14 @@
       "./Performance": {
         "types": "./dist/Performance.d.ts",
         "import": "./dist/Performance.js"
+      },
+      "./BrowserFileSystem": {
+        "types": "./dist/BrowserFileSystem.d.ts",
+        "import": "./dist/BrowserFileSystem.js"
+      },
+      "./MemoryFileSystemHandle": {
+        "types": "./dist/MemoryFileSystemHandle.d.ts",
+        "import": "./dist/MemoryFileSystemHandle.js"
       }
     },
     "access": "public"
