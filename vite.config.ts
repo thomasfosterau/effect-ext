@@ -17,6 +17,7 @@ import { coverageFloor as voyageFloor } from "./packages/effect-ai-voyage/vite.c
 import { coverageFloor as workerSharedFloor } from "./packages/effect-platform-worker-shared/vite.config.ts";
 import { coverageFloor as workerFloor } from "./packages/effect-platform-worker/vite.config.ts";
 import { coverageFloor as serviceWorkerFloor } from "./packages/effect-platform-service-worker/vite.config.ts";
+import { coverageFloor as browserFloor } from "./packages/effect-platform-browser/vite.config.ts";
 import {
   coverageFloor as effectExtFloor,
   coverageGlobFloors as effectExtGlobFloors,
@@ -36,6 +37,7 @@ const coverageFloors = {
   "packages/effect-platform-worker-shared/src/**": workerSharedFloor,
   "packages/effect-platform-worker/src/**": workerFloor,
   "packages/effect-platform-service-worker/src/**": serviceWorkerFloor,
+  "packages/effect-platform-browser/src/**": browserFloor,
   ...Object.fromEntries(
     Object.entries(effectExtGlobFloors).map(([glob, floor]) => [
       `packages/effect-ext/${glob}`,
@@ -83,6 +85,7 @@ const packageNames = [
   "@thomasfosterau/effect-platform-worker-shared",
   "@thomasfosterau/effect-platform-worker",
   "@thomasfosterau/effect-platform-service-worker",
+  "@thomasfosterau/effect-platform-browser",
 ];
 
 export default defineConfig({
@@ -388,6 +391,9 @@ export default defineConfig({
           "packages/effect-ext/src/browser-testing/{fullscreen,idle-detection,locks,navigator,permissions}.ts",
           // The service worker mirrors: `openWindow`, `navigate`, `Clients.get`.
           "packages/effect-platform-service-worker/src/Clients.ts",
+          // The page's mirrors: `controller`, the registration's workers,
+          // `getRegistration`, `getSubscription`.
+          "packages/effect-platform-browser/src/{ServiceWorkerContainer,PushManager}.ts",
         ],
         rules: { "effect/prefer-option-over-null": "off" },
       },
@@ -455,6 +461,7 @@ export default defineConfig({
           "packages/effect-platform-worker-shared/src/{WorkerMessaging,WorkerScope,WorkerRuntime}.ts",
           "packages/effect-platform-worker/src/*.ts",
           "packages/effect-platform-service-worker/src/**/*.ts",
+          "packages/effect-platform-browser/src/**/*.ts",
         ],
         rules: {
           "effect/no-unknown-parameters": "off",
@@ -468,7 +475,9 @@ export default defineConfig({
       // mirror `postMessage(message: any)`, and the fake globals they
       // install are whatever the platform puts there.
       {
-        files: ["packages/effect-platform-{worker-shared,worker,service-worker}/tests/**/*.ts"],
+        files: [
+          "packages/effect-platform-{worker-shared,worker,service-worker,browser}/tests/**/*.ts",
+        ],
         rules: {
           "effect/no-unsafe-dictionary-type": "off",
           "effecttsgo/strict-effect-provide": "off",

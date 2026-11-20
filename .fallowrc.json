@@ -94,6 +94,10 @@
       {
         "name": "service-worker",
         "patterns": ["packages/effect-platform-service-worker/**"]
+      },
+      {
+        "name": "browser",
+        "patterns": ["packages/effect-platform-browser/**"]
       }
     ],
     "rules": [
@@ -135,6 +139,10 @@
       },
       {
         "from": "service-worker",
+        "allow": ["worker-shared"]
+      },
+      {
+        "from": "browser",
         "allow": ["worker-shared"]
       }
     ]
