@@ -42,6 +42,7 @@
     "./IdleDetection": "./src/IdleDetection.ts",
     "./Locks": "./src/Locks.ts",
     "./MediaQuery": "./src/MediaQuery.ts",
+    "./Navigation": "./src/Navigation.ts",
     "./Navigator": "./src/Navigator.ts",
     "./Notifications": "./src/Notifications.ts",
     "./PageVisibility": "./src/PageVisibility.ts",
@@ -96,6 +97,10 @@
       "./MediaQuery": {
         "types": "./dist/MediaQuery.d.ts",
         "import": "./dist/MediaQuery.js"
+      },
+      "./Navigation": {
+        "types": "./dist/Navigation.d.ts",
+        "import": "./dist/Navigation.js"
       },
       "./Navigator": {
         "types": "./dist/Navigator.d.ts",

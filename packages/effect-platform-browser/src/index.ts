@@ -41,6 +41,11 @@ export * as MediaQuery from "./MediaQuery.ts";
 /**
  * @since 0.1.0
  */
+export * as Navigation from "./Navigation.ts";
+
+/**
+ * @since 0.1.0
+ */
 export * as Navigator from "./Navigator.ts";
 
 /**

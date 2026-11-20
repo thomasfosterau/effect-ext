@@ -15,6 +15,7 @@ import * as Fullscreen from "./Fullscreen.ts";
 import * as IdleDetection from "./IdleDetection.ts";
 import * as Locks from "./Locks.ts";
 import * as MediaQuery from "./MediaQuery.ts";
+import * as Navigation from "./Navigation.ts";
 import * as Navigator from "./Navigator.ts";
 import * as Notifications from "./Notifications.ts";
 import * as PageVisibility from "./PageVisibility.ts";
@@ -23,7 +24,7 @@ import * as WakeLock from "./WakeLock.ts";
 
 /**
  * Every live service this package defines (`Battery`, `Broadcast`,
- * `DomObservers`, `Fullscreen`, `IdleDetection`, `Locks`, `MediaQuery`, `Navigator`,
+ * `DomObservers`, `Fullscreen`, `IdleDetection`, `Locks`, `MediaQuery`, `Navigation`, `Navigator`,
  * `Notifications`, `PageVisibility`, `ScreenOrientation`, `WakeLock`) and the
  * `@effect/platform-browser` `Clipboard`, `Geolocation` and `Permissions`
  * services, over the ambient globals. Each degrades where its API is
@@ -55,6 +56,7 @@ export const layer: Layer.Layer<
   | IdleDetection.IdleDetection
   | Locks.Locks
   | MediaQuery.MediaQuery
+  | Navigation.Navigation
   | Navigator.Navigator
   | Notifications.Notifications
   | PageVisibility.PageVisibility
@@ -71,6 +73,7 @@ export const layer: Layer.Layer<
   IdleDetection.layer,
   Locks.layer,
   MediaQuery.layer,
+  Navigation.layer,
   Navigator.layer,
   Notifications.layer,
   PageVisibility.layer,

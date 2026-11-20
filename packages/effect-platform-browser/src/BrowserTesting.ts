@@ -15,6 +15,9 @@
  * - `TestLocks` — a lock manager following the Web Locks request algorithm;
  *   share one between layers to model several tabs.
  * - `TestDomObservers` — intersection, resize and mutation observers.
+ * - `TestNavigation` — a session history behind the Navigation API or the
+ *   `history` fallback, with a `Control` that follows links and presses
+ *   back and forward.
  * - `TestPerformance` — a performance timeline on a manual clock, for
  *   `Performance` (from `effect-platform-worker-shared`) and `WebVitals`.
  * - `TestNavigator`, `TestPageVisibility`, `TestMediaQuery`, `TestWakeLock`,
@@ -36,6 +39,7 @@ export * as TestGeolocation from "./testing/geolocation.ts";
 export * as TestIdleDetection from "./testing/idle-detection.ts";
 export * as TestLocks from "./testing/locks.ts";
 export * as TestMediaQuery from "./testing/media-query.ts";
+export * as TestNavigation from "./testing/navigation.ts";
 export * as TestNavigator from "./testing/navigator.ts";
 export * as TestNotifications from "./testing/notifications.ts";
 export * as TestPerformance from "./testing/performance.ts";

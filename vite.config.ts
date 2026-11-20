@@ -416,6 +416,10 @@ export default defineConfig({
           // `attributeName` and `oldValue`.
           "packages/effect-platform-browser/src/DomObservers.ts",
           "packages/effect-platform-browser/src/testing/dom-observers.ts",
+          // The Navigation API's entries: `url`, `null` for an opaque origin,
+          // and an event's `downloadRequest`.
+          "packages/effect-platform-browser/src/Navigation.ts",
+          "packages/effect-platform-browser/src/testing/navigation.ts",
           // `mark` and `measure`, which return no entry in older agents.
           "packages/effect-platform-worker-shared/src/Performance.ts",
           "packages/effect-platform-browser/src/testing/performance.ts",
@@ -494,6 +498,16 @@ export default defineConfig({
           // is marked unstable throughout Effect 4.
           "effecttsgo/unstable-api-usage": "off",
         },
+      },
+      // History state is whatever a page stored with it: the platform's
+      // `getState()` and `history.state` are `unknown` until
+      // `Navigation.state(schema)` decodes them.
+      {
+        files: [
+          "packages/effect-platform-browser/src/Navigation.ts",
+          "packages/effect-platform-browser/src/testing/navigation.ts",
+        ],
+        rules: { "effect/no-unknown-returns": "off" },
       },
       // The worker platform suites run a program under `WorkerRuntime`'s
       // `runMain`, an entry point, with a capturing logger; their stubs
