@@ -12,6 +12,7 @@ import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import type { BatteryManagerLike } from "../Battery.ts";
 import type { IdleDetectorLike } from "../IdleDetection.ts";
+import type { NavigationLike } from "../Navigation.ts";
 
 /** `globalThis.navigator`, where the context has one. */
 export const ambientNavigator = (): Option.Option<Navigator> =>
@@ -83,3 +84,17 @@ export const ambientResizeObserver = (): Option.Option<typeof globalThis.ResizeO
 /** `globalThis.MutationObserver`, where the context has one (a window). */
 export const ambientMutationObserver = (): Option.Option<typeof globalThis.MutationObserver> =>
   Option.fromUndefinedOr(globalThis.MutationObserver);
+
+/** `globalThis.navigation`, the Navigation API, where the agent has it (a window). */
+export const ambientNavigation = (): Option.Option<NavigationLike> =>
+  Option.fromUndefinedOr<NavigationLike>(globalThis.navigation);
+
+/** `globalThis.history`, where the context has one (a window). */
+export const ambientHistory = (): Option.Option<History> =>
+  Option.fromUndefinedOr(globalThis.history);
+
+/** `globalThis.location`, where the context is a window (a worker's has no `assign`). */
+export const ambientLocation = (): Option.Option<Location> =>
+  Option.filter(Option.fromUndefinedOr(globalThis.location), (location) =>
+    P.hasProperty(location, "assign"),
+  );

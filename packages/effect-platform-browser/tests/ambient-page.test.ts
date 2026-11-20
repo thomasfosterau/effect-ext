@@ -13,6 +13,7 @@ import {
   Browser,
   DomObservers,
   MediaQuery,
+  Navigation,
   Navigator,
   Notifications,
   ScreenOrientation,
@@ -67,6 +68,13 @@ installGlobals({
     }),
   },
   matchMedia,
+  navigation: {
+    currentEntry: { url: "https://example.com/page", getState: () => undefined },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  },
+  history: { state: null },
+  location: { href: "https://example.com/page", assign: () => {} },
   IntersectionObserver: FakeObserver,
   ResizeObserver: FakeObserver,
   MutationObserver: FakeObserver,
@@ -83,6 +91,7 @@ describe("Browser.layer over a page's globals", () => {
       const notifications = yield* Notifications.Notifications;
       const wakeLock = yield* WakeLock.WakeLock;
       const observers = yield* DomObservers.DomObservers;
+      const navigation = yield* Navigation.Navigation;
       expect({
         battery: Option.map(battery, (state) => state.level),
         dark,
@@ -92,6 +101,8 @@ describe("Browser.layer over a page's globals", () => {
         permission: yield* Notifications.permission,
         wakeLock: wakeLock.supported,
         observers: observers.supported,
+        navigation: navigation.supported,
+        url: Option.map(yield* Navigation.current, (url) => url.pathname),
       }).toStrictEqual({
         battery: Option.some(0.5),
         dark: true,
@@ -101,6 +112,8 @@ describe("Browser.layer over a page's globals", () => {
         permission: Option.some("granted"),
         wakeLock: true,
         observers: { intersection: true, resize: true, mutation: true },
+        navigation: { navigation: true, history: true },
+        url: Option.some("/page"),
       });
     }).pipe(Effect.provide(Browser.layer)),
   );

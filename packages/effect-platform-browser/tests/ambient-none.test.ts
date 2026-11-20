@@ -2,7 +2,13 @@
 import { describe, expect, it } from "@effect/vitest";
 import { installGlobals } from "../../effect-platform-worker-shared/tests/globals.ts";
 import * as Effect from "effect/Effect";
-import { Browser, Locks, Navigator, WakeLock } from "@thomasfosterau/effect-platform-browser";
+import {
+  Browser,
+  Locks,
+  Navigation,
+  Navigator,
+  WakeLock,
+} from "@thomasfosterau/effect-platform-browser";
 
 installGlobals({ navigator: undefined });
 
@@ -15,7 +21,14 @@ describe("Browser.layer without a navigator", () => {
         languages: info.languages,
         locks: (yield* Locks.Locks).supported,
         wakeLock: (yield* WakeLock.WakeLock).supported,
-      }).toStrictEqual({ userAgent: "", languages: [], locks: false, wakeLock: false });
+        history: (yield* Navigation.Navigation).supported.history,
+      }).toStrictEqual({
+        userAgent: "",
+        languages: [],
+        locks: false,
+        wakeLock: false,
+        history: false,
+      });
     }).pipe(Effect.provide(Browser.layer)),
   );
 });

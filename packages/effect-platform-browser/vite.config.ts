@@ -22,6 +22,7 @@ export default packageConfig({
     IdleDetection: "src/IdleDetection.ts",
     Locks: "src/Locks.ts",
     MediaQuery: "src/MediaQuery.ts",
+    Navigation: "src/Navigation.ts",
     Navigator: "src/Navigator.ts",
     Notifications: "src/Notifications.ts",
     PageVisibility: "src/PageVisibility.ts",
