@@ -31,8 +31,6 @@ dist/
 # Generated API reference (`vp run -r docgen`), per package. Never committed;
 # the README is the reference consumers read.
 packages/*/docs/
-# `pnpm pack` output staged by scripts/release.sh.
-.release/
 *.tgz
 .vitest/
 .examples/
