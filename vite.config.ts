@@ -675,11 +675,11 @@ export default defineConfig({
           "effecttsgo/unstable-api-usage": "off",
         },
       },
-      // `String.make()` / `String.makeScoped()` mirror Rust's `String::new()`,
+      // `StringBuf.make()` / `StringBuf.makeScoped()` mirror Rust's `String::new()`,
       // and a thunk keeps module evaluation free of top-level calls, which
       // `"sideEffects": false` claims of `dist/` (a constant would be one).
       {
-        files: ["packages/effect-ext/src/String.ts"],
+        files: ["packages/effect-ext/src/StringBuf.ts"],
         rules: {
           "effecttsgo/lazy-effect": "off",
         },

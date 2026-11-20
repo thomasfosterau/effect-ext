@@ -1,7 +1,7 @@
 /**
  * A growable, mutable UTF-8 string, like Rust's `String`.
  *
- * A `String` owns a buffer from the current {@link Allocator.Allocator} and
+ * A `StringBuf` owns a buffer from the current {@link Allocator.Allocator} and
  * always holds valid UTF-8. As in Rust, indices are byte offsets, lengths are
  * in bytes, and a character is one Unicode scalar value (here, a JavaScript
  * string holding one code point).
@@ -20,14 +20,14 @@
  * @example
  * ```ts
  * import * as Effect from "effect/Effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
  * const program = Effect.gen(function* () {
- *   const s = yield* String.from("héllo")
- *   yield* String.pushStr(s, " wörld")
- *   yield* String.push(s, "!")
- *   String.len(s) // 14 (bytes)
- *   String.pop(s) // Option.some("!")
+ *   const s = yield* StringBuf.from("héllo")
+ *   yield* StringBuf.pushStr(s, " wörld")
+ *   yield* StringBuf.push(s, "!")
+ *   StringBuf.len(s) // 14 (bytes)
+ *   StringBuf.pop(s) // Option.some("!")
  *   return s.toString() // "héllo wörld"
  * })
  * ```
@@ -52,7 +52,7 @@ import * as Str from "./Str.ts";
  * @since 0.1.0
  * @category type ids
  */
-export const TypeId = "~effect-ext/String" as const;
+export const TypeId = "~effect-ext/StringBuf" as const;
 
 /**
  * @since 0.1.0
@@ -64,16 +64,16 @@ export type TypeId = typeof TypeId;
  * @since 0.1.0
  * @category models
  */
-export interface String extends Pipeable, Iterable<string> {
+export interface StringBuf extends Pipeable, Iterable<string> {
   readonly [TypeId]: TypeId;
   /** The allocator that owns this string's memory. */
   readonly allocator: Allocator.Allocator;
   /** Decodes the string into a JavaScript string. */
   toString(): string;
-  toJSON(): { readonly _id: "String"; readonly value: string };
+  toJSON(): { readonly _id: "StringBuf"; readonly value: string };
 }
 
-class StringImpl implements String {
+class StringBufImpl implements StringBuf {
   readonly [TypeId] = TypeId;
   readonly allocator: Allocator.Allocator;
   readonly buffer: ByteBuffer;
@@ -100,7 +100,7 @@ class StringImpl implements String {
   }
 
   toJSON() {
-    return { _id: "String" as const, value: this.toString() };
+    return { _id: "StringBuf" as const, value: this.toString() };
   }
 
   [NodeInspectSymbol]() {
@@ -108,9 +108,9 @@ class StringImpl implements String {
   }
 }
 
-const impl = (self: String): StringImpl => {
-  if (self instanceof StringImpl) return self;
-  throw new TypeError("String: expected a String created by this module");
+const impl = (self: StringBuf): StringBufImpl => {
+  if (self instanceof StringBufImpl) return self;
+  throw new TypeError("StringBuf: expected a StringBuf created by this module");
 };
 
 const toBytes = (s: Str.Str | string): Uint8Array =>
@@ -128,14 +128,14 @@ const snapshot = (bytes: Uint8Array): Str.Str => Str.fromUtf8Unsafe(bytes.slice(
 
 const isChar = (char: string) => char.isWellFormed() && Array.from(char).length === 1;
 
-const invalidIndex = (self: StringImpl, index: number) =>
+const invalidIndex = (self: StringBufImpl, index: number) =>
   new RangeError(
-    `String: ${index} is not a character boundary of a ${self.buffer.len}-byte string`,
+    `StringBuf: ${index} is not a character boundary of a ${self.buffer.len}-byte string`,
   );
 
-const invalidRange = (self: StringImpl, start: number, end: number) =>
+const invalidRange = (self: StringBufImpl, start: number, end: number) =>
   new RangeError(
-    `String: [${start}, ${end}) is not a valid range of a ${self.buffer.len}-byte string`,
+    `StringBuf: [${start}, ${end}) is not a valid range of a ${self.buffer.len}-byte string`,
   );
 
 const isRange = (bytes: Uint8Array, start: number, end: number) =>
@@ -154,17 +154,17 @@ const fromResult = (
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("héllo"))
- * console.log(String.isString(s), String.isString("héllo"))
+ * const s = Effect.runSync(StringBuf.from("héllo"))
+ * console.log(StringBuf.isStringBuf(s), StringBuf.isStringBuf("héllo"))
  * // → true false
  * ```
  *
  * @since 0.1.0
  * @category guards
  */
-export const isString = (u: unknown): u is String => P.hasProperty(u, TypeId);
+export const isStringBuf = (u: unknown): u is StringBuf => P.hasProperty(u, TypeId);
 
 /**
  * Creates an empty string using the current allocator, like Rust's
@@ -173,18 +173,18 @@ export const isString = (u: unknown): u is String => P.hasProperty(u, TypeId);
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.make())
- * console.log(String.len(s), String.capacity(s), String.isEmpty(s))
+ * const s = Effect.runSync(StringBuf.make())
+ * console.log(StringBuf.len(s), StringBuf.capacity(s), StringBuf.isEmpty(s))
  * // → 0 0 true
  * ```
  *
  * @since 0.1.0
  * @category constructors
  */
-export const make = (): Effect.Effect<String> =>
-  Effect.map(Effect.service(Allocator.Allocator), (allocator) => new StringImpl(allocator));
+export const make = (): Effect.Effect<StringBuf> =>
+  Effect.map(Effect.service(Allocator.Allocator), (allocator) => new StringBufImpl(allocator));
 
 /**
  * Creates an empty string with room for at least `capacity` bytes, like
@@ -193,28 +193,30 @@ export const make = (): Effect.Effect<String> =>
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.withCapacity(10))
- * const capacity = String.capacity(s)
- * console.log(String.len(s), capacity >= 10)
+ * const s = Effect.runSync(StringBuf.withCapacity(10))
+ * const capacity = StringBuf.capacity(s)
+ * console.log(StringBuf.len(s), capacity >= 10)
  * // → 0 true
  *
  * // These are all done without reallocating...
- * Effect.runSync(String.pushStr(s, "abcdefghij"))
- * console.log(String.len(s), String.capacity(s) === capacity)
+ * Effect.runSync(StringBuf.pushStr(s, "abcdefghij"))
+ * console.log(StringBuf.len(s), StringBuf.capacity(s) === capacity)
  * // → 10 true
  *
  * // ...but this may make the string reallocate
- * Effect.runSync(String.push(s, "é"))
- * console.log(String.len(s))
+ * Effect.runSync(StringBuf.push(s, "é"))
+ * console.log(StringBuf.len(s))
  * // → 12
  * ```
  *
  * @since 0.1.0
  * @category constructors
  */
-export const withCapacity = (capacity: number): Effect.Effect<String, Allocator.AllocationError> =>
+export const withCapacity = (
+  capacity: number,
+): Effect.Effect<StringBuf, Allocator.AllocationError> =>
   Effect.tap(make(), (self) => reserve(self, capacity));
 
 /**
@@ -223,12 +225,12 @@ export const withCapacity = (capacity: number): Effect.Effect<String, Allocator.
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
  * const program = Effect.scoped(
  *   Effect.gen(function* () {
- *     const s = yield* String.makeScoped()
- *     yield* String.pushStr(s, "héllo")
+ *     const s = yield* StringBuf.makeScoped()
+ *     yield* StringBuf.pushStr(s, "héllo")
  *     return s.toString()
  *   }),
  * )
@@ -239,7 +241,7 @@ export const withCapacity = (capacity: number): Effect.Effect<String, Allocator.
  * @since 0.1.0
  * @category constructors
  */
-export const makeScoped = (): Effect.Effect<String, never, Scope.Scope> =>
+export const makeScoped = (): Effect.Effect<StringBuf, never, Scope.Scope> =>
   Effect.acquireRelease(make(), free);
 
 /**
@@ -248,17 +250,17 @@ export const makeScoped = (): Effect.Effect<String, never, Scope.Scope> =>
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("héllo"))
- * console.log(s.toString(), String.len(s))
+ * const s = Effect.runSync(StringBuf.from("héllo"))
+ * console.log(s.toString(), StringBuf.len(s))
  * // → héllo 6
  * ```
  *
  * @since 0.1.0
  * @category constructors
  */
-export const from = (s: Str.Str | string): Effect.Effect<String, Allocator.AllocationError> =>
+export const from = (s: Str.Str | string): Effect.Effect<StringBuf, Allocator.AllocationError> =>
   Effect.tap(make(), (self) => pushStr(self, s));
 
 /**
@@ -268,10 +270,10 @@ export const from = (s: Str.Str | string): Effect.Effect<String, Allocator.Alloc
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.fromIterable(["h", "é", "llo", " ", "wörld"]))
- * console.log(s.toString(), String.len(s))
+ * const s = Effect.runSync(StringBuf.fromIterable(["h", "é", "llo", " ", "wörld"]))
+ * console.log(s.toString(), StringBuf.len(s))
  * // → héllo wörld 13
  * ```
  *
@@ -280,7 +282,7 @@ export const from = (s: Str.Str | string): Effect.Effect<String, Allocator.Alloc
  */
 export const fromIterable = (
   strings: Iterable<Str.Str | string>,
-): Effect.Effect<String, Allocator.AllocationError> =>
+): Effect.Effect<StringBuf, Allocator.AllocationError> =>
   Effect.tap(make(), (self) => extend(self, strings));
 
 /**
@@ -290,15 +292,15 @@ export const fromIterable = (
  * @example
  * ```ts
  * import { Effect, Result } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
  * // some bytes, in a Uint8Array
- * const sparkleHeart = Effect.runSync(String.fromUtf8(new Uint8Array([240, 159, 146, 150])))
- * console.log(sparkleHeart.toString(), String.len(sparkleHeart))
+ * const sparkleHeart = Effect.runSync(StringBuf.fromUtf8(new Uint8Array([240, 159, 146, 150])))
+ * console.log(sparkleHeart.toString(), StringBuf.len(sparkleHeart))
  * // → 💖 4
  *
  * // some invalid bytes
- * const invalid = Effect.runSync(Effect.result(String.fromUtf8(new Uint8Array([0, 159, 146, 150]))))
+ * const invalid = Effect.runSync(Effect.result(StringBuf.fromUtf8(new Uint8Array([0, 159, 146, 150]))))
  * console.log(Result.isFailure(invalid))
  * // → true
  * ```
@@ -308,7 +310,7 @@ export const fromIterable = (
  */
 export const fromUtf8 = (
   bytes: Uint8Array,
-): Effect.Effect<String, Str.Utf8Error | Allocator.AllocationError> =>
+): Effect.Effect<StringBuf, Str.Utf8Error | Allocator.AllocationError> =>
   Effect.flatMap(Effect.fromResult(Str.fromUtf8(bytes)), from);
 
 /**
@@ -318,11 +320,11 @@ export const fromUtf8 = (
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
  * // some invalid bytes: "Hello " + a truncated 4-byte sequence + "World"
  * const input = new Uint8Array([72, 101, 108, 108, 111, 32, 0xf0, 0x90, 0x80, 87, 111, 114, 108, 100])
- * const s = Effect.runSync(String.fromUtf8Lossy(input))
+ * const s = Effect.runSync(StringBuf.fromUtf8Lossy(input))
  * console.log(s.toString())
  * // → Hello �World
  * ```
@@ -332,7 +334,7 @@ export const fromUtf8 = (
  */
 export const fromUtf8Lossy = (
   bytes: Uint8Array,
-): Effect.Effect<String, Allocator.AllocationError> => from(Str.fromUtf8Lossy(bytes));
+): Effect.Effect<StringBuf, Allocator.AllocationError> => from(Str.fromUtf8Lossy(bytes));
 
 /**
  * Returns the string's memory to its allocator. The string is left empty with
@@ -341,18 +343,18 @@ export const fromUtf8Lossy = (
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("héllo"))
- * Effect.runSync(String.free(s))
- * console.log(String.len(s), String.capacity(s))
+ * const s = Effect.runSync(StringBuf.from("héllo"))
+ * Effect.runSync(StringBuf.free(s))
+ * console.log(StringBuf.len(s), StringBuf.capacity(s))
  * // → 0 0
  * ```
  *
  * @since 0.1.0
  * @category destructors
  */
-export const free = (self: String): Effect.Effect<void> =>
+export const free = (self: StringBuf): Effect.Effect<void> =>
   Effect.sync(() => impl(self).buffer.free());
 
 // ---------------------------------------------------------------------------
@@ -365,18 +367,18 @@ export const free = (self: String): Effect.Effect<void> =>
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const a = Effect.runSync(String.from("foo"))
- * const fancyF = Effect.runSync(String.from("ƒoo"))
- * console.log(String.len(a), String.len(fancyF), Array.from(String.chars(fancyF)).length)
+ * const a = Effect.runSync(StringBuf.from("foo"))
+ * const fancyF = Effect.runSync(StringBuf.from("ƒoo"))
+ * console.log(StringBuf.len(a), StringBuf.len(fancyF), Array.from(StringBuf.chars(fancyF)).length)
  * // → 3 4 3
  * ```
  *
  * @since 0.1.0
  * @category getters
  */
-export const len = (self: String): number => impl(self).buffer.len;
+export const len = (self: StringBuf): number => impl(self).buffer.len;
 
 /**
  * The number of bytes the string can hold without reallocating, like Rust's
@@ -385,37 +387,37 @@ export const len = (self: String): number => impl(self).buffer.len;
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.withCapacity(10))
- * console.log(String.capacity(s) >= 10)
+ * const s = Effect.runSync(StringBuf.withCapacity(10))
+ * console.log(StringBuf.capacity(s) >= 10)
  * // → true
  * ```
  *
  * @since 0.1.0
  * @category getters
  */
-export const capacity = (self: String): number => impl(self).buffer.capacity;
+export const capacity = (self: StringBuf): number => impl(self).buffer.capacity;
 
 /**
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.make())
- * console.log(String.isEmpty(s))
+ * const s = Effect.runSync(StringBuf.make())
+ * console.log(StringBuf.isEmpty(s))
  * // → true
  *
- * Effect.runSync(String.push(s, "é"))
- * console.log(String.isEmpty(s))
+ * Effect.runSync(StringBuf.push(s, "é"))
+ * console.log(StringBuf.isEmpty(s))
  * // → false
  * ```
  *
  * @since 0.1.0
  * @category getters
  */
-export const isEmpty = (self: String): boolean => impl(self).buffer.len === 0;
+export const isEmpty = (self: StringBuf): boolean => impl(self).buffer.len === 0;
 
 /**
  * The UTF-8 bytes, like Rust's `String::as_bytes`. This is a view into the
@@ -425,17 +427,17 @@ export const isEmpty = (self: String): boolean => impl(self).buffer.len === 0;
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("héllo"))
- * console.log(Array.from(String.asBytes(s)).join(" "))
+ * const s = Effect.runSync(StringBuf.from("héllo"))
+ * console.log(Array.from(StringBuf.asBytes(s)).join(" "))
  * // → 104 195 169 108 108 111
  * ```
  *
  * @since 0.1.0
  * @category getters
  */
-export const asBytes = (self: String): Uint8Array => impl(self).bytes();
+export const asBytes = (self: StringBuf): Uint8Array => impl(self).bytes();
 
 /**
  * An immutable `Str` copy of the current contents — the counterpart of
@@ -444,12 +446,12 @@ export const asBytes = (self: String): Uint8Array => impl(self).bytes();
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  * import * as Str from "@thomasfosterau/effect-ext/Str"
  *
- * const s = Effect.runSync(String.from("héllo"))
- * const snapshot = String.toStr(s)
- * Effect.runSync(String.pushStr(s, " wörld"))
+ * const s = Effect.runSync(StringBuf.from("héllo"))
+ * const snapshot = StringBuf.toStr(s)
+ * Effect.runSync(StringBuf.pushStr(s, " wörld"))
  * console.log(snapshot.toString(), Str.len(snapshot), Str.toUppercase(snapshot).toString())
  * // → héllo 6 HÉLLO
  * ```
@@ -457,7 +459,7 @@ export const asBytes = (self: String): Uint8Array => impl(self).bytes();
  * @since 0.1.0
  * @category getters
  */
-export const toStr = (self: String): Str.Str => snapshot(impl(self).bytes());
+export const toStr = (self: StringBuf): Str.Str => snapshot(impl(self).bytes());
 
 /**
  * Iterates over the characters, like Rust's `str::chars`.
@@ -465,22 +467,22 @@ export const toStr = (self: String): Str.Str => snapshot(impl(self).bytes());
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("héllo"))
- * console.log(Array.from(String.chars(s)).join(","))
+ * const s = Effect.runSync(StringBuf.from("héllo"))
+ * console.log(Array.from(StringBuf.chars(s)).join(","))
  * // → h,é,l,l,o
  *
  * // a character is a code point, so a combining mark is a character of its own
- * const yes = Effect.runSync(String.from("y̆es"))
- * console.log(Array.from(String.chars(yes)).length, String.len(yes))
+ * const yes = Effect.runSync(StringBuf.from("y̆es"))
+ * console.log(Array.from(StringBuf.chars(yes)).length, StringBuf.len(yes))
  * // → 4 5
  * ```
  *
  * @since 0.1.0
  * @category getters
  */
-export const chars = (self: String): IterableIterator<string> => {
+export const chars = (self: StringBuf): IterableIterator<string> => {
   const s = impl(self);
   return Utf8.chars(() => s.bytes());
 };
@@ -491,17 +493,17 @@ export const chars = (self: String): IterableIterator<string> => {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("héllo"))
- * console.log(Array.from(String.charIndices(s), ([index, char]) => `${index}:${char}`).join(" "))
+ * const s = Effect.runSync(StringBuf.from("héllo"))
+ * console.log(Array.from(StringBuf.charIndices(s), ([index, char]) => `${index}:${char}`).join(" "))
  * // → 0:h 1:é 3:l 4:l 5:o
  * ```
  *
  * @since 0.1.0
  * @category getters
  */
-export const charIndices = (self: String): IterableIterator<readonly [number, string]> => {
+export const charIndices = (self: StringBuf): IterableIterator<readonly [number, string]> => {
   const s = impl(self);
   return Utf8.charIndices(() => s.bytes());
 };
@@ -513,14 +515,14 @@ export const charIndices = (self: String): IterableIterator<readonly [number, st
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("Löwe 老虎 Léopard"))
- * console.log(String.isCharBoundary(s, 0), String.isCharBoundary(s, 6), String.isCharBoundary(s, String.len(s)))
+ * const s = Effect.runSync(StringBuf.from("Löwe 老虎 Léopard"))
+ * console.log(StringBuf.isCharBoundary(s, 0), StringBuf.isCharBoundary(s, 6), StringBuf.isCharBoundary(s, StringBuf.len(s)))
  * // → true true true
  *
  * // second byte of `ö`, and third byte of `老`
- * console.log(String.isCharBoundary(s, 2), String.isCharBoundary(s, 8))
+ * console.log(StringBuf.isCharBoundary(s, 2), StringBuf.isCharBoundary(s, 8))
  * // → false false
  * ```
  *
@@ -528,9 +530,9 @@ export const charIndices = (self: String): IterableIterator<readonly [number, st
  * @category getters
  */
 export const isCharBoundary: {
-  (index: number): (self: String) => boolean;
-  (self: String, index: number): boolean;
-} = dual(2, (self: String, index: number): boolean =>
+  (index: number): (self: StringBuf) => boolean;
+  (self: StringBuf, index: number): boolean;
+} = dual(2, (self: StringBuf, index: number): boolean =>
   Utf8.isCharBoundary(impl(self).bytes(), index),
 );
 
@@ -542,16 +544,16 @@ export const isCharBoundary: {
  * @example
  * ```ts
  * import { Effect, Option } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("🗻∈🌏"))
+ * const s = Effect.runSync(StringBuf.from("🗻∈🌏"))
  * const show = (o: Option.Option<{ toString(): string }>) => Option.match(o, { onNone: () => "None", onSome: (t) => t.toString() })
  *
- * console.log(show(String.get(s, 0, 4)), show(String.get(s, 4)))
+ * console.log(show(StringBuf.get(s, 0, 4)), show(StringBuf.get(s, 4)))
  * // → 🗻 ∈🌏
  *
  * // indices not on a character boundary, and out of range
- * console.log(show(String.get(s, 1)), show(String.get(s, 0, 100)))
+ * console.log(show(StringBuf.get(s, 1)), show(StringBuf.get(s, 0, 100)))
  * // → None None
  * ```
  *
@@ -559,11 +561,11 @@ export const isCharBoundary: {
  * @category getters
  */
 export const get: {
-  (start: number, end?: number): (self: String) => Option.Option<Str.Str>;
-  (self: String, start: number, end?: number): Option.Option<Str.Str>;
+  (start: number, end?: number): (self: StringBuf) => Option.Option<Str.Str>;
+  (self: StringBuf, start: number, end?: number): Option.Option<Str.Str>;
 } = dual(
-  (args) => isString(args[0]),
-  (self: String, start: number, end?: number): Option.Option<Str.Str> => {
+  (args) => isStringBuf(args[0]),
+  (self: StringBuf, start: number, end?: number): Option.Option<Str.Str> => {
     const bytes = impl(self).bytes();
     const stop = end ?? bytes.byteLength;
     return isRange(bytes, start, stop)
@@ -578,13 +580,13 @@ export const get: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const bananas = Effect.runSync(String.from("bänänas"))
- * console.log(String.contains(bananas, "nän"), String.contains(bananas, "apples"))
+ * const bananas = Effect.runSync(StringBuf.from("bänänas"))
+ * console.log(StringBuf.contains(bananas, "nän"), StringBuf.contains(bananas, "apples"))
  * // → true false
  *
- * console.log(String.contains(bananas, (c) => c === "ä"))
+ * console.log(StringBuf.contains(bananas, (c) => c === "ä"))
  * // → true
  * ```
  *
@@ -592,11 +594,11 @@ export const get: {
  * @category searching
  */
 export const contains: {
-  (pattern: Str.Pattern): (self: String) => boolean;
-  (self: String, pattern: Str.Pattern): boolean;
+  (pattern: Str.Pattern): (self: StringBuf) => boolean;
+  (self: StringBuf, pattern: Str.Pattern): boolean;
 } = dual(
   2,
-  (self: String, pattern: Str.Pattern): boolean =>
+  (self: StringBuf, pattern: Str.Pattern): boolean =>
     toMatcher(pattern)(impl(self).bytes()).next(0)[0] !== -1,
 );
 
@@ -606,10 +608,10 @@ export const contains: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const bananas = Effect.runSync(String.from("bänänas"))
- * console.log(String.startsWith(bananas, "bä"), String.startsWith(bananas, "nän"))
+ * const bananas = Effect.runSync(StringBuf.from("bänänas"))
+ * console.log(StringBuf.startsWith(bananas, "bä"), StringBuf.startsWith(bananas, "nän"))
  * // → true false
  * ```
  *
@@ -617,11 +619,11 @@ export const contains: {
  * @category searching
  */
 export const startsWith: {
-  (pattern: Str.Pattern): (self: String) => boolean;
-  (self: String, pattern: Str.Pattern): boolean;
+  (pattern: Str.Pattern): (self: StringBuf) => boolean;
+  (self: StringBuf, pattern: Str.Pattern): boolean;
 } = dual(
   2,
-  (self: String, pattern: Str.Pattern): boolean =>
+  (self: StringBuf, pattern: Str.Pattern): boolean =>
     toMatcher(pattern)(impl(self).bytes()).matchAt(0)[0] !== -1,
 );
 
@@ -631,10 +633,10 @@ export const startsWith: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const bananas = Effect.runSync(String.from("bänänas"))
- * console.log(String.endsWith(bananas, "änas"), String.endsWith(bananas, "nän"))
+ * const bananas = Effect.runSync(StringBuf.from("bänänas"))
+ * console.log(StringBuf.endsWith(bananas, "änas"), StringBuf.endsWith(bananas, "nän"))
  * // → true false
  * ```
  *
@@ -642,9 +644,9 @@ export const startsWith: {
  * @category searching
  */
 export const endsWith: {
-  (pattern: Str.Pattern): (self: String) => boolean;
-  (self: String, pattern: Str.Pattern): boolean;
-} = dual(2, (self: String, pattern: Str.Pattern): boolean => {
+  (pattern: Str.Pattern): (self: StringBuf) => boolean;
+  (self: StringBuf, pattern: Str.Pattern): boolean;
+} = dual(2, (self: StringBuf, pattern: Str.Pattern): boolean => {
   const bytes = impl(self).bytes();
   return toMatcher(pattern)(bytes).matchEndingAt(bytes.byteLength)[0] !== -1;
 });
@@ -655,15 +657,15 @@ export const endsWith: {
  * @example
  * ```ts
  * import { Effect, Option } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("Löwe 老虎 Léopard"))
+ * const s = Effect.runSync(StringBuf.from("Löwe 老虎 Léopard"))
  * const at = (o: Option.Option<number>) => Option.getOrElse(o, () => -1)
  *
- * console.log(at(String.find(s, "L")), at(String.find(s, "é")), at(String.find(s, "pard")))
+ * console.log(at(StringBuf.find(s, "L")), at(StringBuf.find(s, "é")), at(StringBuf.find(s, "pard")))
  * // → 0 14 17
  *
- * console.log(at(String.find(s, (c) => c === " ")), Option.isNone(String.find(s, "1")))
+ * console.log(at(StringBuf.find(s, (c) => c === " ")), Option.isNone(StringBuf.find(s, "1")))
  * // → 5 true
  * ```
  *
@@ -671,9 +673,9 @@ export const endsWith: {
  * @category searching
  */
 export const find: {
-  (pattern: Str.Pattern): (self: String) => Option.Option<number>;
-  (self: String, pattern: Str.Pattern): Option.Option<number>;
-} = dual(2, (self: String, pattern: Str.Pattern): Option.Option<number> => {
+  (pattern: Str.Pattern): (self: StringBuf) => Option.Option<number>;
+  (self: StringBuf, pattern: Str.Pattern): Option.Option<number>;
+} = dual(2, (self: StringBuf, pattern: Str.Pattern): Option.Option<number> => {
   const [start] = toMatcher(pattern)(impl(self).bytes()).next(0);
   return start === -1 ? Option.none() : Option.some(start);
 });
@@ -684,15 +686,15 @@ export const find: {
  * @example
  * ```ts
  * import { Effect, Option } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("Löwe 老虎 Léopard Gepardi"))
+ * const s = Effect.runSync(StringBuf.from("Löwe 老虎 Léopard Gepardi"))
  * const at = (o: Option.Option<number>) => Option.getOrElse(o, () => -1)
  *
- * console.log(at(String.rfind(s, "L")), at(String.rfind(s, "é")), at(String.rfind(s, "pard")))
+ * console.log(at(StringBuf.rfind(s, "L")), at(StringBuf.rfind(s, "é")), at(StringBuf.rfind(s, "pard")))
  * // → 13 14 24
  *
- * console.log(at(String.rfind(s, (c) => c === " ")), Option.isNone(String.rfind(s, "1")))
+ * console.log(at(StringBuf.rfind(s, (c) => c === " ")), Option.isNone(StringBuf.rfind(s, "1")))
  * // → 21 true
  * ```
  *
@@ -700,9 +702,9 @@ export const find: {
  * @category searching
  */
 export const rfind: {
-  (pattern: Str.Pattern): (self: String) => Option.Option<number>;
-  (self: String, pattern: Str.Pattern): Option.Option<number>;
-} = dual(2, (self: String, pattern: Str.Pattern): Option.Option<number> => {
+  (pattern: Str.Pattern): (self: StringBuf) => Option.Option<number>;
+  (self: StringBuf, pattern: Str.Pattern): Option.Option<number>;
+} = dual(2, (self: StringBuf, pattern: Str.Pattern): Option.Option<number> => {
   const bytes = impl(self).bytes();
   const [start] = toMatcher(pattern)(bytes).prev(bytes.byteLength);
   return start === -1 ? Option.none() : Option.some(start);
@@ -715,14 +717,14 @@ export const rfind: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  * import * as Str from "@thomasfosterau/effect-ext/Str"
  *
- * const s = Effect.runSync(String.from("héllo"))
- * console.log(String.equals(s, "héllo"), String.equals(s, Str.fromString("hello")))
+ * const s = Effect.runSync(StringBuf.from("héllo"))
+ * console.log(StringBuf.equals(s, "héllo"), StringBuf.equals(s, Str.fromString("hello")))
  * // → true false
  *
- * console.log(String.equals(s, Effect.runSync(String.from("héllo"))))
+ * console.log(StringBuf.equals(s, Effect.runSync(StringBuf.from("héllo"))))
  * // → true
  * ```
  *
@@ -730,9 +732,9 @@ export const rfind: {
  * @category predicates
  */
 export const equals: {
-  (that: String | Str.Str | string): (self: String) => boolean;
-  (self: String, that: String | Str.Str | string): boolean;
-} = dual(2, (self: String, that: String | Str.Str | string): boolean =>
+  (that: StringBuf | Str.Str | string): (self: StringBuf) => boolean;
+  (self: StringBuf, that: StringBuf | Str.Str | string): boolean;
+} = dual(2, (self: StringBuf, that: StringBuf | Str.Str | string): boolean =>
   Utf8.bytesEqual(
     impl(self).bytes(),
     P.isString(that) ? toBytes(that) : TypeId in that ? impl(that).bytes() : Str.asBytes(that),
@@ -750,11 +752,11 @@ export const equals: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.make())
- * Effect.runSync(String.reserve(s, 10))
- * console.log(String.len(s), String.capacity(s) >= 10)
+ * const s = Effect.runSync(StringBuf.make())
+ * Effect.runSync(StringBuf.reserve(s, 10))
+ * console.log(StringBuf.len(s), StringBuf.capacity(s) >= 10)
  * // → 0 true
  * ```
  *
@@ -762,9 +764,9 @@ export const equals: {
  * @category capacity
  */
 export const reserve: {
-  (additional: number): (self: String) => Effect.Effect<void, Allocator.AllocationError>;
-  (self: String, additional: number): Effect.Effect<void, Allocator.AllocationError>;
-} = dual(2, (self: String, additional: number) =>
+  (additional: number): (self: StringBuf) => Effect.Effect<void, Allocator.AllocationError>;
+  (self: StringBuf, additional: number): Effect.Effect<void, Allocator.AllocationError>;
+} = dual(2, (self: StringBuf, additional: number) =>
   Effect.suspend(() => fromResult(impl(self).buffer.reserve(additional))),
 );
 
@@ -775,11 +777,11 @@ export const reserve: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.make())
- * Effect.runSync(String.reserveExact(s, 10))
- * console.log(String.len(s), String.capacity(s) >= 10)
+ * const s = Effect.runSync(StringBuf.make())
+ * Effect.runSync(StringBuf.reserveExact(s, 10))
+ * console.log(StringBuf.len(s), StringBuf.capacity(s) >= 10)
  * // → 0 true
  * ```
  *
@@ -787,9 +789,9 @@ export const reserve: {
  * @category capacity
  */
 export const reserveExact: {
-  (additional: number): (self: String) => Effect.Effect<void, Allocator.AllocationError>;
-  (self: String, additional: number): Effect.Effect<void, Allocator.AllocationError>;
-} = dual(2, (self: String, additional: number) =>
+  (additional: number): (self: StringBuf) => Effect.Effect<void, Allocator.AllocationError>;
+  (self: StringBuf, additional: number): Effect.Effect<void, Allocator.AllocationError>;
+} = dual(2, (self: StringBuf, additional: number) =>
   Effect.suspend(() => {
     const buffer = impl(self).buffer;
     const required = buffer.len + additional;
@@ -804,22 +806,22 @@ export const reserveExact: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.withCapacity(100))
- * Effect.runSync(String.pushStr(s, "föo"))
- * console.log(String.capacity(s) >= 100)
+ * const s = Effect.runSync(StringBuf.withCapacity(100))
+ * Effect.runSync(StringBuf.pushStr(s, "föo"))
+ * console.log(StringBuf.capacity(s) >= 100)
  * // → true
  *
- * Effect.runSync(String.shrinkToFit(s))
- * console.log(String.capacity(s))
+ * Effect.runSync(StringBuf.shrinkToFit(s))
+ * console.log(StringBuf.capacity(s))
  * // → 4
  * ```
  *
  * @since 0.1.0
  * @category capacity
  */
-export const shrinkToFit = (self: String): Effect.Effect<void, Allocator.AllocationError> =>
+export const shrinkToFit = (self: StringBuf): Effect.Effect<void, Allocator.AllocationError> =>
   shrinkTo(self, 0);
 
 /**
@@ -829,18 +831,18 @@ export const shrinkToFit = (self: String): Effect.Effect<void, Allocator.Allocat
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.withCapacity(100))
- * Effect.runSync(String.pushStr(s, "föo"))
+ * const s = Effect.runSync(StringBuf.withCapacity(100))
+ * Effect.runSync(StringBuf.pushStr(s, "föo"))
  *
- * Effect.runSync(String.shrinkTo(s, 10))
- * console.log(String.capacity(s) >= 10)
+ * Effect.runSync(StringBuf.shrinkTo(s, 10))
+ * console.log(StringBuf.capacity(s) >= 10)
  * // → true
  *
  * // the capacity never drops below the length
- * Effect.runSync(String.shrinkTo(s, 0))
- * console.log(String.capacity(s) >= 4)
+ * Effect.runSync(StringBuf.shrinkTo(s, 0))
+ * console.log(StringBuf.capacity(s) >= 4)
  * // → true
  * ```
  *
@@ -848,9 +850,9 @@ export const shrinkToFit = (self: String): Effect.Effect<void, Allocator.Allocat
  * @category capacity
  */
 export const shrinkTo: {
-  (minCapacity: number): (self: String) => Effect.Effect<void, Allocator.AllocationError>;
-  (self: String, minCapacity: number): Effect.Effect<void, Allocator.AllocationError>;
-} = dual(2, (self: String, minCapacity: number) =>
+  (minCapacity: number): (self: StringBuf) => Effect.Effect<void, Allocator.AllocationError>;
+  (self: StringBuf, minCapacity: number): Effect.Effect<void, Allocator.AllocationError>;
+} = dual(2, (self: StringBuf, minCapacity: number) =>
   Effect.suspend(() => {
     const buffer = impl(self).buffer;
     const target = Math.max(buffer.len, minCapacity);
@@ -869,13 +871,13 @@ export const shrinkTo: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("abc"))
- * Effect.runSync(String.push(s, "1"))
- * Effect.runSync(String.push(s, "é"))
- * Effect.runSync(String.push(s, "💖"))
- * console.log(s.toString(), String.len(s))
+ * const s = Effect.runSync(StringBuf.from("abc"))
+ * Effect.runSync(StringBuf.push(s, "1"))
+ * Effect.runSync(StringBuf.push(s, "é"))
+ * Effect.runSync(StringBuf.push(s, "💖"))
+ * console.log(s.toString(), StringBuf.len(s))
  * // → abc1é💖 10
  * ```
  *
@@ -883,13 +885,15 @@ export const shrinkTo: {
  * @category mutations
  */
 export const push: {
-  (char: string): (self: String) => Effect.Effect<void, Allocator.AllocationError>;
-  (self: String, char: string): Effect.Effect<void, Allocator.AllocationError>;
-} = dual(2, (self: String, char: string) =>
+  (char: string): (self: StringBuf) => Effect.Effect<void, Allocator.AllocationError>;
+  (self: StringBuf, char: string): Effect.Effect<void, Allocator.AllocationError>;
+} = dual(2, (self: StringBuf, char: string) =>
   Effect.suspend(() =>
     isChar(char)
       ? fromResult(impl(self).buffer.append(Utf8.encoder.encode(char)))
-      : Effect.die(new RangeError(`String.push: expected a single character, received "${char}"`)),
+      : Effect.die(
+          new RangeError(`StringBuf.push: expected a single character, received "${char}"`),
+        ),
   ),
 );
 
@@ -899,11 +903,11 @@ export const push: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("föo"))
- * Effect.runSync(String.pushStr(s, "bär"))
- * console.log(s.toString(), String.len(s))
+ * const s = Effect.runSync(StringBuf.from("föo"))
+ * Effect.runSync(StringBuf.pushStr(s, "bär"))
+ * console.log(s.toString(), StringBuf.len(s))
  * // → föobär 8
  * ```
  *
@@ -911,9 +915,9 @@ export const push: {
  * @category mutations
  */
 export const pushStr: {
-  (s: Str.Str | string): (self: String) => Effect.Effect<void, Allocator.AllocationError>;
-  (self: String, s: Str.Str | string): Effect.Effect<void, Allocator.AllocationError>;
-} = dual(2, (self: String, s: Str.Str | string) =>
+  (s: Str.Str | string): (self: StringBuf) => Effect.Effect<void, Allocator.AllocationError>;
+  (self: StringBuf, s: Str.Str | string): Effect.Effect<void, Allocator.AllocationError>;
+} = dual(2, (self: StringBuf, s: Str.Str | string) =>
   Effect.suspend(() => fromResult(impl(self).buffer.append(toBytes(s)))),
 );
 
@@ -925,12 +929,12 @@ export const pushStr: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  * import * as Str from "@thomasfosterau/effect-ext/Str"
  *
- * const s = Effect.runSync(String.from("a"))
- * Effect.runSync(String.extend(s, ["b", "ç", Str.fromString("dé")]))
- * console.log(s.toString(), String.len(s))
+ * const s = Effect.runSync(StringBuf.from("a"))
+ * Effect.runSync(StringBuf.extend(s, ["b", "ç", Str.fromString("dé")]))
+ * console.log(s.toString(), StringBuf.len(s))
  * // → abçdé 7
  * ```
  *
@@ -940,12 +944,12 @@ export const pushStr: {
 export const extend: {
   (
     strings: Iterable<Str.Str | string>,
-  ): (self: String) => Effect.Effect<void, Allocator.AllocationError>;
+  ): (self: StringBuf) => Effect.Effect<void, Allocator.AllocationError>;
   (
-    self: String,
+    self: StringBuf,
     strings: Iterable<Str.Str | string>,
   ): Effect.Effect<void, Allocator.AllocationError>;
-} = dual(2, (self: String, strings: Iterable<Str.Str | string>) =>
+} = dual(2, (self: StringBuf, strings: Iterable<Str.Str | string>) =>
   Effect.suspend(() =>
     fromResult(
       impl(self).buffer.append(
@@ -963,18 +967,18 @@ export const extend: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.withCapacity(3))
- * Effect.runSync(String.insert(s, 0, "f"))
- * Effect.runSync(String.insert(s, 1, "o"))
- * Effect.runSync(String.insert(s, 2, "o"))
+ * const s = Effect.runSync(StringBuf.withCapacity(3))
+ * Effect.runSync(StringBuf.insert(s, 0, "f"))
+ * Effect.runSync(StringBuf.insert(s, 1, "o"))
+ * Effect.runSync(StringBuf.insert(s, 2, "o"))
  * console.log(s.toString())
  * // → foo
  *
  * // `é` is two bytes, so the boundary after it is byte 2
- * const t = Effect.runSync(String.from("éa"))
- * Effect.runSync(String.insert(t, 2, "ü"))
+ * const t = Effect.runSync(StringBuf.from("éa"))
+ * Effect.runSync(StringBuf.insert(t, 2, "ü"))
  * console.log(t.toString())
  * // → éüa
  * ```
@@ -983,14 +987,17 @@ export const extend: {
  * @category mutations
  */
 export const insert: {
-  (index: number, char: string): (self: String) => Effect.Effect<void, Allocator.AllocationError>;
-  (self: String, index: number, char: string): Effect.Effect<void, Allocator.AllocationError>;
-} = dual(3, (self: String, index: number, char: string) =>
+  (
+    index: number,
+    char: string,
+  ): (self: StringBuf) => Effect.Effect<void, Allocator.AllocationError>;
+  (self: StringBuf, index: number, char: string): Effect.Effect<void, Allocator.AllocationError>;
+} = dual(3, (self: StringBuf, index: number, char: string) =>
   Effect.suspend(() =>
     isChar(char)
       ? insertStr(self, index, char)
       : Effect.die(
-          new RangeError(`String.insert: expected a single character, received "${char}"`),
+          new RangeError(`StringBuf.insert: expected a single character, received "${char}"`),
         ),
   ),
 );
@@ -1002,10 +1009,10 @@ export const insert: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("bär"))
- * Effect.runSync(String.insertStr(s, 0, "föo"))
+ * const s = Effect.runSync(StringBuf.from("bär"))
+ * Effect.runSync(StringBuf.insertStr(s, 0, "föo"))
  * console.log(s.toString())
  * // → föobär
  * ```
@@ -1017,13 +1024,13 @@ export const insertStr: {
   (
     index: number,
     s: Str.Str | string,
-  ): (self: String) => Effect.Effect<void, Allocator.AllocationError>;
+  ): (self: StringBuf) => Effect.Effect<void, Allocator.AllocationError>;
   (
-    self: String,
+    self: StringBuf,
     index: number,
     s: Str.Str | string,
   ): Effect.Effect<void, Allocator.AllocationError>;
-} = dual(3, (self: String, index: number, s: Str.Str | string) =>
+} = dual(3, (self: StringBuf, index: number, s: Str.Str | string) =>
   Effect.suspend(() => {
     const string = impl(self);
     if (!Utf8.isCharBoundary(string.bytes(), index)) return Effect.die(invalidIndex(string, index));
@@ -1039,13 +1046,13 @@ export const insertStr: {
  * @example
  * ```ts
  * import { Effect, Option } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("α is alpha, β is beta"))
- * const betaOffset = Option.getOrElse(String.find(s, "β"), () => String.len(s))
+ * const s = Effect.runSync(StringBuf.from("α is alpha, β is beta"))
+ * const betaOffset = Option.getOrElse(StringBuf.find(s, "β"), () => StringBuf.len(s))
  *
  * // Replace the range up until the β from the string
- * Effect.runSync(String.replaceRange(s, 0, betaOffset, "Α is capital alpha; "))
+ * Effect.runSync(StringBuf.replaceRange(s, 0, betaOffset, "Α is capital alpha; "))
  * console.log(s.toString())
  * // → Α is capital alpha; β is beta
  * ```
@@ -1058,14 +1065,14 @@ export const replaceRange: {
     start: number,
     end: number,
     s: Str.Str | string,
-  ): (self: String) => Effect.Effect<void, Allocator.AllocationError>;
+  ): (self: StringBuf) => Effect.Effect<void, Allocator.AllocationError>;
   (
-    self: String,
+    self: StringBuf,
     start: number,
     end: number,
     s: Str.Str | string,
   ): Effect.Effect<void, Allocator.AllocationError>;
-} = dual(4, (self: String, start: number, end: number, s: Str.Str | string) =>
+} = dual(4, (self: StringBuf, start: number, end: number, s: Str.Str | string) =>
   Effect.suspend(() => {
     const string = impl(self);
     if (!isRange(string.bytes(), start, end)) return Effect.die(invalidRange(string, start, end));
@@ -1082,10 +1089,10 @@ export const replaceRange: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const hello = Effect.runSync(String.from("Héllo, Wörld!"))
- * const world = Effect.runSync(String.splitOff(hello, 8))
+ * const hello = Effect.runSync(StringBuf.from("Héllo, Wörld!"))
+ * const world = Effect.runSync(StringBuf.splitOff(hello, 8))
  * console.log(JSON.stringify(hello.toString()), JSON.stringify(world.toString()))
  * // → "Héllo, " "Wörld!"
  * ```
@@ -1094,14 +1101,14 @@ export const replaceRange: {
  * @category mutations
  */
 export const splitOff: {
-  (at: number): (self: String) => Effect.Effect<String, Allocator.AllocationError>;
-  (self: String, at: number): Effect.Effect<String, Allocator.AllocationError>;
-} = dual(2, (self: String, at: number): Effect.Effect<String, Allocator.AllocationError> =>
+  (at: number): (self: StringBuf) => Effect.Effect<StringBuf, Allocator.AllocationError>;
+  (self: StringBuf, at: number): Effect.Effect<StringBuf, Allocator.AllocationError>;
+} = dual(2, (self: StringBuf, at: number): Effect.Effect<StringBuf, Allocator.AllocationError> =>
   Effect.suspend(() => {
     const string = impl(self);
     const bytes = string.bytes();
     if (!Utf8.isCharBoundary(bytes, at)) return Effect.die(invalidIndex(string, at));
-    const rest = new StringImpl(string.allocator);
+    const rest = new StringBufImpl(string.allocator);
     const result = rest.buffer.append(bytes.subarray(at));
     if (Result.isFailure(result)) return Effect.fail(result.failure);
     string.buffer.len = at;
@@ -1115,18 +1122,18 @@ export const splitOff: {
  * @example
  * ```ts
  * import { Effect, Option } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("abč"))
+ * const s = Effect.runSync(StringBuf.from("abč"))
  * const show = (o: Option.Option<string>) => Option.getOrElse(o, () => "None")
- * console.log(show(String.pop(s)), show(String.pop(s)), show(String.pop(s)), show(String.pop(s)))
+ * console.log(show(StringBuf.pop(s)), show(StringBuf.pop(s)), show(StringBuf.pop(s)), show(StringBuf.pop(s)))
  * // → č b a None
  * ```
  *
  * @since 0.1.0
  * @category mutations
  */
-export const pop = (self: String): Option.Option<string> => {
+export const pop = (self: StringBuf): Option.Option<string> => {
   const buffer = impl(self).buffer;
   if (buffer.len === 0) return Option.none();
   const bytes = buffer.bytes();
@@ -1144,16 +1151,16 @@ export const pop = (self: String): Option.Option<string> => {
  * @example
  * ```ts
  * import { Effect, Option } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("abç"))
+ * const s = Effect.runSync(StringBuf.from("abç"))
  * const show = (o: Option.Option<string>) => Option.getOrElse(o, () => "None")
- * console.log(show(String.remove(s, 0)), show(String.remove(s, 1)), show(String.remove(s, 0)))
+ * console.log(show(StringBuf.remove(s, 0)), show(StringBuf.remove(s, 1)), show(StringBuf.remove(s, 0)))
  * // → a ç b
  *
  * // not the start of a character
- * const t = Effect.runSync(String.from("ç"))
- * console.log(show(String.remove(t, 1)), t.toString())
+ * const t = Effect.runSync(StringBuf.from("ç"))
+ * console.log(show(StringBuf.remove(t, 1)), t.toString())
  * // → None ç
  * ```
  *
@@ -1161,9 +1168,9 @@ export const pop = (self: String): Option.Option<string> => {
  * @category mutations
  */
 export const remove: {
-  (index: number): (self: String) => Option.Option<string>;
-  (self: String, index: number): Option.Option<string>;
-} = dual(2, (self: String, index: number): Option.Option<string> => {
+  (index: number): (self: StringBuf) => Option.Option<string>;
+  (self: StringBuf, index: number): Option.Option<string>;
+} = dual(2, (self: StringBuf, index: number): Option.Option<string> => {
   const buffer = impl(self).buffer;
   const bytes = buffer.bytes();
   if (index >= bytes.byteLength || !Utf8.isCharBoundary(bytes, index)) return Option.none();
@@ -1182,23 +1189,23 @@ export const remove: {
  * @example
  * ```ts
  * import { Effect, Option } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("α is alpha, β is beta"))
- * const betaOffset = Option.getOrElse(String.find(s, "β"), () => String.len(s))
+ * const s = Effect.runSync(StringBuf.from("α is alpha, β is beta"))
+ * const betaOffset = Option.getOrElse(StringBuf.find(s, "β"), () => StringBuf.len(s))
  * const show = (o: Option.Option<{ toString(): string }>) => Option.match(o, { onNone: () => "None", onSome: (t) => t.toString() })
  *
  * // Remove the range up until the β from the string
- * const t = String.drain(s, 0, betaOffset)
+ * const t = StringBuf.drain(s, 0, betaOffset)
  * console.log(JSON.stringify(show(t)), JSON.stringify(s.toString()))
  * // → "α is alpha, " "β is beta"
  *
  * // Not a character boundary: nothing is removed
- * console.log(show(String.drain(s, 1)), s.toString())
+ * console.log(show(StringBuf.drain(s, 1)), s.toString())
  * // → None β is beta
  *
  * // A full range clears the string, like `clear()` does
- * String.drain(s, 0)
+ * StringBuf.drain(s, 0)
  * console.log(JSON.stringify(s.toString()))
  * // → ""
  * ```
@@ -1207,11 +1214,11 @@ export const remove: {
  * @category mutations
  */
 export const drain: {
-  (start: number, end?: number): (self: String) => Option.Option<Str.Str>;
-  (self: String, start: number, end?: number): Option.Option<Str.Str>;
+  (start: number, end?: number): (self: StringBuf) => Option.Option<Str.Str>;
+  (self: StringBuf, start: number, end?: number): Option.Option<Str.Str>;
 } = dual(
-  (args) => isString(args[0]),
-  (self: String, start: number, end?: number): Option.Option<Str.Str> => {
+  (args) => isStringBuf(args[0]),
+  (self: StringBuf, start: number, end?: number): Option.Option<Str.Str> => {
     const buffer = impl(self).buffer;
     const bytes = buffer.bytes();
     const stop = end ?? bytes.byteLength;
@@ -1229,10 +1236,10 @@ export const drain: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("f_ö_ob_ar_"))
- * String.retain(s, (c) => c !== "_")
+ * const s = Effect.runSync(StringBuf.from("f_ö_ob_ar_"))
+ * StringBuf.retain(s, (c) => c !== "_")
  * console.log(s.toString())
  * // → föobar
  * ```
@@ -1241,9 +1248,9 @@ export const drain: {
  * @category mutations
  */
 export const retain: {
-  (predicate: (char: string) => boolean): (self: String) => void;
-  (self: String, predicate: (char: string) => boolean): void;
-} = dual(2, (self: String, predicate: (char: string) => boolean): void => {
+  (predicate: (char: string) => boolean): (self: StringBuf) => void;
+  (self: StringBuf, predicate: (char: string) => boolean): void;
+} = dual(2, (self: StringBuf, predicate: (char: string) => boolean): void => {
   const buffer = impl(self).buffer;
   const bytes = buffer.bytes();
   // Compact the kept characters towards the start; this never grows.
@@ -1264,14 +1271,14 @@ export const retain: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("héllo"))
- * console.log(String.truncate(s, 3), s.toString())
+ * const s = Effect.runSync(StringBuf.from("héllo"))
+ * console.log(StringBuf.truncate(s, 3), s.toString())
  * // → true hé
  *
  * // byte 2 is inside `é`
- * console.log(String.truncate(s, 2), s.toString())
+ * console.log(StringBuf.truncate(s, 2), s.toString())
  * // → false hé
  * ```
  *
@@ -1279,9 +1286,9 @@ export const retain: {
  * @category mutations
  */
 export const truncate: {
-  (newLen: number): (self: String) => boolean;
-  (self: String, newLen: number): boolean;
-} = dual(2, (self: String, newLen: number): boolean => {
+  (newLen: number): (self: StringBuf) => boolean;
+  (self: StringBuf, newLen: number): boolean;
+} = dual(2, (self: StringBuf, newLen: number): boolean => {
   const buffer = impl(self).buffer;
   if (newLen >= buffer.len) return true;
   if (!Utf8.isCharBoundary(buffer.bytes(), newLen)) return false;
@@ -1295,19 +1302,19 @@ export const truncate: {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("föo"))
- * const capacity = String.capacity(s)
- * String.clear(s)
- * console.log(String.isEmpty(s), String.len(s), String.capacity(s) === capacity)
+ * const s = Effect.runSync(StringBuf.from("föo"))
+ * const capacity = StringBuf.capacity(s)
+ * StringBuf.clear(s)
+ * console.log(StringBuf.isEmpty(s), StringBuf.len(s), StringBuf.capacity(s) === capacity)
  * // → true 0 true
  * ```
  *
  * @since 0.1.0
  * @category mutations
  */
-export const clear = (self: String): void => {
+export const clear = (self: StringBuf): void => {
   impl(self).buffer.len = 0;
 };
 
@@ -1318,10 +1325,10 @@ export const clear = (self: String): void => {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("Grüße, Jürgen ❤"))
- * String.makeAsciiUppercase(s)
+ * const s = Effect.runSync(StringBuf.from("Grüße, Jürgen ❤"))
+ * StringBuf.makeAsciiUppercase(s)
  * console.log(s.toString())
  * // → GRüßE, JüRGEN ❤
  * ```
@@ -1329,7 +1336,7 @@ export const clear = (self: String): void => {
  * @since 0.1.0
  * @category mutations
  */
-export const makeAsciiUppercase = (self: String): void => {
+export const makeAsciiUppercase = (self: StringBuf): void => {
   const bytes = impl(self).bytes();
   bytes.set(bytes.map(Utf8.toAsciiUppercaseByte));
 };
@@ -1341,10 +1348,10 @@ export const makeAsciiUppercase = (self: String): void => {
  * @example
  * ```ts
  * import { Effect } from "effect"
- * import * as String from "@thomasfosterau/effect-ext/String"
+ * import * as StringBuf from "@thomasfosterau/effect-ext/StringBuf"
  *
- * const s = Effect.runSync(String.from("GRÜßE, JÜRGEN ❤"))
- * String.makeAsciiLowercase(s)
+ * const s = Effect.runSync(StringBuf.from("GRÜßE, JÜRGEN ❤"))
+ * StringBuf.makeAsciiLowercase(s)
  * console.log(s.toString())
  * // → grÜße, jÜrgen ❤
  * ```
@@ -1352,7 +1359,7 @@ export const makeAsciiUppercase = (self: String): void => {
  * @since 0.1.0
  * @category mutations
  */
-export const makeAsciiLowercase = (self: String): void => {
+export const makeAsciiLowercase = (self: StringBuf): void => {
   const bytes = impl(self).bytes();
   bytes.set(bytes.map(Utf8.toAsciiLowercaseByte));
 };

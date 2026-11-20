@@ -51,7 +51,7 @@ Guide: [binary-data](https://github.com/thomasfosterau/effect-ext/blob/trunk/pac
 | `BufferStruct` | Structs whose fields live in an `ArrayBuffer`, exposed as ordinary properties. |
 | `Vec` | A growable, `ArrayBuffer`-backed array, like Rust's `Vec<T>`. |
 | `StructOfArrays` | A growable struct-of-arrays container with typed-array columns. |
-| `String` | A growable, Allocator-backed UTF-8 string, like Rust's `String`. |
+| `StringBuf` | A growable, Allocator-backed UTF-8 string, like Rust's `String`. |
 | `Str` | An immutable UTF-8 string slice, like Rust's `str`; usable as a `HashMap` key. |
 
 ### Schema

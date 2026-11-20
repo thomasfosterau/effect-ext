@@ -130,7 +130,7 @@ export default distExportsPackageConfig({
     "Saturating",
     "Sitemap",
     "Str",
-    "String",
+    "StringBuf",
     "StructOfArrays",
     "TriState",
     "Tzif",

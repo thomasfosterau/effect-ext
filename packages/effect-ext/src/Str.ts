@@ -14,7 +14,7 @@
  * API: a string (or `Str`) to match literally, or a predicate on single
  * characters. An empty string pattern matches at every character boundary.
  *
- * For a growable, mutable string, see `String`.
+ * For a growable, mutable string, see `StringBuf`.
  *
  * @example
  * ```ts

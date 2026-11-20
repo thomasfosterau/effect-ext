@@ -322,9 +322,9 @@
       "types": "./dist/Str.d.ts",
       "default": "./dist/Str.js"
     },
-    "./String": {
-      "types": "./dist/String.d.ts",
-      "default": "./dist/String.js"
+    "./StringBuf": {
+      "types": "./dist/StringBuf.d.ts",
+      "default": "./dist/StringBuf.js"
     },
     "./StructOfArrays": {
       "types": "./dist/StructOfArrays.d.ts",
