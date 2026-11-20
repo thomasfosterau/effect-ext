@@ -16,5 +16,6 @@ export default packageConfig({
     WorkerScope: "src/WorkerScope.ts",
     WorkerRuntime: "src/WorkerRuntime.ts",
     WorkerMessaging: "src/WorkerMessaging.ts",
+    Performance: "src/Performance.ts",
   },
 });

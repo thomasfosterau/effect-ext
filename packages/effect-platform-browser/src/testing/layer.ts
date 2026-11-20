@@ -15,6 +15,7 @@ import * as TestLocks from "./locks.ts";
 import * as TestMediaQuery from "./media-query.ts";
 import * as TestNavigator from "./navigator.ts";
 import * as TestNotifications from "./notifications.ts";
+import * as TestPerformance from "./performance.ts";
 import * as TestPageVisibility from "./page-visibility.ts";
 import * as TestPermissions from "./permissions.ts";
 import * as TestScreenOrientation from "./screen-orientation.ts";
@@ -57,6 +58,7 @@ export const layer = Layer.mergeAll(
   TestNavigator.layer(),
   TestNotifications.layer(),
   TestPageVisibility.layer(),
+  TestPerformance.layer(),
   TestPermissions.layer(),
   TestScreenOrientation.layer(),
   TestWakeLock.layer(),

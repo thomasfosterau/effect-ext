@@ -30,5 +30,6 @@ export default packageConfig({
     ScreenOrientation: "src/ScreenOrientation.ts",
     ServiceWorkerContainer: "src/ServiceWorkerContainer.ts",
     WakeLock: "src/WakeLock.ts",
+    WebVitals: "src/WebVitals.ts",
   },
 });

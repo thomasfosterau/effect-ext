@@ -77,3 +77,8 @@ export * as ServiceWorkerContainer from "./ServiceWorkerContainer.ts";
  * @since 0.1.0
  */
 export * as WakeLock from "./WakeLock.ts";
+
+/**
+ * @since 0.1.0
+ */
+export * as WebVitals from "./WebVitals.ts";
