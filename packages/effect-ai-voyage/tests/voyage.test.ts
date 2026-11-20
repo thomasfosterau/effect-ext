@@ -12,7 +12,7 @@
  * @module tests/voyage
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, layer } from "@effect/vitest";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -27,7 +27,7 @@ import {
   VoyageEmbeddingModel,
   VoyageRerankerModel,
 } from "@thomasfosterau/effect-ai-voyage";
-import { expectFailureInstanceOf, runTest } from "./helpers/effect";
+import { expectFailureInstanceOf } from "./helpers/effect";
 
 // ── Fetch stubbing ────────────────────────────────────────────────────
 
@@ -58,9 +58,6 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
   return { calls, fetch };
 };
 
-const httpLayer = (fetch: typeof globalThis.fetch) =>
-  FetchHttpClient.layer.pipe(Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch)));
-
 const jsonResponse = (body: unknown, status = 200): Response => Response.json(body, { status });
 
 const embeddingBody = (
@@ -87,28 +84,22 @@ const rerankBody = (
 
 // ── Layers ────────────────────────────────────────────────────────────
 
-const embeddingLayer = (
-  fetch: typeof globalThis.fetch,
-  options?: {
-    readonly apiKey?: Redacted.Redacted;
-    readonly model?: VoyageEmbeddingModel.Options;
-  },
-) =>
+const embeddingLayer = (options?: {
+  readonly apiKey?: Redacted.Redacted;
+  readonly model?: VoyageEmbeddingModel.Options;
+}) =>
   VoyageEmbeddingModel.layer(options?.model ?? { model: "voyage-3-large" }).pipe(
     Layer.provide(VoyageClient.layer({ apiKey: options?.apiKey ?? Redacted.make("test-key") })),
-    Layer.provide(httpLayer(fetch)),
+    Layer.provide(FetchHttpClient.layer),
   );
 
-const rerankerLayer = (
-  fetch: typeof globalThis.fetch,
-  options?: {
-    readonly apiKey?: Redacted.Redacted;
-    readonly model?: VoyageRerankerModel.Options;
-  },
-) =>
+const rerankerLayer = (options?: {
+  readonly apiKey?: Redacted.Redacted;
+  readonly model?: VoyageRerankerModel.Options;
+}) =>
   VoyageRerankerModel.layer(options?.model ?? { model: "rerank-2.5" }).pipe(
     Layer.provide(VoyageClient.layer({ apiKey: options?.apiKey ?? Redacted.make("test-key") })),
-    Layer.provide(httpLayer(fetch)),
+    Layer.provide(FetchHttpClient.layer),
   );
 
 const embedMany = (inputs: ReadonlyArray<string>) =>
@@ -123,278 +114,327 @@ const rerank = (options: RerankerModel.RerankOptions) =>
 // ── Embeddings ────────────────────────────────────────────────────────
 
 describe("VoyageEmbeddingModel", () => {
-  it("posts to the embeddings endpoint with a bearer token and decodes vectors", async () => {
-    const { calls, fetch } = makeFetch(() =>
-      jsonResponse(
-        embeddingBody([
+  layer(embeddingLayer())((t) => {
+    t.effect("posts to the embeddings endpoint with a bearer token and decodes vectors", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() =>
+          jsonResponse(
+            embeddingBody([
+              [0.1, 0.2],
+              [0.3, 0.4],
+            ]),
+          ),
+        );
+
+        const response = yield* embedMany(["a", "b"]).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0]?.url).toBe("https://api.voyageai.com/v1/embeddings");
+        expect(calls[0]?.authorization).toEqual(Option.some("Bearer test-key"));
+        expect(calls[0]?.body.model).toBe("voyage-3-large");
+        expect(calls[0]?.body.input).toEqual(["a", "b"]);
+        expect(response.embeddings.map((e) => e.vector)).toEqual([
           [0.1, 0.2],
           [0.3, 0.4],
-        ]),
-      ),
+        ]);
+        expect(response.usage.inputTokens).toBe(10);
+      }),
     );
-
-    const response = await runTest(
-      embedMany(["a", "b"]).pipe(Effect.provide(embeddingLayer(fetch))),
-    );
-
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe("https://api.voyageai.com/v1/embeddings");
-    expect(calls[0]?.authorization).toEqual(Option.some("Bearer test-key"));
-    expect(calls[0]?.body.model).toBe("voyage-3-large");
-    expect(calls[0]?.body.input).toEqual(["a", "b"]);
-    expect(response.embeddings.map((e) => e.vector)).toEqual([
-      [0.1, 0.2],
-      [0.3, 0.4],
-    ]);
-    expect(response.usage.inputTokens).toBe(10);
   });
 
-  it("threads inputType and outputDimension into the request", async () => {
-    const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.1]])));
+  layer(
+    embeddingLayer({
+      model: { model: "voyage-3-large", inputType: "document", outputDimension: 256 },
+    }),
+  )((t) => {
+    t.effect("threads inputType and outputDimension into the request", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.1]])));
 
-    await runTest(
-      embedMany(["doc"]).pipe(
-        Effect.provide(
-          embeddingLayer(fetch, {
-            model: { model: "voyage-3-large", inputType: "document", outputDimension: 256 },
-          }),
-        ),
-      ),
+        yield* embedMany(["doc"]).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
+
+        expect(calls[0]?.body.input_type).toBe("document");
+        expect(calls[0]?.body.output_dimension).toBe(256);
+      }),
     );
-
-    expect(calls[0]?.body.input_type).toBe("document");
-    expect(calls[0]?.body.output_dimension).toBe(256);
   });
 
-  it("omits input_type and output_dimension when unset", async () => {
-    const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.1]])));
+  layer(embeddingLayer())((t) => {
+    t.effect("omits input_type and output_dimension when unset", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.1]])));
 
-    await runTest(embedMany(["x"]).pipe(Effect.provide(embeddingLayer(fetch))));
+        yield* embedMany(["x"]).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-    expect(calls[0]?.body).not.toHaveProperty("input_type");
-    expect(calls[0]?.body).not.toHaveProperty("output_dimension");
-  });
-
-  it("reorders decoded vectors by their reported index", async () => {
-    const { fetch } = makeFetch(() =>
-      jsonResponse({
-        object: "list",
-        data: [
-          { object: "embedding", embedding: [0.2], index: 1 },
-          { object: "embedding", embedding: [0.1], index: 0 },
-        ],
-        model: "voyage-3-large",
-        usage: { total_tokens: 4 },
+        expect(calls[0]?.body).not.toHaveProperty("input_type");
+        expect(calls[0]?.body).not.toHaveProperty("output_dimension");
       }),
     );
 
-    const response = await runTest(
-      embedMany(["a", "b"]).pipe(Effect.provide(embeddingLayer(fetch))),
+    t.effect("reorders decoded vectors by their reported index", () =>
+      Effect.gen(function* () {
+        const { fetch } = makeFetch(() =>
+          jsonResponse({
+            object: "list",
+            data: [
+              { object: "embedding", embedding: [0.2], index: 1 },
+              { object: "embedding", embedding: [0.1], index: 0 },
+            ],
+            model: "voyage-3-large",
+            usage: { total_tokens: 4 },
+          }),
+        );
+
+        const response = yield* embedMany(["a", "b"]).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
+
+        expect(response.embeddings.map((e) => e.vector)).toEqual([[0.1], [0.2]]);
+      }),
     );
 
-    expect(response.embeddings.map((e) => e.vector)).toEqual([[0.1], [0.2]]);
-  });
+    t.effect("embeds a single input via the request resolver", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.5, 0.6]])));
 
-  it("embeds a single input via the request resolver", async () => {
-    const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.5, 0.6]])));
+        const response = yield* embed("solo").pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
 
-    const response = await runTest(embed("solo").pipe(Effect.provide(embeddingLayer(fetch))));
-
-    expect(response.vector).toEqual([0.5, 0.6]);
-    expect(calls[0]?.body.input).toEqual(["solo"]);
-  });
-
-  it("returns an empty response for embedMany([]) without calling Voyage", async () => {
-    const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([])));
-
-    const response = await runTest(embedMany([]).pipe(Effect.provide(embeddingLayer(fetch))));
-
-    expect(response.embeddings).toHaveLength(0);
-    expect(calls).toHaveLength(0);
-  });
-
-  it("omits the authorization header when constructed without an API key", async () => {
-    const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.1]])));
-
-    await runTest(
-      embedMany(["x"]).pipe(
-        Effect.provide(
-          VoyageEmbeddingModel.layer({ model: "voyage-3.5" }).pipe(
-            Layer.provide(VoyageClient.layer({})),
-            Layer.provide(httpLayer(fetch)),
-          ),
-        ),
-      ),
+        expect(response.vector).toEqual([0.5, 0.6]);
+        expect(calls[0]?.body.input).toEqual(["solo"]);
+      }),
     );
 
-    expect(calls[0]?.authorization).toEqual(Option.none());
-  });
+    t.effect("returns an empty response for embedMany([]) without calling Voyage", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([])));
 
-  it("maps a non-2xx status to an AiError", async () => {
-    const { fetch } = makeFetch(() => jsonResponse({ detail: "rate limited" }, 429));
+        const response = yield* embedMany([]).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
 
-    await expectFailureInstanceOf(
-      embedMany(["x"]).pipe(Effect.provide(embeddingLayer(fetch))),
-      AiError.AiError,
+        expect(response.embeddings).toHaveLength(0);
+        expect(calls).toHaveLength(0);
+      }),
     );
   });
 
-  it("maps an undecodable success body to an AiError", async () => {
-    const { fetch } = makeFetch(() => jsonResponse({ not: "an embeddings response" }));
+  layer(
+    VoyageEmbeddingModel.layer({ model: "voyage-3.5" }).pipe(
+      Layer.provide(VoyageClient.layer({})),
+      Layer.provide(FetchHttpClient.layer),
+    ),
+  )((t) => {
+    t.effect("omits the authorization header when constructed without an API key", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.1]])));
 
-    await expectFailureInstanceOf(
-      embedMany(["x"]).pipe(Effect.provide(embeddingLayer(fetch))),
-      AiError.AiError,
+        yield* embedMany(["x"]).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
+
+        expect(calls[0]?.authorization).toEqual(Option.none());
+      }),
     );
   });
 
-  it("maps a success body that is not JSON at all to an InvalidOutputError", async () => {
-    const { fetch } = makeFetch(
-      () =>
-        new Response("not json", { status: 200, headers: { "content-type": "application/json" } }),
+  layer(embeddingLayer())((t) => {
+    t.effect("maps a non-2xx status to an AiError", () =>
+      Effect.gen(function* () {
+        const { fetch } = makeFetch(() => jsonResponse({ detail: "rate limited" }, 429));
+
+        yield* expectFailureInstanceOf(
+          embedMany(["x"]).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+          AiError.AiError,
+        );
+      }),
     );
 
-    const error = await expectFailureInstanceOf(
-      embedMany(["x"]).pipe(Effect.provide(embeddingLayer(fetch))),
-      AiError.AiError,
+    t.effect("maps an undecodable success body to an AiError", () =>
+      Effect.gen(function* () {
+        const { fetch } = makeFetch(() => jsonResponse({ not: "an embeddings response" }));
+
+        yield* expectFailureInstanceOf(
+          embedMany(["x"]).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+          AiError.AiError,
+        );
+      }),
     );
-    expect(error.reason._tag).toBe("InvalidOutputError");
+
+    t.effect("maps a success body that is not JSON at all to an InvalidOutputError", () =>
+      Effect.gen(function* () {
+        const { fetch } = makeFetch(
+          () =>
+            new Response("not json", {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+        );
+
+        const error = yield* expectFailureInstanceOf(
+          embedMany(["x"]).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+          AiError.AiError,
+        );
+        expect(error.reason._tag).toBe("InvalidOutputError");
+      }),
+    );
   });
 });
 
 // ── apiUrl override (BYOK routing contract) ───────────────────────────
 
 describe("VoyageClient apiUrl override", () => {
-  it("routes requests through the overridden base URL", async () => {
-    const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.1]])));
-
-    await runTest(
-      embedMany(["x"]).pipe(
-        Effect.provide(
-          VoyageEmbeddingModel.layer({ model: "voyage-3-large" }).pipe(
-            Layer.provide(
-              VoyageClient.layer({
-                apiKey: Redacted.make("gw-key"),
-                apiUrl: "https://gateway.example/voyage",
-              }),
-            ),
-            Layer.provide(httpLayer(fetch)),
-          ),
-        ),
+  layer(
+    VoyageEmbeddingModel.layer({ model: "voyage-3-large" }).pipe(
+      Layer.provide(
+        VoyageClient.layer({
+          apiKey: Redacted.make("gw-key"),
+          apiUrl: "https://gateway.example/voyage",
+        }),
       ),
-    );
+      Layer.provide(FetchHttpClient.layer),
+    ),
+  )((t) => {
+    t.effect("routes requests through the overridden base URL", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.1]])));
 
-    expect(calls[0]?.url).toBe("https://gateway.example/voyage/v1/embeddings");
-    expect(calls[0]?.authorization).toEqual(Option.some("Bearer gw-key"));
+        yield* embedMany(["x"]).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
+
+        expect(calls[0]?.url).toBe("https://gateway.example/voyage/v1/embeddings");
+        expect(calls[0]?.authorization).toEqual(Option.some("Bearer gw-key"));
+      }),
+    );
   });
 
-  it("loads apiUrl and apiKey through a Config-driven client layer", async () => {
-    const { calls, fetch } = makeFetch(() =>
-      jsonResponse(rerankBody([{ index: 0, relevance_score: 0.9 }])),
-    );
-
-    const clientLayer = VoyageClient.layerConfig({
-      apiKey: Config.succeed(Redacted.make("cfg-key")),
-      apiUrl: Config.succeed("https://proxy.example"),
-    });
-
-    await runTest(
-      rerank({ query: "q", documents: ["d"] }).pipe(
-        Effect.provide(
-          VoyageRerankerModel.layer({ model: "rerank-2.5" }).pipe(
-            Layer.provide(clientLayer),
-            Layer.provide(httpLayer(fetch)),
-          ),
-        ),
+  layer(
+    VoyageRerankerModel.layer({ model: "rerank-2.5" }).pipe(
+      Layer.provide(
+        VoyageClient.layerConfig({
+          apiKey: Config.succeed(Redacted.make("cfg-key")),
+          apiUrl: Config.succeed("https://proxy.example"),
+        }),
       ),
-    );
+      Layer.provide(FetchHttpClient.layer),
+    ),
+  )((t) => {
+    t.effect("loads apiUrl and apiKey through a Config-driven client layer", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() =>
+          jsonResponse(rerankBody([{ index: 0, relevance_score: 0.9 }])),
+        );
 
-    expect(calls[0]?.url).toBe("https://proxy.example/v1/rerank");
-    expect(calls[0]?.authorization).toEqual(Option.some("Bearer cfg-key"));
+        yield* rerank({ query: "q", documents: ["d"] }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        );
+
+        expect(calls[0]?.url).toBe("https://proxy.example/v1/rerank");
+        expect(calls[0]?.authorization).toEqual(Option.some("Bearer cfg-key"));
+      }),
+    );
   });
 });
 
 // ── Reranking ─────────────────────────────────────────────────────────
 
-describe("VoyageRerankerModel", () => {
-  it("posts to the rerank endpoint, maps topN to top_k, and sorts by relevance", async () => {
-    const { calls, fetch } = makeFetch(() =>
-      jsonResponse(
-        rerankBody([
-          { index: 0, relevance_score: 0.2 },
-          { index: 2, relevance_score: 0.9 },
-        ]),
-      ),
-    );
+layer(rerankerLayer())("VoyageRerankerModel", (t) => {
+  t.effect("posts to the rerank endpoint, maps topN to top_k, and sorts by relevance", () =>
+    Effect.gen(function* () {
+      const { calls, fetch } = makeFetch(() =>
+        jsonResponse(
+          rerankBody([
+            { index: 0, relevance_score: 0.2 },
+            { index: 2, relevance_score: 0.9 },
+          ]),
+        ),
+      );
 
-    const response = await runTest(
-      rerank({ query: "what is effect?", documents: ["a", "b", "c"], topN: 2 }).pipe(
-        Effect.provide(rerankerLayer(fetch)),
-      ),
-    );
+      const response = yield* rerank({
+        query: "what is effect?",
+        documents: ["a", "b", "c"],
+        topN: 2,
+      }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-    expect(calls[0]?.url).toBe("https://api.voyageai.com/v1/rerank");
-    expect(calls[0]?.body.model).toBe("rerank-2.5");
-    expect(calls[0]?.body.query).toBe("what is effect?");
-    expect(calls[0]?.body.documents).toEqual(["a", "b", "c"]);
-    expect(calls[0]?.body.top_k).toBe(2);
-    expect(response.results.map((r) => r.index)).toEqual([2, 0]);
-    expect(response.results[0]?.relevanceScore).toBe(0.9);
-    expect(response.usage.inputTokens).toStrictEqual(Option.some(26));
-  });
+      expect(calls[0]?.url).toBe("https://api.voyageai.com/v1/rerank");
+      expect(calls[0]?.body.model).toBe("rerank-2.5");
+      expect(calls[0]?.body.query).toBe("what is effect?");
+      expect(calls[0]?.body.documents).toEqual(["a", "b", "c"]);
+      expect(calls[0]?.body.top_k).toBe(2);
+      expect(response.results.map((r) => r.index)).toEqual([2, 0]);
+      expect(response.results[0]?.relevanceScore).toBe(0.9);
+      expect(response.usage.inputTokens).toStrictEqual(Option.some(26));
+    }),
+  );
 
-  it("omits top_k when topN is unset", async () => {
-    const { calls, fetch } = makeFetch(() =>
-      jsonResponse(rerankBody([{ index: 0, relevance_score: 0.5 }])),
-    );
+  t.effect("omits top_k when topN is unset", () =>
+    Effect.gen(function* () {
+      const { calls, fetch } = makeFetch(() =>
+        jsonResponse(rerankBody([{ index: 0, relevance_score: 0.5 }])),
+      );
 
-    await runTest(
-      rerank({ query: "q", documents: ["a"] }).pipe(Effect.provide(rerankerLayer(fetch))),
-    );
+      yield* rerank({ query: "q", documents: ["a"] }).pipe(
+        Effect.provideService(FetchHttpClient.Fetch, fetch),
+      );
 
-    expect(calls[0]?.body).not.toHaveProperty("top_k");
-  });
+      expect(calls[0]?.body).not.toHaveProperty("top_k");
+    }),
+  );
 
-  it("short-circuits an empty documents array without calling Voyage", async () => {
-    const { calls, fetch } = makeFetch(() => jsonResponse(rerankBody([])));
+  t.effect("short-circuits an empty documents array without calling Voyage", () =>
+    Effect.gen(function* () {
+      const { calls, fetch } = makeFetch(() => jsonResponse(rerankBody([])));
 
-    const response = await runTest(
-      rerank({ query: "q", documents: [] }).pipe(Effect.provide(rerankerLayer(fetch))),
-    );
+      const response = yield* rerank({ query: "q", documents: [] }).pipe(
+        Effect.provideService(FetchHttpClient.Fetch, fetch),
+      );
 
-    expect(response.results).toHaveLength(0);
-    expect(calls).toHaveLength(0);
-  });
+      expect(response.results).toHaveLength(0);
+      expect(calls).toHaveLength(0);
+    }),
+  );
 
-  it("fails with an AiError when the provider returns an out-of-range index", async () => {
-    const { fetch } = makeFetch(() =>
-      jsonResponse(rerankBody([{ index: 5, relevance_score: 0.5 }])),
-    );
+  t.effect("fails with an AiError when the provider returns an out-of-range index", () =>
+    Effect.gen(function* () {
+      const { fetch } = makeFetch(() =>
+        jsonResponse(rerankBody([{ index: 5, relevance_score: 0.5 }])),
+      );
 
-    await expectFailureInstanceOf(
-      rerank({ query: "q", documents: ["a", "b"] }).pipe(Effect.provide(rerankerLayer(fetch))),
-      AiError.AiError,
-    );
-  });
+      yield* expectFailureInstanceOf(
+        rerank({ query: "q", documents: ["a", "b"] }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        ),
+        AiError.AiError,
+      );
+    }),
+  );
 
-  it("maps a non-2xx status to an AiError", async () => {
-    const { fetch } = makeFetch(() => jsonResponse({ detail: "bad request" }, 400));
+  t.effect("maps a non-2xx status to an AiError", () =>
+    Effect.gen(function* () {
+      const { fetch } = makeFetch(() => jsonResponse({ detail: "bad request" }, 400));
 
-    await expectFailureInstanceOf(
-      rerank({ query: "q", documents: ["a"] }).pipe(Effect.provide(rerankerLayer(fetch))),
-      AiError.AiError,
-    );
-  });
+      yield* expectFailureInstanceOf(
+        rerank({ query: "q", documents: ["a"] }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        ),
+        AiError.AiError,
+      );
+    }),
+  );
 
-  it("maps an undecodable success body to an InvalidOutputError", async () => {
-    const { fetch } = makeFetch(() => jsonResponse({ not: "a rerank response" }));
+  t.effect("maps an undecodable success body to an InvalidOutputError", () =>
+    Effect.gen(function* () {
+      const { fetch } = makeFetch(() => jsonResponse({ not: "a rerank response" }));
 
-    const error = await expectFailureInstanceOf(
-      rerank({ query: "q", documents: ["a"] }).pipe(Effect.provide(rerankerLayer(fetch))),
-      AiError.AiError,
-    );
-    expect(error.reason._tag).toBe("InvalidOutputError");
-  });
+      const error = yield* expectFailureInstanceOf(
+        rerank({ query: "q", documents: ["a"] }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        ),
+        AiError.AiError,
+      );
+      expect(error.reason._tag).toBe("InvalidOutputError");
+    }),
+  );
 });
 
 // ── Client-level behaviour ────────────────────────────────────────────
@@ -405,34 +445,36 @@ const networkDownFetch: typeof globalThis.fetch = async () => {
 };
 
 describe("VoyageClient", () => {
-  it("maps a transport failure to an AiError", async () => {
-    await expectFailureInstanceOf(
-      embedMany(["x"]).pipe(Effect.provide(embeddingLayer(networkDownFetch))),
-      AiError.AiError,
+  layer(embeddingLayer())((t) => {
+    t.effect("maps a transport failure to an AiError", () =>
+      expectFailureInstanceOf(
+        embedMany(["x"]).pipe(Effect.provideService(FetchHttpClient.Fetch, networkDownFetch)),
+        AiError.AiError,
+      ),
     );
   });
 
-  it("applies a transformClient to outgoing requests", async () => {
-    const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.1]])));
-
-    await runTest(
-      embedMany(["x"]).pipe(
-        Effect.provide(
-          VoyageEmbeddingModel.layer({ model: "voyage-3-large" }).pipe(
-            Layer.provide(
-              VoyageClient.layer({
-                apiKey: Redacted.make("k"),
-                transformClient: (client) =>
-                  HttpClient.mapRequest(client, HttpClientRequest.setHeader("x-test", "1")),
-              }),
-            ),
-            Layer.provide(httpLayer(fetch)),
-          ),
-        ),
+  layer(
+    VoyageEmbeddingModel.layer({ model: "voyage-3-large" }).pipe(
+      Layer.provide(
+        VoyageClient.layer({
+          apiKey: Redacted.make("k"),
+          transformClient: (client) =>
+            HttpClient.mapRequest(client, HttpClientRequest.setHeader("x-test", "1")),
+        }),
       ),
-    );
+      Layer.provide(FetchHttpClient.layer),
+    ),
+  )((t) => {
+    t.effect("applies a transformClient to outgoing requests", () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = makeFetch(() => jsonResponse(embeddingBody([[0.1]])));
 
-    expect(calls[0]?.headers["x-test"]).toBe("1");
+        yield* embedMany(["x"]).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
+
+        expect(calls[0]?.headers["x-test"]).toBe("1");
+      }),
+    );
   });
 });
 
