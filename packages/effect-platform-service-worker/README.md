@@ -1,6 +1,6 @@
 # @thomasfosterau/effect-platform-service-worker
 
-[Effect](https://effect.website) utilities for code running inside a service worker: Cache Storage and the standard caching strategies, a route table for `fetch`, `install` / `activate` / `message` listeners, persistent notifications, and the worker's clients. Everything here runs in the worker; the page's side (`navigator.serviceWorker`: registering, updates, the controller) belongs with the browser main-thread APIs. It builds on [`@thomasfosterau/effect-platform-worker-shared`](../effect-platform-worker-shared).
+[Effect](https://effect.website) utilities for code running inside a service worker: Cache Storage and the standard caching strategies, a route table for `fetch`, navigation preload, listeners for `install` / `activate` / `message` / `push` / `sync` / `periodicsync`, persistent notifications, the worker's clients, and an `effect/workers` runner so pages can call the worker over RPC. Everything here runs in the worker; the page's side (`navigator.serviceWorker`: registering, updates, the controller) belongs with the browser main-thread APIs. It builds on [`@thomasfosterau/effect-platform-worker-shared`](../effect-platform-worker-shared).
 
 > [!CAUTION]
 > Experimental and pre-1.0. APIs may change between minor versions; pin what you use.
@@ -75,10 +75,30 @@ self.addEventListener("notificationclick", onClick);
 | Module | What it is |
 | --- | --- |
 | `Caches` | The Cache Storage API as typed effects (`openCache`, `deleteCache`, `cacheNames`, `deleteCachesExcept` for the `activate` sweep), every rejection a `CacheError`; `memoryCacheStorage` for tests. |
-| `Fetch` | `fetchRequest` through `FetchHttpClient.Fetch`; the five strategies (`cacheFirst`, `networkFirst` with an optional timeout, `staleWhileRevalidate`, `cacheOnly`, `networkOnly`); `precache`, which writes only once every URL is a `200`; and `route` / `fetchListener`, whose synchronous `match` decides whether to call `respondWith`. |
-| `Events` | `extendableListener` (`install`, `activate`: the effect's promise goes to `waitUntil`), `messageListener` (decodes `event.data`, drops and logs what does not decode), and `EventLifetime`, where background work such as a cache write goes. |
+| `Fetch` | `fetchRequest` through `FetchHttpClient.Fetch`; `withNavigationPreload`; the five strategies (`cacheFirst`, `networkFirst` with an optional timeout, `staleWhileRevalidate`, `cacheOnly`, `networkOnly`); `precache`, which writes only once every URL is a `200`; and `route` / `fetchListener`, whose synchronous `match` decides whether to call `respondWith`. |
+| `Events` | `extendableListener` (`install`, `activate`: the effect's promise goes to `waitUntil`), `messageListener` and `pushListener` (decode the payload, drop and log what does not decode), `syncListener` / `periodicSyncListener` (a handler per tag), and `EventLifetime`, where background work such as a cache write goes. |
+| `NavigationPreload` | `enable`, `disable`, `setHeaderValue` and `state` over `self.registration.navigationPreload`; `Fetch.withNavigationPreload` answers a navigation with the preload. |
+| `ServiceWorkerRunner` | A `WorkerRunnerPlatform` (`make`, `layer`) whose clients are pages, each on its own `MessagePort`, for `RpcServer.layerProtocolWorkerRunner`. |
 | `Notifications` | `showNotification` / `getNotifications` through `self.registration`, failing with `ShowNotificationError`; `notificationClickListener` / `notificationCloseListener` decode `notification.data` first. |
 | `Clients` | `self.clients`: `get`, `matchAll`, `windows`, `claim`, `openWindow`, `focus`, `navigate`, `focusOrOpen`, and schema-typed `postTo` / `broadcast`. |
+
+## RPC from a page
+
+The worker serves an `effect/workers` protocol over `ServiceWorkerRunner.layer`, as a dedicated worker would over `BrowserWorkerRunner.layer`. A page connects with a port of its own, then uses `@effect/platform-browser`'s `BrowserWorker` unchanged:
+
+```ts
+import { BrowserWorker } from "@effect/platform-browser";
+
+const { port1, port2 } = new MessageChannel();
+const registration = await navigator.serviceWorker.ready;
+registration.active?.postMessage(
+  "@thomasfosterau/effect-platform-service-worker/ServiceWorkerRunner/connect",
+  [port2],
+);
+const WorkerLayer = BrowserWorker.layer(() => port1);
+```
+
+A port message is no event to the worker, so the runner holds the `message` event that connected the page open until the page disconnects. Browsers cap how long one event may run (about five minutes in Chrome); after that the worker may stop, so a long-lived page should reconnect.
 
 Each platform object (`caches`, `fetch`, `self.registration`, `self.clients`) is a context reference with the worker's own as its default, read on first use, so a worker provides nothing and a test provides a stub.
 

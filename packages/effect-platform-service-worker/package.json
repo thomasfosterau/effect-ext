@@ -32,7 +32,9 @@
     "./Clients": "./src/Clients.ts",
     "./Events": "./src/Events.ts",
     "./Fetch": "./src/Fetch.ts",
-    "./Notifications": "./src/Notifications.ts"
+    "./NavigationPreload": "./src/NavigationPreload.ts",
+    "./Notifications": "./src/Notifications.ts",
+    "./ServiceWorkerRunner": "./src/ServiceWorkerRunner.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -59,9 +61,17 @@
         "types": "./dist/Fetch.d.ts",
         "import": "./dist/Fetch.js"
       },
+      "./NavigationPreload": {
+        "types": "./dist/NavigationPreload.d.ts",
+        "import": "./dist/NavigationPreload.js"
+      },
       "./Notifications": {
         "types": "./dist/Notifications.d.ts",
         "import": "./dist/Notifications.js"
+      },
+      "./ServiceWorkerRunner": {
+        "types": "./dist/ServiceWorkerRunner.d.ts",
+        "import": "./dist/ServiceWorkerRunner.js"
       }
     },
     "access": "public"
