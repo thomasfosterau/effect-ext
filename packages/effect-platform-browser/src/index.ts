@@ -16,6 +16,11 @@ export * as Browser from "./Browser.ts";
 /**
  * @since 0.1.0
  */
+export * as Credentials from "./Credentials.ts";
+
+/**
+ * @since 0.1.0
+ */
 export * as DomObservers from "./DomObservers.ts";
 
 /**

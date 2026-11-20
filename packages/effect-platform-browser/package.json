@@ -37,6 +37,7 @@
     "./Broadcast": "./src/Broadcast.ts",
     "./Browser": "./src/Browser.ts",
     "./BrowserTesting": "./src/BrowserTesting.ts",
+    "./Credentials": "./src/Credentials.ts",
     "./DomObservers": "./src/DomObservers.ts",
     "./FilePicker": "./src/FilePicker.ts",
     "./Fullscreen": "./src/Fullscreen.ts",
@@ -81,6 +82,10 @@
       "./BrowserTesting": {
         "types": "./dist/BrowserTesting.d.ts",
         "import": "./dist/BrowserTesting.js"
+      },
+      "./Credentials": {
+        "types": "./dist/Credentials.d.ts",
+        "import": "./dist/Credentials.js"
       },
       "./DomObservers": {
         "types": "./dist/DomObservers.d.ts",

@@ -7,6 +7,7 @@ import * as Layer from "effect/Layer";
 import * as TestBattery from "./battery.ts";
 import * as TestBroadcast from "./broadcast.ts";
 import * as TestClipboard from "./clipboard.ts";
+import * as TestCredentials from "./credentials.ts";
 import * as TestDomObservers from "./dom-observers.ts";
 import * as TestFilePicker from "./file-picker.ts";
 import * as TestFullscreen from "./fullscreen.ts";
@@ -54,6 +55,7 @@ export const layer = Layer.mergeAll(
   TestBattery.layer(),
   TestBroadcast.layer,
   TestClipboard.layer(),
+  TestCredentials.layer(),
   TestDomObservers.layer(),
   TestFilePicker.layer(),
   TestFullscreen.layer(),
