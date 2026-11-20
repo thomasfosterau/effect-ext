@@ -212,7 +212,7 @@ export type Checks = [
   Assert<Not<IsAny<typeof StructOfArrays.column>>>,
   Assert<Not<IsAny<typeof BufferStruct.make>>>,
   Assert<Not<IsAny<typeof Str.split>>>,
-  Assert<Not<IsAny<typeof String.pushStr>>>,
+  Assert<Not<IsAny<typeof StringBuf.pushStr>>>,
   Assert<Not<IsAny<Allocator.Allocator>>>,
   Assert<Not<IsAny<typeof TriState.read>>>,
   Assert<Not<IsAny<typeof Issues.pointers>>>,
