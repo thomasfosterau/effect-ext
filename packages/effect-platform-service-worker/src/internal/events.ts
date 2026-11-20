@@ -112,7 +112,6 @@ export interface TaggedEventLike extends ExtendableEventLike {
 }
 
 /** A tag's handler. Its services are read back by {@link HandlerServices}. */
-// oxlint-disable-next-line effect/avoid-any -- a table mixes handlers needing different services; `HandlerServices` recovers their union.
 export type TagHandler<Event> = (event: Event) => Effect.Effect<unknown, unknown, any>;
 
 /** The services a handler table needs: the union across its handlers. */
