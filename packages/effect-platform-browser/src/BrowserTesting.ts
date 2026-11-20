@@ -14,6 +14,7 @@
  *
  * - `TestLocks` — a lock manager following the Web Locks request algorithm;
  *   share one between layers to model several tabs.
+ * - `TestDomObservers` — intersection, resize and mutation observers.
  * - `TestNavigator`, `TestPageVisibility`, `TestMediaQuery`, `TestWakeLock`,
  *   `TestBroadcast`, `TestIdleDetection`, `TestBattery`, `TestFullscreen`,
  *   `TestScreenOrientation`, `TestNotifications` — this package's services.
@@ -27,6 +28,7 @@ export { observe } from "./testing/stream.ts";
 export * as TestBattery from "./testing/battery.ts";
 export * as TestBroadcast from "./testing/broadcast.ts";
 export * as TestClipboard from "./testing/clipboard.ts";
+export * as TestDomObservers from "./testing/dom-observers.ts";
 export * as TestFullscreen from "./testing/fullscreen.ts";
 export * as TestGeolocation from "./testing/geolocation.ts";
 export * as TestIdleDetection from "./testing/idle-detection.ts";
