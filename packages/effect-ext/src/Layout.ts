@@ -11,6 +11,7 @@
 import { pipeArguments, type Pipeable } from "effect/Pipeable";
 import * as P from "effect/Predicate";
 import * as R from "effect/Record";
+import * as Kernel from "./internal/record.ts";
 
 /**
  * @since 0.1.0
@@ -363,12 +364,16 @@ export const struct = <const F extends Fields>(
   self.packed = packed;
   self.align = placed.align;
   self.size = alignUp(placed.end, placed.align);
+  const slots: ReadonlyArray<Kernel.Slot<F>> = keys.map((key) => ({
+    key,
+    layout: fields[key],
+    stride: 0,
+    offset: offsets[key],
+  }));
   self.read = (view: DataView, byteOffset: number): StructType<F> =>
-    R.map<keyof F & string, F[keyof F & string], Type<F[keyof F & string]>>(fields, (field, key) =>
-      field.read(view, byteOffset + offsets[key]),
-    );
+    Kernel.read(view, slots, byteOffset, 0);
   self.write = (view: DataView, byteOffset: number, value: StructType<F>) =>
-    keys.forEach((key) => fields[key].write(view, byteOffset + offsets[key], value[key]));
+    Kernel.write(view, slots, byteOffset, 0, value);
   return self;
 };
 

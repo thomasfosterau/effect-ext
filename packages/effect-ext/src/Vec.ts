@@ -88,6 +88,7 @@ class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
   block: Option.Option<Allocator.Block> = Option.none();
   view: DataView = emptyView;
   len = 0;
+  cap = 0;
   readonly stride: number;
   readonly layout: L;
   readonly allocator: Allocator.Allocator;
@@ -103,7 +104,7 @@ class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
   }
 
   get capacity(): number {
-    return Option.isSome(this.block) ? this.block.value.byteLength / this.stride : 0;
+    return this.cap;
   }
 
   resize(capacity: number): Result.Result<void, Allocator.AllocationError> {
@@ -114,14 +115,39 @@ class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
     if (Result.isFailure(result)) return Result.fail(result.failure);
     this.block = Option.some(result.success);
     this.view = Allocator.dataView(result.success);
+    this.cap = result.success.byteLength / this.stride;
     return Result.void;
   }
 
   reserve(additional: number): Result.Result<void, Allocator.AllocationError> {
     const required = this.len + additional;
-    const capacity = this.capacity;
+    const capacity = this.cap;
     if (required <= capacity) return Result.void;
     return this.resize(Math.max(required, capacity * 2, MIN_CAPACITY));
+  }
+
+  pushUnsafe(value: A): void {
+    if (this.len >= this.cap) {
+      throw new RangeError(`Vec: pushUnsafe at full capacity (${this.cap})`);
+    }
+    this.layout.write(this.view, this.len * this.stride, value);
+    this.len++;
+  }
+
+  /** The bytes past the length, `[len, capacity)`. */
+  spare(): {
+    readonly buffer: ArrayBufferLike;
+    readonly byteOffset: number;
+    readonly length: number;
+  } {
+    return Option.match(this.block, {
+      onNone: () => ({ buffer: new ArrayBuffer(0), byteOffset: 0, length: 0 }),
+      onSome: (block) => ({
+        buffer: block.buffer,
+        byteOffset: block.byteOffset + this.len * this.stride,
+        length: this.cap - this.len,
+      }),
+    });
   }
 
   read(index: number): A {
@@ -313,6 +339,7 @@ export const free = <A, L extends Layout.Layout<A>>(self: Vec<A, L>): Effect.Eff
       s.block = Option.none();
       s.view = emptyView;
     }
+    s.cap = 0;
     s.len = 0;
   });
 
@@ -564,6 +591,48 @@ export const reserve: {
 );
 
 /**
+ * Reserves capacity for at least `additional` more elements, synchronously:
+ * {@link reserve} without the `Effect`, like Rust's `Vec::try_reserve`. On
+ * failure the vector is unchanged.
+ *
+ * Use it before {@link pushUnsafe} or {@link spareCapacity} in a loop that
+ * cannot run an `Effect` per element.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Result } from "effect"
+ * import * as Allocator from "@thomasfosterau/effect-ext/Allocator"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as Vec from "@thomasfosterau/effect-ext/Vec"
+ *
+ * const v = Effect.runSync(Vec.make(Layout.u32))
+ * console.log(Result.isSuccess(Vec.reserveResult(v, 100)), Vec.capacity(v))
+ * // → true 100
+ *
+ * const arena = Allocator.makeArenaUnsafe(16)
+ * const small = Effect.runSync(Vec.make(Layout.u32).pipe(Allocator.withAllocator(arena)))
+ * console.log(Result.isFailure(Vec.reserveResult(small, 100)))
+ * // → true
+ * ```
+ *
+ * @since 0.4.0
+ * @category mutations
+ */
+export const reserveResult: {
+  (
+    additional: number,
+  ): <A, L extends Layout.Layout<A>>(
+    self: Vec<A, L>,
+  ) => Result.Result<void, Allocator.AllocationError>;
+  <A, L extends Layout.Layout<A>>(
+    self: Vec<A, L>,
+    additional: number,
+  ): Result.Result<void, Allocator.AllocationError>;
+} = dual(2, <A, L extends Layout.Layout<A>>(self: Vec<A, L>, additional: number) =>
+  impl(self).reserve(additional),
+);
+
+/**
  * Shrinks the capacity to match the length.
  *
  * @example
@@ -631,6 +700,112 @@ export const push: {
     return Effect.void;
   }),
 );
+
+/**
+ * Appends an element, synchronously: {@link push} without the `Effect`.
+ * Grows the vector as `push` does and returns the `AllocationError` if that
+ * fails, leaving the vector unchanged.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Result } from "effect"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as Vec from "@thomasfosterau/effect-ext/Vec"
+ *
+ * const v = Effect.runSync(Vec.make(Layout.u16))
+ * for (let i = 0; i < 3; i++) {
+ *   if (Result.isFailure(Vec.pushResult(v, i * 10))) break
+ * }
+ * console.log(Vec.toArray(v))
+ * // → [ 0, 10, 20 ]
+ * ```
+ *
+ * @since 0.4.0
+ * @category mutations
+ */
+export const pushResult: {
+  <A>(
+    value: A,
+  ): <L extends Layout.Layout<A>>(
+    self: Vec<A, L>,
+  ) => Result.Result<void, Allocator.AllocationError>;
+  <A, L extends Layout.Layout<A>>(
+    self: Vec<A, L>,
+    value: A,
+  ): Result.Result<void, Allocator.AllocationError>;
+} = dual(2, <A, L extends Layout.Layout<A>>(self: Vec<A, L>, value: A) => {
+  const s = impl(self);
+  if (s.len >= s.cap) {
+    const result = s.reserve(1);
+    if (Result.isFailure(result)) return result;
+  }
+  s.pushUnsafe(value);
+  return Result.void;
+});
+
+/**
+ * Appends an element into capacity already reserved, never allocating: the
+ * fastest append, for a loop that has called {@link reserveResult} (or
+ * {@link reserve}) first. Rust's `Vec::push_within_capacity`, except that a
+ * full vector is a defect: it throws a `RangeError`.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as Vec from "@thomasfosterau/effect-ext/Vec"
+ *
+ * const Span = Layout.struct({ start: Layout.u32, end: Layout.u32 })
+ * const v = Effect.runSync(Vec.make(Span, { capacity: 2 }))
+ * Vec.pushUnsafe(v, { start: 0, end: 4 })
+ * Vec.pushUnsafe(v, { start: 5, end: 9 })
+ * console.log(Vec.toArray(v))
+ * // → [ { start: 0, end: 4 }, { start: 5, end: 9 } ]
+ * ```
+ *
+ * @since 0.4.0
+ * @category unsafe
+ */
+export const pushUnsafe: {
+  <A>(value: A): <L extends Layout.Layout<A>>(self: Vec<A, L>) => void;
+  <A, L extends Layout.Layout<A>>(self: Vec<A, L>, value: A): void;
+} = dual(2, <A, L extends Layout.Layout<A>>(self: Vec<A, L>, value: A) => {
+  impl(self).pushUnsafe(value);
+});
+
+/**
+ * Sets the length, like Rust's `Vec::set_len`. Growing it exposes the
+ * elements between the old and new length as whatever the memory holds, so
+ * fill them first (through {@link spareCapacity} or {@link spareBytes});
+ * shrinking it is {@link truncate}. A length that is not an integer in
+ * `[0, capacity]` is a defect: it throws a `RangeError`.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as Vec from "@thomasfosterau/effect-ext/Vec"
+ *
+ * const v = Effect.runSync(Vec.make(Layout.u8, { capacity: 4 }))
+ * Vec.spareCapacity(v).set([7, 8, 9])
+ * Vec.setLenUnsafe(v, 3)
+ * console.log(Vec.toArray(v))
+ * // → [ 7, 8, 9 ]
+ * ```
+ *
+ * @since 0.4.0
+ * @category unsafe
+ */
+export const setLenUnsafe: {
+  (length: number): <A, L extends Layout.Layout<A>>(self: Vec<A, L>) => void;
+  <A, L extends Layout.Layout<A>>(self: Vec<A, L>, length: number): void;
+} = dual(2, <A, L extends Layout.Layout<A>>(self: Vec<A, L>, newLength: number) => {
+  const s = impl(self);
+  if (!Number.isSafeInteger(newLength) || newLength < 0 || newLength > s.cap) {
+    throw new RangeError(`Vec: length ${newLength} out of bounds (capacity ${s.cap})`);
+  }
+  s.len = newLength;
+});
 
 /**
  * Appends every element of an iterable. Capacity for all of them is reserved
@@ -937,4 +1112,70 @@ export const typedArray = <L extends Layout.AnyPrimitive>(
     onNone: () => new s.layout.TypedArray(new ArrayBuffer(0), 0, 0),
     onSome: (block) => new s.layout.TypedArray(block.buffer, block.byteOffset, s.len),
   });
+};
+
+/**
+ * Views the spare capacity of a vector of primitives, the elements from the
+ * length up to the capacity, as a typed array: Rust's
+ * `Vec::spare_capacity_mut`. Write into it, then {@link setLenUnsafe} to make
+ * the written elements part of the vector. A view, invalidated when the
+ * vector reallocates; empty when the vector is full.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as Vec from "@thomasfosterau/effect-ext/Vec"
+ *
+ * const v = Effect.runSync(Vec.fromIterable(Layout.f64, [0.5]))
+ * Effect.runSync(Vec.reserve(v, 2))
+ * const spare: Float64Array = Vec.spareCapacity(v)
+ * spare[0] = 1.5
+ * spare[1] = 2.5
+ * Vec.setLenUnsafe(v, Vec.length(v) + 2)
+ * console.log(Vec.toArray(v))
+ * // → [ 0.5, 1.5, 2.5 ]
+ * ```
+ *
+ * @since 0.4.0
+ * @category converters
+ */
+export const spareCapacity = <L extends Layout.AnyPrimitive>(
+  self: Vec<Layout.Type<L>, L>,
+): Layout.TypedArrayOf<L> => {
+  const s = impl(self);
+  const spare = s.spare();
+  return new s.layout.TypedArray(spare.buffer, spare.byteOffset, spare.length);
+};
+
+/**
+ * The raw bytes of the spare capacity, from the length up to the capacity:
+ * {@link spareCapacity} for any layout, so a vector of structs can be filled
+ * through a `DataView` or typed arrays over these bytes before
+ * {@link setLenUnsafe}. Element `i` of the spare capacity starts at byte
+ * `i * layout.size`. A view, invalidated when the vector reallocates.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as Vec from "@thomasfosterau/effect-ext/Vec"
+ *
+ * const Pair = Layout.struct({ a: Layout.u16, b: Layout.u16 })
+ * const v = Effect.runSync(Vec.make(Pair, { capacity: 1 }))
+ * const spare = Vec.spareBytes(v)
+ * const view = new DataView(spare.buffer, spare.byteOffset, spare.byteLength)
+ * Pair.write(view, 0, { a: 1, b: 2 })
+ * Vec.setLenUnsafe(v, 1)
+ * console.log(Vec.toArray(v))
+ * // → [ { a: 1, b: 2 } ]
+ * ```
+ *
+ * @since 0.4.0
+ * @category converters
+ */
+export const spareBytes = <A, L extends Layout.Layout<A>>(self: Vec<A, L>): Uint8Array => {
+  const s = impl(self);
+  const spare = s.spare();
+  return new Uint8Array(spare.buffer, spare.byteOffset, spare.length * s.stride);
 };

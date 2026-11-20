@@ -71,6 +71,26 @@ Effect.gen(function* () {
 });
 ```
 
+### Filling in a synchronous loop
+
+`push`, `reserve` and `extend` are `Effect`s, which is too slow to run once per element in a parser or other hot loop. Each container also has synchronous forms: `pushResult` and `reserveResult` return the `AllocationError` as a `Result`, `pushUnsafe` appends into capacity already reserved (throwing a `RangeError` when full), and for bulk fills `Vec.spareCapacity` / `Vec.spareBytes` and `StructOfArrays.spareColumn` view the memory past the length, which `setLenUnsafe` then adopts, as Rust's `spare_capacity_mut` and `set_len` do. Spare views are invalidated by reallocation, like every other view.
+
+```ts
+import { Effect, Result } from "effect";
+import { Layout, StructOfArrays } from "@thomasfosterau/effect-ext";
+
+const tokens = Effect.runSync(StructOfArrays.make({ start: Layout.u32, end: Layout.u32 }));
+if (Result.isSuccess(StructOfArrays.reserveResult(tokens, 1000))) {
+  const start = StructOfArrays.spareColumn(tokens, "start");
+  const end = StructOfArrays.spareColumn(tokens, "end");
+  for (let i = 0; i < 1000; i++) {
+    start[i] = i * 2;
+    end[i] = i * 2 + 1;
+  }
+  StructOfArrays.setLenUnsafe(tokens, 1000);
+}
+```
+
 ## StringBuf and Str
 
 These mirror Rust's `String` and `str`. Both hold valid UTF-8, and as in Rust, indices are byte offsets and lengths are in bytes. A `StringBuf` is growable and mutable, and its memory comes from the current `Allocator`. A `Str` is an immutable, zero-copy string slice with Rust's `str` API, and works as a key in Effect's `HashMap` and `HashSet`.

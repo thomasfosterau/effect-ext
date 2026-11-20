@@ -41,6 +41,7 @@ import * as Result from "effect/Result";
 import type * as Scope from "effect/Scope";
 import * as Allocator from "./Allocator.ts";
 import { indexed } from "./internal/iterator.ts";
+import * as Kernel from "./internal/record.ts";
 import * as Layout from "./Layout.ts";
 
 /**
@@ -98,9 +99,7 @@ const MIN_CAPACITY = 4;
 
 const emptyView = new DataView(new ArrayBuffer(0));
 
-interface Column {
-  readonly key: string;
-  readonly layout: Layout.Any;
+interface Column extends Kernel.Slot {
   readonly size: number;
   /** Byte offset of the column inside the block, for the current capacity. */
   offset: number;
@@ -125,6 +124,8 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
   readonly [TypeId] = TypeId;
   readonly columns: ReadonlyArray<Column>;
   readonly byKey: Record<string, Column>;
+  /** The columns in the fields' key order, which a read record keeps. */
+  readonly keyOrder: ReadonlyArray<Column>;
   readonly keys: ReadonlyArray<string>;
   readonly recordSize: number;
   readonly align: number;
@@ -144,11 +145,13 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
         key,
         layout: fields[key],
         size: fields[key].size,
+        stride: fields[key].size,
         offset: 0,
       })),
       ColumnOrder,
     );
     this.byKey = R.fromEntries(this.columns.map((column) => [column.key, column]));
+    this.keyOrder = this.keys.map((key) => this.byKey[key]);
     this.recordSize = this.columns.reduce((n, column) => n + column.size, 0);
     this.align = this.columns.reduce((n, column) => Math.max(n, column.layout.align), 1);
   }
@@ -210,6 +213,14 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
     return this.resize(Math.max(required, this.cap * 2, MIN_CAPACITY));
   }
 
+  pushUnsafe(value: Layout.StructType<F>): void {
+    if (this.len >= this.cap) {
+      throw new RangeError(`StructOfArrays: pushUnsafe at full capacity (${this.cap})`);
+    }
+    Kernel.write(this.view, this.columns, 0, this.len, value);
+    this.len++;
+  }
+
   readField(column: Column, index: number): FieldValue<F> {
     return column.layout.read(this.view, column.offset + index * column.size);
   }
@@ -219,13 +230,11 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
   }
 
   read(index: number): Layout.StructType<F> {
-    return R.map<keyof F & string, F[keyof F & string], FieldValue<F>>(this.fields, (_, key) =>
-      this.readField(this.byKey[key], index),
-    );
+    return Kernel.read(this.view, this.keyOrder, 0, index);
   }
 
   write(index: number, value: Layout.StructType<F>): void {
-    this.columns.forEach((column) => this.writeField(column, index, value[column.key]));
+    Kernel.write(this.view, this.columns, 0, index, value);
   }
 
   move(to: number, from: number): void {
@@ -274,6 +283,20 @@ const fieldsOf = <F extends Layout.Fields>(input: F | Layout.Struct<F>): F =>
 
 const isIndex = (self: StructOfArraysImpl<any>, index: number) =>
   Number.isSafeInteger(index) && index >= 0 && index < self.len;
+
+/** A typed array over `length` slots of a primitive column, from slot `start`. */
+const primitiveView = (s: StructOfArraysImpl<any>, key: string, start: number, length: number) => {
+  const col = s.byKey[key];
+  const layout = col.layout;
+  if (!Layout.isPrimitive(layout)) {
+    throw new TypeError(`StructOfArrays: field "${key}" is not a primitive layout`);
+  }
+  return Option.match(s.block, {
+    onNone: () => new layout.TypedArray(new ArrayBuffer(0), 0, 0),
+    onSome: (block) =>
+      new layout.TypedArray(block.buffer, block.byteOffset + col.offset + start * col.size, length),
+  });
+};
 
 const checkIndex = (self: StructOfArraysImpl<any>, index: number) => {
   if (!isIndex(self, index)) {
@@ -764,15 +787,49 @@ export const column: {
   ): Layout.TypedArrayOf<F[K]>;
 } = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, key: PrimitiveKeys<F>) => {
   const s = impl(self);
-  const col = s.byKey[key];
-  const layout = col.layout;
-  if (!Layout.isPrimitive(layout)) {
-    throw new TypeError(`StructOfArrays: field "${key}" is not a primitive layout`);
-  }
-  return Option.match(s.block, {
-    onNone: () => new layout.TypedArray(new ArrayBuffer(0), 0, 0),
-    onSome: (block) => new layout.TypedArray(block.buffer, block.byteOffset + col.offset, s.len),
-  });
+  return primitiveView(s, key, 0, s.len);
+});
+
+/**
+ * Views the spare capacity of a primitive column, the slots from the length
+ * up to the capacity, as a typed array: Rust's `Vec::spare_capacity_mut`,
+ * one column at a time. Fill every column's spare view, then
+ * {@link setLenUnsafe} to make the written records part of the container. A
+ * view, invalidated when the container reallocates; empty when it is full.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as StructOfArrays from "@thomasfosterau/effect-ext/StructOfArrays"
+ *
+ * const fields = { kind: Layout.u8, end: Layout.u32 }
+ * const soa = Effect.runSync(StructOfArrays.make(fields, { capacity: 3 }))
+ * const kind: Uint8Array = StructOfArrays.spareColumn(soa, "kind")
+ * const end: Uint32Array = StructOfArrays.spareColumn(soa, "end")
+ * for (let i = 0; i < 3; i++) {
+ *   kind[i] = i % 2
+ *   end[i] = (i + 1) * 10
+ * }
+ * StructOfArrays.setLenUnsafe(soa, 3)
+ * console.log(StructOfArrays.getUnsafe(soa, 2))
+ * // → { kind: 0, end: 30 }
+ * ```
+ *
+ * @since 0.4.0
+ * @category getters
+ */
+export const spareColumn: {
+  <F extends Layout.Fields, K extends PrimitiveKeys<F>>(
+    key: K,
+  ): (self: StructOfArrays<F>) => Layout.TypedArrayOf<F[K]>;
+  <F extends Layout.Fields, K extends PrimitiveKeys<F>>(
+    self: StructOfArrays<F>,
+    key: K,
+  ): Layout.TypedArrayOf<F[K]>;
+} = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, key: PrimitiveKeys<F>) => {
+  const s = impl(self);
+  return primitiveView(s, key, s.len, s.cap - s.len);
 });
 
 /**
@@ -855,6 +912,50 @@ export const reserve: {
 );
 
 /**
+ * Reserves capacity for at least `additional` more records, synchronously:
+ * {@link reserve} without the `Effect`. On failure the container is
+ * unchanged.
+ *
+ * Use it before {@link pushUnsafe} or {@link spareColumn} in a loop that
+ * cannot run an `Effect` per record.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Result } from "effect"
+ * import * as Allocator from "@thomasfosterau/effect-ext/Allocator"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as StructOfArrays from "@thomasfosterau/effect-ext/StructOfArrays"
+ *
+ * const fields = { x: Layout.f32, y: Layout.f32 }
+ * const soa = Effect.runSync(StructOfArrays.make(fields))
+ * const reserved = StructOfArrays.reserveResult(soa, 100)
+ * console.log(Result.isSuccess(reserved), StructOfArrays.capacity(soa))
+ * // → true 100
+ *
+ * const arena = Allocator.makeArenaUnsafe(16)
+ * const small = Effect.runSync(StructOfArrays.make(fields).pipe(Allocator.withAllocator(arena)))
+ * console.log(Result.isFailure(StructOfArrays.reserveResult(small, 100)))
+ * // → true
+ * ```
+ *
+ * @since 0.4.0
+ * @category mutations
+ */
+export const reserveResult: {
+  (
+    additional: number,
+  ): <F extends Layout.Fields>(
+    self: StructOfArrays<F>,
+  ) => Result.Result<void, Allocator.AllocationError>;
+  <F extends Layout.Fields>(
+    self: StructOfArrays<F>,
+    additional: number,
+  ): Result.Result<void, Allocator.AllocationError>;
+} = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, additional: number) =>
+  impl(self).reserve(additional),
+);
+
+/**
  * Shrinks the capacity to match the length.
  *
  * @example
@@ -921,6 +1022,114 @@ export const push: {
     return Effect.void;
   }),
 );
+
+/**
+ * Appends a record, synchronously: {@link push} without the `Effect`. Grows
+ * the container as `push` does and returns the `AllocationError` if that
+ * fails, leaving the container unchanged.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Result } from "effect"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as StructOfArrays from "@thomasfosterau/effect-ext/StructOfArrays"
+ *
+ * const soa = Effect.runSync(StructOfArrays.make({ id: Layout.u32, score: Layout.f64 }))
+ * for (let id = 0; id < 3; id++) {
+ *   if (Result.isFailure(StructOfArrays.pushResult(soa, { id, score: id / 2 }))) break
+ * }
+ * console.log(StructOfArrays.column(soa, "score"))
+ * // → Float64Array(3) [ 0, 0.5, 1 ]
+ * ```
+ *
+ * @since 0.4.0
+ * @category mutations
+ */
+export const pushResult: {
+  <F extends Layout.Fields>(
+    value: Layout.StructType<F>,
+  ): (self: StructOfArrays<F>) => Result.Result<void, Allocator.AllocationError>;
+  <F extends Layout.Fields>(
+    self: StructOfArrays<F>,
+    value: Layout.StructType<F>,
+  ): Result.Result<void, Allocator.AllocationError>;
+} = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, value: Layout.StructType<F>) => {
+  const s = impl(self);
+  if (s.len >= s.cap) {
+    const result = s.reserve(1);
+    if (Result.isFailure(result)) return result;
+  }
+  s.pushUnsafe(value);
+  return Result.void;
+});
+
+/**
+ * Appends a record into capacity already reserved, never allocating: the
+ * fastest append, for a loop that has called {@link reserveResult} (or
+ * {@link reserve}) first. A full container is a defect: it throws a
+ * `RangeError`.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as StructOfArrays from "@thomasfosterau/effect-ext/StructOfArrays"
+ *
+ * const fields = { start: Layout.u32, end: Layout.u32 }
+ * const soa = Effect.runSync(StructOfArrays.make(fields, { capacity: 2 }))
+ * StructOfArrays.pushUnsafe(soa, { start: 0, end: 4 })
+ * StructOfArrays.pushUnsafe(soa, { start: 5, end: 9 })
+ * console.log(StructOfArrays.column(soa, "end"))
+ * // → Uint32Array(2) [ 4, 9 ]
+ * ```
+ *
+ * @since 0.4.0
+ * @category unsafe
+ */
+export const pushUnsafe: {
+  <F extends Layout.Fields>(value: Layout.StructType<F>): (self: StructOfArrays<F>) => void;
+  <F extends Layout.Fields>(self: StructOfArrays<F>, value: Layout.StructType<F>): void;
+} = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, value: Layout.StructType<F>) => {
+  impl(self).pushUnsafe(value);
+});
+
+/**
+ * Sets the number of records, like Rust's `Vec::set_len`. Growing it exposes
+ * the records between the old and new length as whatever each column's
+ * memory holds, so fill every column first, through {@link spareColumn}
+ * ({@link setField} checks the length, so it cannot). Fill and set the length
+ * with no reallocation in between, since growing moves only the records
+ * within the length. A length that is not an integer in `[0, capacity]` is a
+ * defect: it throws a `RangeError`.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ * import * as Layout from "@thomasfosterau/effect-ext/Layout"
+ * import * as StructOfArrays from "@thomasfosterau/effect-ext/StructOfArrays"
+ *
+ * const fields = { x: Layout.i32, y: Layout.i32 }
+ * const soa = Effect.runSync(StructOfArrays.make(fields, { capacity: 2 }))
+ * StructOfArrays.spareColumn(soa, "x").set([1, 3])
+ * StructOfArrays.spareColumn(soa, "y").set([2, 4])
+ * StructOfArrays.setLenUnsafe(soa, 2)
+ * console.log(StructOfArrays.toArray(soa))
+ * // → [ { x: 1, y: 2 }, { x: 3, y: 4 } ]
+ * ```
+ *
+ * @since 0.4.0
+ * @category unsafe
+ */
+export const setLenUnsafe: {
+  (length: number): <F extends Layout.Fields>(self: StructOfArrays<F>) => void;
+  <F extends Layout.Fields>(self: StructOfArrays<F>, length: number): void;
+} = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, newLength: number) => {
+  const s = impl(self);
+  if (!Number.isSafeInteger(newLength) || newLength < 0 || newLength > s.cap) {
+    throw new RangeError(`StructOfArrays: length ${newLength} out of bounds (capacity ${s.cap})`);
+  }
+  s.len = newLength;
+});
 
 /**
  * Appends every record of an iterable. Capacity for all of them is reserved

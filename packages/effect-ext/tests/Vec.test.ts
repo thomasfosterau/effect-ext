@@ -3,11 +3,26 @@ import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Option from "effect/Option";
+import * as Result from "effect/Result";
 import * as Allocator from "@thomasfosterau/effect-ext/Allocator";
 import * as Layout from "@thomasfosterau/effect-ext/Layout";
 import * as Vec from "@thomasfosterau/effect-ext/Vec";
 
 const Point = Layout.struct({ x: Layout.i32, y: Layout.i32 });
+
+/** The heap, refusing any block larger than `limit` bytes. */
+const capped = (limit: number): Allocator.Allocator => ({
+  name: "capped",
+  allocate: (size, align) =>
+    size > limit
+      ? Result.fail(new Allocator.AllocationError({ size, align, reason: "over the cap" }))
+      : Allocator.heap.allocate(size, align),
+  reallocate: (block, size, align) =>
+    size > limit
+      ? Result.fail(new Allocator.AllocationError({ size, align, reason: "over the cap" }))
+      : Allocator.heap.reallocate(block, size, align),
+  deallocate: Allocator.heap.deallocate,
+});
 
 describe("Vec", () => {
   it.effect("push, get, length and capacity", () =>
@@ -122,4 +137,149 @@ describe("Vec", () => {
       expect(v.toJSON()).toEqual({ _id: "Vec", layout: "i8", values: [-1, 0, 1] });
     }),
   );
+
+  describe("synchronous append", () => {
+    it.effect("pushResult grows from zero capacity", () =>
+      Effect.gen(function* () {
+        const v = yield* Vec.make(Layout.u32);
+        expect(v.capacity).toBe(0);
+        Arr.range(0, 9).forEach((i) =>
+          expect(Result.isSuccess(Vec.pushResult(v, i * 7))).toBe(true),
+        );
+        expect(Vec.toArray(v)).toEqual(Arr.range(0, 9).map((i) => i * 7));
+        expect(v.capacity).toBeGreaterThanOrEqual(10);
+        expect(Result.isSuccess(v.pipe(Vec.pushResult(70)))).toBe(true);
+        expect(Vec.getUnsafe(v, 10)).toBe(70);
+      }),
+    );
+
+    it.effect("pushResult reports allocation failure and leaves the vector unchanged", () =>
+      Effect.gen(function* () {
+        const v = yield* Vec.make(Layout.u32).pipe(Allocator.withAllocator(capped(16)));
+        Arr.range(1, 4).forEach((i) => expect(Result.isSuccess(Vec.pushResult(v, i))).toBe(true));
+        expect(v.capacity).toBe(4);
+        const result = Vec.pushResult(v, 5);
+        expect(Result.isFailure(result) && result.failure._tag).toBe("AllocationError");
+        expect(Vec.toArray(v)).toEqual([1, 2, 3, 4]);
+        expect(v.capacity).toBe(4);
+      }),
+    );
+
+    it.effect("reserveResult reserves synchronously, and fails cleanly", () =>
+      Effect.gen(function* () {
+        const v = yield* Vec.make(Point).pipe(Allocator.withAllocator(capped(80)));
+        expect(Result.isSuccess(Vec.reserveResult(v, 0))).toBe(true);
+        expect(v.capacity).toBe(0);
+        expect(Result.isSuccess(v.pipe(Vec.reserveResult(10)))).toBe(true);
+        expect(v.capacity).toBe(10);
+        expect(Result.isFailure(Vec.reserveResult(v, 11))).toBe(true);
+        expect(v.capacity).toBe(10);
+        expect(v.length).toBe(0);
+      }),
+    );
+
+    it.effect("pushUnsafe fills reserved capacity and throws when full", () =>
+      Effect.gen(function* () {
+        const empty = yield* Vec.make(Point);
+        expect(() => Vec.pushUnsafe(empty, { x: 0, y: 0 })).toThrow(RangeError);
+        const v = yield* Vec.make(Point, { capacity: 2 });
+        Vec.pushUnsafe(v, { x: 1, y: 2 });
+        v.pipe(Vec.pushUnsafe({ x: 3, y: 4 }));
+        expect(() => Vec.pushUnsafe(v, { x: 5, y: 6 })).toThrow(RangeError);
+        expect(Vec.toArray(v)).toEqual([
+          { x: 1, y: 2 },
+          { x: 3, y: 4 },
+        ]);
+      }),
+    );
+
+    it.effect("growth keeps the elements written through reserve", () =>
+      Effect.gen(function* () {
+        const v = yield* Vec.make(Layout.f64);
+        yield* Effect.fromResult(Vec.reserveResult(v, 3));
+        [0.5, 1.5, 2.5].forEach((x) => Vec.pushUnsafe(v, x));
+        yield* Effect.fromResult(Vec.reserveResult(v, 100));
+        expect(v.capacity).toBeGreaterThanOrEqual(103);
+        Vec.pushUnsafe(v, 3.5);
+        expect(Vec.toArray(v)).toEqual([0.5, 1.5, 2.5, 3.5]);
+      }),
+    );
+  });
+
+  describe("spare capacity", () => {
+    it.effect("is empty with no capacity and when full", () =>
+      Effect.gen(function* () {
+        const v = yield* Vec.make(Layout.u16);
+        expect(Vec.spareCapacity(v)).toEqual(new Uint16Array(0));
+        expect(Vec.spareBytes(v).byteLength).toBe(0);
+        yield* Vec.extend(v, [1, 2, 3, 4]);
+        yield* Vec.shrinkToFit(v);
+        expect(Vec.spareCapacity(v).length).toBe(0);
+        expect(Vec.spareBytes(v).byteLength).toBe(0);
+      }),
+    );
+
+    it.effect("views the slots past the length, which setLenUnsafe then adopts", () =>
+      Effect.gen(function* () {
+        const v = yield* Vec.fromIterable(Layout.i16, [-1]);
+        yield* Effect.fromResult(Vec.reserveResult(v, 4));
+        const spare = Vec.spareCapacity(v);
+        expect(spare.length).toBe(v.capacity - 1);
+        spare.set([-2, -3, -4, -5]);
+        expect(Vec.toArray(v)).toEqual([-1]);
+        Vec.setLenUnsafe(v, 5);
+        expect(Vec.toArray(v)).toEqual([-1, -2, -3, -4, -5]);
+        expect(Vec.typedArray(v)).toEqual(Int16Array.of(-1, -2, -3, -4, -5));
+      }),
+    );
+
+    it.effect("spareBytes fills a vector of structs at the layout stride", () =>
+      Effect.gen(function* () {
+        const v = yield* Vec.fromIterable(Point, [{ x: 1, y: 1 }]);
+        yield* Effect.fromResult(Vec.reserveResult(v, 2));
+        const bytes = Vec.spareBytes(v);
+        expect(bytes.byteLength).toBe((v.capacity - 1) * Point.size);
+        const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        Point.write(view, 0, { x: 2, y: -2 });
+        Point.write(view, Point.size, { x: 3, y: -3 });
+        v.pipe(Vec.setLenUnsafe(3));
+        expect(Vec.toArray(v)).toEqual([
+          { x: 1, y: 1 },
+          { x: 2, y: -2 },
+          { x: 3, y: -3 },
+        ]);
+      }),
+    );
+
+    it.effect("setLenUnsafe beyond the capacity, negative or fractional is a defect", () =>
+      Effect.gen(function* () {
+        const v = yield* Vec.make(Layout.u8, { capacity: 4 });
+        expect(() => Vec.setLenUnsafe(v, 5)).toThrow(RangeError);
+        expect(() => Vec.setLenUnsafe(v, -1)).toThrow(RangeError);
+        expect(() => Vec.setLenUnsafe(v, 1.5)).toThrow(RangeError);
+        expect(() => Vec.setLenUnsafe(v, Number.NaN)).toThrow(RangeError);
+        const exit = yield* Effect.exit(Effect.sync(() => Vec.setLenUnsafe(v, 5)));
+        expect(Exit.hasDies(exit)).toBe(true);
+        Vec.setLenUnsafe(v, 4);
+        expect(v.length).toBe(4);
+        Vec.setLenUnsafe(v, 0);
+        expect(Vec.isEmpty(v)).toBe(true);
+        const empty = yield* Vec.make(Layout.u8);
+        Vec.setLenUnsafe(empty, 0);
+        expect(() => Vec.setLenUnsafe(empty, 1)).toThrow(RangeError);
+      }),
+    );
+
+    it.effect("free resets the capacity the synchronous API sees", () =>
+      Effect.gen(function* () {
+        const v = yield* Vec.fromIterable(Layout.u8, [1, 2, 3]);
+        yield* Vec.free(v);
+        expect(v.capacity).toBe(0);
+        expect(() => Vec.pushUnsafe(v, 1)).toThrow(RangeError);
+        expect(() => Vec.setLenUnsafe(v, 1)).toThrow(RangeError);
+        expect(Result.isSuccess(Vec.pushResult(v, 9))).toBe(true);
+        expect(Vec.toArray(v)).toEqual([9]);
+      }),
+    );
+  });
 });

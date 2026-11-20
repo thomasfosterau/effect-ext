@@ -611,6 +611,18 @@ export default defineConfig({
           "effect/imperative-loops": "off",
         },
       },
+      // The per-field record kernel behind struct `Layout`s, `Vec` and
+      // `StructOfArrays`: it runs once per record in a hot append or read
+      // loop, where a combinator's closure and intermediate array per field
+      // cost several times the field writes themselves. Building the record
+      // key by key ends in one assertion that every key was set.
+      {
+        files: ["packages/effect-ext/src/internal/record.ts"],
+        rules: {
+          "effect/imperative-loops": "off",
+          "effect/casting-awareness": "off",
+        },
+      },
       // `brandAs`, `unsafeBrand` and `unbranded` are the only brand
       // assertions in the numeric modules (every other module calls them). A
       // brand is a phantom type with no runtime data, so no type guard can
