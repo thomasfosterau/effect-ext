@@ -37,6 +37,7 @@
     "./Broadcast": "./src/Broadcast.ts",
     "./Browser": "./src/Browser.ts",
     "./BrowserTesting": "./src/BrowserTesting.ts",
+    "./DomObservers": "./src/DomObservers.ts",
     "./Fullscreen": "./src/Fullscreen.ts",
     "./IdleDetection": "./src/IdleDetection.ts",
     "./Locks": "./src/Locks.ts",
@@ -74,6 +75,10 @@
       "./BrowserTesting": {
         "types": "./dist/BrowserTesting.d.ts",
         "import": "./dist/BrowserTesting.js"
+      },
+      "./DomObservers": {
+        "types": "./dist/DomObservers.d.ts",
+        "import": "./dist/DomObservers.js"
       },
       "./Fullscreen": {
         "types": "./dist/Fullscreen.d.ts",

@@ -70,3 +70,16 @@ export const ambientScreenOrientation = (): Option.Option<ScreenOrientation> =>
 /** `globalThis.Notification`, where the context has one (a window, or a dedicated worker). */
 export const ambientNotification = (): Option.Option<typeof globalThis.Notification> =>
   Option.fromUndefinedOr(globalThis.Notification);
+
+/** `globalThis.IntersectionObserver`, where the context has one (a window). */
+export const ambientIntersectionObserver = (): Option.Option<
+  typeof globalThis.IntersectionObserver
+> => Option.fromUndefinedOr(globalThis.IntersectionObserver);
+
+/** `globalThis.ResizeObserver`, where the context has one (a window). */
+export const ambientResizeObserver = (): Option.Option<typeof globalThis.ResizeObserver> =>
+  Option.fromUndefinedOr(globalThis.ResizeObserver);
+
+/** `globalThis.MutationObserver`, where the context has one (a window). */
+export const ambientMutationObserver = (): Option.Option<typeof globalThis.MutationObserver> =>
+  Option.fromUndefinedOr(globalThis.MutationObserver);

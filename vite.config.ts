@@ -412,6 +412,10 @@ export default defineConfig({
           // The page's mirrors: `controller`, the registration's workers,
           // `getRegistration`, `getSubscription`.
           "packages/effect-platform-browser/src/{ServiceWorkerContainer,PushManager}.ts",
+          // The observer entries: `rootBounds`, a mutation record's
+          // `attributeName` and `oldValue`.
+          "packages/effect-platform-browser/src/DomObservers.ts",
+          "packages/effect-platform-browser/src/testing/dom-observers.ts",
         ],
         rules: { "effect/prefer-option-over-null": "off" },
       },

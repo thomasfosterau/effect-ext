@@ -11,6 +11,7 @@ import * as Option from "effect/Option";
 import {
   Battery,
   Browser,
+  DomObservers,
   MediaQuery,
   Navigator,
   Notifications,
@@ -40,6 +41,12 @@ class FakeNavigator {
 }
 const navigator = new FakeNavigator();
 
+/** Stands in for each observer constructor: the layer only reads that it exists. */
+class FakeObserver {
+  observe() {}
+  disconnect() {}
+}
+
 const queries: Array<{ readonly self: unknown; readonly query: string }> = [];
 function matchMedia(this: unknown, query: string) {
   queries.push({ self: this, query });
@@ -60,6 +67,9 @@ installGlobals({
     }),
   },
   matchMedia,
+  IntersectionObserver: FakeObserver,
+  ResizeObserver: FakeObserver,
+  MutationObserver: FakeObserver,
   addEventListener: windowEvents.addEventListener.bind(windowEvents),
   removeEventListener: windowEvents.removeEventListener.bind(windowEvents),
 });
@@ -72,6 +82,7 @@ describe("Browser.layer over a page's globals", () => {
       const orientation = yield* ScreenOrientation.current;
       const notifications = yield* Notifications.Notifications;
       const wakeLock = yield* WakeLock.WakeLock;
+      const observers = yield* DomObservers.DomObservers;
       expect({
         battery: Option.map(battery, (state) => state.level),
         dark,
@@ -80,6 +91,7 @@ describe("Browser.layer over a page's globals", () => {
         notifications: notifications.supported,
         permission: yield* Notifications.permission,
         wakeLock: wakeLock.supported,
+        observers: observers.supported,
       }).toStrictEqual({
         battery: Option.some(0.5),
         dark: true,
@@ -88,6 +100,7 @@ describe("Browser.layer over a page's globals", () => {
         notifications: true,
         permission: Option.some("granted"),
         wakeLock: true,
+        observers: { intersection: true, resize: true, mutation: true },
       });
     }).pipe(Effect.provide(Browser.layer)),
   );
