@@ -20,6 +20,9 @@
  *   back and forward.
  * - `TestPerformance` — a performance timeline on a manual clock, for
  *   `Performance` (from `effect-platform-worker-shared`) and `WebVitals`.
+ * - `TestCookieStore` — a cookie jar behind the Cookie Store API or
+ *   `document.cookie`, for `CookieStore` (from `effect-platform-worker-shared`),
+ *   with a `Control` that sets cookies from the server and expires them.
  * - `TestEventSource` — a server-sent events server, for `EventSource`
  *   (from `effect-platform-worker-shared`), with a `Control` that sends
  *   events, drops connections and refuses them.
@@ -46,6 +49,7 @@ export { observe } from "./testing/stream.ts";
 export * as TestBattery from "./testing/battery.ts";
 export * as TestBroadcast from "./testing/broadcast.ts";
 export * as TestClipboard from "./testing/clipboard.ts";
+export * as TestCookieStore from "./testing/cookie-store.ts";
 export * as TestCredentials from "./testing/credentials.ts";
 export * as TestDomObservers from "./testing/dom-observers.ts";
 export * as TestEventSource from "./testing/event-source.ts";

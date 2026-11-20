@@ -16,6 +16,7 @@ export default packageConfig({
     WorkerScope: "src/WorkerScope.ts",
     WorkerRuntime: "src/WorkerRuntime.ts",
     WorkerMessaging: "src/WorkerMessaging.ts",
+    CookieStore: "src/CookieStore.ts",
     EventSource: "src/EventSource.ts",
     Performance: "src/Performance.ts",
     BrowserFileSystem: "src/BrowserFileSystem.ts",
