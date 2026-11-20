@@ -139,6 +139,15 @@ export const RequestOptionsJson = Schema.Struct({
  */
 export type RequestOptionsJson = typeof RequestOptionsJson.Type;
 
+/** What both responses carry beside the authenticator's own response. */
+const credentialFields = {
+  id: Base64UrlString,
+  rawId: Base64UrlString,
+  type: Schema.Literal("public-key"),
+  authenticatorAttachment: Schema.optional(Schema.String),
+  clientExtensionResults: Schema.Record(Schema.String, Schema.Json),
+};
+
 /**
  * `RegistrationResponseJSON`: the new passkey, for the server to verify
  * and store. `authenticatorData`, `publicKey` and `publicKeyAlgorithm` are
@@ -164,11 +173,7 @@ export type RequestOptionsJson = typeof RequestOptionsJson.Type;
  * @category schemas
  */
 export const RegistrationResponseJson = Schema.Struct({
-  id: Base64UrlString,
-  rawId: Base64UrlString,
-  type: Schema.Literal("public-key"),
-  authenticatorAttachment: Schema.optional(Schema.String),
-  clientExtensionResults: Schema.Record(Schema.String, Schema.Json),
+  ...credentialFields,
   response: Schema.Struct({
     clientDataJSON: Base64UrlString,
     attestationObject: Base64UrlString,
@@ -209,11 +214,7 @@ export type RegistrationResponseJson = typeof RegistrationResponseJson.Type;
  * @category schemas
  */
 export const AuthenticationResponseJson = Schema.Struct({
-  id: Base64UrlString,
-  rawId: Base64UrlString,
-  type: Schema.Literal("public-key"),
-  authenticatorAttachment: Schema.optional(Schema.String),
-  clientExtensionResults: Schema.Record(Schema.String, Schema.Json),
+  ...credentialFields,
   response: Schema.Struct({
     clientDataJSON: Base64UrlString,
     authenticatorData: Base64UrlString,
