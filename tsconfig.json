@@ -11,6 +11,7 @@
     { "path": "packages/effect-platform-worker-shared" },
     { "path": "packages/effect-platform-worker" },
     { "path": "packages/effect-platform-service-worker" },
+    { "path": "packages/effect-platform-browser" },
     { "path": "tests/dist-consumer" }
   ]
 }

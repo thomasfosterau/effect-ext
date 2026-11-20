@@ -1,0 +1,70 @@
+{
+  "name": "@thomasfosterau/effect-platform-browser",
+  "version": "0.0.0",
+  "description": "Effect services for browser main-thread APIs beyond @effect/platform-browser.",
+  "keywords": [
+    "browser",
+    "effect",
+    "push",
+    "pwa",
+    "service-worker"
+  ],
+  "homepage": "https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-platform-browser#readme",
+  "bugs": {
+    "url": "https://github.com/thomasfosterau/effect-ext/issues"
+  },
+  "license": "MIT",
+  "author": "Thomas Foster <me@thomasfoster.au>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomasfosterau/effect-ext.git",
+    "directory": "packages/effect-platform-browser"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./PushManager": "./src/PushManager.ts",
+    "./ServiceWorkerContainer": "./src/ServiceWorkerContainer.ts"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./PushManager": {
+        "types": "./dist/PushManager.d.ts",
+        "import": "./dist/PushManager.js"
+      },
+      "./ServiceWorkerContainer": {
+        "types": "./dist/ServiceWorkerContainer.d.ts",
+        "import": "./dist/ServiceWorkerContainer.js"
+      }
+    },
+    "access": "public"
+  },
+  "dependencies": {
+    "@thomasfosterau/effect-platform-worker-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@effect/language-service": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@vitest/coverage-istanbul": "catalog:",
+    "effect": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "catalog:peers"
+  }
+}
