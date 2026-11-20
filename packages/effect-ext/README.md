@@ -80,7 +80,6 @@ Guide: [web](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/ef
 | `Net` | The SSRF host block list, the URL safety check and the redirect-revalidating fetch. |
 | `Observability` | The structured JSON-line sink, the allow-listed span tracer, the `logEvent` trio, `describeError`, the auth-outcome signal and per-request metrics. |
 | `Negotiate` | The content-negotiation verdict over the representations you declare. |
-| `ServiceWorker` | Cache Storage as typed effects, the five caching strategies, a route table that becomes a `fetch` listener, and lifecycle listeners. |
 | `Browser` | Browser platform APIs as Effect services, and one `layer` with every live service. Needs `@effect/platform-browser`. |
 | `BrowserTesting` | In-memory doubles for every `Browser` service, each with a `Control`; `observe`. Needs `@effect/platform-browser`. |
 | `Robots` | The Robots Exclusion Protocol (RFC 9309): the library, the crawler side and the serving side. Needs `@thomasfosterau/effect-parse`. |

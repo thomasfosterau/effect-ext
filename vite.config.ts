@@ -63,7 +63,7 @@ const webDirs =
 const webTests =
   "packages/effect-ext/tests/{atom-feed,css,encoding,json-feed,langtag,mime,robots,rss-feed,sitemap,uri-template,web}/**";
 const webModules = [
-  "packages/effect-ext/src/{AtomFeed,Browser,BrowserTesting,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,ServiceWorker,Sitemap,UriTemplate,Web}.ts",
+  "packages/effect-ext/src/{AtomFeed,Browser,BrowserTesting,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,Sitemap,UriTemplate,Web}.ts",
   `packages/effect-ext/src/${webDirs}/**`,
   `packages/effect-ext/src/internal/${webDirs}/**`,
   "packages/effect-ext/src/internal/xml.ts",
@@ -475,6 +475,15 @@ export default defineConfig({
           "effect/no-unknown-parameters": "off",
         },
       },
+      // The service worker's cache, strategy and notification suites came
+      // from effect-ext's web suites and, like them, run each program with
+      // `Effect.runPromise` rather than `@effect/vitest`'s `it.effect`.
+      {
+        files: ["packages/effect-platform-service-worker/tests/{Fetch,Notifications}.test.ts"],
+        rules: {
+          "effect/effect-run-in-body": "off",
+        },
+      },
       // `describeError`'s documented last resort stringifies an object
       // (`String(error)`), whatever its `toString` gives: that text is the
       // contract, so no property can be picked instead.
@@ -497,7 +506,7 @@ export default defineConfig({
       // `Route<unknown, any>`: a matched handler's failure is `unknown` (a
       // rejection is what `respondWith` turns into a network error).
       {
-        files: ["packages/effect-ext/src/ServiceWorker.ts"],
+        files: ["packages/effect-platform-service-worker/src/Fetch.ts"],
         rules: {
           "effecttsgo/any-unknown-in-error-context": "off",
         },

@@ -130,7 +130,6 @@ export default distExportsPackageConfig({
     "RRule",
     "RssFeed",
     "Saturating",
-    "ServiceWorker",
     "Sitemap",
     "Str",
     "String",

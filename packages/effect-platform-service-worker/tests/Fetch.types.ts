@@ -1,5 +1,5 @@
 /**
- * Type-level tests for the Service Worker entry: the expect-error directives
+ * Type-level tests for the service worker modules: the expect-error directives
  * are the assertions, checked by tsconfig.test.json. Every binding is
  * exported so an unused-local error can never stand in for the assertion a
  * directive expects.
@@ -7,21 +7,23 @@
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import type { FetchFailed } from "@thomasfosterau/effect-ext/Net";
+import { type CacheError } from "@thomasfosterau/effect-platform-service-worker/Caches";
 import {
-  type CacheError,
-  type CacheMiss,
-  cacheFirst,
-  cacheOnly,
   type ExtendableMessageEventLike,
-  type FetchEventLike,
-  fetchListener,
   messageListener,
+} from "@thomasfosterau/effect-platform-service-worker/Events";
+import {
+  cacheFirst,
+  type CacheMiss,
+  cacheOnly,
+  type FetchEventLike,
+  type FetchFailed,
+  fetchListener,
   networkOnly,
-  type PrecacheRejected,
   precache,
+  type PrecacheRejected,
   route,
-} from "@thomasfosterau/effect-ext/ServiceWorker";
+} from "@thomasfosterau/effect-platform-service-worker/Fetch";
 
 type Assert<T extends true> = T;
 type Equals<A, B> =

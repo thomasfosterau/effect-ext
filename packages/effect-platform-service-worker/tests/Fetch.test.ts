@@ -1,5 +1,5 @@
 /**
- * Unit tests for the Service Worker entry: the Cache Storage effects, the
+ * Unit tests for the service worker modules: the Cache Storage effects, the
  * cacheability predicate, the five strategies, precache and the activate
  * sweep, and the listeners' event wiring (`respondWith` / `waitUntil`),
  * all against `memoryCacheStorage` and a stubbed `FetchHttpClient.Fetch`.
@@ -14,31 +14,35 @@ import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
-import { FetchFailed } from "@thomasfosterau/effect-ext/Net";
 import {
   CacheError,
-  Caches,
-  cacheFirst,
   cacheNames,
-  cacheOnly,
+  Caches,
   deleteCache,
   deleteCachesExcept,
+  memoryCacheStorage,
+  openCache,
+} from "@thomasfosterau/effect-platform-service-worker/Caches";
+import {
   EventLifetime,
   type EventLifetimeService,
   extendableListener,
+  messageListener,
+} from "@thomasfosterau/effect-platform-service-worker/Events";
+import {
+  cacheFirst,
+  cacheOnly,
   type FetchEventLike,
+  FetchFailed,
   fetchListener,
   isCacheable,
   isNavigationRequest,
-  memoryCacheStorage,
-  messageListener,
   networkFirst,
   networkOnly,
-  openCache,
   precache,
   route,
   staleWhileRevalidate,
-} from "@thomasfosterau/effect-ext/ServiceWorker";
+} from "@thomasfosterau/effect-platform-service-worker/Fetch";
 
 const URL_A = "https://example.com/a";
 
@@ -112,6 +116,18 @@ describe("memoryCacheStorage", () => {
     expect(await cache.delete(URL_A)).toBe(true);
     expect(await cache.delete(URL_A)).toBe(false);
     expect(await cache.match(URL_A)).toBeUndefined();
+  });
+
+  it("replaces an entry in place, and answers a storage match from the first cache holding it", async () => {
+    const storage = memoryCacheStorage();
+    const first = await storage.open("first");
+    const second = await storage.open("second");
+    await first.put(URL_A, new Response("old"));
+    await first.put(`${URL_A}?b`, new Response("b"));
+    await first.put(URL_A, new Response("new"));
+    await second.put(URL_A, new Response("second"));
+    expect((await first.keys()).map((request) => request.url)).toStrictEqual([URL_A, `${URL_A}?b`]);
+    expect(await (await storage.match(URL_A))?.text()).toBe("new");
   });
 
   it("honours ignoreSearch and ignoreMethod, and never matches a POST otherwise", async () => {
@@ -488,10 +504,10 @@ describe("route and isNavigationRequest", () => {
 
   it("recognises only navigations", () => {
     expect(isNavigationRequest(new Request(URL_A))).toBe(false);
-    // SAFETY: `isNavigationRequest` reads only `mode`, and the `Request`
-    // constructor rejects `mode: "navigate"`, so a navigation can only be
-    // stood in for structurally.
-    expect(isNavigationRequest({ mode: "navigate" } as Request)).toBe(true);
+    // The `Request` constructor rejects `mode: "navigate"`, so an own
+    // property shadows the prototype's getter instead.
+    const navigation = Object.defineProperty(new Request(URL_A), "mode", { value: "navigate" });
+    expect(isNavigationRequest(navigation)).toBe(true);
   });
 });
 

@@ -28,7 +28,11 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./Clients": "./src/Clients.ts"
+    "./Caches": "./src/Caches.ts",
+    "./Clients": "./src/Clients.ts",
+    "./Events": "./src/Events.ts",
+    "./Fetch": "./src/Fetch.ts",
+    "./Notifications": "./src/Notifications.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -39,9 +43,25 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
       },
+      "./Caches": {
+        "types": "./dist/Caches.d.ts",
+        "import": "./dist/Caches.js"
+      },
       "./Clients": {
         "types": "./dist/Clients.d.ts",
         "import": "./dist/Clients.js"
+      },
+      "./Events": {
+        "types": "./dist/Events.d.ts",
+        "import": "./dist/Events.js"
+      },
+      "./Fetch": {
+        "types": "./dist/Fetch.d.ts",
+        "import": "./dist/Fetch.js"
+      },
+      "./Notifications": {
+        "types": "./dist/Notifications.d.ts",
+        "import": "./dist/Notifications.js"
       }
     },
     "access": "public"

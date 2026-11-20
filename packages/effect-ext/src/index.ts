@@ -354,13 +354,6 @@ export * as RssFeed from "./RssFeed.ts";
 export * as Saturating from "./Saturating.ts";
 
 /**
- * Service-worker caching strategies, precaching and event plumbing on Effect.
- *
- * @since 0.1.0
- */
-export * as ServiceWorker from "./ServiceWorker.ts";
-
-/**
  * Sitemaps and sitemap indexes, the JSON Feed adapter and cache-tag purging.
  *
  * @since 0.1.0

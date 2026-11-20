@@ -13,6 +13,10 @@ export default packageConfig({
   coverageFloor,
   entry: {
     index: "src/index.ts",
+    Caches: "src/Caches.ts",
     Clients: "src/Clients.ts",
+    Events: "src/Events.ts",
+    Fetch: "src/Fetch.ts",
+    Notifications: "src/Notifications.ts",
   },
 });
