@@ -28,8 +28,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./Clients": "./src/Clients.ts",
-    "./ServiceWorkerContainer": "./src/ServiceWorkerContainer.ts"
+    "./Clients": "./src/Clients.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -43,10 +42,6 @@
       "./Clients": {
         "types": "./dist/Clients.d.ts",
         "import": "./dist/Clients.js"
-      },
-      "./ServiceWorkerContainer": {
-        "types": "./dist/ServiceWorkerContainer.d.ts",
-        "import": "./dist/ServiceWorkerContainer.js"
       }
     },
     "access": "public"

@@ -386,9 +386,8 @@ export default defineConfig({
         files: [
           "packages/effect-ext/src/browser/{fullscreen,idle-detection,locks,navigator}.ts",
           "packages/effect-ext/src/browser-testing/{fullscreen,idle-detection,locks,navigator,permissions}.ts",
-          // The service worker mirrors: a registration's workers,
-          // `openWindow`, `navigate`, `getRegistration`, `Clients.get`.
-          "packages/effect-platform-service-worker/src/{Clients,ServiceWorkerContainer}.ts",
+          // The service worker mirrors: `openWindow`, `navigate`, `Clients.get`.
+          "packages/effect-platform-service-worker/src/Clients.ts",
         ],
         rules: { "effect/prefer-option-over-null": "off" },
       },

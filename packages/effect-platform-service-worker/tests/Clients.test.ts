@@ -96,6 +96,7 @@ describe("Clients", () => {
       const reached = yield* Clients.broadcast(Schema.String, { type: "all" })("hi");
       expect(reached).toBe(2);
       expect(b.posted).toEqual(["hi"]);
+      expect(yield* Clients.broadcast(Schema.String)("all windows")).toBe(2);
     }).pipe(withClients(clientsStub([a, b])));
   });
 });
