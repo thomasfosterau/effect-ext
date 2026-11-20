@@ -55,6 +55,7 @@
   },
   "devDependencies": {
     "@effect/language-service": "catalog:",
+    "@effect/vitest": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
     "effect": "catalog:",
     "typescript": "catalog:",

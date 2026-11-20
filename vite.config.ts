@@ -160,9 +160,10 @@ export default defineConfig({
       ],
       // `_tag` is Effect's discriminant, read on every tagged value.
       "eslint/no-underscore-dangle": ["error", { allow: ["_tag"] }],
-      // `@effect/vitest`'s `it.effect` is a test block, and so is `arena.effect`:
-      // the tests that run inside `layer(Allocator.layerArena(n))` name its
-      // handle `arena` so it does not shadow `it` (`eslint/no-shadow`).
+      // `@effect/vitest`'s `it.effect` is a test block, and so are the
+      // handles a `layer(...)` block passes its tests, named so they do not
+      // shadow `it` (`eslint/no-shadow`): `arena` inside
+      // `layer(Allocator.layerArena(n))`, and `t` elsewhere.
       "vitest/no-standalone-expect": [
         "error",
         {
@@ -172,6 +173,8 @@ export default defineConfig({
             "it.scoped",
             "it.flakyTest",
             "arena.effect",
+            "t.effect",
+            "t.effect.each",
           ],
         },
       ],
