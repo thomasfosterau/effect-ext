@@ -10,8 +10,15 @@
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 
+import * as Kernels from "./byteKernels.ts";
+
+export { bytesEqual, compareBytes } from "./byteKernels.ts";
+
 export const encoder = new TextEncoder();
 export const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
+
+/** Decodes bytes as `decoder` does, with a fast path for short ASCII. */
+export const decode = (bytes: Uint8Array): string => Kernels.decodeWith(bytes, decoder);
 
 /** A half-open byte range. A `start` of -1 means "no match". */
 export type Range = readonly [start: number, end: number];
@@ -401,16 +408,6 @@ export const replaceBytes = (
   }, []);
   pieces.push(haystack.subarray(Arr.lastNonEmpty(matches)[1]));
   return joinBytes(pieces, new Uint8Array(0));
-};
-
-export const bytesEqual = (a: Uint8Array, b: Uint8Array): boolean =>
-  a === b || (a.byteLength === b.byteLength && a.every((byte, i) => byte === b[i]));
-
-export const compareBytes = (a: Uint8Array, b: Uint8Array): -1 | 0 | 1 => {
-  const n = Math.min(a.byteLength, b.byteLength);
-  const i = a.subarray(0, n).findIndex((byte, k) => byte !== b[k]);
-  if (i !== -1) return a[i] < b[i] ? -1 : 1;
-  return a.byteLength < b.byteLength ? -1 : a.byteLength > b.byteLength ? 1 : 0;
 };
 
 const asciiLowerToUpper = (byte: number) => (byte >= 0x61 && byte <= 0x7a ? byte - 0x20 : byte);

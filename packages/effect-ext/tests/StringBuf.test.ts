@@ -20,6 +20,20 @@ describe("StringBuf", () => {
     }),
   );
 
+  it.effect("toString decodes short ASCII, longer text and non-ASCII alike", () =>
+    Effect.gen(function* () {
+      const s = yield* StringBuf.make();
+      yield* StringBuf.pushStr(s, "abcdefghijk");
+      expect(s.toString()).toBe("abcdefghijk");
+      yield* StringBuf.push(s, "l");
+      expect(s.toString()).toBe("abcdefghijkl");
+      yield* StringBuf.push(s, "m");
+      expect(s.toString()).toBe("abcdefghijklm");
+      const t = yield* StringBuf.from("\u007f\u0080");
+      expect(t.toString()).toBe("\u007f\u0080");
+    }),
+  );
+
   it.effect("withCapacity, reserve, reserveExact, shrinkTo and shrinkToFit", () =>
     Effect.gen(function* () {
       const s = yield* StringBuf.withCapacity(10);

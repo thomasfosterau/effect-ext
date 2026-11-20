@@ -88,7 +88,7 @@ class StringBufImpl implements StringBuf {
   }
 
   toString(): string {
-    return Utf8.decoder.decode(this.buffer.bytes());
+    return Utf8.decode(this.buffer.bytes());
   }
 
   [Symbol.iterator](): Iterator<string> {
