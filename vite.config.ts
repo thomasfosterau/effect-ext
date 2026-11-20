@@ -427,6 +427,8 @@ export default defineConfig({
           // An utterance's `voice`, `null` for the default voice.
           "packages/effect-platform-browser/src/SpeechSynthesis.ts",
           "packages/effect-platform-browser/src/testing/speech-synthesis.ts",
+          // `cookieStore.get`, which resolves `null` for a cookie that is not set.
+          "packages/effect-platform-worker-shared/src/CookieStore.ts",
           // `mark` and `measure`, which return no entry in older agents.
           "packages/effect-platform-worker-shared/src/Performance.ts",
           "packages/effect-platform-browser/src/testing/performance.ts",
