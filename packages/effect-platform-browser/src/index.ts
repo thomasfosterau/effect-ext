@@ -37,6 +37,7 @@ export * as Locks from "./Locks.ts";
 /**
  * @since 0.1.0
  */
+export * as MediaDevices from "./MediaDevices.ts";
 export * as MediaQuery from "./MediaQuery.ts";
 
 /**

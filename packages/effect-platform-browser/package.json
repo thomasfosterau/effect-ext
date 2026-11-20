@@ -42,6 +42,7 @@
     "./Fullscreen": "./src/Fullscreen.ts",
     "./IdleDetection": "./src/IdleDetection.ts",
     "./Locks": "./src/Locks.ts",
+    "./MediaDevices": "./src/MediaDevices.ts",
     "./MediaQuery": "./src/MediaQuery.ts",
     "./Navigation": "./src/Navigation.ts",
     "./Navigator": "./src/Navigator.ts",
@@ -98,6 +99,10 @@
       "./Locks": {
         "types": "./dist/Locks.d.ts",
         "import": "./dist/Locks.js"
+      },
+      "./MediaDevices": {
+        "types": "./dist/MediaDevices.d.ts",
+        "import": "./dist/MediaDevices.js"
       },
       "./MediaQuery": {
         "types": "./dist/MediaQuery.d.ts",

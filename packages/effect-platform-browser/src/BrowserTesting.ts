@@ -20,6 +20,11 @@
  *   back and forward.
  * - `TestPerformance` — a performance timeline on a manual clock, for
  *   `Performance` (from `effect-platform-worker-shared`) and `WebVitals`.
+ * - `TestFilePicker` — pickers over an in-memory disk, with a `Control`
+ *   that seeds the disk and chooses what the user picks.
+ * - `TestMediaDevices` — cameras, microphones and a recorder, with a
+ *   `Control` that plugs devices in, fails captures, ends tracks and feeds
+ *   the recorder.
  * - `TestNavigator`, `TestPageVisibility`, `TestMediaQuery`, `TestWakeLock`,
  *   `TestBroadcast`, `TestIdleDetection`, `TestBattery`, `TestFullscreen`,
  *   `TestScreenOrientation`, `TestNotifications` — this package's services.
@@ -39,6 +44,7 @@ export * as TestFullscreen from "./testing/fullscreen.ts";
 export * as TestGeolocation from "./testing/geolocation.ts";
 export * as TestIdleDetection from "./testing/idle-detection.ts";
 export * as TestLocks from "./testing/locks.ts";
+export * as TestMediaDevices from "./testing/media-devices.ts";
 export * as TestMediaQuery from "./testing/media-query.ts";
 export * as TestNavigation from "./testing/navigation.ts";
 export * as TestNavigator from "./testing/navigator.ts";

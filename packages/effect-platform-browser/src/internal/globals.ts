@@ -12,6 +12,7 @@ import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import type { BatteryManagerLike } from "../Battery.ts";
 import type { FilePickerLike } from "../FilePicker.ts";
+import type { MediaDevicesLike, MediaRecorderFactoryLike } from "../MediaDevices.ts";
 import type { IdleDetectorLike } from "../IdleDetection.ts";
 import type { NavigationLike } from "../Navigation.ts";
 
@@ -120,3 +121,21 @@ export const ambientFilePicker = (): Option.Option<FilePickerLike> => {
     }),
   );
 };
+
+/** `navigator.mediaDevices`, where the context has one (a secure window). */
+export const ambientMediaDevices = (): Option.Option<MediaDevicesLike> =>
+  Option.flatMap(ambientNavigator(), (navigator) =>
+    Option.fromUndefinedOr<MediaDevicesLike>(navigator.mediaDevices),
+  );
+
+/** `globalThis.MediaRecorder`, as a factory, where the context has one. */
+export const ambientMediaRecorder = (): Option.Option<MediaRecorderFactoryLike> =>
+  Option.map(
+    Option.fromUndefinedOr<typeof globalThis.MediaRecorder>(globalThis.MediaRecorder),
+    (Recorder): MediaRecorderFactoryLike => ({
+      // SAFETY: the stream came from this agent's own `getUserMedia` /
+      // `getDisplayMedia`, so it is the platform's `MediaStream`.
+      make: (stream, options) => new Recorder(stream as MediaStream, options),
+      isTypeSupported: (mimeType) => Recorder.isTypeSupported(mimeType),
+    }),
+  );

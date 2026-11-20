@@ -8,11 +8,13 @@ import { installGlobals } from "../../effect-platform-worker-shared/tests/global
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
+import * as Stream from "effect/Stream";
 import {
   Battery,
   Browser,
   DomObservers,
   FilePicker,
+  MediaDevices,
   MediaQuery,
   Navigation,
   Navigator,
@@ -31,6 +33,11 @@ class FakeNavigator {
   onLine = true;
   readonly userActivation = { isActive: true, hasBeenActive: true };
   readonly wakeLock = { request: () => new Promise<never>(() => {}) };
+  readonly mediaDevices = Object.assign(new EventTarget(), {
+    getUserMedia: () => Promise.reject(new DOMException("denied", "NotAllowedError")),
+    enumerateDevices: () => Promise.resolve([]),
+    getSupportedConstraints: () => ({ width: true }),
+  });
   readonly battery = Object.assign(new EventTarget(), {
     charging: true,
     level: 0.5,
@@ -42,6 +49,24 @@ class FakeNavigator {
   }
 }
 const navigator = new FakeNavigator();
+
+/** A `MediaRecorder` that stops as soon as it starts, recording its arguments. */
+const recorded: Array<unknown> = [];
+class FakeMediaRecorder extends EventTarget {
+  static isTypeSupported(mimeType: string) {
+    return mimeType === "audio/webm";
+  }
+  state = "inactive";
+  readonly mimeType = "audio/webm";
+  constructor(stream: unknown, options: unknown) {
+    super();
+    recorded.push(stream, options);
+  }
+  start() {
+    this.dispatchEvent(new Event("stop"));
+  }
+  stop() {}
+}
 
 /** Each picker records what `this` it was called with, and is closed. */
 const pickedBy: Array<unknown> = [];
@@ -76,6 +101,7 @@ installGlobals({
     }),
   },
   matchMedia,
+  MediaRecorder: FakeMediaRecorder,
   showOpenFilePicker: closedPicker,
   showSaveFilePicker: closedPicker,
   showDirectoryPicker: closedPicker,
@@ -104,6 +130,9 @@ describe("Browser.layer over a page's globals", () => {
       const observers = yield* DomObservers.DomObservers;
       const navigation = yield* Navigation.Navigation;
       const filePicker = yield* FilePicker.FilePicker;
+      const media = yield* MediaDevices.MediaDevices;
+      const stream = { id: "s", getTracks: () => [] };
+      yield* Stream.runDrain(media.record(stream, { mimeType: "audio/webm" }));
       const picked = yield* Effect.forEach(
         [
           Effect.asVoid(filePicker.open()),
@@ -127,6 +156,11 @@ describe("Browser.layer over a page's globals", () => {
         filePicker: filePicker.supported,
         picked,
         pickedBy: pickedBy.map((self) => self === globalThis),
+        media: media.supported,
+        constraints: yield* media.supportedConstraints,
+        webm: yield* media.isTypeSupported("audio/webm"),
+        recordedStream: recorded[0] === stream,
+        recordedOptions: recorded[1],
       }).toStrictEqual({
         battery: Option.some(0.5),
         dark: true,
@@ -141,6 +175,11 @@ describe("Browser.layer over a page's globals", () => {
         filePicker: true,
         picked: [Option.none(), Option.none(), Option.none()],
         pickedBy: [true, true, true],
+        media: { userMedia: true, displayMedia: false, recorder: true },
+        constraints: ["width"],
+        webm: true,
+        recordedStream: true,
+        recordedOptions: { mimeType: "audio/webm" },
       });
     }).pipe(Effect.provide(Browser.layer)),
   );
