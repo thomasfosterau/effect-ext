@@ -1,6 +1,6 @@
 {
   "name": "@thomasfosterau/effect-platform-worker-shared",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Effect platform utilities shared by every web worker scope: the worker global as a context reference, a worker runMain, and schema-typed message ports.",
   "keywords": [
     "badging",

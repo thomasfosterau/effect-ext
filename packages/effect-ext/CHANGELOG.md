@@ -1,5 +1,23 @@
 # @thomasfosterau/effect-ext
 
+## 0.4.0
+
+### Minor Changes
+
+- [#172](https://github.com/thomasfosterau/effect-ext/pull/172) [`c36ba2b`](https://github.com/thomasfosterau/effect-ext/commit/c36ba2b2eb3ff3163513af7fdb1a70f7246ab048) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Breaking: the `Browser` and `BrowserTesting` subpaths and the `Browser` barrel namespace are removed, and `@effect/platform-browser` is no longer a peer. They now live in `@thomasfosterau/effect-platform-browser`: each service is its own subpath there (`Locks`, `Navigator`, `PageVisibility`, …), `Browser.layer` provides them all, and `BrowserTesting` holds the doubles. Their `Context` keys moved too, from `@thomasfosterau/effect-ext/Browser/<Service>` to `@thomasfosterau/effect-platform-browser/<Service>`.
+
+- [#165](https://github.com/thomasfosterau/effect-ext/pull/165) [`a0537be`](https://github.com/thomasfosterau/effect-ext/commit/a0537bebd53a8c2c742625f0b176c52a40737344) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Breaking: the `ServiceWorker` subpath and barrel namespace are removed. They now live in `@thomasfosterau/effect-platform-service-worker`, split into `Caches`, `Fetch`, `Events` and `Notifications`; change the import to the module each name moved to. `fetchRequest` and the strategies fail with that package's `Fetch.FetchFailed` (same `_tag` and fields as `Net.FetchFailed`).
+
+- [#194](https://github.com/thomasfosterau/effect-ext/pull/194) [`402f2ef`](https://github.com/thomasfosterau/effect-ext/commit/402f2ef4fc539c5ed9ad8b78bdbc8db97767759e) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Rename the growable UTF-8 string module from `String` to `StringBuf`, so importing it no longer shadows the global `String`. `Str` is unchanged.
+  
+  Migration: `import { String } from "@thomasfosterau/effect-ext"` becomes `import { StringBuf } from "@thomasfosterau/effect-ext"`, the `./String` subpath becomes `./StringBuf`, the `String` type becomes `StringBuf.StringBuf`, and `String.isString` becomes `StringBuf.isStringBuf`. The type id (`~effect-ext/StringBuf`) and the `toJSON` `_id` (`"StringBuf"`) change to match.
+
+- [#196](https://github.com/thomasfosterau/effect-ext/pull/196) [`2d4860f`](https://github.com/thomasfosterau/effect-ext/commit/2d4860fc8e1e2db9ba7ff47277134117a2168297) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Adds synchronous appends to `Vec` and `StructOfArrays`, so a hot loop can fill them without running an `Effect` per element: `pushResult` and `reserveResult` (allocation failure as a `Result`), `pushUnsafe` (into reserved capacity), and `setLenUnsafe` with `Vec.spareCapacity` / `Vec.spareBytes` / `StructOfArrays.spareColumn` for bulk fills of the memory past the length, as Rust's `spare_capacity_mut` and `set_len`. Reading a whole struct record (a struct `Layout`'s `read`, `Vec.get` of a struct, `StructOfArrays.get` / `getUnsafe`) is about a quarter faster.
+
+### Patch Changes
+
+- [#195](https://github.com/thomasfosterau/effect-ext/pull/195) [`8f37e97`](https://github.com/thomasfosterau/effect-ext/commit/8f37e97a6f7f3b403ed8453b05208f7c9328cabc) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - `Str`: equality, `Str.Order` and `Equal.equals` compare bytes in an indexed loop rather than a callback per byte (about 3× faster for 12 bytes, 5× for 64), and `toString` on a `Str` or `StringBuf` of up to 12 ASCII bytes builds the string without `TextDecoder`; `String(str)` no longer goes through the ordinary `valueOf`-then-`toString` conversion. Results are unchanged for every input.
+
 ## 0.3.2
 
 ### Patch Changes
