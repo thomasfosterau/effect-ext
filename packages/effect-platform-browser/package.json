@@ -40,6 +40,7 @@
     "./Credentials": "./src/Credentials.ts",
     "./DomObservers": "./src/DomObservers.ts",
     "./FilePicker": "./src/FilePicker.ts",
+    "./Frames": "./src/Frames.ts",
     "./Fullscreen": "./src/Fullscreen.ts",
     "./IdleDetection": "./src/IdleDetection.ts",
     "./Locks": "./src/Locks.ts",
@@ -94,6 +95,10 @@
       "./FilePicker": {
         "types": "./dist/FilePicker.d.ts",
         "import": "./dist/FilePicker.js"
+      },
+      "./Frames": {
+        "types": "./dist/Frames.d.ts",
+        "import": "./dist/Frames.js"
       },
       "./Fullscreen": {
         "types": "./dist/Fullscreen.d.ts",

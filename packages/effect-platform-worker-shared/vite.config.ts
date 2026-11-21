@@ -19,6 +19,7 @@ export default packageConfig({
     CookieStore: "src/CookieStore.ts",
     EventSource: "src/EventSource.ts",
     Performance: "src/Performance.ts",
+    TaskScheduler: "src/TaskScheduler.ts",
     BrowserFileSystem: "src/BrowserFileSystem.ts",
     MemoryFileSystemHandle: "src/MemoryFileSystemHandle.ts",
   },

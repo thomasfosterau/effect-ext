@@ -13,6 +13,7 @@ import * as Broadcast from "./Broadcast.ts";
 import * as Credentials from "./Credentials.ts";
 import * as DomObservers from "./DomObservers.ts";
 import * as FilePicker from "./FilePicker.ts";
+import * as Frames from "./Frames.ts";
 import * as Fullscreen from "./Fullscreen.ts";
 import * as IdleDetection from "./IdleDetection.ts";
 import * as Locks from "./Locks.ts";
@@ -29,7 +30,7 @@ import * as WakeLock from "./WakeLock.ts";
 
 /**
  * Every live service this package defines (`Battery`, `Broadcast`,
- * `Credentials`, `DomObservers`, `FilePicker`, `Fullscreen`, `IdleDetection`, `Locks`, `MediaDevices`, `MediaQuery`, `Navigation`, `Navigator`,
+ * `Credentials`, `DomObservers`, `FilePicker`, `Frames`, `Fullscreen`, `IdleDetection`, `Locks`, `MediaDevices`, `MediaQuery`, `Navigation`, `Navigator`,
  * `Notifications`, `PageVisibility`, `ScreenOrientation`, `SpeechRecognition`, `SpeechSynthesis`, `WakeLock`) and the
  * `@effect/platform-browser` `Clipboard`, `Geolocation` and `Permissions`
  * services, over the ambient globals. Each degrades where its API is
@@ -59,6 +60,7 @@ export const layer: Layer.Layer<
   | Credentials.Credentials
   | DomObservers.DomObservers
   | FilePicker.FilePicker
+  | Frames.Frames
   | Fullscreen.Fullscreen
   | IdleDetection.IdleDetection
   | Locks.Locks
@@ -81,6 +83,7 @@ export const layer: Layer.Layer<
   Credentials.layer,
   DomObservers.layer,
   FilePicker.layer,
+  Frames.layer,
   Fullscreen.layer,
   IdleDetection.layer,
   Locks.layer,

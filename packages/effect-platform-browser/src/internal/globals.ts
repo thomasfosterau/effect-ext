@@ -13,6 +13,7 @@ import * as P from "effect/Predicate";
 import type { BatteryManagerLike } from "../Battery.ts";
 import type { WebAuthnLike } from "../Credentials.ts";
 import type { FilePickerLike } from "../FilePicker.ts";
+import type { AnimationFramesLike, IdleCallbacksLike } from "../Frames.ts";
 import type { MediaDevicesLike, MediaRecorderFactoryLike } from "../MediaDevices.ts";
 import type { IdleDetectorLike } from "../IdleDetection.ts";
 import type { NavigationLike } from "../Navigation.ts";
@@ -199,3 +200,38 @@ export const ambientWebAuthn = (): Option.Option<WebAuthnLike> =>
     ]),
     ([container, statics]): WebAuthnLike => ({ container, statics }),
   );
+
+/** `requestAnimationFrame` and `cancelAnimationFrame`, called on `globalThis`, where the context has them (a window). */
+export const ambientAnimationFrames = (): Option.Option<AnimationFramesLike> => {
+  const scope: Partial<Pick<typeof globalThis, "requestAnimationFrame" | "cancelAnimationFrame">> =
+    globalThis;
+  return Option.map(
+    Option.all([
+      Option.fromUndefinedOr(scope.requestAnimationFrame),
+      Option.fromUndefinedOr(scope.cancelAnimationFrame),
+    ]),
+    ([request, cancel]): AnimationFramesLike => ({
+      requestAnimationFrame: (callback) => request.call(globalThis, callback),
+      cancelAnimationFrame: (handle) => cancel.call(globalThis, handle),
+    }),
+  );
+};
+
+/** `requestIdleCallback` and `cancelIdleCallback`, called on `globalThis`, where the context has them (a window, not Safari's). */
+export const ambientIdleCallbacks = (): Option.Option<IdleCallbacksLike> => {
+  const scope: Partial<Pick<typeof globalThis, "requestIdleCallback" | "cancelIdleCallback">> =
+    globalThis;
+  return Option.map(
+    Option.all([
+      Option.fromUndefinedOr(scope.requestIdleCallback),
+      Option.fromUndefinedOr(scope.cancelIdleCallback),
+    ]),
+    ([request, cancel]): IdleCallbacksLike => ({
+      requestIdleCallback: (callback, options) =>
+        options === undefined
+          ? request.call(globalThis, callback)
+          : request.call(globalThis, callback, options),
+      cancelIdleCallback: (handle) => cancel.call(globalThis, handle),
+    }),
+  );
+};

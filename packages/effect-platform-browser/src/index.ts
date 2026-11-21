@@ -27,6 +27,11 @@ export * as DomObservers from "./DomObservers.ts";
  * @since 0.1.0
  */
 export * as FilePicker from "./FilePicker.ts";
+
+/**
+ * @since 0.1.0
+ */
+export * as Frames from "./Frames.ts";
 export * as Fullscreen from "./Fullscreen.ts";
 
 /**
