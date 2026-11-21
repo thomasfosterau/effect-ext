@@ -4,6 +4,7 @@
  * @since 0.1.0
  */
 import * as Layer from "effect/Layer";
+import * as TestAppBadge from "./app-badge.ts";
 import * as TestBattery from "./battery.ts";
 import * as TestBroadcast from "./broadcast.ts";
 import * as TestClipboard from "./clipboard.ts";
@@ -13,6 +14,7 @@ import * as TestDomObservers from "./dom-observers.ts";
 import * as TestEventSource from "./event-source.ts";
 import * as TestFilePicker from "./file-picker.ts";
 import * as TestFrames from "./frames.ts";
+import * as TestInstalledApp from "./installed-app.ts";
 import * as TestFullscreen from "./fullscreen.ts";
 import * as TestGeolocation from "./geolocation.ts";
 import * as TestIdleDetection from "./idle-detection.ts";
@@ -55,6 +57,7 @@ import * as TestWakeLock from "./wake-lock.ts";
  * @category layers
  */
 export const layer = Layer.mergeAll(
+  TestAppBadge.layer(),
   TestBattery.layer(),
   TestBroadcast.layer,
   TestClipboard.layer(),
@@ -64,6 +67,7 @@ export const layer = Layer.mergeAll(
   TestEventSource.layer(),
   TestFilePicker.layer(),
   TestFrames.layer(),
+  TestInstalledApp.layer(),
   TestFullscreen.layer(),
   TestGeolocation.layer(),
   TestIdleDetection.layer(),

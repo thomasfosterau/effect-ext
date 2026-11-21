@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "Effect platform utilities shared by every web worker scope: the worker global as a context reference, a worker runMain, and schema-typed message ports.",
   "keywords": [
+    "badging",
     "cookies",
     "effect",
     "eventsource",
@@ -32,6 +33,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./AppBadge": "./src/AppBadge.ts",
     "./WorkerScope": "./src/WorkerScope.ts",
     "./WorkerRuntime": "./src/WorkerRuntime.ts",
     "./WorkerMessaging": "./src/WorkerMessaging.ts",
@@ -50,6 +52,10 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./AppBadge": {
+        "types": "./dist/AppBadge.d.ts",
+        "import": "./dist/AppBadge.js"
       },
       "./WorkerScope": {
         "types": "./dist/WorkerScope.d.ts",

@@ -33,6 +33,7 @@ export default packageConfig({
     ServiceWorkerContainer: "src/ServiceWorkerContainer.ts",
     FilePicker: "src/FilePicker.ts",
     Frames: "src/Frames.ts",
+    InstalledApp: "src/InstalledApp.ts",
     MediaDevices: "src/MediaDevices.ts",
     SpeechRecognition: "src/SpeechRecognition.ts",
     SpeechSynthesis: "src/SpeechSynthesis.ts",

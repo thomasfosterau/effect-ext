@@ -1,6 +1,7 @@
 /**
  * @since 0.1.0
  */
+export * as AppBadge from "./AppBadge.ts";
 export * as BrowserFileSystem from "./BrowserFileSystem.ts";
 export * as CookieStore from "./CookieStore.ts";
 export * as EventSource from "./EventSource.ts";

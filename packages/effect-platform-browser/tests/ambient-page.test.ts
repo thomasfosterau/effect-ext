@@ -18,6 +18,7 @@ import {
   DomObservers,
   FilePicker,
   Frames,
+  InstalledApp,
   MediaDevices,
   MediaQuery,
   Navigation,
@@ -56,6 +57,10 @@ class FakeNavigator {
   });
   getBattery(this: FakeNavigator) {
     return Promise.resolve(this.battery);
+  }
+  readonly relatedApps = [{ platform: "play", id: "com.example" }];
+  getInstalledRelatedApps(this: FakeNavigator) {
+    return Promise.resolve(this.relatedApps);
   }
 }
 const navigator = new FakeNavigator();
@@ -147,6 +152,12 @@ function cancelIdleCallback(this: unknown, _handle: number) {
   frameCalls.push(`cancel idle on window: ${this === globalThis}`);
 }
 
+/** A launch queue that launches the app once, at its consumer. */
+const launchQueue = {
+  setConsumer: (consumer: (params: { readonly targetURL: string }) => void) =>
+    queueMicrotask(() => consumer({ targetURL: "https://example.com/open" })),
+};
+
 const queries: Array<{ readonly self: unknown; readonly query: string }> = [];
 function matchMedia(this: unknown, query: string) {
   queries.push({ self: this, query });
@@ -167,6 +178,8 @@ installGlobals({
     }),
   },
   matchMedia,
+  onbeforeinstallprompt: null,
+  launchQueue,
   requestAnimationFrame,
   cancelAnimationFrame,
   requestIdleCallback,
@@ -290,6 +303,24 @@ describe("Browser.layer over a page's globals", () => {
           "request idle on window: true, timeout undefined",
           "cancel idle on window: true",
         ],
+      });
+    }).pipe(Effect.provide(Browser.layer)),
+  );
+
+  it.effect("wires the installed app to the window, its launch queue and the navigator", () =>
+    Effect.gen(function* () {
+      const app = yield* InstalledApp.InstalledApp;
+      const [launch] = yield* Stream.runCollect(Stream.take(InstalledApp.launches, 1));
+      expect({
+        supported: app.supported,
+        related: Arr.map(yield* InstalledApp.relatedApps, (related) => related.id),
+        launched: Option.map(launch.targetUrl, (url) => url.pathname),
+        installable: yield* Stream.runCollect(Stream.take(InstalledApp.installable, 1)),
+      }).toStrictEqual({
+        supported: { installPrompt: true, launchQueue: true, relatedApps: true },
+        related: [Option.some("com.example")],
+        launched: Option.some("/open"),
+        installable: [false],
       });
     }).pipe(Effect.provide(Browser.layer)),
   );

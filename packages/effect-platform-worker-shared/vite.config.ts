@@ -13,6 +13,7 @@ export default packageConfig({
   coverageFloor,
   entry: {
     index: "src/index.ts",
+    AppBadge: "src/AppBadge.ts",
     WorkerScope: "src/WorkerScope.ts",
     WorkerRuntime: "src/WorkerRuntime.ts",
     WorkerMessaging: "src/WorkerMessaging.ts",

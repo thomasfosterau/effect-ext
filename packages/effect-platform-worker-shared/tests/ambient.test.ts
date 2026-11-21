@@ -6,13 +6,29 @@
 import { describe, expect, it } from "@effect/vitest";
 import { fakeScopeConstructor, installGlobals } from "./globals.ts";
 import * as Effect from "effect/Effect";
+import * as AppBadge from "@thomasfosterau/effect-platform-worker-shared/AppBadge";
 import * as WorkerScope from "@thomasfosterau/effect-platform-worker-shared/WorkerScope";
+
+/** Records each badge call; its methods read `this`, as the platform's do. */
+class FakeNavigator {
+  readonly badge: Array<number | "dot" | "clear"> = [];
+  setAppBadge(contents?: number) {
+    this.badge.push(contents ?? "dot");
+    return Promise.resolve();
+  }
+  clearAppBadge() {
+    this.badge.push("clear");
+    return Promise.resolve();
+  }
+}
+const navigator = new FakeNavigator();
 
 installGlobals({
   WorkerGlobalScope: fakeScopeConstructor(),
   location: { href: "https://example.com/ambient.js" },
   isSecureContext: true,
   crossOriginIsolated: false,
+  navigator,
 });
 
 describe("WorkerScope's ambient default", () => {
@@ -20,6 +36,16 @@ describe("WorkerScope's ambient default", () => {
     Effect.gen(function* () {
       expect(WorkerScope.isInstanceOfGlobal(globalThis, "WorkerGlobalScope")).toBe(true);
       expect((yield* WorkerScope.location).pathname).toBe("/ambient.js");
+    }),
+  );
+});
+
+describe("AppBadge's ambient default", () => {
+  it.effect("is the navigator's Badging API, called as a method", () =>
+    Effect.gen(function* () {
+      yield* AppBadge.set(2);
+      yield* AppBadge.clear;
+      expect(navigator.badge).toEqual([2, "clear"]);
     }),
   );
 });
