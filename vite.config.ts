@@ -450,6 +450,10 @@ export default defineConfig({
           "packages/effect-platform-worker-shared/src/internal/device.ts",
           "packages/effect-platform-worker-shared/tests/Serial.test.ts",
           "packages/effect-platform-browser/src/testing/serial.ts",
+          // A USB transfer's `data`, and a device's string descriptors.
+          "packages/effect-platform-worker-shared/src/Usb.ts",
+          "packages/effect-platform-worker-shared/tests/Usb.test.ts",
+          "packages/effect-platform-browser/src/testing/usb.ts",
           // `cookieStore.get`, which resolves `null` for a cookie that is not set.
           "packages/effect-platform-worker-shared/src/CookieStore.ts",
           // `mark` and `measure`, which return no entry in older agents.

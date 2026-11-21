@@ -10,6 +10,7 @@
     "scheduler",
     "serial",
     "server-sent-events",
+    "usb",
     "web-worker",
     "worker"
   ],
@@ -36,6 +37,7 @@
     ".": "./src/index.ts",
     "./AppBadge": "./src/AppBadge.ts",
     "./Serial": "./src/Serial.ts",
+    "./Usb": "./src/Usb.ts",
     "./WorkerScope": "./src/WorkerScope.ts",
     "./WorkerRuntime": "./src/WorkerRuntime.ts",
     "./WorkerMessaging": "./src/WorkerMessaging.ts",
@@ -62,6 +64,10 @@
       "./Serial": {
         "types": "./dist/Serial.d.ts",
         "import": "./dist/Serial.js"
+      },
+      "./Usb": {
+        "types": "./dist/Usb.d.ts",
+        "import": "./dist/Usb.js"
       },
       "./WorkerScope": {
         "types": "./dist/WorkerScope.d.ts",

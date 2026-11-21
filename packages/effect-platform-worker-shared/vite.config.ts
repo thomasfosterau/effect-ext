@@ -15,6 +15,7 @@ export default packageConfig({
     index: "src/index.ts",
     AppBadge: "src/AppBadge.ts",
     Serial: "src/Serial.ts",
+    Usb: "src/Usb.ts",
     WorkerScope: "src/WorkerScope.ts",
     WorkerRuntime: "src/WorkerRuntime.ts",
     WorkerMessaging: "src/WorkerMessaging.ts",

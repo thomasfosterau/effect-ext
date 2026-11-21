@@ -35,6 +35,9 @@
  * - `TestSerial` — serial ports, for `Serial` (from
  *   `effect-platform-worker-shared`), with a `Control` that plugs them in
  *   and out and answers the picker; each port sends bytes and records writes.
+ * - `TestUsb` — USB devices, for `Usb` (from `effect-platform-worker-shared`),
+ *   with a `Control` that plugs them in and out and answers the picker; each
+ *   device sends data on its IN endpoints, stalls them and records writes.
  * - `TestAppBadge` — an app badge, for `AppBadge` (from
  *   `effect-platform-worker-shared`), with a `Control` that reads it back.
  * - `TestMediaDevices` — cameras, microphones and a recorder, with a
@@ -82,4 +85,5 @@ export * as TestScreenOrientation from "./testing/screen-orientation.ts";
 export * as TestSerial from "./testing/serial.ts";
 export * as TestSpeechRecognition from "./testing/speech-recognition.ts";
 export * as TestSpeechSynthesis from "./testing/speech-synthesis.ts";
+export * as TestUsb from "./testing/usb.ts";
 export * as TestWakeLock from "./testing/wake-lock.ts";
