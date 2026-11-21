@@ -121,9 +121,13 @@ class StrImpl implements Str {
 
   toString(): string {
     if (Option.isSome(this.decoded)) return this.decoded.value;
-    const decoded = Utf8.decoder.decode(this.bytes);
+    const decoded = Utf8.decode(this.bytes);
     this.decoded = Option.some(decoded);
     return decoded;
+  }
+
+  [Symbol.toPrimitive](): string {
+    return this.toString();
   }
 
   [Eq.symbol](that: Eq.Equal): boolean {

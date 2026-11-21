@@ -18,6 +18,7 @@
     "**/vite.config.ts",
     "vite.package.ts",
     "scripts/check-dist.mjs",
+    "packages/effect-ext/bench/*.ts",
     "scripts/generate-language-subtag-registry.mjs",
     "scripts/peer-floors.mjs"
   ],

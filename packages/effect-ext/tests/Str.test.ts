@@ -6,9 +6,22 @@ import * as Hash from "effect/Hash";
 import * as HashSet from "effect/HashSet";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
+import * as fc from "fast-check";
 import * as Str from "@thomasfosterau/effect-ext/Str";
 
 const s = Str.fromString;
+const reference = new TextDecoder("utf-8", { ignoreBOM: true });
+// A view over bytes, so `toString` decodes rather than returning the string a
+// `fromString` caches.
+const view = (bytes: ReadonlyArray<number>) => Str.fromUtf8Unsafe(new Uint8Array(bytes));
+const ascii = (n: number, first = 0x61) => Arr.makeBy(n, (i) => (first + i) % 0x80);
+const byteOrder = (a: Uint8Array, b: Uint8Array): -1 | 0 | 1 => {
+  const i = Arr.findFirstIndex(Arr.fromIterable(a), (x, k) => k >= b.length || x !== b[k]);
+  return Option.match(i, {
+    onNone: () => (a.length < b.length ? -1 : 0),
+    onSome: (k) => (k >= b.length ? 1 : a[k] < b[k] ? -1 : 1),
+  });
+};
 const text = (strs: ReadonlyArray<Str.Str>) => strs.map((part) => part.toString());
 const isNumeric = (c: string) => /^\p{N}$/u.test(c);
 const indices = (input: Str.Str, p: Str.Pattern) =>
@@ -21,6 +34,55 @@ describe("Str", () => {
       ["", "hello", "héllo wörld", "日本語", "🦀 crab", "a\u0000b"].forEach((t) => {
         expect(s(t).toString()).toBe(t);
       });
+    });
+
+    it("decodes views of every length around the short-ASCII threshold as TextDecoder does", () => {
+      Arr.range(0, 20).forEach((n) => {
+        const bytes = ascii(n);
+        expect(view(bytes).toString()).toBe(reference.decode(new Uint8Array(bytes)));
+        // A non-ASCII character at each position falls back to the decoder.
+        Arr.range(0, n).forEach((at) => {
+          const mixed = [...bytes.slice(0, at), 0xc3, 0xa9, ...bytes.slice(at)];
+          expect(view(mixed).toString()).toBe(reference.decode(new Uint8Array(mixed)));
+        });
+      });
+    });
+
+    it("decodes the ASCII boundary, NUL, a BOM and invalid bytes as TextDecoder does", () => {
+      const cases: ReadonlyArray<ReadonlyArray<number>> = [
+        [],
+        [0x00],
+        [0x7f],
+        [0x80],
+        [0x61, 0x7f, 0x62],
+        [0x61, 0x80, 0x62],
+        [0xc2, 0x80],
+        [0xef, 0xbb, 0xbf, 0x61], // a BOM is kept
+        [0xed, 0xa0, 0x80], // an encoded lone surrogate
+        [0xf0, 0x9f, 0xa6, 0x80],
+        [0xff, ...ascii(11)],
+        [...ascii(11), 0xff],
+        [...ascii(12), 0xff],
+      ];
+      cases.forEach((bytes) => {
+        expect(view(bytes).toString()).toBe(reference.decode(new Uint8Array(bytes)));
+      });
+      expect(view([0x00, 0x7f]).toString()).toBe("\u0000\u007f");
+    });
+
+    it("decodes any bytes as TextDecoder does", () => {
+      fc.assert(
+        fc.property(fc.uint8Array({ maxLength: 24 }), (bytes) => {
+          expect(Str.fromUtf8Unsafe(bytes).toString()).toBe(reference.decode(bytes));
+        }),
+      );
+    });
+
+    it("converts to a primitive as its text, whatever the hint", () => {
+      const v = view(ascii(3, 0x31)); // "123"
+      expect(String(v)).toBe("123");
+      expect(+v).toBe(123);
+      expect(Str.fromString("a") < Str.fromString("b")).toBe(true);
     });
 
     it("validates bytes like str::from_utf8", () => {
@@ -390,6 +452,52 @@ describe("Str", () => {
       expect(Str.Order(s("abd"), s("abc"))).toBe(1);
       expect(Str.Order(s("abc"), s("abc"))).toBe(0);
       expect(Str.Equivalence(s("x"), s("x"))).toBe(true);
+    });
+
+    it("orders prefixes, unsigned bytes and the ASCII boundary", () => {
+      expect(Str.Order(s(""), s(""))).toBe(0);
+      expect(Str.Order(s(""), s("a"))).toBe(-1);
+      expect(Str.Order(s("a"), s(""))).toBe(1);
+      expect(Str.Order(s("abcdefghijkl"), s("abcdefghijklm"))).toBe(-1);
+      expect(Str.Order(s("abcdefghijklm"), s("abcdefghijkl"))).toBe(1);
+      expect(Str.Order(s("\u007f"), s("\u0080"))).toBe(-1);
+      expect(Str.Order(s("\u0080"), s("\u007f"))).toBe(1);
+      expect(Str.Order(view([0xff]), view([0x01]))).toBe(1);
+      expect(Str.Order(view([0x01, 0xff]), view([0x01, 0x00]))).toBe(1);
+    });
+
+    it("compares bytes like a byte-by-byte reference", () => {
+      const bytes = fc.uint8Array({ maxLength: 20 });
+      const pair = fc.oneof(
+        fc.tuple(bytes, bytes),
+        bytes.map((a) => [a, a.slice()] as const),
+        fc.tuple(bytes, fc.uint8Array({ maxLength: 4 })).map(([a, tail]) => {
+          const b = new Uint8Array(a.length + tail.length);
+          b.set(a);
+          b.set(tail, a.length);
+          return [a, b] as const;
+        }),
+      );
+      fc.assert(
+        fc.property(pair, ([a, b]) => {
+          const x = Str.fromUtf8Unsafe(a);
+          const y = Str.fromUtf8Unsafe(b);
+          const expected = byteOrder(a, b);
+          expect(Str.Order(x, y)).toBe(expected);
+          expect(Str.Order(y, x)).toBe(byteOrder(b, a));
+          expect(Str.Equivalence(x, y)).toBe(expected === 0);
+          expect(Eq.equals(x, y)).toBe(expected === 0);
+        }),
+      );
+    });
+
+    it("tells apart strings that differ only in their last byte or their length", () => {
+      const shared = new Uint8Array(ascii(13));
+      const same = Str.fromUtf8Unsafe(shared);
+      expect(Str.Equivalence(same, Str.fromUtf8Unsafe(shared))).toBe(true);
+      expect(Str.Equivalence(view(ascii(13)), view([...ascii(12), 0x00]))).toBe(false);
+      expect(Str.Equivalence(view(ascii(12)), view(ascii(13)))).toBe(false);
+      expect(Str.Equivalence(view([]), view([]))).toBe(true);
     });
 
     it("is inspectable", () => {

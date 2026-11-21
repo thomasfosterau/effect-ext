@@ -255,6 +255,7 @@ export default defineConfig({
       {
         files: [
           "scripts/**",
+          "packages/effect-ext/bench/**",
           "packages/effect-ext/bin/**",
           "packages/effect-ext/src/evals/cli/loader.mjs",
           "packages/effect-ext/tests/evals/fixtures/loader/**",
@@ -621,6 +622,18 @@ export default defineConfig({
         rules: {
           "effect/imperative-loops": "off",
           "effect/casting-awareness": "off",
+        },
+      },
+      // `bytesEqual`, `compareBytes` and the short-ASCII decoder behind `Str`
+      // and `StringBuf`: equality, `Order` and `toString` run per key in a
+      // parser, and a callback per byte (`every`, `findIndex`) costs several
+      // times the comparison it makes; `Match` would allocate per call to
+      // pick the `String.fromCharCode` arity. `bench/str.ts` measures them.
+      {
+        files: ["packages/effect-ext/src/internal/byteKernels.ts"],
+        rules: {
+          "effect/imperative-loops": "off",
+          "effect/prefer-match-over-switch": "off",
         },
       },
       // `brandAs`, `unsafeBrand` and `unbranded` are the only brand
