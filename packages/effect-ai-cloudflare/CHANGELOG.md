@@ -4,6 +4,13 @@
 
 This package was published as `@thomasfosterau/effect-ai-gateway` until 0.5.1 and renamed before its first release under this name (0.1.0). The entries below are that package's.
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [[`c36ba2b`](https://github.com/thomasfosterau/effect-ext/commit/c36ba2b2eb3ff3163513af7fdb1a70f7246ab048), [`a0537be`](https://github.com/thomasfosterau/effect-ext/commit/a0537bebd53a8c2c742625f0b176c52a40737344), [`8f37e97`](https://github.com/thomasfosterau/effect-ext/commit/8f37e97a6f7f3b403ed8453b05208f7c9328cabc), [`402f2ef`](https://github.com/thomasfosterau/effect-ext/commit/402f2ef4fc539c5ed9ad8b78bdbc8db97767759e), [`2d4860f`](https://github.com/thomasfosterau/effect-ext/commit/2d4860fc8e1e2db9ba7ff47277134117a2168297)]:
+  - @thomasfosterau/effect-ext@0.4.0
+
 ## 0.2.2
 
 ### Patch Changes

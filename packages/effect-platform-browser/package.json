@@ -1,6 +1,6 @@
 {
   "name": "@thomasfosterau/effect-platform-browser",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Effect services for browser main-thread APIs beyond @effect/platform-browser.",
   "keywords": [
     "bluetooth",

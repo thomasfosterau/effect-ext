@@ -1,6 +1,6 @@
 {
   "name": "@thomasfosterau/effect-platform-service-worker",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Effect platform utilities for service workers.",
   "keywords": [
     "effect",
