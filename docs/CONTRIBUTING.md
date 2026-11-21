@@ -53,7 +53,7 @@ Every change to a published package's behaviour or its emitted `.d.ts` (doc comm
 
 Every external version is in the `pnpm-workspace.yaml` catalog; package.json files use `catalog:`, a named peers catalog or `workspace:*`. After editing the catalog, run `vp install` and commit `pnpm-lock.yaml`. Peer floors (`catalogs.*`) are tested claims (`vp run peer-floors`): raise one only when a dependency requires it, and that is a breaking change.
 
-Dependabot groups the sets that must move together. On those PRs, by hand:
+Dependabot groups the sets that must move together, but can't make these moves: make them in a PR from a new branch started from its PR's head (never push to a `dependabot/*` branch, which stops it rebasing), and Dependabot closes its own PR once yours merges.
 
 - **Toolchain** (`vite-plus`): `vp dlx --package=vite-plus@<v> vp migrate --no-interactive` re-pins `vite` and `vitest`; drop the `minimumReleaseAgeExclude` entries it adds, and bump the devcontainer image if Dependabot hasn't. `typescript` / `@typescript/native` move only with an `@effect/tsgo` whose `components` table supports them.
 - **Effect**: move `@effect/platform-node-shared` (referenced only from `overrides`) to the new version.
