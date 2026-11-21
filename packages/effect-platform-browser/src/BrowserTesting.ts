@@ -35,6 +35,9 @@
  * - `TestSerial` — serial ports, for `Serial` (from
  *   `effect-platform-worker-shared`), with a `Control` that plugs them in
  *   and out and answers the picker; each port sends bytes and records writes.
+ * - `TestHid` — HID devices, for `Hid` (from `effect-platform-worker-shared`),
+ *   with a `Control` that plugs them in and out and answers the picker; each
+ *   device fires input reports and records the reports sent to it.
  * - `TestUsb` — USB devices, for `Usb` (from `effect-platform-worker-shared`),
  *   with a `Control` that plugs them in and out and answers the picker; each
  *   device sends data on its IN endpoints, stalls them and records writes.
@@ -68,6 +71,7 @@ export * as TestDomObservers from "./testing/dom-observers.ts";
 export * as TestEventSource from "./testing/event-source.ts";
 export * as TestFilePicker from "./testing/file-picker.ts";
 export * as TestFrames from "./testing/frames.ts";
+export * as TestHid from "./testing/hid.ts";
 export * as TestInstalledApp from "./testing/installed-app.ts";
 export * as TestFullscreen from "./testing/fullscreen.ts";
 export * as TestGeolocation from "./testing/geolocation.ts";
