@@ -4,7 +4,8 @@
  * @module tests/scorers/json-validity
  */
 
-import { describe, expect, it, layer } from "@effect/vitest";
+import { describe, expect, it } from "@effect/vitest";
+import { describeLayerPerTest } from "../helpers/layerPerTest.ts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -100,32 +101,29 @@ describe("JsonValidity.jsonValidity", () => {
   );
 });
 
-layer(Cache.layerMemory, { buildPerTest: true })(
-  "JsonValidity.jsonValidity — inside a run",
-  (t) => {
-    t.effect("an unparseable output scores 0 and the run completes", () =>
-      Effect.gen(function* () {
-        const result = yield* Runner.runSuite(
-          jsonSuite((evalCase) => ({ output: evalCase.output })),
-          { bypassCache: true },
-        );
-        expect(result.passed).toBe(false);
-        expect(result.cases[0]?.metrics[0]?.trials[0]).toMatchObject({
-          _tag: "Scored",
-          score: { score: 0 },
-        });
-      }),
-    );
+describeLayerPerTest(Cache.layerMemory)("JsonValidity.jsonValidity — inside a run", (t) => {
+  t.effect("an unparseable output scores 0 and the run completes", () =>
+    Effect.gen(function* () {
+      const result = yield* Runner.runSuite(
+        jsonSuite((evalCase) => ({ output: evalCase.output })),
+        { bypassCache: true },
+      );
+      expect(result.passed).toBe(false);
+      expect(result.cases[0]?.metrics[0]?.trials[0]).toMatchObject({
+        _tag: "Scored",
+        score: { score: 0 },
+      });
+    }),
+  );
 
-    t.effect("an unexpected parse failure fails the run instead of scoring 0", () =>
-      Effect.gen(function* () {
-        const exit = yield* Effect.exit(
-          Runner.runSuite(jsonSuite(unreadableCase), { bypassCache: true }),
-        );
-        expect(Exit.isFailure(exit)).toBe(true);
-        if (!Exit.isFailure(exit)) return;
-        expect(Cause.hasDies(exit.cause)).toBe(true);
-      }),
-    );
-  },
-);
+  t.effect("an unexpected parse failure fails the run instead of scoring 0", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(
+        Runner.runSuite(jsonSuite(unreadableCase), { bypassCache: true }),
+      );
+      expect(Exit.isFailure(exit)).toBe(true);
+      if (!Exit.isFailure(exit)) return;
+      expect(Cause.hasDies(exit.cause)).toBe(true);
+    }),
+  );
+});

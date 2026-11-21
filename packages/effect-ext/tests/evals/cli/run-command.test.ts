@@ -9,7 +9,8 @@
  * @module tests/cli/run-command
  */
 
-import { afterEach, beforeEach, expect, vi, layer } from "@effect/vitest";
+import { afterEach, beforeEach, expect, vi } from "@effect/vitest";
+import { describeLayerPerTest } from "../helpers/layerPerTest.ts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -55,7 +56,7 @@ const runCli = (
     makeDirectory: () => Effect.void,
   });
 
-  // The suite's `layer(...)` block provides the real Node services; this
+  // The suite's `describeLayerPerTest(...)` block provides the real Node services; this
   // `FileSystem` double is the innermost provider, so it wins over the Node one
   // and the JSON report never reaches the disk.
   return Command.runWith(runCommand, { version: "0.0.0" })(args).pipe(
@@ -63,93 +64,93 @@ const runCli = (
   );
 };
 
-layer(Layer.merge(NodeServices.layer, Cache.layerMemory), {
-  buildPerTest: true,
-  excludeTestServices: true,
-})("cli/RunCommand — run", (t) => {
-  t.effect("prints the terminal report and leaves exitCode unset for a passing run", () =>
-    Effect.gen(function* () {
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+describeLayerPerTest(Layer.merge(NodeServices.layer, Cache.layerMemory), { live: true })(
+  "cli/RunCommand — run",
+  (t) => {
+    t.effect("prints the terminal report and leaves exitCode unset for a passing run", () =>
+      Effect.gen(function* () {
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-      yield* runCli(["run", fixture("sample.eval.ts"), "--reporter", "terminal"]);
+        yield* runCli(["run", fixture("sample.eval.ts"), "--reporter", "terminal"]);
 
-      const output = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
-      expect(output).toContain("fixture-greetings");
-      expect(output).toContain("PASS");
-      expect(process.exitCode).toBeUndefined();
-    }),
-  );
+        const output = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
+        expect(output).toContain("fixture-greetings");
+        expect(output).toContain("PASS");
+        expect(process.exitCode).toBeUndefined();
+      }),
+    );
 
-  t.effect("sets exitCode to 1 when an executed suite fails its threshold", () =>
-    Effect.gen(function* () {
-      vi.spyOn(console, "log").mockImplementation(() => {});
+    t.effect("sets exitCode to 1 when an executed suite fails its threshold", () =>
+      Effect.gen(function* () {
+        vi.spyOn(console, "log").mockImplementation(() => {});
 
-      yield* runCli(["run", fixture("failing.eval.ts"), "--reporter", "terminal"]);
+        yield* runCli(["run", fixture("failing.eval.ts"), "--reporter", "terminal"]);
 
-      expect(process.exitCode).toBe(1);
-    }),
-  );
+        expect(process.exitCode).toBe(1);
+      }),
+    );
 
-  t.effect("prints a SKIP line for a credential-gated file and leaves exitCode unset", () =>
-    Effect.gen(function* () {
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    t.effect("prints a SKIP line for a credential-gated file and leaves exitCode unset", () =>
+      Effect.gen(function* () {
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-      yield* runCli(["run", fixture("config-gated.eval.ts")]);
+        yield* runCli(["run", fixture("config-gated.eval.ts")]);
 
-      const output = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
-      expect(output).toContain("SKIP");
-      expect(output).toContain("config-gated.eval.ts");
-      expect(output).toContain("EFFECT_EVALS_FIXTURE_NEVER_SET_TOKEN");
-      expect(process.exitCode).toBeUndefined();
-    }),
-  );
+        const output = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
+        expect(output).toContain("SKIP");
+        expect(output).toContain("config-gated.eval.ts");
+        expect(output).toContain("EFFECT_EVALS_FIXTURE_NEVER_SET_TOKEN");
+        expect(process.exitCode).toBeUndefined();
+      }),
+    );
 
-  t.effect("prints a FAIL line and sets exitCode for a file that fails to load", () =>
-    Effect.gen(function* () {
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    t.effect("prints a FAIL line and sets exitCode for a file that fails to load", () =>
+      Effect.gen(function* () {
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-      yield* runCli(["run", fixture("invalid.eval.ts")]);
+        yield* runCli(["run", fixture("invalid.eval.ts")]);
 
-      const output = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
-      expect(output).toContain("FAIL");
-      expect(output).toContain("invalid.eval.ts");
-      expect(process.exitCode).toBe(1);
-    }),
-  );
+        const output = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
+        expect(output).toContain("FAIL");
+        expect(output).toContain("invalid.eval.ts");
+        expect(process.exitCode).toBe(1);
+      }),
+    );
 
-  t.effect("--reporter json writes the combined report and skips the terminal table", () =>
-    Effect.gen(function* () {
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-      const writes: Array<{ path: string; content: string }> = [];
+    t.effect("--reporter json writes the combined report and skips the terminal table", () =>
+      Effect.gen(function* () {
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+        const writes: Array<{ path: string; content: string }> = [];
 
-      yield* runCli(
-        ["run", fixture("sample.eval.ts"), "--reporter", "json", "--out", "out.json"],
-        writes,
-      );
+        yield* runCli(
+          ["run", fixture("sample.eval.ts"), "--reporter", "json", "--out", "out.json"],
+          writes,
+        );
 
-      expect(writes).toHaveLength(1);
-      expect(writes[0]?.path).toBe("out.json");
-      const parsed = Schema.decodeSync(Schema.fromJsonString(RunReport))(
-        writes[0]?.content ?? "{}",
-      );
-      expect(parsed.isPassed).toBe(true);
-      expect(parsed.ran[0]?.suites[0]?.suite).toBe("fixture-greetings");
+        expect(writes).toHaveLength(1);
+        expect(writes[0]?.path).toBe("out.json");
+        const parsed = Schema.decodeSync(Schema.fromJsonString(RunReport))(
+          writes[0]?.content ?? "{}",
+        );
+        expect(parsed.isPassed).toBe(true);
+        expect(parsed.ran[0]?.suites[0]?.suite).toBe("fixture-greetings");
 
-      const output = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
-      expect(output).not.toContain("fixture-greetings");
-    }),
-  );
+        const output = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
+        expect(output).not.toContain("fixture-greetings");
+      }),
+    );
 
-  t.effect("defaults to both terminal and json when --reporter is omitted", () =>
-    Effect.gen(function* () {
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-      const writes: Array<{ path: string; content: string }> = [];
+    t.effect("defaults to both terminal and json when --reporter is omitted", () =>
+      Effect.gen(function* () {
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+        const writes: Array<{ path: string; content: string }> = [];
 
-      yield* runCli(["run", fixture("sample.eval.ts")], writes);
+        yield* runCli(["run", fixture("sample.eval.ts")], writes);
 
-      expect(writes).toHaveLength(1);
-      const output = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
-      expect(output).toContain("fixture-greetings");
-    }),
-  );
-});
+        expect(writes).toHaveLength(1);
+        const output = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
+        expect(output).toContain("fixture-greetings");
+      }),
+    );
+  },
+);

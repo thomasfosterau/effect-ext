@@ -7,7 +7,8 @@
  * @module tests/runner
  */
 
-import { describe, expect, it, layer } from "@effect/vitest";
+import { describe, expect, it } from "@effect/vitest";
+import { describeLayerPerTest, layerPerTest } from "./helpers/layerPerTest.ts";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
 import * as Cause from "effect/Cause";
@@ -61,7 +62,7 @@ const echoTask = Runner.makeTask<string, string>({
   run: (golden) => Effect.succeed(golden),
 });
 
-layer(Cache.layerMemory, { buildPerTest: true })("Runner.runSuite — end to end", (t) => {
+describeLayerPerTest(Cache.layerMemory)("Runner.runSuite — end to end", (t) => {
   t.effect("runs every golden through the task and every metric, bounded concurrency", () =>
     Effect.gen(function* () {
       const suite = Runner.makeSuite({
@@ -121,7 +122,7 @@ layer(Cache.layerMemory, { buildPerTest: true })("Runner.runSuite — end to end
   );
 });
 
-layer(Cache.layerMemory, { buildPerTest: true })("Runner.runSuite — trials", (t) => {
+describeLayerPerTest(Cache.layerMemory)("Runner.runSuite — trials", (t) => {
   t.effect("aggregates mean/variance/min/max and exposes every per-trial score", () =>
     Effect.gen(function* () {
       const scores = [0.6, 0.8, 1];
@@ -199,7 +200,7 @@ layer(Cache.layerMemory, { buildPerTest: true })("Runner.runSuite — trials", (
   );
 });
 
-layer(Cache.layerMemory, { buildPerTest: true })("Runner.runSuite — retry", (t) => {
+describeLayerPerTest(Cache.layerMemory)("Runner.runSuite — retry", (t) => {
   t.effect("retries a retryable AiError and eventually succeeds", () =>
     Effect.gen(function* () {
       let attempts = 0;
@@ -317,52 +318,49 @@ const makeFlakyOnceMetric = () => {
   });
 };
 
-layer(Cache.layerMemory, { buildPerTest: true })(
-  "Runner.runSuite — ignore vs fail metric errors",
-  (t) => {
-    t.effect("fails the case on any metric error by default (ignoreErrors: false)", () =>
-      Effect.gen(function* () {
-        const suite = Runner.makeSuite({
-          name: "strict-errors",
-          dataset: Dataset.fromArray("strict-errors", ["Bonjour"]),
-          task: echoTask,
-          metrics: [makeFlakyOnceMetric()],
-        });
+describeLayerPerTest(Cache.layerMemory)("Runner.runSuite — ignore vs fail metric errors", (t) => {
+  t.effect("fails the case on any metric error by default (ignoreErrors: false)", () =>
+    Effect.gen(function* () {
+      const suite = Runner.makeSuite({
+        name: "strict-errors",
+        dataset: Dataset.fromArray("strict-errors", ["Bonjour"]),
+        task: echoTask,
+        metrics: [makeFlakyOnceMetric()],
+      });
 
-        const result = yield* Runner.runSuite(suite, { trials: 3 });
+      const result = yield* Runner.runSuite(suite, { trials: 3 });
 
-        expect(result.cases[0]?.metrics[0]?.errorCount).toBe(1);
-        expect(result.cases[0]?.metrics[0]?.passed).toBe(false);
-        expect(result.cases[0]?.passed).toBe(false);
-      }),
-    );
+      expect(result.cases[0]?.metrics[0]?.errorCount).toBe(1);
+      expect(result.cases[0]?.metrics[0]?.passed).toBe(false);
+      expect(result.cases[0]?.passed).toBe(false);
+    }),
+  );
 
-    t.effect("excludes errored trials from the aggregate when ignoreErrors: true", () =>
-      Effect.gen(function* () {
-        const suite = Runner.makeSuite({
-          name: "ignored-errors",
-          dataset: Dataset.fromArray("ignored-errors", ["Bonjour"]),
-          task: echoTask,
-          metrics: [makeFlakyOnceMetric()],
-        });
+  t.effect("excludes errored trials from the aggregate when ignoreErrors: true", () =>
+    Effect.gen(function* () {
+      const suite = Runner.makeSuite({
+        name: "ignored-errors",
+        dataset: Dataset.fromArray("ignored-errors", ["Bonjour"]),
+        task: echoTask,
+        metrics: [makeFlakyOnceMetric()],
+      });
 
-        const result = yield* Runner.runSuite(suite, { trials: 3, ignoreErrors: true });
+      const result = yield* Runner.runSuite(suite, { trials: 3, ignoreErrors: true });
 
-        const metric = result.cases[0]?.metrics[0];
-        expect(metric?.errorCount).toBe(1);
-        expect(statOf("mean", metric)).toBe(1);
-        expect(metric?.passed).toBe(true);
-        expect(result.cases[0]?.passed).toBe(true);
-      }),
-    );
-  },
-);
+      const metric = result.cases[0]?.metrics[0];
+      expect(metric?.errorCount).toBe(1);
+      expect(statOf("mean", metric)).toBe(1);
+      expect(metric?.passed).toBe(true);
+      expect(result.cases[0]?.passed).toBe(true);
+    }),
+  );
+});
 
 const storeFailure = (method: string) =>
   Effect.fail(new Cache.KeyValueStore.KeyValueStoreError({ message: "store down", method }));
 
 describe("Runner.runSuite — caching", () => {
-  layer(Cache.layerMemory, { buildPerTest: true })((t) => {
+  layerPerTest(Cache.layerMemory)((t) => {
     t.effect("makes zero further scorer/task calls on a repeat run against the same cache", () =>
       Effect.gen(function* () {
         let taskCalls = 0;
@@ -512,7 +510,7 @@ describe("Runner.runSuite — caching", () => {
       }),
   );
 
-  layer(Cache.layerMemory, { buildPerTest: true })((t) => {
+  layerPerTest(Cache.layerMemory)((t) => {
     t.effect("bypassCache: true skips the cache, making a fresh call on every run", () =>
       Effect.gen(function* () {
         let metricCalls = 0;
@@ -589,7 +587,7 @@ describe("Runner.makeSuite — heterogeneous metrics", () => {
     threshold: Threshold.strict,
   });
 
-  layer(Cache.layerMemory, { buildPerTest: true })((t) => {
+  layerPerTest(Cache.layerMemory)((t) => {
     t.effect(
       "infers the union of E/R across metrics with different E/R, no explicit array annotation",
       () =>
@@ -618,7 +616,7 @@ describe("Runner.makeSuite — heterogeneous metrics", () => {
   });
 });
 
-layer(Cache.layerMemory, { buildPerTest: true })("Runner.runSuite — reporters", (t) => {
+describeLayerPerTest(Cache.layerMemory)("Runner.runSuite — reporters", (t) => {
   t.effect("invokes every reporter exactly once with the final result", () =>
     Effect.gen(function* () {
       const reports: Array<string> = [];

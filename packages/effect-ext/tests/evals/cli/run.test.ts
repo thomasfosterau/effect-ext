@@ -9,7 +9,8 @@
  * @module tests/cli/run
  */
 
-import { expect, layer } from "@effect/vitest";
+import { expect } from "@effect/vitest";
+import { describeLayerPerTest } from "../helpers/layerPerTest.ts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -31,7 +32,7 @@ const baseConfig = {
   filter: Option.none<string>(),
 };
 
-layer(testLayer, { buildPerTest: true })("cli/Run.runEvals", (t) => {
+describeLayerPerTest(testLayer)("cli/Run.runEvals", (t) => {
   t.effect("runs a passing suite through a stubbed LanguageModel layer", () =>
     Effect.gen(function* () {
       const report = yield* runEvals({ ...baseConfig, globs: [fixture("sample.eval.ts")] });
