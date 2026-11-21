@@ -32,6 +32,9 @@
  *   with a `Control` that runs each frame and idle period.
  * - `TestInstalledApp` — an installable app, with a `Control` that offers
  *   the install prompt, answers it and launches the app with files.
+ * - `TestSerial` — serial ports, for `Serial` (from
+ *   `effect-platform-worker-shared`), with a `Control` that plugs them in
+ *   and out and answers the picker; each port sends bytes and records writes.
  * - `TestAppBadge` — an app badge, for `AppBadge` (from
  *   `effect-platform-worker-shared`), with a `Control` that reads it back.
  * - `TestMediaDevices` — cameras, microphones and a recorder, with a
@@ -76,6 +79,7 @@ export * as TestPerformance from "./testing/performance.ts";
 export * as TestPageVisibility from "./testing/page-visibility.ts";
 export * as TestPermissions from "./testing/permissions.ts";
 export * as TestScreenOrientation from "./testing/screen-orientation.ts";
+export * as TestSerial from "./testing/serial.ts";
 export * as TestSpeechRecognition from "./testing/speech-recognition.ts";
 export * as TestSpeechSynthesis from "./testing/speech-synthesis.ts";
 export * as TestWakeLock from "./testing/wake-lock.ts";

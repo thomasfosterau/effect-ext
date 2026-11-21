@@ -28,6 +28,7 @@ import * as TestPerformance from "./performance.ts";
 import * as TestPageVisibility from "./page-visibility.ts";
 import * as TestPermissions from "./permissions.ts";
 import * as TestScreenOrientation from "./screen-orientation.ts";
+import * as TestSerial from "./serial.ts";
 import * as TestSpeechRecognition from "./speech-recognition.ts";
 import * as TestSpeechSynthesis from "./speech-synthesis.ts";
 import * as TestWakeLock from "./wake-lock.ts";
@@ -81,6 +82,7 @@ export const layer = Layer.mergeAll(
   TestPerformance.layer(),
   TestPermissions.layer(),
   TestScreenOrientation.layer(),
+  TestSerial.layer(),
   TestSpeechRecognition.layer(),
   TestSpeechSynthesis.layer(),
   TestWakeLock.layer(),
