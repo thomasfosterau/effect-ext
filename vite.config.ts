@@ -444,6 +444,12 @@ export default defineConfig({
           "packages/effect-platform-browser/src/testing/speech-synthesis.ts",
           // A launch's `targetURL`, `null` for a file launch in some agents.
           "packages/effect-platform-browser/src/InstalledApp.ts",
+          // A port's `readable` and `writable`, `null` while the port is closed
+          // or after a fatal error, and a device event's `target`.
+          "packages/effect-platform-worker-shared/src/Serial.ts",
+          "packages/effect-platform-worker-shared/src/internal/device.ts",
+          "packages/effect-platform-worker-shared/tests/Serial.test.ts",
+          "packages/effect-platform-browser/src/testing/serial.ts",
           // `cookieStore.get`, which resolves `null` for a cookie that is not set.
           "packages/effect-platform-worker-shared/src/CookieStore.ts",
           // `mark` and `measure`, which return no entry in older agents.

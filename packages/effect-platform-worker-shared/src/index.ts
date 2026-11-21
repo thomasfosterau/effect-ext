@@ -7,6 +7,7 @@ export * as CookieStore from "./CookieStore.ts";
 export * as EventSource from "./EventSource.ts";
 export * as MemoryFileSystemHandle from "./MemoryFileSystemHandle.ts";
 export * as Performance from "./Performance.ts";
+export * as Serial from "./Serial.ts";
 export * as TaskScheduler from "./TaskScheduler.ts";
 export * as WorkerMessaging from "./WorkerMessaging.ts";
 export * as WorkerRuntime from "./WorkerRuntime.ts";

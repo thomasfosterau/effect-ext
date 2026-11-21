@@ -6,6 +6,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { fakeScopeConstructor, installGlobals } from "./globals.ts";
 import * as Effect from "effect/Effect";
+import * as Serial from "@thomasfosterau/effect-platform-worker-shared/Serial";
 import * as AppBadge from "@thomasfosterau/effect-platform-worker-shared/AppBadge";
 import * as WorkerScope from "@thomasfosterau/effect-platform-worker-shared/WorkerScope";
 
@@ -20,6 +21,7 @@ class FakeNavigator {
     this.badge.push("clear");
     return Promise.resolve();
   }
+  readonly serial = Object.assign(new EventTarget(), { getPorts: () => Promise.resolve([]) });
 }
 const navigator = new FakeNavigator();
 
@@ -46,6 +48,7 @@ describe("AppBadge's ambient default", () => {
       yield* AppBadge.set(2);
       yield* AppBadge.clear;
       expect(navigator.badge).toEqual([2, "clear"]);
+      expect(yield* Serial.ports).toEqual([]);
     }),
   );
 });

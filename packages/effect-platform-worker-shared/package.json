@@ -8,6 +8,7 @@
     "effect",
     "eventsource",
     "scheduler",
+    "serial",
     "server-sent-events",
     "web-worker",
     "worker"
@@ -34,6 +35,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./AppBadge": "./src/AppBadge.ts",
+    "./Serial": "./src/Serial.ts",
     "./WorkerScope": "./src/WorkerScope.ts",
     "./WorkerRuntime": "./src/WorkerRuntime.ts",
     "./WorkerMessaging": "./src/WorkerMessaging.ts",
@@ -56,6 +58,10 @@
       "./AppBadge": {
         "types": "./dist/AppBadge.d.ts",
         "import": "./dist/AppBadge.js"
+      },
+      "./Serial": {
+        "types": "./dist/Serial.d.ts",
+        "import": "./dist/Serial.js"
       },
       "./WorkerScope": {
         "types": "./dist/WorkerScope.d.ts",
