@@ -30,6 +30,10 @@
  *   that seeds the disk and chooses what the user picks.
  * - `TestFrames` — animation frames and idle callbacks on a manual clock,
  *   with a `Control` that runs each frame and idle period.
+ * - `TestInstalledApp` — an installable app, with a `Control` that offers
+ *   the install prompt, answers it and launches the app with files.
+ * - `TestAppBadge` — an app badge, for `AppBadge` (from
+ *   `effect-platform-worker-shared`), with a `Control` that reads it back.
  * - `TestMediaDevices` — cameras, microphones and a recorder, with a
  *   `Control` that plugs devices in, fails captures, ends tracks and feeds
  *   the recorder.
@@ -48,6 +52,7 @@
  */
 export { layer } from "./testing/layer.ts";
 export { observe } from "./testing/stream.ts";
+export * as TestAppBadge from "./testing/app-badge.ts";
 export * as TestBattery from "./testing/battery.ts";
 export * as TestBroadcast from "./testing/broadcast.ts";
 export * as TestClipboard from "./testing/clipboard.ts";
@@ -57,6 +62,7 @@ export * as TestDomObservers from "./testing/dom-observers.ts";
 export * as TestEventSource from "./testing/event-source.ts";
 export * as TestFilePicker from "./testing/file-picker.ts";
 export * as TestFrames from "./testing/frames.ts";
+export * as TestInstalledApp from "./testing/installed-app.ts";
 export * as TestFullscreen from "./testing/fullscreen.ts";
 export * as TestGeolocation from "./testing/geolocation.ts";
 export * as TestIdleDetection from "./testing/idle-detection.ts";

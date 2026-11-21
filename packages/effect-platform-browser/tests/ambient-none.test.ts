@@ -7,6 +7,7 @@ import {
   Credentials,
   FilePicker,
   Frames,
+  InstalledApp,
   Locks,
   MediaDevices,
   Navigation,
@@ -34,6 +35,7 @@ describe("Browser.layer without a navigator", () => {
         speech: (yield* SpeechSynthesis.SpeechSynthesis).supported,
         credentials: (yield* Credentials.Credentials).supported,
         recognition: (yield* SpeechRecognition.SpeechRecognition).supported,
+        installedApp: (yield* InstalledApp.InstalledApp).supported,
       }).toStrictEqual({
         userAgent: "",
         languages: [],
@@ -46,6 +48,7 @@ describe("Browser.layer without a navigator", () => {
         speech: false,
         credentials: false,
         recognition: false,
+        installedApp: { installPrompt: false, launchQueue: false, relatedApps: false },
       });
     }).pipe(Effect.provide(Browser.layer)),
   );

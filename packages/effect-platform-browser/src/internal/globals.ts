@@ -10,12 +10,14 @@
  */
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
+import type * as Stream from "effect/Stream";
 import type { BatteryManagerLike } from "../Battery.ts";
 import type { WebAuthnLike } from "../Credentials.ts";
 import type { FilePickerLike } from "../FilePicker.ts";
 import type { AnimationFramesLike, IdleCallbacksLike } from "../Frames.ts";
 import type { MediaDevicesLike, MediaRecorderFactoryLike } from "../MediaDevices.ts";
 import type { IdleDetectorLike } from "../IdleDetection.ts";
+import type { InstallEventLike, LaunchQueueLike, RelatedAppLike } from "../InstalledApp.ts";
 import type { NavigationLike } from "../Navigation.ts";
 import type { RecognitionLike, SpeechRecognitionFactoryLike } from "../SpeechRecognition.ts";
 import type { SpeechSynthesisLike, UtteranceLike } from "../SpeechSynthesis.ts";
@@ -235,3 +237,26 @@ export const ambientIdleCallbacks = (): Option.Option<IdleCallbacksLike> => {
     }),
   );
 };
+
+/** `globalThis` as the target `beforeinstallprompt` and `appinstalled` fire on, where the agent has install prompts (Chromium). */
+export const ambientInstallEvents = (): Option.Option<Stream.EventListener<InstallEventLike>> =>
+  "onbeforeinstallprompt" in globalThis ? ambientEventTarget() : Option.none();
+
+/** `globalThis.launchQueue`, where the agent has one (Chromium, in an installed app's window). */
+export const ambientLaunchQueue = (): Option.Option<LaunchQueueLike> => {
+  const scope: { readonly launchQueue?: LaunchQueueLike } & Pick<typeof globalThis, "navigator"> =
+    globalThis;
+  return Option.fromUndefinedOr(scope.launchQueue);
+};
+
+/** `navigator.getInstalledRelatedApps`, bound to `navigator`, where the agent has it (Chromium). */
+export const ambientRelatedApps = (): Option.Option<() => Promise<ReadonlyArray<RelatedAppLike>>> =>
+  Option.flatMap(ambientNavigator(), (navigator) => {
+    const related: {
+      readonly getInstalledRelatedApps?: () => Promise<ReadonlyArray<RelatedAppLike>>;
+    } & Pick<Navigator, "onLine"> = navigator;
+    return Option.map(
+      Option.fromUndefinedOr(related.getInstalledRelatedApps),
+      (get) => () => get.call(navigator),
+    );
+  });

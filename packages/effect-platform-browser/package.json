@@ -41,6 +41,7 @@
     "./DomObservers": "./src/DomObservers.ts",
     "./FilePicker": "./src/FilePicker.ts",
     "./Frames": "./src/Frames.ts",
+    "./InstalledApp": "./src/InstalledApp.ts",
     "./Fullscreen": "./src/Fullscreen.ts",
     "./IdleDetection": "./src/IdleDetection.ts",
     "./Locks": "./src/Locks.ts",
@@ -99,6 +100,10 @@
       "./Frames": {
         "types": "./dist/Frames.d.ts",
         "import": "./dist/Frames.js"
+      },
+      "./InstalledApp": {
+        "types": "./dist/InstalledApp.d.ts",
+        "import": "./dist/InstalledApp.js"
       },
       "./Fullscreen": {
         "types": "./dist/Fullscreen.d.ts",
