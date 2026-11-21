@@ -12,7 +12,7 @@
  * @module tests/unit/openai-moderation
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as R from "effect/Record";
@@ -27,7 +27,7 @@ import {
   type WorkersAiBinding,
 } from "@thomasfosterau/effect-ai-cloudflare";
 import { stubAiBinding } from "./helpers/ai";
-import { expectFailureInstanceOf, runTest } from "./helpers/effect";
+import { expectFailureInstanceOf } from "./helpers/effect";
 
 /** Builds a stub binding whose `gateway(id).run(data)` is canned. */
 const stubAi = (response: { status: number; body: unknown }) => {
@@ -81,255 +81,293 @@ const moderate = (
   });
 
 describe("makeOpenAiModerationModel", () => {
-  it("posts the moderations request through the universal endpoint, BYOK by default", async () => {
-    const { ai, calls } = stubAi({
-      status: 200,
-      body: omniBody([omniResult(false, { hate: false }, { hate: 0.01 })]),
-    });
+  it.effect("posts the moderations request through the universal endpoint, BYOK by default", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({
+        status: 200,
+        body: omniBody([omniResult(false, { hate: false }, { hate: 0.01 })]),
+      });
 
-    const response = await runTest(moderate(ai, ["hello"]));
+      const response = yield* moderate(ai, ["hello"]);
 
-    expect(calls).toEqual([
-      {
-        provider: "openai",
-        endpoint: "moderations",
-        headers: { "content-type": "application/json" },
-        query: { model: OPENAI_MODERATION_MODEL, input: ["hello"] },
-      },
-    ]);
-    expect(response.results).toHaveLength(1);
-    expect(response.results[0]?.isFlagged).toBe(false);
-    expect(response.results[0]?.categories).toEqual({ hate: 0.01 });
-    expect(response.usage.inputTokens).toStrictEqual(Option.none());
-  });
+      expect(calls).toEqual([
+        {
+          provider: "openai",
+          endpoint: "moderations",
+          headers: { "content-type": "application/json" },
+          query: { model: OPENAI_MODERATION_MODEL, input: ["hello"] },
+        },
+      ]);
+      expect(response.results).toHaveLength(1);
+      expect(response.results[0]?.isFlagged).toBe(false);
+      expect(response.results[0]?.categories).toEqual({ hate: 0.01 });
+      expect(response.usage.inputTokens).toStrictEqual(Option.none());
+    }),
+  );
 
-  it("sends the caller's own key as a bearer token when given one", async () => {
-    const { ai, calls } = stubAi({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
+  it.effect("sends the caller's own key as a bearer token when given one", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
 
-    await runTest(moderate(ai, ["hello"], { apiKey: Redacted.make("sk-test") }));
+      yield* moderate(ai, ["hello"], { apiKey: Redacted.make("sk-test") });
 
-    const sent = calls[0] as { readonly headers: Record<string, string> };
-    expect(sent.headers).toEqual({
-      "content-type": "application/json",
-      authorization: "Bearer sk-test",
-    });
-  });
+      const sent = calls[0] as { readonly headers: Record<string, string> };
+      expect(sent.headers).toEqual({
+        "content-type": "application/json",
+        authorization: "Bearer sk-test",
+      });
+    }),
+  );
 
-  it("requests the model the caller names", async () => {
-    const { ai, calls } = stubAi({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
+  it.effect("requests the model the caller names", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
 
-    await runTest(moderate(ai, ["hello"], { model: "omni-moderation-2024-09-26" }));
+      yield* moderate(ai, ["hello"], { model: "omni-moderation-2024-09-26" });
 
-    const sent = calls[0] as { readonly query: { readonly model: string } };
-    expect(sent.query.model).toBe("omni-moderation-2024-09-26");
-  });
+      const sent = calls[0] as { readonly query: { readonly model: string } };
+      expect(sent.query.model).toBe("omni-moderation-2024-09-26");
+    }),
+  );
 
-  it("maps one result per input, in order, with every category score", async () => {
-    const { ai } = stubAi({
-      status: 200,
-      body: omniBody([
-        omniResult(true, { hate: true, violence: false }, { hate: 0.94, violence: 0.02 }),
-        omniResult(false, { hate: false, violence: false }, { hate: 0.01, violence: 0.03 }),
-      ]),
-    });
+  it.effect("maps one result per input, in order, with every category score", () =>
+    Effect.gen(function* () {
+      const { ai } = stubAi({
+        status: 200,
+        body: omniBody([
+          omniResult(true, { hate: true, violence: false }, { hate: 0.94, violence: 0.02 }),
+          omniResult(false, { hate: false, violence: false }, { hate: 0.01, violence: 0.03 }),
+        ]),
+      });
 
-    const response = await runTest(moderate(ai, ["nasty", "nice"]));
+      const response = yield* moderate(ai, ["nasty", "nice"]);
 
-    expect(response.results.map((result) => result.isFlagged)).toEqual([true, false]);
-    expect(response.results[0]?.categories).toEqual({ hate: 0.94, violence: 0.02 });
-    expect(response.results[1]?.categories).toEqual({ hate: 0.01, violence: 0.03 });
-  });
+      expect(response.results.map((result) => result.isFlagged)).toEqual([true, false]);
+      expect(response.results[0]?.categories).toEqual({ hate: 0.94, violence: 0.02 });
+      expect(response.results[1]?.categories).toEqual({ hate: 0.01, violence: 0.03 });
+    }),
+  );
 
-  it("drops null (unassessed) category scores rather than grading them as zero", async () => {
-    const { ai } = stubAi({
-      status: 200,
-      body: omniBody([
-        omniResult(false, { hate: UNASSESSED, sexual: false }, { hate: UNASSESSED, sexual: 0.2 }),
-      ]),
-    });
+  it.effect("drops null (unassessed) category scores rather than grading them as zero", () =>
+    Effect.gen(function* () {
+      const { ai } = stubAi({
+        status: 200,
+        body: omniBody([
+          omniResult(false, { hate: UNASSESSED, sexual: false }, { hate: UNASSESSED, sexual: 0.2 }),
+        ]),
+      });
 
-    const response = await runTest(moderate(ai, ["..."]));
+      const response = yield* moderate(ai, ["..."]);
 
-    expect(response.results[0]?.categories).toEqual({ sexual: 0.2 });
-  });
+      expect(response.results[0]?.categories).toEqual({ sexual: 0.2 });
+    }),
+  );
 
-  it("never fails an otherwise-valid response over a vendor field it has never heard of", async () => {
-    const { ai } = stubAi({
-      status: 200,
-      body: omniBody(
-        [
-          {
-            ...omniResult(false, { hate: false }, { hate: 0.01 }),
-            category_applied_input_types: { hate: ["text"] },
-            a_field_added_next_quarter: { nested: [1, 2, 3] },
-          },
-        ],
-        { usage: { total_tokens: 12 }, another_new_top_level_field: "ignored" },
-      ),
-    });
+  it.effect(
+    "never fails an otherwise-valid response over a vendor field it has never heard of",
+    () =>
+      Effect.gen(function* () {
+        const { ai } = stubAi({
+          status: 200,
+          body: omniBody(
+            [
+              {
+                ...omniResult(false, { hate: false }, { hate: 0.01 }),
+                category_applied_input_types: { hate: ["text"] },
+                a_field_added_next_quarter: { nested: [1, 2, 3] },
+              },
+            ],
+            { usage: { total_tokens: 12 }, another_new_top_level_field: "ignored" },
+          ),
+        });
 
-    const response = await runTest(moderate(ai, ["hello"]));
+        const response = yield* moderate(ai, ["hello"]);
 
-    expect(response.results[0]?.categories).toEqual({ hate: 0.01 });
-  });
+        expect(response.results[0]?.categories).toEqual({ hate: 0.01 });
+      }),
+  );
 
-  it("tolerates a result with no category maps at all", async () => {
-    const { ai } = stubAi({ status: 200, body: omniBody([{ flagged: true }]) });
+  it.effect("tolerates a result with no category maps at all", () =>
+    Effect.gen(function* () {
+      const { ai } = stubAi({ status: 200, body: omniBody([{ flagged: true }]) });
 
-    const response = await runTest(moderate(ai, ["hello"]));
+      const response = yield* moderate(ai, ["hello"]);
 
-    expect(response.results[0]).toMatchObject({ isFlagged: true, categories: {} });
-  });
+      expect(response.results[0]).toMatchObject({ isFlagged: true, categories: {} });
+    }),
+  );
 
-  it("returns an empty response for no inputs without calling the gateway", async () => {
-    const { ai, calls } = stubAi({ status: 200, body: omniBody([]) });
+  it.effect("returns an empty response for no inputs without calling the gateway", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({ status: 200, body: omniBody([]) });
 
-    const response = await runTest(moderate(ai, []));
+      const response = yield* moderate(ai, []);
 
-    expect(response.results).toEqual([]);
-    expect(calls).toHaveLength(0);
-  });
+      expect(response.results).toEqual([]);
+      expect(calls).toHaveLength(0);
+    }),
+  );
 
-  it("fails with AiError on a non-2xx status, mapping the status to a reason", async () => {
-    const { ai } = stubAi({ status: 429, body: { error: { message: "rate limited" } } });
+  it.effect("fails with AiError on a non-2xx status, mapping the status to a reason", () =>
+    Effect.gen(function* () {
+      const { ai } = stubAi({ status: 429, body: { error: { message: "rate limited" } } });
 
-    const failure = await expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
+      const failure = yield* expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
-    expect(failure.module).toBe("OpenAiModeration");
-    expect(failure.method).toBe("moderate");
-    expect(failure.reason._tag).toBe("RateLimitError");
-    expect(failure.isRetryable).toBe(true);
-  });
+      expect(failure.module).toBe("OpenAiModeration");
+      expect(failure.method).toBe("moderate");
+      expect(failure.reason._tag).toBe("RateLimitError");
+      expect(failure.isRetryable).toBe(true);
+    }),
+  );
 
-  it("fails with AiError (AuthenticationError) on a 401", async () => {
-    const { ai } = stubAi({ status: 401, body: { error: { message: "bad key" } } });
+  it.effect("fails with AiError (AuthenticationError) on a 401", () =>
+    Effect.gen(function* () {
+      const { ai } = stubAi({ status: 401, body: { error: { message: "bad key" } } });
 
-    const failure = await expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
+      const failure = yield* expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
-    expect(failure.reason._tag).toBe("AuthenticationError");
-  });
+      expect(failure.reason._tag).toBe("AuthenticationError");
+    }),
+  );
 
-  it("fails with AiError (InvalidOutputError) when the body does not decode", async () => {
-    const { ai } = stubAi({ status: 200, body: { results: "nope" } });
+  it.effect("fails with AiError (InvalidOutputError) when the body does not decode", () =>
+    Effect.gen(function* () {
+      const { ai } = stubAi({ status: 200, body: { results: "nope" } });
 
-    const failure = await expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
+      const failure = yield* expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
-    expect(failure.reason._tag).toBe("InvalidOutputError");
-  });
+      expect(failure.reason._tag).toBe("InvalidOutputError");
+    }),
+  );
 
-  it("fails with AiError (InvalidOutputError) when the result count does not match the inputs", async () => {
-    const { ai } = stubAi({ status: 200, body: omniBody([]) });
+  it.effect(
+    "fails with AiError (InvalidOutputError) when the result count does not match the inputs",
+    () =>
+      Effect.gen(function* () {
+        const { ai } = stubAi({ status: 200, body: omniBody([]) });
 
-    const failure = await expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
+        const failure = yield* expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
-    expect(failure.reason._tag).toBe("InvalidOutputError");
-    expect(failure.message).toContain("expected 1");
-  });
+        expect(failure.reason._tag).toBe("InvalidOutputError");
+        expect(failure.message).toContain("expected 1");
+      }),
+  );
 
-  it("fails with AiError (not a defect) when the gateway call itself rejects", async () => {
-    const ai = stubAiBinding(() => ({
-      run: async () => {
-        throw new TypeError("socket hang up");
-      },
-    }));
+  it.effect("fails with AiError (not a defect) when the gateway call itself rejects", () =>
+    Effect.gen(function* () {
+      const ai = stubAiBinding(() => ({
+        run: () => Promise.reject(new TypeError("socket hang up")),
+      }));
 
-    const failure = await expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
+      const failure = yield* expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
-    expect(failure.message).toContain("gateway call failed");
-  });
+      expect(failure.message).toContain("gateway call failed");
+    }),
+  );
 
-  it("fails with AiError on a 200 whose body is not JSON at all", async () => {
-    const ai = stubAiBinding(() => ({
-      run: async () => new Response("<html>gateway error</html>", { status: 200 }),
-    }));
+  it.effect("fails with AiError on a 200 whose body is not JSON at all", () =>
+    Effect.gen(function* () {
+      const ai = stubAiBinding(() => ({
+        run: async () => new Response("<html>gateway error</html>", { status: 200 }),
+      }));
 
-    const failure = await expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
+      const failure = yield* expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
-    expect(failure.message).toContain("response body");
-  });
+      expect(failure.message).toContain("response body");
+    }),
+  );
 
-  it("carries the provider's per-category verdicts and the dated model that served the call", async () => {
-    const { ai } = stubAi({
-      status: 200,
-      body: omniBody(
-        [omniResult(true, { hate: true, violence: false, sexual: UNASSESSED }, { hate: 0.9 })],
-        { model: "omni-moderation-2024-09-26" },
-      ),
-    });
+  it.effect(
+    "carries the provider's per-category verdicts and the dated model that served the call",
+    () =>
+      Effect.gen(function* () {
+        const { ai } = stubAi({
+          status: 200,
+          body: omniBody(
+            [omniResult(true, { hate: true, violence: false, sexual: UNASSESSED }, { hate: 0.9 })],
+            { model: "omni-moderation-2024-09-26" },
+          ),
+        });
 
-    const response = await runTest(moderate(ai, ["..."]));
+        const response = yield* moderate(ai, ["..."]);
 
-    expect(response.results[0]?.flags).toStrictEqual(Option.some({ hate: true, violence: false }));
-    expect(response.modelId).toStrictEqual(Option.some("omni-moderation-2024-09-26"));
-  });
+        expect(response.results[0]?.flags).toStrictEqual(
+          Option.some({ hate: true, violence: false }),
+        );
+        expect(response.modelId).toStrictEqual(Option.some("omni-moderation-2024-09-26"));
+      }),
+  );
 
-  it("leaves flags undefined when the provider sends no categories map", async () => {
-    const { ai } = stubAi({ status: 200, body: omniBody([{ flagged: false }]) });
+  it.effect("leaves flags undefined when the provider sends no categories map", () =>
+    Effect.gen(function* () {
+      const { ai } = stubAi({ status: 200, body: omniBody([{ flagged: false }]) });
 
-    const response = await runTest(moderate(ai, ["..."]));
+      const response = yield* moderate(ai, ["..."]);
 
-    expect(response.results[0]?.flags).toStrictEqual(Option.none());
-  });
+      expect(response.results[0]?.flags).toStrictEqual(Option.none());
+    }),
+  );
 
-  it("sends an image input as an image_url part, one request per input", async () => {
-    const { ai, calls } = stubAi({
-      status: 200,
-      body: omniBody([omniResult(false, { sexual: false }, { sexual: 0.02 })]),
-    });
+  it.effect("sends an image input as an image_url part, one request per input", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({
+        status: 200,
+        body: omniBody([omniResult(false, { sexual: false }, { sexual: 0.02 })]),
+      });
 
-    const response = await runTest(
-      moderate(ai, [
+      const response = yield* moderate(ai, [
         "a caption",
         [
           { type: "text", text: "what is this" },
           { type: "file", mediaType: "image/png", data: new Uint8Array([1, 2, 3]) },
         ],
-      ]),
-    );
+      ]);
 
-    expect(calls.map((call) => (call as { query: unknown }).query)).toEqual([
-      { model: OPENAI_MODERATION_MODEL, input: ["a caption"] },
-      {
-        model: OPENAI_MODERATION_MODEL,
-        input: [
-          { type: "text", text: "what is this" },
-          { type: "image_url", image_url: { url: "data:image/png;base64,AQID" } },
-        ],
-      },
-    ]);
-    expect(response.results).toHaveLength(2);
-    expect(response.results[1]?.categories).toEqual({ sexual: 0.02 });
-  });
+      expect(calls.map((call) => (call as { query: unknown }).query)).toEqual([
+        { model: OPENAI_MODERATION_MODEL, input: ["a caption"] },
+        {
+          model: OPENAI_MODERATION_MODEL,
+          input: [
+            { type: "text", text: "what is this" },
+            { type: "image_url", image_url: { url: "data:image/png;base64,AQID" } },
+          ],
+        },
+      ]);
+      expect(response.results).toHaveLength(2);
+      expect(response.results[1]?.categories).toEqual({ sexual: 0.02 });
+    }),
+  );
 
-  it("sends a data: URI, a URL or a base64 string as the image URL", async () => {
-    const { ai, calls } = stubAi({
-      status: 200,
-      body: omniBody([omniResult(false, {}, {})]),
-    });
+  it.effect("sends a data: URI, a URL or a base64 string as the image URL", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({
+        status: 200,
+        body: omniBody([omniResult(false, {}, {})]),
+      });
 
-    await runTest(
-      moderate(ai, [
+      yield* moderate(ai, [
         [{ type: "file", mediaType: "image/jpeg", data: "data:image/jpeg;base64,/9j/" }],
         [{ type: "file", mediaType: "image/jpeg", data: new URL("https://example.com/a.jpg") }],
         [{ type: "file", mediaType: "image/webp", data: "UklGRg==" }],
-      ]),
-    );
+      ]);
 
-    expect(calls.map((call) => (call as { query: { input: unknown } }).query.input)).toEqual([
-      [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/" } }],
-      [{ type: "image_url", image_url: { url: "https://example.com/a.jpg" } }],
-      [{ type: "image_url", image_url: { url: "data:image/webp;base64,UklGRg==" } }],
-    ]);
-  });
+      expect(calls.map((call) => (call as { query: { input: unknown } }).query.input)).toEqual([
+        [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/" } }],
+        [{ type: "image_url", image_url: { url: "https://example.com/a.jpg" } }],
+        [{ type: "image_url", image_url: { url: "data:image/webp;base64,UklGRg==" } }],
+      ]);
+    }),
+  );
 
-  it("sends the tagged JSON forms of a byte array and a URL as the image URL", async () => {
-    const { ai, calls } = stubAi({
-      status: 200,
-      body: omniBody([omniResult(false, {}, {})]),
-    });
+  it.effect("sends the tagged JSON forms of a byte array and a URL as the image URL", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({
+        status: 200,
+        body: omniBody([omniResult(false, {}, {})]),
+      });
 
-    await runTest(
-      moderate(ai, [
+      yield* moderate(ai, [
         [{ type: "file", mediaType: "image/png", data: { _tag: "Uint8Array", base64: "AQID" } }],
         [
           {
@@ -338,66 +376,70 @@ describe("makeOpenAiModerationModel", () => {
             data: { _tag: "URL", href: "https://example.com/b.jpg" },
           },
         ],
-      ]),
-    );
+      ]);
 
-    expect(calls.map((call) => (call as { query: { input: unknown } }).query.input)).toEqual([
-      [{ type: "image_url", image_url: { url: "data:image/png;base64,AQID" } }],
-      [{ type: "image_url", image_url: { url: "https://example.com/b.jpg" } }],
-    ]);
-  });
+      expect(calls.map((call) => (call as { query: { input: unknown } }).query.input)).toEqual([
+        [{ type: "image_url", image_url: { url: "data:image/png;base64,AQID" } }],
+        [{ type: "image_url", image_url: { url: "https://example.com/b.jpg" } }],
+      ]);
+    }),
+  );
 
-  it("fails with InvalidUserInputError on a non-image file part, before any request", async () => {
-    const { ai, calls } = stubAi({ status: 200, body: omniBody([]) });
+  it.effect("fails with InvalidUserInputError on a non-image file part, before any request", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({ status: 200, body: omniBody([]) });
 
-    const failure = await expectFailureInstanceOf(
-      moderate(ai, [
-        "fine",
-        [{ type: "file", mediaType: "application/pdf", data: new Uint8Array([1]) }],
-      ]),
-      AiError.AiError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        moderate(ai, [
+          "fine",
+          [{ type: "file", mediaType: "application/pdf", data: new Uint8Array([1]) }],
+        ]),
+        AiError.AiError,
+      );
 
-    expect(failure.reason._tag).toBe("InvalidUserInputError");
-    expect(calls).toHaveLength(0);
-  });
+      expect(failure.reason._tag).toBe("InvalidUserInputError");
+      expect(calls).toHaveLength(0);
+    }),
+  );
 
-  it("reports each settled call to onCall, on success and on failure", async () => {
-    const seen: Array<OpenAiModerationCall> = [];
-    const onCall = (call: OpenAiModerationCall) => Effect.sync(() => seen.push(call));
-    const ok = stubAi({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
-    const limited = stubAi({ status: 429, body: { error: { message: "slow down" } } });
+  it.effect("reports each settled call to onCall, on success and on failure", () =>
+    Effect.gen(function* () {
+      const seen: Array<OpenAiModerationCall> = [];
+      const onCall = (call: OpenAiModerationCall) => Effect.sync(() => seen.push(call));
+      const ok = stubAi({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
+      const limited = stubAi({ status: 429, body: { error: { message: "slow down" } } });
 
-    await runTest(moderate(ok.ai, ["hello"], { onCall }));
-    const failure = await expectFailureInstanceOf(
-      moderate(limited.ai, ["hello"], { onCall }),
-      AiError.AiError,
-    );
+      yield* moderate(ok.ai, ["hello"], { onCall });
+      const failure = yield* expectFailureInstanceOf(
+        moderate(limited.ai, ["hello"], { onCall }),
+        AiError.AiError,
+      );
 
-    expect(seen).toHaveLength(2);
-    expect(seen[0]).toMatchObject({ status: Option.some(200), error: Option.none() });
-    expect(seen[0]?.durationMillis).toBeGreaterThanOrEqual(0);
-    expect(seen[1]?.status).toEqual(Option.some(429));
-    expect(seen[1]?.error).toEqual(Option.some(failure));
-  });
+      expect(seen).toHaveLength(2);
+      expect(seen[0]).toMatchObject({ status: Option.some(200), error: Option.none() });
+      expect(seen[0]?.durationMillis).toBeGreaterThanOrEqual(0);
+      expect(seen[1]?.status).toEqual(Option.some(429));
+      expect(seen[1]?.error).toEqual(Option.some(failure));
+    }),
+  );
 
-  it("reports a transport failure to onCall with no status", async () => {
-    const seen: Array<OpenAiModerationCall> = [];
-    const ai = stubAiBinding(() => ({
-      run: async () => {
-        throw new TypeError("socket hang up");
-      },
-    }));
+  it.effect("reports a transport failure to onCall with no status", () =>
+    Effect.gen(function* () {
+      const seen: Array<OpenAiModerationCall> = [];
+      const ai = stubAiBinding(() => ({
+        run: () => Promise.reject(new TypeError("socket hang up")),
+      }));
 
-    await expectFailureInstanceOf(
-      moderate(ai, ["..."], { onCall: (call) => Effect.sync(() => seen.push(call)) }),
-      AiError.AiError,
-    );
+      yield* expectFailureInstanceOf(
+        moderate(ai, ["..."], { onCall: (call) => Effect.sync(() => seen.push(call)) }),
+        AiError.AiError,
+      );
 
-    expect(seen).toHaveLength(1);
-    expect(seen[0]?.status).toEqual(Option.none());
-    expect(Option.map(seen[0]?.error ?? Option.none(), (error) => error.reason._tag)).toEqual(
-      Option.some("UnknownError"),
-    );
-  });
+      expect(seen).toHaveLength(1);
+      expect(seen[0]?.status).toEqual(Option.none());
+      expect(Option.map(seen[0]?.error ?? Option.none(), (error) => error.reason._tag)).toEqual(
+        Option.some("UnknownError"),
+      );
+    }),
+  );
 });

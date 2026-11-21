@@ -13,7 +13,7 @@
  * @module tests/unit/anthropic-url
  */
 
-import { assert, describe, expect, it } from "vite-plus/test";
+import { assert, describe, expect, it, layer } from "@effect/vitest";
 import * as Cause from "effect/Cause";
 import * as Config from "effect/Config";
 import * as ConfigProvider from "effect/ConfigProvider";
@@ -24,7 +24,6 @@ import * as Option from "effect/Option";
 import { LanguageModel } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
 import { anthropicLanguageModelLayerFromUrl } from "@thomasfosterau/effect-ai-cloudflare";
-import { runTest, runTestExit } from "./helpers/effect";
 
 interface CapturedRequest {
   readonly url: string;
@@ -33,7 +32,7 @@ interface CapturedRequest {
   readonly body: unknown;
 }
 
-/** Builds a Layer providing a `FetchHttpClient` whose fetch is a stub. */
+/** A `FetchHttpClient.Fetch` stub that records each request. */
 const stubFetch = (response: { status: number; body: unknown }) => {
   const calls: CapturedRequest[] = [];
   const fetch: typeof globalThis.fetch = async (input, init) => {
@@ -46,10 +45,7 @@ const stubFetch = (response: { status: number; body: unknown }) => {
     });
     return Response.json(response.body, { status: response.status });
   };
-  const layer = FetchHttpClient.layer.pipe(
-    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch)),
-  );
-  return { calls, layer };
+  return { calls, fetch };
 };
 
 /** Builds a Layer providing `Config` from an in-memory map, not `process.env`. */
@@ -76,82 +72,78 @@ const anthropicMessageResponse = (text: string) => ({
 });
 
 describe("anthropicLanguageModelLayerFromUrl", () => {
-  it("routes generateText through the config-resolved gateway URL with the cf-aig-authorization header and no x-api-key", async () => {
-    const { calls, layer: fetchLayer } = stubFetch({
-      status: 200,
-      body: anthropicMessageResponse("hello from the URL gateway"),
-    });
+  layer(
+    anthropicLanguageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
+      Layer.provide(FetchHttpClient.layer),
+      Layer.provide(
+        stubConfig({
+          CF_ACCOUNT_ID: "acct",
+          CF_AIG_GATEWAY_ID: "website",
+          CF_AIG_TOKEN: "test-token",
+        }),
+      ),
+    ),
+  )((t) => {
+    t.effect(
+      "routes generateText through the config-resolved gateway URL with the cf-aig-authorization header and no x-api-key",
+      () =>
+        Effect.gen(function* () {
+          const { calls, fetch } = stubFetch({
+            status: 200,
+            body: anthropicMessageResponse("hello from the URL gateway"),
+          });
 
-    const response = await runTest(
-      LanguageModel.generateText({ prompt: "say hello" }).pipe(
-        Effect.provide(
-          anthropicLanguageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
-            Layer.provide(fetchLayer),
-            Layer.provide(
-              stubConfig({
-                CF_ACCOUNT_ID: "acct",
-                CF_AIG_GATEWAY_ID: "website",
-                CF_AIG_TOKEN: "test-token",
-              }),
+          const response = yield* LanguageModel.generateText({ prompt: "say hello" }).pipe(
+            Effect.provideService(FetchHttpClient.Fetch, fetch),
+          );
+
+          expect(calls).toHaveLength(1);
+          expect(calls[0]?.url).toBe(
+            "https://gateway.ai.cloudflare.com/v1/acct/website/anthropic/v1/messages?beta=true",
+          );
+          expect(calls[0]?.apiKeyHeader).toEqual(Option.none());
+          expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
+          expect(calls[0]?.body).toMatchObject({ model: "claude-sonnet-4-6" });
+          expect(response.text).toBe("hello from the URL gateway");
+        }),
+    );
+  });
+
+  it.effect(
+    "fails layer construction with a typed ConfigError when CF_AIG_GATEWAY_ID is missing",
+    () =>
+      Effect.gen(function* () {
+        const exit = yield* Effect.exit(
+          Layer.build(
+            anthropicLanguageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
+              Layer.provide(FetchHttpClient.layer),
+              Layer.provide(stubConfig({ CF_ACCOUNT_ID: "acct", CF_AIG_TOKEN: "test-token" })),
             ),
           ),
-        ),
-      ),
-    );
+        );
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe(
-      "https://gateway.ai.cloudflare.com/v1/acct/website/anthropic/v1/messages?beta=true",
-    );
-    expect(calls[0]?.apiKeyHeader).toEqual(Option.none());
-    expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
-    expect(calls[0]?.body).toMatchObject({ model: "claude-sonnet-4-6" });
-    expect(response.text).toBe("hello from the URL gateway");
-  });
+        assert(Exit.isFailure(exit), "expected a failure exit");
+        const error = Cause.squash(exit.cause);
+        expect(error).toBeInstanceOf(Config.ConfigError);
+        expect(String(error)).toContain("CF_AIG_GATEWAY_ID");
+      }),
+  );
 
-  it("fails layer construction with a typed ConfigError when CF_AIG_GATEWAY_ID is missing", async () => {
-    const { layer: fetchLayer } = stubFetch({
-      status: 200,
-      body: anthropicMessageResponse("unreachable"),
-    });
-
-    const exit = await runTestExit(
-      LanguageModel.generateText({ prompt: "say hello" }).pipe(
-        Effect.provide(
+  it.effect("fails layer construction with a typed ConfigError when CF_ACCOUNT_ID is missing", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(
+        Layer.build(
           anthropicLanguageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
-            Layer.provide(fetchLayer),
-            Layer.provide(stubConfig({ CF_ACCOUNT_ID: "acct", CF_AIG_TOKEN: "test-token" })),
-          ),
-        ),
-      ),
-    );
-
-    assert(Exit.isFailure(exit), "expected a failure exit");
-    const error = Cause.squash(exit.cause);
-    expect(error).toBeInstanceOf(Config.ConfigError);
-    expect(String(error)).toContain("CF_AIG_GATEWAY_ID");
-  });
-
-  it("fails layer construction with a typed ConfigError when CF_ACCOUNT_ID is missing", async () => {
-    const { layer: fetchLayer } = stubFetch({
-      status: 200,
-      body: anthropicMessageResponse("unreachable"),
-    });
-
-    const exit = await runTestExit(
-      LanguageModel.generateText({ prompt: "say hello" }).pipe(
-        Effect.provide(
-          anthropicLanguageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
-            Layer.provide(fetchLayer),
+            Layer.provide(FetchHttpClient.layer),
             Layer.provide(stubConfig({ CF_AIG_TOKEN: "test-token" })),
           ),
         ),
-      ),
-    );
+      );
 
-    assert(Exit.isFailure(exit), "expected a failure exit");
-    const error = Cause.squash(exit.cause);
-    expect(error).toBeInstanceOf(Config.ConfigError);
-    expect(String(error)).toContain("CF_ACCOUNT_ID");
-  });
+      assert(Exit.isFailure(exit), "expected a failure exit");
+      const error = Cause.squash(exit.cause);
+      expect(error).toBeInstanceOf(Config.ConfigError);
+      expect(String(error)).toContain("CF_ACCOUNT_ID");
+    }),
+  );
 });

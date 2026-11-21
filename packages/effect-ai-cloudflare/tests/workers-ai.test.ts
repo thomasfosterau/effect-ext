@@ -11,7 +11,7 @@
  * @module tests/unit/workers-ai
  */
 
-import { assert, describe, expect, it } from "vite-plus/test";
+import { assert, describe, expect, it, layer } from "@effect/vitest";
 import * as Cause from "effect/Cause";
 import * as Config from "effect/Config";
 import * as ConfigProvider from "effect/ConfigProvider";
@@ -31,7 +31,6 @@ import {
   cloudflareClientLayer,
   decisionModelLayerConfig,
 } from "@thomasfosterau/effect-ai-cloudflare";
-import { runTest, runTestExit } from "./helpers/effect";
 
 interface CapturedRequest {
   readonly url: string;
@@ -61,7 +60,7 @@ const stubFetch = () => {
     });
     return Response.json(clefResponse);
   };
-  return { calls, layer: Layer.succeed(FetchHttpClient.Fetch, fetch) };
+  return { calls, fetch };
 };
 
 const stubConfig = (values: Record<string, string>) =>
@@ -90,82 +89,76 @@ describe("WorkersAi", () => {
     expect(CloudflareSchema).toBe(Upstream.CloudflareSchema);
   });
 
-  it("decisionModelLayerConfig routes Clef through the gateway with both tokens", async () => {
-    const { calls, layer } = stubFetch();
-    const response = await runTest(
-      decideUrgent.pipe(
-        Effect.provide(
-          decisionModelLayerConfig({ model: "clef-flash" }).pipe(
-            Layer.provide(Layer.merge(layer, stubConfig(config))),
-          ),
-        ),
-      ),
-    );
+  layer(decisionModelLayerConfig({ model: "clef-flash" }).pipe(Layer.provide(stubConfig(config))))(
+    (t) => {
+      t.effect("decisionModelLayerConfig routes Clef through the gateway with both tokens", () =>
+        Effect.gen(function* () {
+          const { calls, fetch } = stubFetch();
+          const response = yield* decideUrgent.pipe(
+            Effect.provideService(FetchHttpClient.Fetch, fetch),
+          );
 
-    expect(response.answers.urgent.probability).toBe(0.75);
-    expect(response.usage.inputTokens).toBe(12);
-    expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({
-      url: "https://api.cloudflare.com/client/v4/accounts/acct/ai/run/@cf/cloudflare/clef-flash",
-      headers: {
-        authorization: "Bearer api-token",
-        "cf-aig-gateway-id": "my-gateway",
-        "cf-aig-authorization": "Bearer gateway-token",
-      },
-    });
-    expect(calls[0]?.body).toMatchObject({ model: "clef-flash" });
+          expect(response.answers.urgent.probability).toBe(0.75);
+          expect(response.usage.inputTokens).toBe(12);
+          expect(calls).toHaveLength(1);
+          expect(calls[0]).toMatchObject({
+            url: "https://api.cloudflare.com/client/v4/accounts/acct/ai/run/@cf/cloudflare/clef-flash",
+            headers: {
+              authorization: "Bearer api-token",
+              "cf-aig-gateway-id": "my-gateway",
+              "cf-aig-authorization": "Bearer gateway-token",
+            },
+          });
+          expect(calls[0]?.body).toMatchObject({ model: "clef-flash" });
+        }),
+      );
+    },
+  );
+
+  it.effect("decisionModelLayerConfig fails with a ConfigError without CF_API_TOKEN", () =>
+    Effect.gen(function* () {
+      const { CF_API_TOKEN: _omitted, ...rest } = config;
+      const exit = yield* Effect.exit(
+        Layer.build(
+          decisionModelLayerConfig({ model: "clef" }).pipe(Layer.provide(stubConfig(rest))),
+        ),
+      );
+
+      assert(Exit.isFailure(exit));
+      const error = Cause.squash(exit.cause);
+      expect(error).toBeInstanceOf(Config.ConfigError);
+    }),
+  );
+
+  const clientLayer = cloudflareClientLayer({
+    gateway: {
+      accountId: "acct",
+      gatewayId: "other-gateway",
+      token: Redacted.make("gateway-token"),
+    },
+    apiToken: Redacted.make("api-token"),
+    apiUrl: "https://proxy.example/v4",
+    transformClient: (client) =>
+      HttpClient.mapRequest(client, HttpClientRequest.setHeader("x-extra", "yes")),
   });
+  layer(CloudflareDecisionModel.layer({ model: "clef" }).pipe(Layer.provide(clientLayer)))((t) => {
+    t.effect(
+      "cloudflareClientLayer honours apiUrl and applies transformClient after the gateway headers",
+      () =>
+        Effect.gen(function* () {
+          const { calls, fetch } = stubFetch();
 
-  it("decisionModelLayerConfig fails with a ConfigError without CF_API_TOKEN", async () => {
-    const { layer } = stubFetch();
-    const { CF_API_TOKEN: _omitted, ...rest } = config;
-    const exit = await runTestExit(
-      decideUrgent.pipe(
-        Effect.provide(
-          decisionModelLayerConfig({ model: "clef" }).pipe(
-            Layer.provide(Layer.merge(layer, stubConfig(rest))),
-          ),
-        ),
-      ),
+          yield* decideUrgent.pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
+
+          expect(calls[0]).toMatchObject({
+            url: "https://proxy.example/v4/accounts/acct/ai/run/@cf/cloudflare/clef",
+            headers: {
+              "cf-aig-gateway-id": "other-gateway",
+              "cf-aig-authorization": "Bearer gateway-token",
+              "x-extra": "yes",
+            },
+          });
+        }),
     );
-
-    assert(Exit.isFailure(exit));
-    const error = Cause.squash(exit.cause);
-    expect(error).toBeInstanceOf(Config.ConfigError);
-  });
-
-  it("cloudflareClientLayer honours apiUrl and applies transformClient after the gateway headers", async () => {
-    const { calls, layer } = stubFetch();
-    const clientLayer = cloudflareClientLayer({
-      gateway: {
-        accountId: "acct",
-        gatewayId: "other-gateway",
-        token: Redacted.make("gateway-token"),
-      },
-      apiToken: Redacted.make("api-token"),
-      apiUrl: "https://proxy.example/v4",
-      transformClient: (client) =>
-        HttpClient.mapRequest(client, HttpClientRequest.setHeader("x-extra", "yes")),
-    });
-
-    await runTest(
-      decideUrgent.pipe(
-        Effect.provide(
-          CloudflareDecisionModel.layer({ model: "clef" }).pipe(
-            Layer.provide(clientLayer),
-            Layer.provide(layer),
-          ),
-        ),
-      ),
-    );
-
-    expect(calls[0]).toMatchObject({
-      url: "https://proxy.example/v4/accounts/acct/ai/run/@cf/cloudflare/clef",
-      headers: {
-        "cf-aig-gateway-id": "other-gateway",
-        "cf-aig-authorization": "Bearer gateway-token",
-        "x-extra": "yes",
-      },
-    });
   });
 });

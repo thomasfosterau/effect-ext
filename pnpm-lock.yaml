@@ -323,6 +323,9 @@ importers:
       '@effect/language-service':
         specifier: 'catalog:'
         version: 0.87.5
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.1.4(effect@4.1.4)(vitest@5.1.0)
       '@vitest/coverage-istanbul':
         specifier: 'catalog:'
         version: 5.1.0(vitest@5.1.0)
@@ -345,6 +348,9 @@ importers:
       '@effect/language-service':
         specifier: 'catalog:'
         version: 0.87.5
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.1.4(effect@4.1.4)(vitest@5.1.0)
       '@vitest/coverage-istanbul':
         specifier: 'catalog:'
         version: 5.1.0(vitest@5.1.0)
@@ -367,6 +373,9 @@ importers:
       '@effect/language-service':
         specifier: 'catalog:'
         version: 0.87.5
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.1.4(effect@4.1.4)(vitest@5.1.0)
       '@vitest/coverage-istanbul':
         specifier: 'catalog:'
         version: 5.1.0(vitest@5.1.0)
@@ -385,6 +394,9 @@ importers:
       '@effect/language-service':
         specifier: 'catalog:'
         version: 0.87.5
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.1.4(effect@4.1.4)(vitest@5.1.0)
       '@vitest/coverage-istanbul':
         specifier: 'catalog:'
         version: 5.1.0(vitest@5.1.0)
@@ -407,6 +419,9 @@ importers:
       '@effect/language-service':
         specifier: 'catalog:'
         version: 0.87.5
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.1.4(effect@4.1.4)(vitest@5.1.0)
       '@vitest/coverage-istanbul':
         specifier: 'catalog:'
         version: 5.1.0(vitest@5.1.0)

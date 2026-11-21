@@ -6,7 +6,7 @@
  * @module tests/metrics/rag/contextual-recall
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import {
@@ -17,7 +17,7 @@ import {
   Metric,
   Threshold,
 } from "../../../../src/evals/index.ts";
-import { expectFailureInstanceOf, runTest } from "../../helpers/effect.ts";
+import { expectFailureInstanceOf } from "../../helpers/effect.ts";
 import { deadJudge, makeJudgeStub, provideJudge } from "./helpers.ts";
 
 const RagGolden = Golden.Golden(Schema.String, Schema.String);
@@ -34,11 +34,11 @@ const ragCase: RagTestCase = {
 };
 
 describe("ContextualRecall.contextualRecall", () => {
-  it("scores the fraction of expected statements attributable to retrievedContext", async () => {
-    const metric = ContextualRecall.contextualRecall({ threshold: Threshold.minScore(0.5) });
+  it.effect("scores the fraction of expected statements attributable to retrievedContext", () =>
+    Effect.gen(function* () {
+      const metric = ContextualRecall.contextualRecall({ threshold: Threshold.minScore(0.5) });
 
-    const { model, calls } = await runTest(
-      makeJudgeStub([
+      const { model, calls } = yield* makeJudgeStub([
         () => ({ statements: ["It is in Paris.", "It is on the Champ de Mars."] }),
         () => ({
           verdicts: [
@@ -50,42 +50,39 @@ describe("ContextualRecall.contextualRecall", () => {
             },
           ],
         }),
-      ]),
-    );
+      ]);
 
-    const result = await runTest(
-      Metric.evaluate(metric, ragCase).pipe(Effect.provide(provideJudge(model))),
-    );
+      const result = yield* Metric.evaluate(metric, ragCase).pipe(provideJudge(model));
 
-    expect(result.score.score).toBe(0.5);
-    expect(result.score.reason).toBe(
-      "1/2 statements passed.\n- It is on the Champ de Mars.: not mentioned in context",
-    );
-    expect(calls[0]?.user).toContain("expected:\nIt is in Paris, on the Champ de Mars.");
-    expect(calls[1]?.user).toContain(
-      "retrievedContext:\n[1] The Eiffel Tower is located in Paris, France.",
-    );
-  });
+      expect(result.score.score).toBe(0.5);
+      expect(result.score.reason).toBe(
+        "1/2 statements passed.\n- It is on the Champ de Mars.: not mentioned in context",
+      );
+      expect(calls[0]?.user).toContain("expected:\nIt is in Paris, on the Champ de Mars.");
+      expect(calls[1]?.user).toContain(
+        "retrievedContext:\n[1] The Eiffel Tower is located in Paris, France.",
+      );
+    }),
+  );
 
-  it("fails with the typed error, never calling the judge, when expected is absent", async () => {
-    const metric = ContextualRecall.contextualRecall({ threshold: Threshold.minScore(0.5) });
-    const caseWithoutExpected: RagTestCase = {
-      golden: { input: "x" },
-      output: "y",
-      retrievedContext: ["z"],
-    };
+  it.effect("fails with the typed error, never calling the judge, when expected is absent", () =>
+    Effect.gen(function* () {
+      const metric = ContextualRecall.contextualRecall({ threshold: Threshold.minScore(0.5) });
+      const caseWithoutExpected: RagTestCase = {
+        golden: { input: "x" },
+        output: "y",
+        retrievedContext: ["z"],
+      };
 
-    const model = await deadJudge();
+      const model = yield* deadJudge;
 
-    const failure = await expectFailureInstanceOf(
-      Metric.evaluate(metric, caseWithoutExpected).pipe(
-        Effect.provide(provideJudge(model)),
-        Effect.asVoid,
-      ),
-      GEval.MissingEvaluationParamError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        Metric.evaluate(metric, caseWithoutExpected).pipe(provideJudge(model), Effect.asVoid),
+        GEval.MissingEvaluationParamError,
+      );
 
-    expect(failure.param).toBe("expected");
-    expect(failure.metric).toBe("contextual-recall");
-  });
+      expect(failure.param).toBe("expected");
+      expect(failure.metric).toBe("contextual-recall");
+    }),
+  );
 });

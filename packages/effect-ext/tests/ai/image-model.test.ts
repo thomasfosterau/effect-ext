@@ -5,7 +5,7 @@
  * @module tests/unit/image-model
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
@@ -16,14 +16,12 @@ import {
   type ProviderResponse,
   type Service,
 } from "@thomasfosterau/effect-ext/ImageModel";
-import { expectFailureInstanceOf, runTest } from "./helpers/effect";
+import { expectFailureInstanceOf } from "./helpers/effect";
 
 const noUsage = { inputTokens: Option.none() } as const;
 
-const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
-  const failure = await expectFailureInstanceOf(program, AiError.AiError);
-  return failure.message;
-};
+const expectAiError = <A, R>(program: Effect.Effect<A, AiError.AiError, R>) =>
+  Effect.map(expectFailureInstanceOf(program, AiError.AiError), (failure) => failure.message);
 
 const makeStub = (
   behaviour:
@@ -50,10 +48,10 @@ const makeStub = (
   });
 
 describe("ImageModel", () => {
-  it("returns image parts (base64 and bytes) with usage; passes options through", async () => {
-    const bytes = new Uint8Array([9, 9]);
-    const { response, calls } = await runTest(
-      Effect.gen(function* () {
+  it.effect("returns image parts (base64 and bytes) with usage; passes options through", () =>
+    Effect.gen(function* () {
+      const bytes = new Uint8Array([9, 9]);
+      const { response, calls } = yield* Effect.gen(function* () {
         const { model, calls: stubCalls } = yield* makeStub({
           respond: () => ({
             images: [
@@ -65,57 +63,63 @@ describe("ImageModel", () => {
         });
         const result = yield* model.generate({ prompt: "a cat", size: "512x512", count: 2 });
         return { response: result, calls: stubCalls };
-      }),
-    );
+      });
 
-    expect(response.images).toEqual([
-      new ImagePart({ data: "aGVsbG8=", mediaType: "image/png" }),
-      new ImagePart({ data: bytes, mediaType: "image/jpeg" }),
-    ]);
-    expect(response.usage.inputTokens).toStrictEqual(Option.some(3));
-    expect(calls).toEqual([{ prompt: "a cat", size: "512x512", count: 2 }]);
-  });
+      expect(response.images).toEqual([
+        new ImagePart({ data: "aGVsbG8=", mediaType: "image/png" }),
+        new ImagePart({ data: bytes, mediaType: "image/jpeg" }),
+      ]);
+      expect(response.usage.inputTokens).toStrictEqual(Option.some(3));
+      expect(calls).toEqual([{ prompt: "a cat", size: "512x512", count: 2 }]);
+    }),
+  );
 
-  it("fails with AiError when the provider returns no images", async () => {
-    const message = await expectAiError(
-      Effect.gen(function* () {
-        const { model } = yield* makeStub({
-          respond: () => ({ images: [], usage: noUsage }),
-        });
-        return yield* model.generate({ prompt: "empty" });
-      }),
-    );
+  it.effect("fails with AiError when the provider returns no images", () =>
+    Effect.gen(function* () {
+      const message = yield* expectAiError(
+        Effect.gen(function* () {
+          const { model } = yield* makeStub({
+            respond: () => ({ images: [], usage: noUsage }),
+          });
+          return yield* model.generate({ prompt: "empty" });
+        }),
+      );
 
-    expect(message).toContain("no images");
-  });
+      expect(message).toContain("no images");
+    }),
+  );
 
-  it("fails with AiError when the provider returns more images than requested", async () => {
-    const message = await expectAiError(
-      Effect.gen(function* () {
-        const { model } = yield* makeStub({
-          respond: () => ({
-            images: [
-              { data: "a", mediaType: "image/png" },
-              { data: "b", mediaType: "image/png" },
-            ],
-            usage: noUsage,
-          }),
-        });
-        return yield* model.generate({ prompt: "two", count: 1 });
-      }),
-    );
+  it.effect("fails with AiError when the provider returns more images than requested", () =>
+    Effect.gen(function* () {
+      const message = yield* expectAiError(
+        Effect.gen(function* () {
+          const { model } = yield* makeStub({
+            respond: () => ({
+              images: [
+                { data: "a", mediaType: "image/png" },
+                { data: "b", mediaType: "image/png" },
+              ],
+              usage: noUsage,
+            }),
+          });
+          return yield* model.generate({ prompt: "two", count: 1 });
+        }),
+      );
 
-    expect(message).toContain("at most 1");
-  });
+      expect(message).toContain("at most 1");
+    }),
+  );
 
-  it("propagates provider failures as AiError", async () => {
-    const message = await expectAiError(
-      Effect.gen(function* () {
-        const { model } = yield* makeStub({ fail: true });
-        return yield* model.generate({ prompt: "x" });
-      }),
-    );
+  it.effect("propagates provider failures as AiError", () =>
+    Effect.gen(function* () {
+      const message = yield* expectAiError(
+        Effect.gen(function* () {
+          const { model } = yield* makeStub({ fail: true });
+          return yield* model.generate({ prompt: "x" });
+        }),
+      );
 
-    expect(message).toContain("stubbed failure");
-  });
+      expect(message).toContain("stubbed failure");
+    }),
+  );
 });

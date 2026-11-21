@@ -11,7 +11,7 @@
  * @module tests/unit/cohere
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
@@ -24,7 +24,7 @@ import {
   type WorkersAiBinding,
 } from "@thomasfosterau/effect-ai-cloudflare";
 import { stubAiBinding } from "./helpers/ai";
-import { expectFailureInstanceOf, runTest } from "./helpers/effect";
+import { expectFailureInstanceOf } from "./helpers/effect";
 
 /** Expected embedding width for `embed-v4.0`. */
 const EMBEDDING_DIMENSIONS = 1024;
@@ -68,249 +68,263 @@ describe("Cohere embeddings", () => {
     expect(COHERE_EMBEDDING_DIMENSIONS).toBe(EMBEDDING_DIMENSIONS);
   });
 
-  it("posts the embed request with output_dimension pinned to 1024", async () => {
-    const { ai, calls } = stubAi({
-      status: 200,
-      body: {
-        embeddings: {
-          float: [
-            [0.1, 0.2],
-            [0.3, 0.4],
-          ],
+  it.effect("posts the embed request with output_dimension pinned to 1024", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({
+        status: 200,
+        body: {
+          embeddings: {
+            float: [
+              [0.1, 0.2],
+              [0.3, 0.4],
+            ],
+          },
+          meta: { billed_units: { input_tokens: 5 } },
         },
-        meta: { billed_units: { input_tokens: 5 } },
-      },
-    });
+      });
 
-    const response = await runTest(
-      Effect.gen(function* () {
+      const response = yield* Effect.gen(function* () {
         const model = yield* makeCohereEmbeddingModel(binding(ai), {
           inputType: "search_document",
         });
         return yield* model.embedMany(["first", "second"]);
-      }),
-    );
+      });
 
-    expect(calls).toEqual([
-      {
-        provider: "cohere",
-        endpoint: "v2/embed",
-        headers: { "content-type": "application/json" },
-        query: {
-          model: COHERE_EMBEDDING_MODEL,
-          input_type: "search_document",
-          texts: ["first", "second"],
-          output_dimension: 1024,
-          embedding_types: ["float"],
+      expect(calls).toEqual([
+        {
+          provider: "cohere",
+          endpoint: "v2/embed",
+          headers: { "content-type": "application/json" },
+          query: {
+            model: COHERE_EMBEDDING_MODEL,
+            input_type: "search_document",
+            texts: ["first", "second"],
+            output_dimension: 1024,
+            embedding_types: ["float"],
+          },
         },
-      },
-    ]);
-    expect(response.embeddings.map((embedded) => [...embedded.vector])).toEqual([
-      [0.1, 0.2],
-      [0.3, 0.4],
-    ]);
-    expect(response.usage.inputTokens).toBe(5);
-  });
+      ]);
+      expect(response.embeddings.map((embedded) => [...embedded.vector])).toEqual([
+        [0.1, 0.2],
+        [0.3, 0.4],
+      ]);
+      expect(response.usage.inputTokens).toBe(5);
+    }),
+  );
 
-  it("forwards search_query as the input type for query-time embeddings", async () => {
-    const { ai, calls } = stubAi({
-      status: 200,
-      body: { embeddings: { float: [[0.5]] } },
-    });
+  it.effect("forwards search_query as the input type for query-time embeddings", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({
+        status: 200,
+        body: { embeddings: { float: [[0.5]] } },
+      });
 
-    await runTest(
-      Effect.gen(function* () {
+      yield* Effect.gen(function* () {
         const model = yield* makeCohereEmbeddingModel(binding(ai), { inputType: "search_query" });
         return yield* model.embedMany(["query text"]);
-      }),
-    );
+      });
 
-    expect((calls[0] as { query: { input_type: string } }).query.input_type).toBe("search_query");
-  });
+      expect((calls[0] as { query: { input_type: string } }).query.input_type).toBe("search_query");
+    }),
+  );
 
-  it("does not call the provider for an empty input array", async () => {
-    const { ai, calls } = stubAi({ status: 200, body: { embeddings: { float: [] } } });
+  it.effect("does not call the provider for an empty input array", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({ status: 200, body: { embeddings: { float: [] } } });
 
-    await runTest(
-      Effect.gen(function* () {
+      yield* Effect.gen(function* () {
         const model = yield* makeCohereEmbeddingModel(binding(ai), {
           inputType: "search_document",
         });
         return yield* model.embedMany([]);
-      }),
-    );
+      });
 
-    expect(calls).toHaveLength(0);
-  });
+      expect(calls).toHaveLength(0);
+    }),
+  );
 
-  it("fails with AiError on a non-2xx status", async () => {
-    const { ai } = stubAi({ status: 401, body: { message: "invalid api key" } });
+  it.effect("fails with AiError on a non-2xx status", () =>
+    Effect.gen(function* () {
+      const { ai } = stubAi({ status: 401, body: { message: "invalid api key" } });
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModel(binding(ai), {
-          inputType: "search_document",
-        });
-        return yield* model.embedMany(["text"]);
-      }),
-      AiError.AiError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const model = yield* makeCohereEmbeddingModel(binding(ai), {
+            inputType: "search_document",
+          });
+          return yield* model.embedMany(["text"]);
+        }),
+        AiError.AiError,
+      );
 
-    expect(failure.reason._tag).toBe("AuthenticationError");
-  });
+      expect(failure.reason._tag).toBe("AuthenticationError");
+    }),
+  );
 
-  it("fails with AiError when the response body has the wrong shape", async () => {
-    const { ai } = stubAi({ status: 200, body: { unexpected: "shape" } });
+  it.effect("fails with AiError when the response body has the wrong shape", () =>
+    Effect.gen(function* () {
+      const { ai } = stubAi({ status: 200, body: { unexpected: "shape" } });
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModel(binding(ai), {
-          inputType: "search_document",
-        });
-        return yield* model.embedMany(["text"]);
-      }),
-      AiError.AiError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const model = yield* makeCohereEmbeddingModel(binding(ai), {
+            inputType: "search_document",
+          });
+          return yield* model.embedMany(["text"]);
+        }),
+        AiError.AiError,
+      );
 
-    expect(failure.message).toContain("expected shape");
-  });
+      expect(failure.message).toContain("expected shape");
+    }),
+  );
 
-  it("fails with AiError when the response body cannot be parsed as JSON", async () => {
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModel(binding(stubAiMalformedBody()), {
-          inputType: "search_document",
-        });
-        return yield* model.embedMany(["text"]);
-      }),
-      AiError.AiError,
-    );
+  it.effect("fails with AiError when the response body cannot be parsed as JSON", () =>
+    Effect.gen(function* () {
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const model = yield* makeCohereEmbeddingModel(binding(stubAiMalformedBody()), {
+            inputType: "search_document",
+          });
+          return yield* model.embedMany(["text"]);
+        }),
+        AiError.AiError,
+      );
 
-    expect(failure.message).toContain("response body");
-  });
+      expect(failure.message).toContain("response body");
+    }),
+  );
 
-  it("fails with AiError (not a defect) when the gateway binding call rejects", async () => {
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModel(binding(stubAiReject()), {
-          inputType: "search_document",
-        });
-        return yield* model.embedMany(["text"]);
-      }),
-      AiError.AiError,
-    );
+  it.effect("fails with AiError (not a defect) when the gateway binding call rejects", () =>
+    Effect.gen(function* () {
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const model = yield* makeCohereEmbeddingModel(binding(stubAiReject()), {
+            inputType: "search_document",
+          });
+          return yield* model.embedMany(["text"]);
+        }),
+        AiError.AiError,
+      );
 
-    expect(failure.message).toContain("gateway call failed");
-  });
+      expect(failure.message).toContain("gateway call failed");
+    }),
+  );
 });
 
 // ── Reranking ────────────────────────────────────────────────────────
 
 describe("Cohere reranker", () => {
-  it("posts the rerank request and maps results by descending relevance", async () => {
-    const { ai, calls } = stubAi({
-      status: 200,
-      body: {
-        results: [
-          { index: 1, relevance_score: 0.9 },
-          { index: 0, relevance_score: 0.2 },
-        ],
-        meta: { billed_units: { search_units: 1 } },
-      },
-    });
+  it.effect("posts the rerank request and maps results by descending relevance", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({
+        status: 200,
+        body: {
+          results: [
+            { index: 1, relevance_score: 0.9 },
+            { index: 0, relevance_score: 0.2 },
+          ],
+          meta: { billed_units: { search_units: 1 } },
+        },
+      });
 
-    const response = await runTest(
-      Effect.gen(function* () {
+      const response = yield* Effect.gen(function* () {
         const reranker = yield* makeCohereReranker(binding(ai));
         return yield* reranker.rerank({
           query: "needle",
           documents: ["hay", "needle-adjacent"],
           topN: 2,
         });
-      }),
-    );
+      });
 
-    expect(calls).toEqual([
-      {
-        provider: "cohere",
-        endpoint: "v2/rerank",
-        headers: { "content-type": "application/json" },
-        query: {
-          model: COHERE_RERANK_MODEL,
-          query: "needle",
-          documents: ["hay", "needle-adjacent"],
-          top_n: 2,
+      expect(calls).toEqual([
+        {
+          provider: "cohere",
+          endpoint: "v2/rerank",
+          headers: { "content-type": "application/json" },
+          query: {
+            model: COHERE_RERANK_MODEL,
+            query: "needle",
+            documents: ["hay", "needle-adjacent"],
+            top_n: 2,
+          },
         },
-      },
-    ]);
-    expect(response.results.map((result) => result.index)).toEqual([1, 0]);
-    expect(response.results[0]?.relevanceScore).toBe(0.9);
-    expect(response.usage.inputTokens).toStrictEqual(Option.some(1));
-  });
+      ]);
+      expect(response.results.map((result) => result.index)).toEqual([1, 0]);
+      expect(response.results[0]?.relevanceScore).toBe(0.9);
+      expect(response.usage.inputTokens).toStrictEqual(Option.some(1));
+    }),
+  );
 
-  it("omits top_n when topN is not given", async () => {
-    const { ai, calls } = stubAi({
-      status: 200,
-      body: { results: [{ index: 0, relevance_score: 1 }] },
-    });
+  it.effect("omits top_n when topN is not given", () =>
+    Effect.gen(function* () {
+      const { ai, calls } = stubAi({
+        status: 200,
+        body: { results: [{ index: 0, relevance_score: 1 }] },
+      });
 
-    await runTest(
-      Effect.gen(function* () {
+      yield* Effect.gen(function* () {
         const reranker = yield* makeCohereReranker(binding(ai));
         return yield* reranker.rerank({ query: "q", documents: ["only"] });
-      }),
-    );
+      });
 
-    expect(calls[0]).not.toHaveProperty("query.top_n");
-  });
+      expect(calls[0]).not.toHaveProperty("query.top_n");
+    }),
+  );
 
-  it("fails with AiError on a non-2xx status", async () => {
-    const { ai } = stubAi({ status: 429, body: { message: "rate limited" } });
+  it.effect("fails with AiError on a non-2xx status", () =>
+    Effect.gen(function* () {
+      const { ai } = stubAi({ status: 429, body: { message: "rate limited" } });
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const reranker = yield* makeCohereReranker(binding(ai));
-        return yield* reranker.rerank({ query: "q", documents: ["a", "b"] });
-      }),
-      AiError.AiError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const reranker = yield* makeCohereReranker(binding(ai));
+          return yield* reranker.rerank({ query: "q", documents: ["a", "b"] });
+        }),
+        AiError.AiError,
+      );
 
-    expect(failure.reason._tag).toBe("RateLimitError");
-  });
+      expect(failure.reason._tag).toBe("RateLimitError");
+    }),
+  );
 
-  it("still maps a non-2xx status when its body cannot be read", async () => {
-    const ai = stubAiBinding(() => ({
-      run: async () => {
-        const response = new Response(null, { status: 429 });
-        // The body read is best-effort: a rejected `text()` leaves the
-        // description empty rather than replacing the status mapping.
-        Object.defineProperty(response, "text", {
-          value: () => Promise.reject(new TypeError("body stream already read")),
-        });
-        return response;
-      },
-    }));
+  it.effect("still maps a non-2xx status when its body cannot be read", () =>
+    Effect.gen(function* () {
+      const ai = stubAiBinding(() => ({
+        run: async () => {
+          const response = new Response(null, { status: 429 });
+          // The body read is best-effort: a rejected `text()` leaves the
+          // description empty rather than replacing the status mapping.
+          Object.defineProperty(response, "text", {
+            value: () => Promise.reject(new TypeError("body stream already read")),
+          });
+          return response;
+        },
+      }));
 
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const reranker = yield* makeCohereReranker(binding(ai));
-        return yield* reranker.rerank({ query: "q", documents: ["a", "b"] });
-      }),
-      AiError.AiError,
-    );
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const reranker = yield* makeCohereReranker(binding(ai));
+          return yield* reranker.rerank({ query: "q", documents: ["a", "b"] });
+        }),
+        AiError.AiError,
+      );
 
-    expect(failure.reason._tag).toBe("RateLimitError");
-  });
+      expect(failure.reason._tag).toBe("RateLimitError");
+    }),
+  );
 
-  it("fails with AiError (not a defect) when the gateway binding call rejects", async () => {
-    const failure = await expectFailureInstanceOf(
-      Effect.gen(function* () {
-        const reranker = yield* makeCohereReranker(binding(stubAiReject()));
-        return yield* reranker.rerank({ query: "q", documents: ["a", "b"] });
-      }),
-      AiError.AiError,
-    );
+  it.effect("fails with AiError (not a defect) when the gateway binding call rejects", () =>
+    Effect.gen(function* () {
+      const failure = yield* expectFailureInstanceOf(
+        Effect.gen(function* () {
+          const reranker = yield* makeCohereReranker(binding(stubAiReject()));
+          return yield* reranker.rerank({ query: "q", documents: ["a", "b"] });
+        }),
+        AiError.AiError,
+      );
 
-    expect(failure.message).toContain("gateway call failed");
-  });
+      expect(failure.message).toContain("gateway call failed");
+    }),
+  );
 });

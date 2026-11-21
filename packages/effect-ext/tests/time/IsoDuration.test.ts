@@ -3,7 +3,7 @@
  * cases, the round trip, and the `Schema`.
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
@@ -69,16 +69,20 @@ describe("IsoDuration.parser", () => {
 });
 
 describe("IsoDuration.parse", () => {
-  it("succeeds with amounts DateTime.add applies", () =>
-    Effect.runPromise(IsoDuration.parse("P1M")).then((duration) => {
+  it.effect("succeeds with amounts DateTime.add applies", () =>
+    Effect.gen(function* () {
+      const duration = yield* IsoDuration.parse("P1M");
       const next = DateTime.add(DateTime.makeUnsafe("2026-01-31T00:00:00Z"), duration);
       expect(DateTime.formatIso(next)).toBe("2026-02-28T00:00:00.000Z");
-    }));
+    }),
+  );
 
-  it("fails with the ParseError", () =>
-    Effect.runPromise(Effect.flip(IsoDuration.parse("P"))).then((error) => {
+  it.effect("fails with the ParseError", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(IsoDuration.parse("P"));
       expect(error._tag).toBe("ParseError");
-    }));
+    }),
+  );
 });
 
 describe("IsoDuration.format", () => {

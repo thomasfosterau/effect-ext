@@ -8,7 +8,7 @@
  * @module tests/cli/load-eval-file
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, layer } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
@@ -20,7 +20,7 @@ import {
   loadEvalFile,
   validateEvalFile,
 } from "../../../src/evals/cli/LoadEvalFile.ts";
-import { expectFailureInstanceOf, runTest } from "../helpers/effect.ts";
+import { expectFailureInstanceOf } from "../helpers/effect.ts";
 
 const validSuite = { name: "s", dataset: {}, task: {}, metrics: [] };
 
@@ -46,39 +46,53 @@ const FIXTURES = new URL("../fixtures/", import.meta.url);
 const fixture = (name: string): string => new URL(name, FIXTURES).pathname;
 
 describe("LoadEvalFile.loadEvalFile", () => {
-  it("loads a valid eval file's default export", async () => {
-    const evalFile = await runTest(
-      loadEvalFile(fixture("sample.eval.ts")).pipe(Effect.provide(NodePath.layer)),
+  layer(NodePath.layer)((t) => {
+    t.effect("loads a valid eval file's default export", () =>
+      Effect.gen(function* () {
+        const evalFile = yield* loadEvalFile(fixture("sample.eval.ts"));
+
+        expect(evalFile.suites).toHaveLength(1);
+        expect(evalFile.suites[0]?.name).toBe("fixture-greetings");
+        expect(evalFile.layer).toBeDefined();
+      }),
     );
 
-    expect(evalFile.suites).toHaveLength(1);
-    expect(evalFile.suites[0]?.name).toBe("fixture-greetings");
-    expect(evalFile.layer).toBeDefined();
+    t.effect("fails with EvalFileImportError for a file that doesn't exist", () =>
+      Effect.gen(function* () {
+        const error = yield* expectFailureInstanceOf(
+          loadEvalFile(fixture("does-not-exist.eval.ts")),
+          EvalFileImportError,
+        );
+        expect(error.file).toBe(fixture("does-not-exist.eval.ts"));
+      }),
+    );
   });
 
-  it("fails with EvalFileImportError for a file that doesn't exist", async () => {
-    const error = await expectFailureInstanceOf(
-      loadEvalFile(fixture("does-not-exist.eval.ts")).pipe(Effect.provide(NodePath.layer)),
-      EvalFileImportError,
+  layer(rejectingToFileUrl)((t) => {
+    t.effect("fails with EvalFileImportError when the path cannot become a file URL", () =>
+      Effect.gen(function* () {
+        const error = yield* expectFailureInstanceOf(
+          loadEvalFile(fixture("sample.eval.ts")),
+          EvalFileImportError,
+        );
+        expect(error.file).toBe(fixture("sample.eval.ts"));
+        expect(error.cause).toBeInstanceOf(PlatformError.BadArgument);
+      }),
     );
-    expect(error.file).toBe(fixture("does-not-exist.eval.ts"));
   });
 
-  it("fails with EvalFileImportError when the path cannot become a file URL", async () => {
-    const error = await expectFailureInstanceOf(
-      loadEvalFile(fixture("sample.eval.ts")).pipe(Effect.provide(rejectingToFileUrl)),
-      EvalFileImportError,
+  layer(NodePath.layer)((t) => {
+    t.effect(
+      "fails with InvalidEvalFileError when the default export doesn't satisfy the contract",
+      () =>
+        Effect.gen(function* () {
+          const error = yield* expectFailureInstanceOf(
+            loadEvalFile(fixture("invalid.eval.ts")),
+            InvalidEvalFileError,
+          );
+          expect(error.reason).toContain("layer");
+        }),
     );
-    expect(error.file).toBe(fixture("sample.eval.ts"));
-    expect(error.cause).toBeInstanceOf(PlatformError.BadArgument);
-  });
-
-  it("fails with InvalidEvalFileError when the default export doesn't satisfy the contract", async () => {
-    const error = await expectFailureInstanceOf(
-      loadEvalFile(fixture("invalid.eval.ts")).pipe(Effect.provide(NodePath.layer)),
-      InvalidEvalFileError,
-    );
-    expect(error.reason).toContain("layer");
   });
 });
 

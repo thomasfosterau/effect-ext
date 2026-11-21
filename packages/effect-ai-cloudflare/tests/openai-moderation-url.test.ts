@@ -12,11 +12,10 @@
  * @module tests/unit/openai-moderation-url
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
 import { AiError } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
@@ -27,7 +26,7 @@ import {
   type OpenAiModerationCall,
   type OpenAiModerationOptions,
 } from "@thomasfosterau/effect-ai-cloudflare";
-import { expectFailureInstanceOf, runTest, runTestExit } from "./helpers/effect";
+import { expectFailureInstanceOf } from "./helpers/effect";
 
 interface CapturedRequest {
   readonly url: string;
@@ -48,16 +47,18 @@ const stubFetch = (respond: () => Response) => {
     });
     return respond();
   };
-  const layer = FetchHttpClient.layer.pipe(
-    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch)),
-  );
-  return { calls, layer };
+  return { calls, fetch };
 };
 
 const jsonResponse = (status: number, body: unknown) => () => Response.json(body, { status });
 
+/** A response callback that throws, as `fetch` does when the network is unreachable. */
+const networkUnreachable = (): Response => {
+  throw new TypeError("network unreachable");
+};
+
 const stubConfig = (values: Record<string, string>) =>
-  ConfigProvider.layer(ConfigProvider.fromUnknown(values));
+  Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromUnknown(values));
 
 const GATEWAY_CONFIG = {
   CF_ACCOUNT_ID: "acct",
@@ -84,204 +85,224 @@ const moderate = (
   });
 
 describe("makeOpenAiModerationModelFromUrl", () => {
-  it("posts the moderations request to the config-resolved gateway URL with the cf-aig-authorization header", async () => {
-    const { calls, layer: fetchLayer } = stubFetch(jsonResponse(200, omniBody([okResult])));
+  it.effect(
+    "posts the moderations request to the config-resolved gateway URL with the cf-aig-authorization header",
+    () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = stubFetch(jsonResponse(200, omniBody([okResult])));
 
-    const response = await runTest(
-      moderate(["hello"]).pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig(GATEWAY_CONFIG)),
-      ),
-    );
+        const response = yield* moderate(["hello"]).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+          stubConfig(GATEWAY_CONFIG),
+        );
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe(
-      "https://gateway.ai.cloudflare.com/v1/acct/website/openai/moderations",
-    );
-    expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
-    // BYOK by default: no provider key leaves this process.
-    expect(calls[0]?.authorizationHeader).toEqual(Option.none());
-    expect(calls[0]?.body).toEqual({ model: OPENAI_MODERATION_MODEL, input: ["hello"] });
-    expect(response.results[0]).toMatchObject({ isFlagged: false, categories: { hate: 0.01 } });
-    expect(response.usage.inputTokens).toStrictEqual(Option.none());
-  });
+        expect(calls).toHaveLength(1);
+        expect(calls[0]?.url).toBe(
+          "https://gateway.ai.cloudflare.com/v1/acct/website/openai/moderations",
+        );
+        expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
+        // BYOK by default: no provider key leaves this process.
+        expect(calls[0]?.authorizationHeader).toEqual(Option.none());
+        expect(calls[0]?.body).toEqual({ model: OPENAI_MODERATION_MODEL, input: ["hello"] });
+        expect(response.results[0]).toMatchObject({ isFlagged: false, categories: { hate: 0.01 } });
+        expect(response.usage.inputTokens).toStrictEqual(Option.none());
+      }),
+  );
 
-  it("sends the caller's own key as a bearer token alongside the gateway token", async () => {
-    const { calls, layer: fetchLayer } = stubFetch(jsonResponse(200, omniBody([okResult])));
+  it.effect("sends the caller's own key as a bearer token alongside the gateway token", () =>
+    Effect.gen(function* () {
+      const { calls, fetch } = stubFetch(jsonResponse(200, omniBody([okResult])));
 
-    await runTest(
-      moderate(["hello"], { apiKey: Redacted.make("sk-test") }).pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig(GATEWAY_CONFIG)),
-      ),
-    );
+      yield* moderate(["hello"], { apiKey: Redacted.make("sk-test") }).pipe(
+        Effect.provideService(FetchHttpClient.Fetch, fetch),
+        stubConfig(GATEWAY_CONFIG),
+      );
 
-    expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
-    expect(calls[0]?.authorizationHeader).toEqual(Option.some("Bearer sk-test"));
-  });
+      expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
+      expect(calls[0]?.authorizationHeader).toEqual(Option.some("Bearer sk-test"));
+    }),
+  );
 
-  it("never fails an otherwise-valid response over a vendor field it has never heard of", async () => {
-    const { layer: fetchLayer } = stubFetch(
-      jsonResponse(
-        200,
-        omniBody(
-          [
+  it.effect(
+    "never fails an otherwise-valid response over a vendor field it has never heard of",
+    () =>
+      Effect.gen(function* () {
+        const { fetch } = stubFetch(
+          jsonResponse(
+            200,
+            omniBody(
+              [
+                {
+                  ...okResult,
+                  category_applied_input_types: { hate: ["text"] },
+                  a_field_added_next_quarter: true,
+                },
+              ],
+              { usage: { total_tokens: 12 } },
+            ),
+          ),
+        );
+
+        const response = yield* moderate(["hello"]).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+          stubConfig(GATEWAY_CONFIG),
+        );
+
+        expect(response.results[0]?.categories).toEqual({ hate: 0.01 });
+      }),
+  );
+
+  it.effect("drops null (unassessed) category scores", () =>
+    Effect.gen(function* () {
+      const { fetch } = stubFetch(
+        jsonResponse(
+          200,
+          omniBody([
             {
-              ...okResult,
-              category_applied_input_types: { hate: ["text"] },
-              a_field_added_next_quarter: true,
+              flagged: false,
+              categories: { hate: null, sexual: false },
+              category_scores: { hate: null, sexual: 0.2 },
             },
-          ],
-          { usage: { total_tokens: 12 } },
+          ]),
         ),
-      ),
-    );
+      );
 
-    const response = await runTest(
-      moderate(["hello"]).pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig(GATEWAY_CONFIG)),
-      ),
-    );
+      const response = yield* moderate(["..."]).pipe(
+        Effect.provideService(FetchHttpClient.Fetch, fetch),
+        stubConfig(GATEWAY_CONFIG),
+      );
 
-    expect(response.results[0]?.categories).toEqual({ hate: 0.01 });
-  });
+      expect(response.results[0]?.categories).toEqual({ sexual: 0.2 });
+    }),
+  );
 
-  it("drops null (unassessed) category scores", async () => {
-    const { layer: fetchLayer } = stubFetch(
-      jsonResponse(
-        200,
-        omniBody([
-          {
-            flagged: false,
-            categories: { hate: null, sexual: false },
-            category_scores: { hate: null, sexual: 0.2 },
-          },
-        ]),
-      ),
-    );
+  it.effect("fails with AiError on a non-2xx status", () =>
+    Effect.gen(function* () {
+      const { fetch } = stubFetch(jsonResponse(429, { error: { message: "slow" } }));
 
-    const response = await runTest(
-      moderate(["..."]).pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig(GATEWAY_CONFIG)),
-      ),
-    );
-
-    expect(response.results[0]?.categories).toEqual({ sexual: 0.2 });
-  });
-
-  it("fails with AiError on a non-2xx status", async () => {
-    const { layer: fetchLayer } = stubFetch(jsonResponse(429, { error: { message: "slow" } }));
-
-    const failure = await expectFailureInstanceOf(
-      moderate(["..."]).pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig(GATEWAY_CONFIG)),
-      ),
-      AiError.AiError,
-    );
-
-    expect(failure.module).toBe("OpenAiModeration");
-    expect(failure.reason._tag).toBe("RateLimitError");
-  });
-
-  it("fails with AiError when the response body cannot be parsed as JSON", async () => {
-    const { layer: fetchLayer } = stubFetch(
-      () =>
-        new Response("not valid json", {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-    );
-
-    const failure = await expectFailureInstanceOf(
-      moderate(["..."]).pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig(GATEWAY_CONFIG)),
-      ),
-      AiError.AiError,
-    );
-
-    expect(failure.message).toContain("response body");
-  });
-
-  it("fails with AiError (not a defect) when the transport call rejects", async () => {
-    const { layer: fetchLayer } = stubFetch(() => {
-      throw new TypeError("network unreachable");
-    });
-
-    const failure = await expectFailureInstanceOf(
-      moderate(["..."]).pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig(GATEWAY_CONFIG)),
-      ),
-      AiError.AiError,
-    );
-
-    expect(failure.message).toContain("gateway call failed");
-  });
-
-  it("fails construction with a typed ConfigError when CF_ACCOUNT_ID is missing", async () => {
-    const { calls, layer: fetchLayer } = stubFetch(jsonResponse(200, omniBody([okResult])));
-
-    const exit = await runTestExit(
-      makeOpenAiModerationModelFromUrl().pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig({ CF_AIG_TOKEN: "test-token" })),
-      ),
-    );
-
-    expect(exit._tag).toBe("Failure");
-    expect(calls).toHaveLength(0);
-  });
-
-  it("posts an image input as an image_url part and carries flags and the served model", async () => {
-    const { calls, layer: fetchLayer } = stubFetch(
-      jsonResponse(
-        200,
-        omniBody(
-          [{ flagged: true, categories: { violence: true }, category_scores: { violence: 0.8 } }],
-          {
-            model: "omni-moderation-2024-09-26",
-          },
+      const failure = yield* expectFailureInstanceOf(
+        moderate(["..."]).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+          stubConfig(GATEWAY_CONFIG),
         ),
-      ),
-    );
+        AiError.AiError,
+      );
 
-    const response = await runTest(
-      moderate([
-        [{ type: "file", mediaType: "image/jpeg", data: "data:image/jpeg;base64,/9j/" }],
-      ]).pipe(Effect.provide(fetchLayer), Effect.provide(stubConfig(GATEWAY_CONFIG))),
-    );
+      expect(failure.module).toBe("OpenAiModeration");
+      expect(failure.reason._tag).toBe("RateLimitError");
+    }),
+  );
 
-    expect(calls[0]?.body).toEqual({
-      model: OPENAI_MODERATION_MODEL,
-      input: [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/" } }],
-    });
-    expect(response.results[0]).toMatchObject({
-      isFlagged: true,
-      categories: { violence: 0.8 },
-      flags: Option.some({ violence: true }),
-    });
-    expect(response.modelId).toStrictEqual(Option.some("omni-moderation-2024-09-26"));
-  });
+  it.effect("fails with AiError when the response body cannot be parsed as JSON", () =>
+    Effect.gen(function* () {
+      const { fetch } = stubFetch(
+        () =>
+          new Response("not valid json", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+      );
 
-  it("reports each HTTP call's status and timing to onCall", async () => {
-    const seen: Array<OpenAiModerationCall> = [];
-    const { layer: fetchLayer } = stubFetch(jsonResponse(503, { error: { message: "down" } }));
+      const failure = yield* expectFailureInstanceOf(
+        moderate(["..."]).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+          stubConfig(GATEWAY_CONFIG),
+        ),
+        AiError.AiError,
+      );
 
-    const failure = await expectFailureInstanceOf(
-      moderate(["..."], { onCall: (call) => Effect.sync(() => seen.push(call)) }).pipe(
-        Effect.provide(fetchLayer),
-        Effect.provide(stubConfig(GATEWAY_CONFIG)),
-      ),
-      AiError.AiError,
-    );
+      expect(failure.message).toContain("response body");
+    }),
+  );
 
-    expect(seen).toHaveLength(1);
-    expect(seen[0]?.status).toEqual(Option.some(503));
-    expect(seen[0]?.durationMillis).toBeGreaterThanOrEqual(0);
-    expect(seen[0]?.error).toEqual(Option.some(failure));
-  });
+  it.effect("fails with AiError (not a defect) when the transport call rejects", () =>
+    Effect.gen(function* () {
+      const { fetch } = stubFetch(networkUnreachable);
+
+      const failure = yield* expectFailureInstanceOf(
+        moderate(["..."]).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+          stubConfig(GATEWAY_CONFIG),
+        ),
+        AiError.AiError,
+      );
+
+      expect(failure.message).toContain("gateway call failed");
+    }),
+  );
+
+  it.effect("fails construction with a typed ConfigError when CF_ACCOUNT_ID is missing", () =>
+    Effect.gen(function* () {
+      const { calls, fetch } = stubFetch(jsonResponse(200, omniBody([okResult])));
+
+      const exit = yield* Effect.exit(
+        makeOpenAiModerationModelFromUrl().pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+          stubConfig({ CF_AIG_TOKEN: "test-token" }),
+        ),
+      );
+
+      expect(exit._tag).toBe("Failure");
+      expect(calls).toHaveLength(0);
+    }),
+  );
+
+  it.effect(
+    "posts an image input as an image_url part and carries flags and the served model",
+    () =>
+      Effect.gen(function* () {
+        const { calls, fetch } = stubFetch(
+          jsonResponse(
+            200,
+            omniBody(
+              [
+                {
+                  flagged: true,
+                  categories: { violence: true },
+                  category_scores: { violence: 0.8 },
+                },
+              ],
+              {
+                model: "omni-moderation-2024-09-26",
+              },
+            ),
+          ),
+        );
+
+        const response = yield* moderate([
+          [{ type: "file", mediaType: "image/jpeg", data: "data:image/jpeg;base64,/9j/" }],
+        ]).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG));
+
+        expect(calls[0]?.body).toEqual({
+          model: OPENAI_MODERATION_MODEL,
+          input: [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/" } }],
+        });
+        expect(response.results[0]).toMatchObject({
+          isFlagged: true,
+          categories: { violence: 0.8 },
+          flags: Option.some({ violence: true }),
+        });
+        expect(response.modelId).toStrictEqual(Option.some("omni-moderation-2024-09-26"));
+      }),
+  );
+
+  it.effect("reports each HTTP call's status and timing to onCall", () =>
+    Effect.gen(function* () {
+      const seen: Array<OpenAiModerationCall> = [];
+      const { fetch } = stubFetch(jsonResponse(503, { error: { message: "down" } }));
+
+      const failure = yield* expectFailureInstanceOf(
+        moderate(["..."], { onCall: (call) => Effect.sync(() => seen.push(call)) }).pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+          stubConfig(GATEWAY_CONFIG),
+        ),
+        AiError.AiError,
+      );
+
+      expect(seen).toHaveLength(1);
+      expect(seen[0]?.status).toEqual(Option.some(503));
+      expect(seen[0]?.durationMillis).toBeGreaterThanOrEqual(0);
+      expect(seen[0]?.error).toEqual(Option.some(failure));
+    }),
+  );
 });

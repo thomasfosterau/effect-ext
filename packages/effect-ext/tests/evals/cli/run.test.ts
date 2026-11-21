@@ -9,14 +9,13 @@
  * @module tests/cli/run
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { expect, layer } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import { NodePath } from "@effect/platform-node";
 import { Cache } from "../../../src/evals/index.ts";
 import { runEvals } from "../../../src/evals/cli/Run.ts";
-import { runTest } from "../helpers/effect.ts";
 import { unsafeCoerce } from "../helpers/unsafe.ts";
 
 /** The in-memory result cache plus the `Path` service discovery and loading read. */
@@ -32,161 +31,164 @@ const baseConfig = {
   filter: Option.none<string>(),
 };
 
-describe("cli/Run.runEvals", () => {
-  it("runs a passing suite through a stubbed LanguageModel layer", async () => {
-    const report = await runTest(
-      runEvals({ ...baseConfig, globs: [fixture("sample.eval.ts")] }).pipe(
-        Effect.provide(testLayer),
-      ),
-    );
+layer(testLayer, { buildPerTest: true })("cli/Run.runEvals", (t) => {
+  t.effect("runs a passing suite through a stubbed LanguageModel layer", () =>
+    Effect.gen(function* () {
+      const report = yield* runEvals({ ...baseConfig, globs: [fixture("sample.eval.ts")] });
 
-    expect(report.passed).toBe(true);
-    expect(report.skipped).toEqual([]);
-    expect(report.failed).toEqual([]);
-    expect(report.ran).toHaveLength(1);
-    expect(report.ran[0]?.suites[0]?.suite).toBe("fixture-greetings");
-    expect(report.ran[0]?.suites[0]?.passed).toBe(true);
-  });
+      expect(report.passed).toBe(true);
+      expect(report.skipped).toEqual([]);
+      expect(report.failed).toEqual([]);
+      expect(report.ran).toHaveLength(1);
+      expect(report.ran[0]?.suites[0]?.suite).toBe("fixture-greetings");
+      expect(report.ran[0]?.suites[0]?.passed).toBe(true);
+    }),
+  );
 
-  it("reports a layer failure that is neither an Error nor a string as JSON", async () => {
-    const report = await runTest(
-      runEvals({ ...baseConfig, globs: [fixture("object-layer-failure.eval.ts")] }).pipe(
-        Effect.provide(testLayer),
-      ),
-    );
+  t.effect("reports a layer failure that is neither an Error nor a string as JSON", () =>
+    Effect.gen(function* () {
+      const report = yield* runEvals({
+        ...baseConfig,
+        globs: [fixture("object-layer-failure.eval.ts")],
+      });
 
-    expect(report.passed).toBe(false);
-    expect(report.failed).toEqual([
-      { file: fixture("object-layer-failure.eval.ts"), error: '{"code":42}' },
-    ]);
-  });
+      expect(report.passed).toBe(false);
+      expect(report.failed).toEqual([
+        { file: fixture("object-layer-failure.eval.ts"), error: '{"code":42}' },
+      ]);
+    }),
+  );
 
-  it("falls back to String(value) for a layer failure JSON cannot serialise", async () => {
-    const report = await runTest(
-      runEvals({ ...baseConfig, globs: [fixture("bigint-layer-failure.eval.ts")] }).pipe(
-        Effect.provide(testLayer),
-      ),
-    );
+  t.effect("falls back to String(value) for a layer failure JSON cannot serialise", () =>
+    Effect.gen(function* () {
+      const report = yield* runEvals({
+        ...baseConfig,
+        globs: [fixture("bigint-layer-failure.eval.ts")],
+      });
 
-    expect(report.failed).toEqual([{ file: fixture("bigint-layer-failure.eval.ts"), error: "1" }]);
-  });
+      expect(report.failed).toEqual([
+        { file: fixture("bigint-layer-failure.eval.ts"), error: "1" },
+      ]);
+    }),
+  );
 
-  it("marks the run failed when an executed suite misses its threshold", async () => {
-    const report = await runTest(
-      runEvals({ ...baseConfig, globs: [fixture("failing.eval.ts")] }).pipe(
-        Effect.provide(testLayer),
-      ),
-    );
+  t.effect("marks the run failed when an executed suite misses its threshold", () =>
+    Effect.gen(function* () {
+      const report = yield* runEvals({ ...baseConfig, globs: [fixture("failing.eval.ts")] });
 
-    expect(report.passed).toBe(false);
-    expect(report.ran).toHaveLength(1);
-    expect(report.ran[0]?.suites[0]?.passed).toBe(false);
-    expect(report.failed).toEqual([]);
-    expect(report.skipped).toEqual([]);
-  });
+      expect(report.passed).toBe(false);
+      expect(report.ran).toHaveLength(1);
+      expect(report.ran[0]?.suites[0]?.passed).toBe(false);
+      expect(report.failed).toEqual([]);
+      expect(report.skipped).toEqual([]);
+    }),
+  );
 
-  it("skips a file whose layer fails with a ConfigError, naming the missing config, and does not fail the run", async () => {
-    const report = await runTest(
-      runEvals({ ...baseConfig, globs: [fixture("config-gated.eval.ts")] }).pipe(
-        Effect.provide(testLayer),
-      ),
-    );
+  t.effect(
+    "skips a file whose layer fails with a ConfigError, naming the missing config, and does not fail the run",
+    () =>
+      Effect.gen(function* () {
+        const report = yield* runEvals({
+          ...baseConfig,
+          globs: [fixture("config-gated.eval.ts")],
+        });
 
-    expect(report.ran).toEqual([]);
-    expect(report.failed).toEqual([]);
-    expect(report.skipped).toHaveLength(1);
-    expect(report.skipped[0]?.suites).toEqual(["config-gated-suite"]);
-    expect(report.skipped[0]?.reason).toContain("EFFECT_EVALS_FIXTURE_NEVER_SET_TOKEN");
-    expect(report.passed).toBe(true);
-  });
+        expect(report.ran).toEqual([]);
+        expect(report.failed).toEqual([]);
+        expect(report.skipped).toHaveLength(1);
+        expect(report.skipped[0]?.suites).toEqual(["config-gated-suite"]);
+        expect(report.skipped[0]?.reason).toContain("EFFECT_EVALS_FIXTURE_NEVER_SET_TOKEN");
+        expect(report.passed).toBe(true);
+      }),
+  );
 
-  it("records a file that fails to load/validate as failed, and fails the run", async () => {
-    const report = await runTest(
-      runEvals({ ...baseConfig, globs: [fixture("invalid.eval.ts")] }).pipe(
-        Effect.provide(testLayer),
-      ),
-    );
+  t.effect("records a file that fails to load/validate as failed, and fails the run", () =>
+    Effect.gen(function* () {
+      const report = yield* runEvals({ ...baseConfig, globs: [fixture("invalid.eval.ts")] });
 
-    expect(report.ran).toEqual([]);
-    expect(report.skipped).toEqual([]);
-    expect(report.failed).toHaveLength(1);
-    expect(report.passed).toBe(false);
-  });
+      expect(report.ran).toEqual([]);
+      expect(report.skipped).toEqual([]);
+      expect(report.failed).toHaveLength(1);
+      expect(report.passed).toBe(false);
+    }),
+  );
 
-  it("--filter excludes files whose every suite name misses the substring", async () => {
-    const report = await runTest(
-      runEvals({
+  t.effect("--filter excludes files whose every suite name misses the substring", () =>
+    Effect.gen(function* () {
+      const report = yield* runEvals({
         ...baseConfig,
         globs: [fixture("sample.eval.ts")],
         filter: Option.some("does-not-match-anything"),
-      }).pipe(Effect.provide(testLayer)),
-    );
+      });
 
-    expect(report.ran).toEqual([]);
-    expect(report.skipped).toEqual([]);
-    expect(report.failed).toEqual([]);
-    expect(report.passed).toBe(true);
-  });
+      expect(report.ran).toEqual([]);
+      expect(report.skipped).toEqual([]);
+      expect(report.failed).toEqual([]);
+      expect(report.passed).toBe(true);
+    }),
+  );
 
-  it("--filter runs only suites whose name contains the substring", async () => {
-    const report = await runTest(
-      runEvals({
+  t.effect("--filter runs only suites whose name contains the substring", () =>
+    Effect.gen(function* () {
+      const report = yield* runEvals({
         ...baseConfig,
         globs: [fixture("sample.eval.ts")],
         filter: Option.some("fixture-greet"),
-      }).pipe(Effect.provide(testLayer)),
-    );
+      });
 
-    expect(report.ran).toHaveLength(1);
-    expect(report.ran[0]?.suites[0]?.suite).toBe("fixture-greetings");
-  });
+      expect(report.ran).toHaveLength(1);
+      expect(report.ran[0]?.suites[0]?.suite).toBe("fixture-greetings");
+    }),
+  );
 
-  it("--trials overrides the eval file's own default", async () => {
-    const report = await runTest(
-      runEvals({
+  t.effect("--trials overrides the eval file's own default", () =>
+    Effect.gen(function* () {
+      const report = yield* runEvals({
         ...baseConfig,
         globs: [fixture("sample.eval.ts")],
         trials: Option.some(3),
-      }).pipe(Effect.provide(testLayer)),
-    );
+      });
 
-    expect(report.ran[0]?.suites[0]?.cases[0]?.trials).toBe(3);
-  });
+      expect(report.ran[0]?.suites[0]?.cases[0]?.trials).toBe(3);
+    }),
+  );
 
-  it("force: true bypasses the cache even after a prior run populated it", async () => {
-    const config = { ...baseConfig, globs: [fixture("sample.eval.ts")] };
+  t.effect("force: true bypasses the cache even after a prior run populated it", () =>
+    Effect.gen(function* () {
+      const config = { ...baseConfig, globs: [fixture("sample.eval.ts")] };
 
-    const [first, second, third] = await runTest(
-      Effect.gen(function* () {
+      const [first, second, third] = yield* Effect.gen(function* () {
         const r1 = yield* runEvals(config);
         const r2 = yield* runEvals(config);
         const r3 = yield* runEvals({ ...config, force: true });
         return [r1, r2, r3] as const;
-      }).pipe(Effect.provide(testLayer)),
-    );
+      });
 
-    const trialOf = (report: typeof first) =>
-      report.ran[0]?.suites[0]?.cases[0]?.metrics[0]?.trials[0];
+      const trialOf = (report: typeof first) =>
+        report.ran[0]?.suites[0]?.cases[0]?.metrics[0]?.trials[0];
 
-    expect(trialOf(first)).toMatchObject({ cached: false });
-    expect(trialOf(second)).toMatchObject({ cached: true });
-    expect(trialOf(third)).toMatchObject({ cached: false });
-  });
+      expect(trialOf(first)).toMatchObject({ cached: false });
+      expect(trialOf(second)).toMatchObject({ cached: true });
+      expect(trialOf(third)).toMatchObject({ cached: false });
+    }),
+  );
 
-  it("returns a failed-run report instead of throwing when glob discovery itself errors", async () => {
-    // node:fs/promises' glob throws synchronously on a non-string cwd;
-    // bypass the type system to exercise runEvals' own error mapping.
-    const malformedCwd = unsafeCoerce<string>(123);
+  t.effect(
+    "returns a failed-run report instead of throwing when glob discovery itself errors",
+    () =>
+      Effect.gen(function* () {
+        // node:fs/promises' glob throws synchronously on a non-string cwd;
+        // bypass the type system to exercise runEvals' own error mapping.
+        const malformedCwd = unsafeCoerce<string>(123);
 
-    const report = await runTest(
-      runEvals({
-        ...baseConfig,
-        globs: [fixture("sample.eval.ts")],
-        cwd: malformedCwd,
-      }).pipe(Effect.provide(testLayer)),
-    );
+        const report = yield* runEvals({
+          ...baseConfig,
+          globs: [fixture("sample.eval.ts")],
+          cwd: malformedCwd,
+        });
 
-    expect(report.passed).toBe(false);
-    expect(report.failed).toHaveLength(1);
-  });
+        expect(report.passed).toBe(false);
+        expect(report.failed).toHaveLength(1);
+      }),
+  );
 });

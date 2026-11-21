@@ -3,7 +3,7 @@
  * resolution of the time zone suffix, and the `Schema` round trip.
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
@@ -94,20 +94,24 @@ describe("Rfc9557.parser", () => {
 });
 
 describe("Rfc9557.parse", () => {
-  it("succeeds with the Ixdtf", () =>
-    Effect.runPromise(Rfc9557.parse("2026-10-22T09:30:00Z[!Europe/Paris]")).then((ixdtf) => {
+  it.effect("succeeds with the Ixdtf", () =>
+    Effect.gen(function* () {
+      const ixdtf = yield* Rfc9557.parse("2026-10-22T09:30:00Z[!Europe/Paris]");
       expect(ixdtf.timeZone).toEqual(Option.some({ name: "Europe/Paris", critical: true }));
-    }));
+    }),
+  );
 
-  it("fails with the ParseError", () =>
-    Effect.runPromise(
-      Effect.flip(Rfc9557.parse("2026-10-22T09:30:00+10:00[!Australia/Sydney]")),
-    ).then((error) => {
+  it.effect("fails with the ParseError", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(
+        Rfc9557.parse("2026-10-22T09:30:00+10:00[!Australia/Sydney]"),
+      );
       expect(error._tag).toBe("ParseError");
       expect(error.message).toContain(
         'offset +10:00 is inconsistent with the critical time zone "Australia/Sydney" (+11:00 at that instant)',
       );
-    }));
+    }),
+  );
 });
 
 describe("Rfc9557.toDateTime", () => {

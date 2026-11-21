@@ -4,9 +4,9 @@
  * @module tests/scorers/levenshtein
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
+import * as Effect from "effect/Effect";
 import { Levenshtein } from "../../../src/evals/index.ts";
-import { runTest } from "../helpers/effect.ts";
 
 describe("Levenshtein.levenshteinSimilarity", () => {
   it("is 1 for identical strings", () => {
@@ -35,24 +35,30 @@ describe("Levenshtein.levenshteinSimilarity", () => {
 });
 
 describe("Levenshtein.levenshtein", () => {
-  it("scores the normalised similarity between output and golden.expected", async () => {
-    const score = await runTest(
-      Levenshtein.levenshtein.evaluate({ golden: { expected: "kitten" }, output: "sitting" }),
-    );
-    expect(score.score).toBeCloseTo(1 - 3 / 7);
-  });
+  it.effect("scores the normalised similarity between output and golden.expected", () =>
+    Effect.gen(function* () {
+      const score = yield* Levenshtein.levenshtein.evaluate({
+        golden: { expected: "kitten" },
+        output: "sitting",
+      });
+      expect(score.score).toBeCloseTo(1 - 3 / 7);
+    }),
+  );
 
-  it("scores 1 for an exact match", async () => {
-    const score = await runTest(
-      Levenshtein.levenshtein.evaluate({ golden: { expected: "same" }, output: "same" }),
-    );
-    expect(score.score).toBe(1);
-  });
+  it.effect("scores 1 for an exact match", () =>
+    Effect.gen(function* () {
+      const score = yield* Levenshtein.levenshtein.evaluate({
+        golden: { expected: "same" },
+        output: "same",
+      });
+      expect(score.score).toBe(1);
+    }),
+  );
 
-  it("scores 0 when golden has no expected output", async () => {
-    const score = await runTest(
-      Levenshtein.levenshtein.evaluate({ golden: {}, output: "anything" }),
-    );
-    expect(score).toEqual({ score: 0, reason: "golden.expected is undefined" });
-  });
+  it.effect("scores 0 when golden has no expected output", () =>
+    Effect.gen(function* () {
+      const score = yield* Levenshtein.levenshtein.evaluate({ golden: {}, output: "anything" });
+      expect(score).toEqual({ score: 0, reason: "golden.expected is undefined" });
+    }),
+  );
 });

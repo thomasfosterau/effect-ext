@@ -16,10 +16,8 @@
 
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
 import { LanguageModel } from "effect/ai";
-import { runTest } from "../../helpers/effect.ts";
 
 /** One captured judge call: the rendered system and user prompt text. */
 export interface JudgeCall {
@@ -71,13 +69,10 @@ export const makeJudgeStub = (
 
 /** Provides a stubbed judge model as the `LanguageModel.LanguageModel` service. */
 export const provideJudge = (model: LanguageModel.LanguageModel) =>
-  Layer.succeed(LanguageModel.LanguageModel, model);
+  Effect.provideService(LanguageModel.LanguageModel, model);
 
 /** A judge that dies if actually called — for tests expecting the model is never reached. */
-export const deadJudge = (): Promise<LanguageModel.LanguageModel> =>
-  runTest(
-    LanguageModel.make({
-      generateText: () => Effect.die("the RAG metric should not have called the judge"),
-      streamText: () => Stream.die("the RAG metric should not have called the judge"),
-    }),
-  );
+export const deadJudge = LanguageModel.make({
+  generateText: () => Effect.die("the RAG metric should not have called the judge"),
+  streamText: () => Stream.die("the RAG metric should not have called the judge"),
+});

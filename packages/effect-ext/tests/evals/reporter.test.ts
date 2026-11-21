@@ -1,19 +1,18 @@
 /**
  * Unit tests for `Reporter`: the terminal table formatter, `terminal`'s
  * stdout sink, and `json`'s `FileSystem`-backed write (stubbed via
- * `FileSystem.layerNoop` — no real disk I/O).
+ * `FileSystem.makeNoop` — no real disk I/O).
  *
  * @module tests/reporter
  */
 
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as FileSystem from "effect/FileSystem";
 import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
 import { Reporter, Result } from "../../src/evals/index.ts";
-import { runTest } from "./helpers/effect.ts";
 
 const parseJson = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 
@@ -90,101 +89,111 @@ describe("Reporter.terminal", () => {
     vi.restoreAllMocks();
   });
 
-  it("logs the formatted table to stdout", async () => {
-    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
-    await runTest(Reporter.terminal.report(passingResult));
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy.mock.calls[0]?.[0]).toContain("greetings");
-  });
+  it.live("logs the formatted table to stdout", () =>
+    Effect.gen(function* () {
+      const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+      yield* Reporter.terminal.report(passingResult);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy.mock.calls[0]?.[0]).toContain("greetings");
+    }),
+  );
 });
 
 describe("Reporter.json", () => {
-  it("writes the result as JSON to the given path", async () => {
-    const written: Array<{ path: string; content: string }> = [];
-    const testFs = FileSystem.layerNoop({
-      writeFileString: (path, content) =>
-        Effect.sync(() => {
-          written.push({ path, content });
-        }),
-    });
+  it.effect("writes the result as JSON to the given path", () =>
+    Effect.gen(function* () {
+      const written: Array<{ path: string; content: string }> = [];
+      const testFs = FileSystem.makeNoop({
+        writeFileString: (path, content) =>
+          Effect.sync(() => {
+            written.push({ path, content });
+          }),
+      });
 
-    await runTest(
-      Reporter.json("./results.json").report(passingResult).pipe(Effect.provide(testFs)),
-    );
+      yield* Reporter.json("./results.json")
+        .report(passingResult)
+        .pipe(Effect.provideService(FileSystem.FileSystem, testFs));
 
-    expect(written.map((file) => file.path)).toEqual(["./results.json"]);
-    // The summary is written as the summary itself, not as an `Option` envelope.
-    expect(written.map((file) => parseJson(file.content))).toEqual([
-      {
-        ...passingResult,
-        cases: [
-          {
-            ...passingResult.cases[0],
-            metrics: [{ ...passingResult.cases[0]?.metrics[0], summary: passingSummary }],
-          },
-        ],
-      },
-    ]);
-  });
-
-  it("writes an all-errored metric's summary as null, not an omitted key", async () => {
-    const erroredResult: Result.SuiteResult = {
-      suite: "greetings",
-      passed: false,
-      durationMillis: 5,
-      cases: [
+      expect(written.map((file) => file.path)).toEqual(["./results.json"]);
+      // The summary is written as the summary itself, not as an `Option` envelope.
+      expect(written.map((file) => parseJson(file.content))).toEqual([
         {
-          golden: { input: "Bonjour" },
-          trials: 1,
-          passed: false,
-          taskOutputs: [],
-          taskFailures: [],
-          metrics: [
+          ...passingResult,
+          cases: [
             {
-              metric: "exact-match",
-              passed: false,
-              errorCount: 1,
-              summary: Option.none(),
-              trials: [{ _tag: "Errored", trial: 1, cached: false, error: "judge unavailable" }],
+              ...passingResult.cases[0],
+              metrics: [{ ...passingResult.cases[0]?.metrics[0], summary: passingSummary }],
             },
           ],
         },
-      ],
-    };
+      ]);
+    }),
+  );
 
-    let written = "";
-    const testFs = FileSystem.layerNoop({
-      writeFileString: (_path, content) =>
-        Effect.sync(() => {
-          written = content;
-        }),
-    });
+  it.effect("writes an all-errored metric's summary as null, not an omitted key", () =>
+    Effect.gen(function* () {
+      const erroredResult: Result.SuiteResult = {
+        suite: "greetings",
+        passed: false,
+        durationMillis: 5,
+        cases: [
+          {
+            golden: { input: "Bonjour" },
+            trials: 1,
+            passed: false,
+            taskOutputs: [],
+            taskFailures: [],
+            metrics: [
+              {
+                metric: "exact-match",
+                passed: false,
+                errorCount: 1,
+                summary: Option.none(),
+                trials: [{ _tag: "Errored", trial: 1, cached: false, error: "judge unavailable" }],
+              },
+            ],
+          },
+        ],
+      };
 
-    await runTest(
-      Reporter.json("./results.json").report(erroredResult).pipe(Effect.provide(testFs)),
-    );
-
-    const parsed = parseJson(written) as {
-      cases: Array<{ metrics: Array<Record<string, unknown>> }>;
-    };
-    expect(parsed.cases[0]?.metrics[0]).toHaveProperty("summary", null);
-  });
-
-  it("logs a warning instead of failing when the write fails", async () => {
-    const testFs = FileSystem.layerNoop({
-      writeFileString: () =>
-        Effect.fail(
-          PlatformError.systemError({
-            _tag: "Unknown",
-            module: "FileSystem",
-            method: "writeFileString",
+      let written = "";
+      const testFs = FileSystem.makeNoop({
+        writeFileString: (_path, content) =>
+          Effect.sync(() => {
+            written = content;
           }),
-        ),
-    });
+      });
 
-    // Should not throw — the reporter's error channel is `never`.
-    await expect(
-      runTest(Reporter.json("./results.json").report(passingResult).pipe(Effect.provide(testFs))),
-    ).resolves.toBeUndefined();
-  });
+      yield* Reporter.json("./results.json")
+        .report(erroredResult)
+        .pipe(Effect.provideService(FileSystem.FileSystem, testFs));
+
+      const parsed = parseJson(written) as {
+        cases: Array<{ metrics: Array<Record<string, unknown>> }>;
+      };
+      expect(parsed.cases[0]?.metrics[0]).toHaveProperty("summary", null);
+    }),
+  );
+
+  it.effect("logs a warning instead of failing when the write fails", () =>
+    Effect.gen(function* () {
+      const testFs = FileSystem.makeNoop({
+        writeFileString: () =>
+          Effect.fail(
+            PlatformError.systemError({
+              _tag: "Unknown",
+              module: "FileSystem",
+              method: "writeFileString",
+            }),
+          ),
+      });
+
+      // Should not throw — the reporter's error channel is `never`.
+      expect(
+        yield* Reporter.json("./results.json")
+          .report(passingResult)
+          .pipe(Effect.provideService(FileSystem.FileSystem, testFs)),
+      ).toBeUndefined();
+    }),
+  );
 });

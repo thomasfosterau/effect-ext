@@ -88,6 +88,7 @@
     "@effect/ai-anthropic": "catalog:",
     "@effect/ai-cloudflare": "catalog:",
     "@effect/language-service": "catalog:",
+    "@effect/vitest": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
     "effect": "catalog:",
     "typescript": "catalog:",

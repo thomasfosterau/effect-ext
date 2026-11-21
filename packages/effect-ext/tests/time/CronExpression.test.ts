@@ -4,7 +4,7 @@
  * the time zone, and the `Schema` round trip.
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Cron from "effect/Cron";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -95,20 +95,25 @@ describe("CronExpression.parser", () => {
 });
 
 describe("CronExpression.parse", () => {
-  it("attaches the time zone", () =>
-    Effect.runPromise(
-      CronExpression.parseIn("0 9 * * MON-FRI", DateTime.zoneMakeNamedUnsafe("Australia/Sydney")),
-    ).then((cron) => {
+  it.effect("attaches the time zone", () =>
+    Effect.gen(function* () {
+      const cron = yield* CronExpression.parseIn(
+        "0 9 * * MON-FRI",
+        DateTime.zoneMakeNamedUnsafe("Australia/Sydney"),
+      );
       expect(Cron.next(cron, DateTime.makeUnsafe("2026-10-24T00:00:00Z")).toISOString()).toBe(
         "2026-10-25T22:00:00.000Z",
       );
-    }));
+    }),
+  );
 
-  it("fails with a ParseError", () =>
-    Effect.runPromise(Effect.flip(CronExpression.parse("0 25 * * *"))).then((error) => {
+  it.effect("fails with a ParseError", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(CronExpression.parse("0 25 * * *"));
       expect(error._tag).toBe("ParseError");
       expect(error.message).toContain("hour (0-23)");
-    }));
+    }),
+  );
 });
 
 describe("CronExpression.format", () => {

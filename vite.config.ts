@@ -89,8 +89,6 @@ const webModules = [
   ...browserModules,
 ];
 
-const timeTests = "packages/effect-ext/tests/time/**";
-
 /** Every package name, for the root aggregates. */
 const packageNames = [
   "@thomasfosterau/effect-ai-cohere",
@@ -162,9 +160,10 @@ export default defineConfig({
       ],
       // `_tag` is Effect's discriminant, read on every tagged value.
       "eslint/no-underscore-dangle": ["error", { allow: ["_tag"] }],
-      // `@effect/vitest`'s `it.effect` is a test block, and so is `arena.effect`:
-      // the tests that run inside `layer(Allocator.layerArena(n))` name its
-      // handle `arena` so it does not shadow `it` (`eslint/no-shadow`).
+      // `@effect/vitest`'s `it.effect` is a test block, and so are the
+      // handles a `layer(...)` block passes its tests, named so they do not
+      // shadow `it` (`eslint/no-shadow`): `arena` inside
+      // `layer(Allocator.layerArena(n))`, and `t` elsewhere.
       "vitest/no-standalone-expect": [
         "error",
         {
@@ -174,6 +173,8 @@ export default defineConfig({
             "it.scoped",
             "it.flakyTest",
             "arena.effect",
+            "t.effect",
+            "t.effect.each",
           ],
         },
       ],
@@ -230,8 +231,14 @@ export default defineConfig({
           // language service keeps it as an editor suggestion
           // (tsconfig.base.json).
           "effecttsgo/unstable-api-usage": "off",
-          // The AI suites provide layers per test with `Effect.provide`, not
-          // `@effect/vitest`'s `layer(...)`.
+        },
+      },
+      // The binding-free URL constructors hand back a ready model, not a
+      // layer, so each provides its own `FetchHttpClient` (documented on the
+      // export): the constructor is that model's entry point.
+      {
+        files: ["packages/effect-ai-cloudflare/src/{Cohere,OpenAiModeration}.ts"],
+        rules: {
           "effecttsgo/strict-effect-provide": "off",
         },
       },
@@ -296,9 +303,7 @@ export default defineConfig({
           "oxc/no-map-spread": "off",
         },
       },
-      // Each AI package's `tests/helpers/effect.ts` IS the test harness
-      // boundary `effect-run-in-body` names as the place to run an Effect
-      // (`runTest` wraps `Effect.runPromise`), and its recording tracer must
+      // Each AI package's `tests/helpers/effect.ts` recording tracer must
       // hand Effect a mutable native `Map`: `Tracer.Span.attributes` is a
       // `ReadonlyMap` the span's own `attribute(key, value)` writes through.
       {
@@ -307,7 +312,6 @@ export default defineConfig({
           "packages/effect-ext/tests/{ai,evals}/helpers/effect.ts",
         ],
         rules: {
-          "effect/effect-run-in-body": "off",
           "effect/avoid-native-object-helpers": "off",
         },
       },
@@ -672,23 +676,6 @@ export default defineConfig({
         rules: {
           "effect/avoid-direct-json": "off",
           "effect/avoid-node-imports": "off",
-        },
-      },
-      // ---- effect-ext's numeric and time suites ----
-      // Plain vitest: a test body runs the effect it asserts on
-      // (`Effect.runPromise`), and the time suites assert in its `.then`,
-      // whose value vitest discards.
-      {
-        files: [timeTests, "packages/effect-ext/tests/numeric/**"],
-        rules: {
-          "effect/effect-run-in-body": "off",
-        },
-      },
-      {
-        files: [timeTests],
-        rules: {
-          "promise/always-return": "off",
-          "promise/no-callback-in-promise": "off",
         },
       },
       // ---- effect-ext ----

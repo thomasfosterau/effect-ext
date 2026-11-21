@@ -5,7 +5,7 @@
  * @module tests/unit/voice-conversion-model
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
@@ -15,12 +15,10 @@ import {
   type ProviderResponse,
   type Service,
 } from "@thomasfosterau/effect-ext/VoiceConversionModel";
-import { expectFailureInstanceOf, runTest } from "./helpers/effect";
+import { expectFailureInstanceOf } from "./helpers/effect";
 
-const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
-  const failure = await expectFailureInstanceOf(program, AiError.AiError);
-  return failure.message;
-};
+const expectAiError = <A, R>(program: Effect.Effect<A, AiError.AiError, R>) =>
+  Effect.map(expectFailureInstanceOf(program, AiError.AiError), (failure) => failure.message);
 
 const makeStub = (
   behaviour:
@@ -49,9 +47,9 @@ const makeStub = (
 const audio = new Uint8Array([1, 2, 3]);
 
 describe("VoiceConversionModel", () => {
-  it("returns the converted audio, media type, and usage; passes options through", async () => {
-    const { response, calls } = await runTest(
-      Effect.gen(function* () {
+  it.effect("returns the converted audio, media type, and usage; passes options through", () =>
+    Effect.gen(function* () {
+      const { response, calls } = yield* Effect.gen(function* () {
         const { model, calls: stubCalls } = yield* makeStub({
           respond: () => ({
             audio: new Uint8Array([4, 5]),
@@ -61,40 +59,44 @@ describe("VoiceConversionModel", () => {
         });
         const result = yield* model.convert({ audio, targetVoice: "nova", format: "mp3" });
         return { response: result, calls: stubCalls };
-      }),
-    );
+      });
 
-    expect(Array.from(response.audio)).toEqual([4, 5]);
-    expect(response.mediaType).toBe("audio/mpeg");
-    expect(response.usage.durationSeconds).toStrictEqual(Option.some(2));
-    expect(calls).toEqual([{ audio, targetVoice: "nova", format: "mp3" }]);
-  });
+      expect(Array.from(response.audio)).toEqual([4, 5]);
+      expect(response.mediaType).toBe("audio/mpeg");
+      expect(response.usage.durationSeconds).toStrictEqual(Option.some(2));
+      expect(calls).toEqual([{ audio, targetVoice: "nova", format: "mp3" }]);
+    }),
+  );
 
-  it("fails with AiError when the provider returns empty audio", async () => {
-    const message = await expectAiError(
-      Effect.gen(function* () {
-        const { model } = yield* makeStub({
-          respond: () => ({
-            audio: new Uint8Array([]),
-            mediaType: "audio/mpeg",
-            usage: { durationSeconds: Option.none() },
-          }),
-        });
-        return yield* model.convert({ audio, targetVoice: "nova" });
-      }),
-    );
+  it.effect("fails with AiError when the provider returns empty audio", () =>
+    Effect.gen(function* () {
+      const message = yield* expectAiError(
+        Effect.gen(function* () {
+          const { model } = yield* makeStub({
+            respond: () => ({
+              audio: new Uint8Array([]),
+              mediaType: "audio/mpeg",
+              usage: { durationSeconds: Option.none() },
+            }),
+          });
+          return yield* model.convert({ audio, targetVoice: "nova" });
+        }),
+      );
 
-    expect(message).toContain("empty audio");
-  });
+      expect(message).toContain("empty audio");
+    }),
+  );
 
-  it("propagates provider failures as AiError", async () => {
-    const message = await expectAiError(
-      Effect.gen(function* () {
-        const { model } = yield* makeStub({ fail: true });
-        return yield* model.convert({ audio, targetVoice: "nova" });
-      }),
-    );
+  it.effect("propagates provider failures as AiError", () =>
+    Effect.gen(function* () {
+      const message = yield* expectAiError(
+        Effect.gen(function* () {
+          const { model } = yield* makeStub({ fail: true });
+          return yield* model.convert({ audio, targetVoice: "nova" });
+        }),
+      );
 
-    expect(message).toContain("stubbed failure");
-  });
+      expect(message).toContain("stubbed failure");
+    }),
+  );
 });

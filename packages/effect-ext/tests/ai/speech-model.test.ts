@@ -7,7 +7,7 @@
  * @module tests/unit/speech-model
  */
 
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
@@ -18,12 +18,10 @@ import {
   type ProviderResponse,
   type Service,
 } from "@thomasfosterau/effect-ext/SpeechModel";
-import { expectFailureInstanceOf, runTest } from "./helpers/effect";
+import { expectFailureInstanceOf } from "./helpers/effect";
 
-const expectAiError = async <A>(program: Effect.Effect<A, AiError.AiError>): Promise<string> => {
-  const failure = await expectFailureInstanceOf(program, AiError.AiError);
-  return failure.message;
-};
+const expectAiError = <A, R>(program: Effect.Effect<A, AiError.AiError, R>) =>
+  Effect.map(expectFailureInstanceOf(program, AiError.AiError), (failure) => failure.message);
 
 const makeStub = (
   generate: (options: ProviderOptions) => Effect.Effect<ProviderResponse, AiError.AiError>,
@@ -44,9 +42,9 @@ const makeStub = (
   });
 
 describe("SpeechModel", () => {
-  it("returns the audio buffer, media type, and usage; passes options through", async () => {
-    const { response, calls } = await runTest(
-      Effect.gen(function* () {
+  it.effect("returns the audio buffer, media type, and usage; passes options through", () =>
+    Effect.gen(function* () {
+      const { response, calls } = yield* Effect.gen(function* () {
         const { model, calls: stubCalls } = yield* makeStub(() =>
           Effect.succeed({
             audio: new Uint8Array([1, 2, 3]),
@@ -56,35 +54,37 @@ describe("SpeechModel", () => {
         );
         const result = yield* model.generate({ text: "hello", voice: "nova", format: "mp3" });
         return { response: result, calls: stubCalls };
-      }),
-    );
+      });
 
-    expect(Array.from(response.audio)).toEqual([1, 2, 3]);
-    expect(response.mediaType).toBe("audio/mpeg");
-    expect(response.usage.inputCharacters).toStrictEqual(Option.some(5));
-    expect(calls).toEqual([{ text: "hello", voice: "nova", format: "mp3" }]);
-  });
+      expect(Array.from(response.audio)).toEqual([1, 2, 3]);
+      expect(response.mediaType).toBe("audio/mpeg");
+      expect(response.usage.inputCharacters).toStrictEqual(Option.some(5));
+      expect(calls).toEqual([{ text: "hello", voice: "nova", format: "mp3" }]);
+    }),
+  );
 
-  it("fails with AiError when the provider returns empty audio", async () => {
-    const message = await expectAiError(
-      Effect.gen(function* () {
-        const { model } = yield* makeStub(() =>
-          Effect.succeed({
-            audio: new Uint8Array([]),
-            mediaType: "audio/mpeg",
-            usage: { inputCharacters: Option.none() },
-          }),
-        );
-        return yield* model.generate({ text: "hello" });
-      }),
-    );
+  it.effect("fails with AiError when the provider returns empty audio", () =>
+    Effect.gen(function* () {
+      const message = yield* expectAiError(
+        Effect.gen(function* () {
+          const { model } = yield* makeStub(() =>
+            Effect.succeed({
+              audio: new Uint8Array([]),
+              mediaType: "audio/mpeg",
+              usage: { inputCharacters: Option.none() },
+            }),
+          );
+          return yield* model.generate({ text: "hello" });
+        }),
+      );
 
-    expect(message).toContain("empty audio");
-  });
+      expect(message).toContain("empty audio");
+    }),
+  );
 
-  it("streams audio chunks through the streaming surface", async () => {
-    const chunks = await runTest(
-      Effect.gen(function* () {
+  it.effect("streams audio chunks through the streaming surface", () =>
+    Effect.gen(function* () {
+      const chunks = yield* Effect.gen(function* () {
         const { model } = yield* makeStub(() =>
           Effect.succeed({
             audio: new Uint8Array([1]),
@@ -93,31 +93,33 @@ describe("SpeechModel", () => {
           }),
         );
         return yield* Stream.runCollect(model.stream({ text: "hi" }));
-      }),
-    );
+      });
 
-    expect(chunks.map((chunk) => Array.from(chunk))).toEqual([
-      [1, 2],
-      [3, 4],
-    ]);
-  });
+      expect(chunks.map((chunk) => Array.from(chunk))).toEqual([
+        [1, 2],
+        [3, 4],
+      ]);
+    }),
+  );
 
-  it("propagates provider failures as AiError", async () => {
-    const message = await expectAiError(
-      Effect.gen(function* () {
-        const { model } = yield* makeStub(() =>
-          Effect.fail(
-            AiError.make({
-              module: "test",
-              method: "generate",
-              reason: new AiError.UnknownError({ description: "stubbed failure" }),
-            }),
-          ),
-        );
-        return yield* model.generate({ text: "hello" });
-      }),
-    );
+  it.effect("propagates provider failures as AiError", () =>
+    Effect.gen(function* () {
+      const message = yield* expectAiError(
+        Effect.gen(function* () {
+          const { model } = yield* makeStub(() =>
+            Effect.fail(
+              AiError.make({
+                module: "test",
+                method: "generate",
+                reason: new AiError.UnknownError({ description: "stubbed failure" }),
+              }),
+            ),
+          );
+          return yield* model.generate({ text: "hello" });
+        }),
+      );
 
-    expect(message).toContain("stubbed failure");
-  });
+      expect(message).toContain("stubbed failure");
+    }),
+  );
 });
