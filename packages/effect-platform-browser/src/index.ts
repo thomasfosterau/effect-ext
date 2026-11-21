@@ -2,6 +2,7 @@
  * @since 0.1.0
  */
 export * as Battery from "./Battery.ts";
+export * as Bluetooth from "./Bluetooth.ts";
 
 /**
  * @since 0.1.0

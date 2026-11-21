@@ -41,6 +41,9 @@
  * - `TestUsb` — USB devices, for `Usb` (from `effect-platform-worker-shared`),
  *   with a `Control` that plugs them in and out and answers the picker; each
  *   device sends data on its IN endpoints, stalls them and records writes.
+ * - `TestBluetooth` — Bluetooth devices with a GATT tree, with a `Control`
+ *   that answers the picker, drops links, pushes notifications and flips
+ *   the adapter's availability; each characteristic records writes.
  * - `TestAppBadge` — an app badge, for `AppBadge` (from
  *   `effect-platform-worker-shared`), with a `Control` that reads it back.
  * - `TestMediaDevices` — cameras, microphones and a recorder, with a
@@ -63,6 +66,7 @@ export { layer } from "./testing/layer.ts";
 export { observe } from "./testing/stream.ts";
 export * as TestAppBadge from "./testing/app-badge.ts";
 export * as TestBattery from "./testing/battery.ts";
+export * as TestBluetooth from "./testing/bluetooth.ts";
 export * as TestBroadcast from "./testing/broadcast.ts";
 export * as TestClipboard from "./testing/clipboard.ts";
 export * as TestCookieStore from "./testing/cookie-store.ts";
