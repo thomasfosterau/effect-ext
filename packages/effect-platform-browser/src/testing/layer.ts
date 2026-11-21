@@ -6,6 +6,7 @@
 import * as Layer from "effect/Layer";
 import * as TestAppBadge from "./app-badge.ts";
 import * as TestBattery from "./battery.ts";
+import * as TestBluetooth from "./bluetooth.ts";
 import * as TestBroadcast from "./broadcast.ts";
 import * as TestClipboard from "./clipboard.ts";
 import * as TestCookieStore from "./cookie-store.ts";
@@ -62,6 +63,7 @@ import * as TestWakeLock from "./wake-lock.ts";
 export const layer = Layer.mergeAll(
   TestAppBadge.layer(),
   TestBattery.layer(),
+  TestBluetooth.layer(),
   TestBroadcast.layer,
   TestClipboard.layer(),
   TestCookieStore.layer(),

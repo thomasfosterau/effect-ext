@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "Effect services for browser main-thread APIs beyond @effect/platform-browser.",
   "keywords": [
+    "bluetooth",
     "browser",
     "effect",
     "notifications",
@@ -34,6 +35,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./Battery": "./src/Battery.ts",
+    "./Bluetooth": "./src/Bluetooth.ts",
     "./Broadcast": "./src/Broadcast.ts",
     "./Browser": "./src/Browser.ts",
     "./BrowserTesting": "./src/BrowserTesting.ts",
@@ -72,6 +74,10 @@
       "./Battery": {
         "types": "./dist/Battery.d.ts",
         "import": "./dist/Battery.js"
+      },
+      "./Bluetooth": {
+        "types": "./dist/Bluetooth.d.ts",
+        "import": "./dist/Bluetooth.js"
       },
       "./Broadcast": {
         "types": "./dist/Broadcast.d.ts",

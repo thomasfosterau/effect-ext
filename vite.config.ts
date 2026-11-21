@@ -457,6 +457,10 @@ export default defineConfig({
           // A HID device event's `target`.
           "packages/effect-platform-worker-shared/tests/Hid.test.ts",
           "packages/effect-platform-browser/src/testing/hid.ts",
+          // A Bluetooth device's `name` and `gatt`, and a characteristic's
+          // `value`, each missing until the platform has one.
+          "packages/effect-platform-browser/src/Bluetooth.ts",
+          "packages/effect-platform-browser/src/testing/bluetooth.ts",
           // `cookieStore.get`, which resolves `null` for a cookie that is not set.
           "packages/effect-platform-worker-shared/src/CookieStore.ts",
           // `mark` and `measure`, which return no entry in older agents.

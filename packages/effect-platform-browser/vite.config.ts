@@ -14,6 +14,7 @@ export default packageConfig({
   entry: {
     index: "src/index.ts",
     Battery: "src/Battery.ts",
+    Bluetooth: "src/Bluetooth.ts",
     Broadcast: "src/Broadcast.ts",
     Browser: "src/Browser.ts",
     BrowserTesting: "src/BrowserTesting.ts",

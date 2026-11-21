@@ -13,6 +13,7 @@ import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import {
   Battery,
+  Bluetooth,
   Browser,
   Credentials,
   DomObservers,
@@ -62,6 +63,10 @@ class FakeNavigator {
   getInstalledRelatedApps(this: FakeNavigator) {
     return Promise.resolve(this.relatedApps);
   }
+  readonly bluetooth = Object.assign(new EventTarget(), {
+    getAvailability: () => Promise.resolve(true),
+    requestDevice: () => Promise.reject(new DOMException("closed", "NotFoundError")),
+  });
 }
 const navigator = new FakeNavigator();
 
@@ -321,6 +326,21 @@ describe("Browser.layer over a page's globals", () => {
         related: [Option.some("com.example")],
         launched: Option.some("/open"),
         installable: [false],
+      });
+    }).pipe(Effect.provide(Browser.layer)),
+  );
+
+  it.effect("reaches the navigator's Bluetooth", () =>
+    Effect.gen(function* () {
+      const bluetooth = yield* Bluetooth.Bluetooth;
+      expect({
+        supported: bluetooth.supported,
+        available: yield* Stream.runCollect(Stream.take(Bluetooth.availability, 1)),
+        picked: (yield* Effect.flip(Bluetooth.request({ acceptAllDevices: true }))).reason,
+      }).toStrictEqual({
+        supported: { bluetooth: true, devices: false },
+        available: [true],
+        picked: "NotFound",
       });
     }).pipe(Effect.provide(Browser.layer)),
   );

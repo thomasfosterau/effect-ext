@@ -12,6 +12,7 @@ import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import type * as Stream from "effect/Stream";
 import type { BatteryManagerLike } from "../Battery.ts";
+import type { BluetoothLike } from "../Bluetooth.ts";
 import type { WebAuthnLike } from "../Credentials.ts";
 import type { FilePickerLike } from "../FilePicker.ts";
 import type { AnimationFramesLike, IdleCallbacksLike } from "../Frames.ts";
@@ -259,4 +260,13 @@ export const ambientRelatedApps = (): Option.Option<() => Promise<ReadonlyArray<
       Option.fromUndefinedOr(related.getInstalledRelatedApps),
       (get) => () => get.call(navigator),
     );
+  });
+
+/** `navigator.bluetooth`, where the agent has Web Bluetooth (Chromium, in a window). */
+export const ambientBluetooth = (): Option.Option<BluetoothLike> =>
+  Option.flatMap(ambientNavigator(), (navigator) => {
+    // The DOM lib has no Web Bluetooth; `onLine` as for `ambientRelatedApps`.
+    const withBluetooth: { readonly bluetooth?: BluetoothLike } & Pick<Navigator, "onLine"> =
+      navigator;
+    return Option.fromUndefinedOr(withBluetooth.bluetooth);
   });
