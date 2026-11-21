@@ -1,6 +1,6 @@
 # Binary data
 
-An `Allocator` service, binary `Layout`s, `BufferStruct`s, `Vec`, `StructOfArrays`, and Rust-style UTF-8 `String` / `Str`. Part of [`@thomasfosterau/effect-ext`](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ext). The per-export reference is the doc comments in `src/`.
+An `Allocator` service, binary `Layout`s, `BufferStruct`s, `Vec`, `StructOfArrays`, and Rust-style UTF-8 `StringBuf` / `Str`. Part of [`@thomasfosterau/effect-ext`](https://github.com/thomasfosterau/effect-ext/tree/trunk/packages/effect-ext). The per-export reference is the doc comments in `src/`.
 
 ## Allocator
 
@@ -71,24 +71,24 @@ Effect.gen(function* () {
 });
 ```
 
-## String and Str
+## StringBuf and Str
 
-These mirror Rust's `String` and `str`. Both hold valid UTF-8, and as in Rust, indices are byte offsets and lengths are in bytes. A `String` is growable and mutable, and its memory comes from the current `Allocator`. A `Str` is an immutable, zero-copy string slice with Rust's `str` API, and works as a key in Effect's `HashMap` and `HashSet`.
+These mirror Rust's `String` and `str`. Both hold valid UTF-8, and as in Rust, indices are byte offsets and lengths are in bytes. A `StringBuf` is growable and mutable, and its memory comes from the current `Allocator`. A `Str` is an immutable, zero-copy string slice with Rust's `str` API, and works as a key in Effect's `HashMap` and `HashSet`.
 
 ```ts
 import * as Effect from "effect/Effect";
-import { Str, String } from "@thomasfosterau/effect-ext";
+import { Str, StringBuf } from "@thomasfosterau/effect-ext";
 
 Effect.gen(function* () {
-  const s = yield* String.from("héllo");
-  yield* String.pushStr(s, " wörld");
-  yield* String.push(s, "!");
-  String.pop(s); // Option.some("!")
-  String.len(s); // 13 (bytes)
+  const s = yield* StringBuf.from("héllo");
+  yield* StringBuf.pushStr(s, " wörld");
+  yield* StringBuf.push(s, "!");
+  StringBuf.pop(s); // Option.some("!")
+  StringBuf.len(s); // 13 (bytes)
 
   // For the full `str` API, take an immutable snapshot (a copy that later
   // mutation cannot affect):
-  const words = Str.split(String.toStr(s), " "); // [Str("héllo"), Str("wörld")]
+  const words = Str.split(StringBuf.toStr(s), " "); // [Str("héllo"), Str("wörld")]
 });
 
 const line = Str.fromString("  key = value  ");

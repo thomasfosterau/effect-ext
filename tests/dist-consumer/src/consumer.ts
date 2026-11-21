@@ -27,7 +27,7 @@ import {
   LiteralExact,
   OptionalKey,
   Str,
-  String,
+  StringBuf,
   StructOfArrays,
   TriState,
   Url,
@@ -195,9 +195,9 @@ export type Checks = [
   Assert<Equals<ReturnType<typeof Str.len>, number>>,
   Assert<Equals<SplitOnce, Option.Option<readonly [Str.Str, Str.Str]>>>,
   Assert<Equals<Str.Utf8Error["_tag"], "Utf8Error">>,
-  // String
-  Assert<Equals<ReturnType<typeof String.make>, Effect.Effect<String.String>>>,
-  Assert<Equals<Effect.Error<ReturnType<typeof String.from>>, Allocator.AllocationError>>,
+  // StringBuf
+  Assert<Equals<ReturnType<typeof StringBuf.make>, Effect.Effect<StringBuf.StringBuf>>>,
+  Assert<Equals<Effect.Error<ReturnType<typeof StringBuf.from>>, Allocator.AllocationError>>,
   // Url
   Assert<
     Equals<
@@ -212,7 +212,7 @@ export type Checks = [
   Assert<Not<IsAny<typeof StructOfArrays.column>>>,
   Assert<Not<IsAny<typeof BufferStruct.make>>>,
   Assert<Not<IsAny<typeof Str.split>>>,
-  Assert<Not<IsAny<typeof String.pushStr>>>,
+  Assert<Not<IsAny<typeof StringBuf.pushStr>>>,
   Assert<Not<IsAny<Allocator.Allocator>>>,
   Assert<Not<IsAny<typeof TriState.read>>>,
   Assert<Not<IsAny<typeof Issues.pointers>>>,

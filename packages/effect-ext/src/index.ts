@@ -378,7 +378,7 @@ export * as Str from "./Str.ts";
  *
  * @since 0.1.0
  */
-export * as String from "./String.ts";
+export * as StringBuf from "./StringBuf.ts";
 
 /**
  * A growable struct-of-arrays container backed by `ArrayBuffer` memory.
