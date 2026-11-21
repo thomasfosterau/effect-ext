@@ -251,6 +251,16 @@ export default defineConfig({
           "typescript/no-unnecessary-type-parameters": "off",
         },
       },
+      // `layerPerTest` provides each evals test its own layer build (the test
+      // is that program's entry point), and `describeLayerPerTest` passes its
+      // caller's suite name through to `describe`.
+      {
+        files: ["packages/effect-ext/tests/evals/helpers/layerPerTest.ts"],
+        rules: {
+          "effecttsgo/strict-effect-provide": "off",
+          "vitest/valid-title": "off",
+        },
+      },
       // Build/test configs are evaluated by Vite and Vitest in bare Node,
       // before any Effect runtime exists — there is no `Config` provider to
       // read from and no `FileSystem` service to call, so `process.env` and

@@ -5,7 +5,8 @@
  * @module tests/cache
  */
 
-import { describe, expect, it, layer } from "@effect/vitest";
+import { describe, expect, it } from "@effect/vitest";
+import { layerPerTest } from "./helpers/layerPerTest.ts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -138,7 +139,7 @@ describe("Cache.hashKey", () => {
 });
 
 describe("Cache.layerMemory", () => {
-  layer(Cache.layerMemory, { buildPerTest: true })((t) => {
+  layerPerTest(Cache.layerMemory)((t) => {
     t.effect("round-trips a set value through get", () =>
       Effect.gen(function* () {
         const kv = yield* Cache.KeyValueStore.KeyValueStore;

@@ -13,7 +13,8 @@
  * @module tests/retrieval-runner
  */
 
-import { describe, expect, it, layer } from "@effect/vitest";
+import { describe, expect, it } from "@effect/vitest";
+import { describeLayerPerTest } from "./helpers/layerPerTest.ts";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
 import * as R from "effect/Record";
@@ -63,7 +64,7 @@ const run = (
     { bypassCache: true, ...options },
   );
 
-layer(Cache.layerMemory, { buildPerTest: true })("Runner.runRetrievalSuite", (t) => {
+describeLayerPerTest(Cache.layerMemory)("Runner.runRetrievalSuite", (t) => {
   t.effect("scores a perfect run 1 on every metric it computes", () =>
     Effect.gen(function* () {
       const result = yield* run();
