@@ -5,6 +5,7 @@ export * as AppBadge from "./AppBadge.ts";
 export * as BrowserFileSystem from "./BrowserFileSystem.ts";
 export * as CookieStore from "./CookieStore.ts";
 export * as EventSource from "./EventSource.ts";
+export * as Hid from "./Hid.ts";
 export * as MemoryFileSystemHandle from "./MemoryFileSystemHandle.ts";
 export * as Performance from "./Performance.ts";
 export * as Serial from "./Serial.ts";

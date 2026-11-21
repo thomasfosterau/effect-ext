@@ -7,6 +7,7 @@
     "cookies",
     "effect",
     "eventsource",
+    "hid",
     "scheduler",
     "serial",
     "server-sent-events",
@@ -38,6 +39,7 @@
     "./AppBadge": "./src/AppBadge.ts",
     "./Serial": "./src/Serial.ts",
     "./Usb": "./src/Usb.ts",
+    "./Hid": "./src/Hid.ts",
     "./WorkerScope": "./src/WorkerScope.ts",
     "./WorkerRuntime": "./src/WorkerRuntime.ts",
     "./WorkerMessaging": "./src/WorkerMessaging.ts",
@@ -68,6 +70,10 @@
       "./Usb": {
         "types": "./dist/Usb.d.ts",
         "import": "./dist/Usb.js"
+      },
+      "./Hid": {
+        "types": "./dist/Hid.d.ts",
+        "import": "./dist/Hid.js"
       },
       "./WorkerScope": {
         "types": "./dist/WorkerScope.d.ts",

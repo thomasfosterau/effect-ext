@@ -454,6 +454,9 @@ export default defineConfig({
           "packages/effect-platform-worker-shared/src/Usb.ts",
           "packages/effect-platform-worker-shared/tests/Usb.test.ts",
           "packages/effect-platform-browser/src/testing/usb.ts",
+          // A HID device event's `target`.
+          "packages/effect-platform-worker-shared/tests/Hid.test.ts",
+          "packages/effect-platform-browser/src/testing/hid.ts",
           // `cookieStore.get`, which resolves `null` for a cookie that is not set.
           "packages/effect-platform-worker-shared/src/CookieStore.ts",
           // `mark` and `measure`, which return no entry in older agents.
