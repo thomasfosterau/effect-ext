@@ -23,6 +23,7 @@ The main branch is `trunk`. Branch off `trunk`, open a pull request into `trunk`
 | `vp run -r build` | `vp pack` → each package's `dist/` |
 | `vp run check:dist` | Imports and type-checks the built entries as a consumer would, and launches the `effect-evals` bin from a packed tarball |
 | `vp run docgen` | Compiles and runs every JSDoc `@example` against `dist/` |
+| `vp run peer-floors [group]` | Each package's `check` and `test:unit` on the lowest versions its peer ranges allow (`scripts/peer-floors.mjs`; reinstalls, then restores the catalog versions). CI's `peer-floors` job runs it per group |
 | `vp run ci` | Everything CI runs, in order (`pnpm audit` needs the network) |
 
 [Fallow](https://docs.fallow.tools) checks dead code, module boundaries (`.fallowrc.json`), complexity and duplication: `vp run fallow` for a summary. Treat its findings as guidance, not dogma. `vp run fallow:audit` (the pre-commit gate) fails only on findings your change introduces against `origin/trunk`; it reads the coverage map `test:coverage` writes. Before deleting "unused" code, trace it: `vp exec fallow dead-code --trace <file>:<export>`.
@@ -50,7 +51,7 @@ Every change to a published package's behaviour or its emitted `.d.ts` (doc comm
 
 ## Dependencies
 
-Every external version is in the `pnpm-workspace.yaml` catalog; package.json files use `catalog:`, a named peers catalog or `workspace:*`. After editing the catalog, run `vp install` and commit `pnpm-lock.yaml`. Peer floors (`catalogs.*`) are tested claims: raise one only when a dependency requires it, and that is a breaking change.
+Every external version is in the `pnpm-workspace.yaml` catalog; package.json files use `catalog:`, a named peers catalog or `workspace:*`. After editing the catalog, run `vp install` and commit `pnpm-lock.yaml`. Peer floors (`catalogs.*`) are tested claims (`vp run peer-floors`): raise one only when a dependency requires it, and that is a breaking change.
 
 Dependabot groups the sets that must move together. On those PRs, by hand:
 

@@ -179,7 +179,7 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@effect/platform-browser": "catalog:peers",
-    "effect": "catalog:peers"
+    "@effect/platform-browser": "catalog:platform-peers",
+    "effect": "catalog:platform-peers"
   }
 }
