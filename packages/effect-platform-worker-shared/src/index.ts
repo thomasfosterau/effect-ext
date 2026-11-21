@@ -9,6 +9,7 @@ export * as MemoryFileSystemHandle from "./MemoryFileSystemHandle.ts";
 export * as Performance from "./Performance.ts";
 export * as Serial from "./Serial.ts";
 export * as TaskScheduler from "./TaskScheduler.ts";
+export * as Usb from "./Usb.ts";
 export * as WorkerMessaging from "./WorkerMessaging.ts";
 export * as WorkerRuntime from "./WorkerRuntime.ts";
 export * as WorkerScope from "./WorkerScope.ts";

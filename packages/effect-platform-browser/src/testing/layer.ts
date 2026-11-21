@@ -31,6 +31,7 @@ import * as TestScreenOrientation from "./screen-orientation.ts";
 import * as TestSerial from "./serial.ts";
 import * as TestSpeechRecognition from "./speech-recognition.ts";
 import * as TestSpeechSynthesis from "./speech-synthesis.ts";
+import * as TestUsb from "./usb.ts";
 import * as TestWakeLock from "./wake-lock.ts";
 
 /**
@@ -85,5 +86,6 @@ export const layer = Layer.mergeAll(
   TestSerial.layer(),
   TestSpeechRecognition.layer(),
   TestSpeechSynthesis.layer(),
+  TestUsb.layer(),
   TestWakeLock.layer(),
 );
