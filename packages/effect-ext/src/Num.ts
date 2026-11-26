@@ -22,7 +22,7 @@ import * as EqvMod from "effect/Equivalence";
 import { dual } from "effect/Function";
 import type * as Option from "effect/Option";
 import * as Order from "effect/Order";
-import { DivisionByZeroError } from "./ArithmeticError.ts";
+import { DivisionByZeroError, DomainError } from "./ArithmeticError.ts";
 import { powBySquaring } from "./internal/numeric/iterate.ts";
 
 /**
@@ -206,7 +206,11 @@ export const product =
 export const pow = <A>(N: Num<A>): Operator<A, number, A> =>
   operator((self: A, exp: number): A => {
     if (!Number.isSafeInteger(exp) || exp < 0) {
-      throw new RangeError(`pow: exponent must be a non-negative safe integer, got ${exp}`);
+      throw new DomainError({
+        operation: "pow",
+        type: "Num",
+        reason: `exponent must be a non-negative safe integer, got ${exp}`,
+      });
     }
     return powBySquaring(N.one, (x: A, y: A) => N.mul(x, y), self, exp);
   });

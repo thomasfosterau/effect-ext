@@ -278,6 +278,10 @@
       "types": "./dist/Overflowing.d.ts",
       "default": "./dist/Overflowing.js"
     },
+    "./Panic": {
+      "types": "./dist/Panic.d.ts",
+      "default": "./dist/Panic.js"
+    },
     "./PosixTz": {
       "types": "./dist/PosixTz.d.ts",
       "default": "./dist/PosixTz.js"

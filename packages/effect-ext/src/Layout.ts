@@ -8,6 +8,7 @@
  *
  * @since 0.1.0
  */
+import * as Panic from "./Panic.ts";
 import { pipeArguments, type Pipeable } from "effect/Pipeable";
 import * as P from "effect/Predicate";
 import * as R from "effect/Record";
@@ -414,7 +415,10 @@ export const array = <L extends Any, const N extends number>(
   length: N,
 ): FixedArray<L, N> => {
   if (!Number.isSafeInteger(length) || length < 0) {
-    throw new RangeError(`Layout.array: invalid length ${length}`);
+    throw new Panic.InvalidArgumentError({
+      operation: "Layout.array",
+      reason: `invalid length ${length}`,
+    });
   }
   const stride = element.size;
   const self = Object.create(Proto);
@@ -428,7 +432,10 @@ export const array = <L extends Any, const N extends number>(
     Array.from({ length }, (_, i) => element.read(view, byteOffset + i * stride));
   self.write = (view: DataView, byteOffset: number, value: ReadonlyArray<Type<L>>) => {
     if (value.length !== length) {
-      throw new RangeError(`Layout.array: expected ${length} elements, received ${value.length}`);
+      throw new Panic.InvalidArgumentError({
+        operation: "Layout.array",
+        reason: `expected ${length} elements, received ${value.length}`,
+      });
     }
     value.forEach((item, i) => element.write(view, byteOffset + i * stride, item));
   };

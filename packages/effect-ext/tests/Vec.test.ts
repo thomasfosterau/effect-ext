@@ -7,6 +7,7 @@ import * as Result from "effect/Result";
 import * as Allocator from "@thomasfosterau/effect-ext/Allocator";
 import * as Layout from "@thomasfosterau/effect-ext/Layout";
 import * as Vec from "@thomasfosterau/effect-ext/Vec";
+import * as Panic from "@thomasfosterau/effect-ext/Panic";
 
 const Point = Layout.struct({ x: Layout.i32, y: Layout.i32 });
 
@@ -37,7 +38,7 @@ describe("Vec", () => {
       expect(v.capacity).toBeGreaterThanOrEqual(10);
       expect(Vec.get(v, 3)).toEqual(Option.some(9));
       expect(Vec.get(v, 10)).toEqual(Option.none());
-      expect(() => Vec.getUnsafe(v, -1)).toThrow(RangeError);
+      expect(() => Vec.getUnsafe(v, -1)).toThrow(Panic.IndexOutOfBoundsError);
     }),
   );
 
@@ -181,11 +182,11 @@ describe("Vec", () => {
     it.effect("pushUnsafe fills reserved capacity and throws when full", () =>
       Effect.gen(function* () {
         const empty = yield* Vec.make(Point);
-        expect(() => Vec.pushUnsafe(empty, { x: 0, y: 0 })).toThrow(RangeError);
+        expect(() => Vec.pushUnsafe(empty, { x: 0, y: 0 })).toThrow(Panic.CapacityError);
         const v = yield* Vec.make(Point, { capacity: 2 });
         Vec.pushUnsafe(v, { x: 1, y: 2 });
         v.pipe(Vec.pushUnsafe({ x: 3, y: 4 }));
-        expect(() => Vec.pushUnsafe(v, { x: 5, y: 6 })).toThrow(RangeError);
+        expect(() => Vec.pushUnsafe(v, { x: 5, y: 6 })).toThrow(Panic.CapacityError);
         expect(Vec.toArray(v)).toEqual([
           { x: 1, y: 2 },
           { x: 3, y: 4 },
@@ -254,10 +255,10 @@ describe("Vec", () => {
     it.effect("setLenUnsafe beyond the capacity, negative or fractional is a defect", () =>
       Effect.gen(function* () {
         const v = yield* Vec.make(Layout.u8, { capacity: 4 });
-        expect(() => Vec.setLenUnsafe(v, 5)).toThrow(RangeError);
-        expect(() => Vec.setLenUnsafe(v, -1)).toThrow(RangeError);
-        expect(() => Vec.setLenUnsafe(v, 1.5)).toThrow(RangeError);
-        expect(() => Vec.setLenUnsafe(v, Number.NaN)).toThrow(RangeError);
+        expect(() => Vec.setLenUnsafe(v, 5)).toThrow(Panic.CapacityError);
+        expect(() => Vec.setLenUnsafe(v, -1)).toThrow(Panic.CapacityError);
+        expect(() => Vec.setLenUnsafe(v, 1.5)).toThrow(Panic.CapacityError);
+        expect(() => Vec.setLenUnsafe(v, Number.NaN)).toThrow(Panic.CapacityError);
         const exit = yield* Effect.exit(Effect.sync(() => Vec.setLenUnsafe(v, 5)));
         expect(Exit.hasDies(exit)).toBe(true);
         Vec.setLenUnsafe(v, 4);
@@ -266,7 +267,7 @@ describe("Vec", () => {
         expect(Vec.isEmpty(v)).toBe(true);
         const empty = yield* Vec.make(Layout.u8);
         Vec.setLenUnsafe(empty, 0);
-        expect(() => Vec.setLenUnsafe(empty, 1)).toThrow(RangeError);
+        expect(() => Vec.setLenUnsafe(empty, 1)).toThrow(Panic.CapacityError);
       }),
     );
 
@@ -275,8 +276,8 @@ describe("Vec", () => {
         const v = yield* Vec.fromIterable(Layout.u8, [1, 2, 3]);
         yield* Vec.free(v);
         expect(v.capacity).toBe(0);
-        expect(() => Vec.pushUnsafe(v, 1)).toThrow(RangeError);
-        expect(() => Vec.setLenUnsafe(v, 1)).toThrow(RangeError);
+        expect(() => Vec.pushUnsafe(v, 1)).toThrow(Panic.CapacityError);
+        expect(() => Vec.setLenUnsafe(v, 1)).toThrow(Panic.CapacityError);
         expect(Result.isSuccess(Vec.pushResult(v, 9))).toBe(true);
         expect(Vec.toArray(v)).toEqual([9]);
       }),

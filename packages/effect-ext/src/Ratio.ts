@@ -34,7 +34,7 @@ import * as Schema from "effect/Schema";
 import * as SchemaGetter from "effect/SchemaGetter";
 import * as SchemaIssue from "effect/SchemaIssue";
 import * as Str from "effect/String";
-import { DivisionByZeroError } from "./ArithmeticError.ts";
+import { DivisionByZeroError, DomainError } from "./ArithmeticError.ts";
 import * as big from "./internal/numeric/bigint.ts";
 import { Value } from "./internal/numeric/value.ts";
 import { type Fractional, type Operator, type OrderedNum, operator, type Signed } from "./Num.ts";
@@ -91,7 +91,11 @@ const reduce = (n: bigint, d: bigint): Ratio => {
 
 const toBig = (n: bigint | number, what: string): bigint =>
   Option.getOrElse(big.toBigIntExact(n), () => {
-    throw new RangeError(`Ratio: ${what} must be an integer, got ${n}`);
+    throw new DomainError({
+      operation: "make",
+      type: "Ratio",
+      reason: `${what} must be an integer, got ${n}`,
+    });
   });
 
 /**
@@ -186,8 +190,13 @@ export const approximate = (x: number, maxDenominator: bigint = 1_000_000n): Opt
  */
 export const limitDenominator: Operator<Ratio, bigint, Ratio> = operator(
   (self: Ratio, maxDenominator: bigint) => {
-    if (maxDenominator < 1n)
-      throw new RangeError("Ratio.limitDenominator: maxDenominator must be at least 1");
+    if (maxDenominator < 1n) {
+      throw new DomainError({
+        operation: "limitDenominator",
+        type: "Ratio",
+        reason: "maxDenominator must be at least 1",
+      });
+    }
     if (self.denom <= maxDenominator) return self;
     const [p0, q0, p1, q1] = big.convergents(self.numer, self.denom, maxDenominator, floorDiv);
     const k = (maxDenominator - q0) / q1;
@@ -324,8 +333,13 @@ export const sign = (self: Ratio): -1 | 0 | 1 => (self.numer > 0n ? 1 : self.num
  */
 export const pow: Operator<Ratio, number, Result.Result<Ratio, DivisionByZeroError>> = operator(
   (self: Ratio, exp: number) => {
-    if (!Number.isSafeInteger(exp))
-      throw new RangeError(`Ratio.pow: exponent must be a safe integer, got ${exp}`);
+    if (!Number.isSafeInteger(exp)) {
+      throw new DomainError({
+        operation: "pow",
+        type: "Ratio",
+        reason: `exponent must be a safe integer, got ${exp}`,
+      });
+    }
     const e = BigInt(Math.abs(exp));
     const n = self.numer ** e;
     const d = self.denom ** e;
@@ -445,8 +459,13 @@ export const toString = (self: Ratio): string => self.toString();
  * @since 0.1.0
  */
 export const toFixed: Operator<Ratio, number, string> = operator((self: Ratio, digits: number) => {
-  if (!Number.isSafeInteger(digits) || digits < 0)
-    throw new RangeError("Ratio.toFixed: digits must be >= 0");
+  if (!Number.isSafeInteger(digits) || digits < 0) {
+    throw new DomainError({
+      operation: "toFixed",
+      type: "Ratio",
+      reason: "digits must be >= 0",
+    });
+  }
   const scaled = round(new RatioImpl(self.numer * 10n ** BigInt(digits), self.denom));
   const negative = scaled < 0n;
   const s = big

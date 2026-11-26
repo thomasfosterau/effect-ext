@@ -18,7 +18,7 @@
  * @since 0.1.0
  */
 import * as Option from "effect/Option";
-import { DivisionByZeroError } from "./ArithmeticError.ts";
+import { DivisionByZeroError, DomainError } from "./ArithmeticError.ts";
 import * as big from "./internal/numeric/bigint.ts";
 import { euclid, extendedEuclid } from "./internal/numeric/iterate.ts";
 import { bigint as bigintIntegral, type Integral } from "./Num.ts";
@@ -248,7 +248,13 @@ export const binomial = (n: bigint, k: bigint): bigint => {
  */
 export const modPow = (base: bigint, exp: bigint, modulus: bigint): bigint => {
   if (modulus === 0n) throw new DivisionByZeroError({ operation: "modPow", type: "bigint" });
-  if (exp < 0n) throw new RangeError("modPow: exponent must be non-negative");
+  if (exp < 0n) {
+    throw new DomainError({
+      operation: "modPow",
+      type: "bigint",
+      reason: "exponent must be non-negative",
+    });
+  }
   const m = big.abs(modulus);
   if (m === 1n) return 0n;
   return big.modPow(base, exp, m);

@@ -5,6 +5,7 @@ import * as Schema from "effect/Schema";
 import * as fc from "fast-check";
 import * as Complex from "@thomasfosterau/effect-ext/Complex";
 import * as Num from "@thomasfosterau/effect-ext/Num";
+import { DomainError } from "@thomasfosterau/effect-ext/ArithmeticError";
 
 const close = Complex.approxEquals(1e-9);
 
@@ -133,7 +134,7 @@ describe("Complex: remaining operations", () => {
     expect(close(Complex.powc(Complex.i, Complex.zero), Complex.one)).toBe(true);
     expect(Complex.powi(Complex.i, 0)).toEqual(Complex.one);
     expect(close(Complex.powi(Complex.i, 4), Complex.one)).toBe(true);
-    expect(() => Complex.powi(Complex.i, 1.5)).toThrow(RangeError);
+    expect(() => Complex.powi(Complex.i, 1.5)).toThrow(DomainError);
     expect(() => Complex.powi(Complex.i, Number.POSITIVE_INFINITY)).toThrow(/safe integer/);
   });
 

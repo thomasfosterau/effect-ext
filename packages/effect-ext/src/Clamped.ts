@@ -192,9 +192,11 @@ export const int = <const Min extends number, const Max extends number>(
   options: Options<Min, Max>,
 ): ClampedModule<ClampedInt<Min, Max>> => {
   if (!Number.isSafeInteger(options.min) || !Number.isSafeInteger(options.max)) {
-    throw new RangeError(
-      `Clamped.int: bounds must be safe integers, got [${options.min}, ${options.max}]`,
-    );
+    throw new DomainError({
+      operation: "int",
+      type: "Clamped",
+      reason: `bounds must be safe integers, got [${options.min}, ${options.max}]`,
+    });
   }
   return build(options, true);
 };
@@ -208,7 +210,11 @@ const build = <A extends number>(
 ): ClampedModule<A> => {
   const { min, max } = options;
   if (!(Number.isFinite(min) && Number.isFinite(max)) || min > max) {
-    throw new RangeError(`Clamped: invalid range [${min}, ${max}]`);
+    throw new DomainError({
+      operation: "make",
+      type: "Clamped",
+      reason: `invalid range [${min}, ${max}]`,
+    });
   }
   const name = options.name ?? `${integer ? "ClampedInt" : "Clamped"}[${min}, ${max}]`;
   const width = max - min;

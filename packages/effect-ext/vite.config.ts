@@ -122,6 +122,7 @@ export default distExportsPackageConfig({
     "Observability",
     "OptionalKey",
     "Overflowing",
+    "Panic",
     "PosixTz",
     "Query",
     "QueryParams",
