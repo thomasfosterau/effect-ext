@@ -13,7 +13,12 @@ import * as P from "effect/Predicate";
 import type * as Stream from "effect/Stream";
 import type { BatteryManagerLike } from "../Battery.ts";
 import type { BluetoothLike } from "../Bluetooth.ts";
-import type { WebAuthnLike } from "../Credentials.ts";
+import type {
+  CredentialLike,
+  IdentityCredentialStaticsLike,
+  PasswordData,
+  WebAuthnLike,
+} from "../Credentials.ts";
 import type { FilePickerLike } from "../FilePicker.ts";
 import type { AnimationFramesLike, IdleCallbacksLike } from "../Frames.ts";
 import type { MediaDevicesLike, MediaRecorderFactoryLike } from "../MediaDevices.ts";
@@ -191,7 +196,8 @@ export const ambientSpeechRecognition = (): Option.Option<SpeechRecognitionFacto
 
 /**
  * WebAuthn: `navigator.credentials` and `PublicKeyCredential`, where the
- * context has both (a secure window).
+ * context has both (a secure window), with `PasswordCredential` and
+ * `IdentityCredential` where it has them.
  */
 export const ambientWebAuthn = (): Option.Option<WebAuthnLike> =>
   Option.map(
@@ -201,7 +207,29 @@ export const ambientWebAuthn = (): Option.Option<WebAuthnLike> =>
       ),
       Option.fromUndefinedOr<typeof globalThis.PublicKeyCredential>(globalThis.PublicKeyCredential),
     ]),
-    ([container, statics]): WebAuthnLike => ({ container, statics }),
+    ([container, statics]): WebAuthnLike => {
+      const scope: Partial<Pick<typeof globalThis, "location">> & {
+        readonly PasswordCredential?: new (
+          data: PasswordData & { readonly origin: string },
+        ) => CredentialLike;
+        readonly IdentityCredential?: IdentityCredentialStaticsLike;
+      } = globalThis;
+      const passwordCredential = Option.map(
+        Option.all([
+          Option.fromUndefinedOr(scope.PasswordCredential),
+          Option.fromUndefinedOr(scope.location),
+        ]),
+        ([PasswordCredential, location]) =>
+          (data: PasswordData) =>
+            new PasswordCredential({ ...data, origin: location.origin }),
+      );
+      return {
+        container,
+        statics,
+        passwordCredential: Option.getOrUndefined(passwordCredential),
+        identityCredential: scope.IdentityCredential,
+      };
+    },
   );
 
 /** `requestAnimationFrame` and `cancelAnimationFrame`, called on `globalThis`, where the context has them (a window). */

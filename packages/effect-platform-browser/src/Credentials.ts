@@ -4,7 +4,8 @@
  * {@link CreationOptionsJson} or {@link RequestOptionsJson}, `register` or
  * `authenticate`, and encode the response with
  * {@link RegistrationResponseJson} or {@link AuthenticationResponseJson}.
- * Verifying a response is the server's job.
+ * Verifying a response is the server's job. Stored passwords and FedCM
+ * sign-ins are on the same service.
  *
  * @since 0.1.0
  */
@@ -386,9 +387,130 @@ export interface CredentialsContainerLike {
   }): Promise<object | null>;
   get(options?: {
     readonly publicKey?: object;
+    readonly password?: boolean;
+    readonly identity?: object;
     readonly mediation?: string;
     readonly signal?: AbortSignal;
   }): Promise<object | null>;
+  store?(credential: CredentialLike): Promise<void>;
+  preventSilentAccess?(): Promise<void>;
+}
+
+/**
+ * The structural slice of a `Credential`: what `store` takes.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface CredentialLike {
+  readonly id: string;
+  readonly type: string;
+}
+
+/**
+ * How a password or identity sign-in asks the user. `silent` never shows
+ * a prompt: it resolves only where the user has signed in before and
+ * {@link preventSilentAccess} has not been called since.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export type SignInMediation = "silent" | "optional" | "required";
+
+/**
+ * A password to store after the user signs in with a form. `name` and
+ * `iconURL` show in the browser's account chooser.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface PasswordData {
+  readonly id: string;
+  readonly password: string;
+  readonly name?: string;
+  readonly iconURL?: string;
+}
+
+/**
+ * A password the browser filled back.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface StoredPassword {
+  readonly id: string;
+  readonly password: string;
+  readonly name: Option.Option<string>;
+  readonly iconURL: Option.Option<string>;
+}
+
+/**
+ * One identity provider a FedCM sign-in offers. `params` reach the
+ * provider's ID assertion endpoint as JSON.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface IdentityProvider {
+  readonly configURL: string;
+  readonly clientId: string;
+  readonly nonce?: string;
+  readonly loginHint?: string;
+  readonly domainHint?: string;
+  readonly fields?: ReadonlyArray<string>;
+  readonly params?: Readonly<Record<string, Schema.Json>>;
+}
+
+/**
+ * A FedCM sign-in: the providers to offer, the wording of the prompt
+ * (`context`), and whether it is a widget the browser shows unprompted
+ * (`passive`) or a dialog after a click (`active`).
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface IdentityRequest {
+  readonly providers: ReadonlyArray<IdentityProvider>;
+  readonly context?: "signin" | "signup" | "use" | "continue";
+  readonly mode?: "active" | "passive";
+}
+
+/**
+ * What a FedCM sign-in returned: the provider's token for the server to
+ * verify, whether the browser picked the account without asking, and the
+ * provider that issued it (`None` where the agent does not say).
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface IdentityToken {
+  readonly token: string;
+  readonly isAutoSelected: boolean;
+  readonly configURL: Option.Option<string>;
+}
+
+/**
+ * Asks a provider to forget that the user signed in to this site with an
+ * account (`accountHint`: its id, or an email it gave).
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface IdentityDisconnect {
+  readonly configURL: string;
+  readonly clientId: string;
+  readonly accountHint: string;
+}
+
+/**
+ * The structural slice of `IdentityCredential`'s static methods this
+ * module calls. Its presence is what says the agent has FedCM.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface IdentityCredentialStaticsLike {
+  disconnect?(this: void, options: IdentityDisconnect): Promise<void>;
 }
 
 /**
@@ -411,7 +533,9 @@ export interface PublicKeyCredentialStaticsLike {
 }
 
 /**
- * WebAuthn: `navigator.credentials` and `PublicKeyCredential`.
+ * The Credential Management API: `navigator.credentials` and
+ * `PublicKeyCredential`, plus `PasswordCredential` and `IdentityCredential`
+ * where the agent has them.
  *
  * @since 0.1.0
  * @category models
@@ -419,6 +543,10 @@ export interface PublicKeyCredentialStaticsLike {
 export interface WebAuthnLike {
   readonly container: CredentialsContainerLike;
   readonly statics: PublicKeyCredentialStaticsLike;
+  /** `new PasswordCredential(data)`, where the agent has it (Chromium). */
+  readonly passwordCredential?: ((data: PasswordData) => CredentialLike) | undefined;
+  /** `IdentityCredential`, where the agent has FedCM. */
+  readonly identityCredential?: IdentityCredentialStaticsLike | undefined;
 }
 
 /**
@@ -433,6 +561,8 @@ export interface WebAuthnLike {
  * - `NotSupported` — no authenticator supports any of `pubKeyCredParams`.
  * - `Constraint` — the authenticator cannot meet `authenticatorSelection`.
  * - `Aborted` — aborted from outside the fiber.
+ * - `Network` — FedCM: the provider could not be reached, the user has no
+ *   account with it, or the user dismissed the prompt.
  * - `Encoding` — the options carry a malformed base64url field.
  * - `Failed` — anything else; `cause` carries the platform's error.
  *
@@ -447,6 +577,7 @@ export type CredentialsErrorReason =
   | "NotSupported"
   | "Constraint"
   | "Aborted"
+  | "Network"
   | "Encoding"
   | "Failed";
 
@@ -477,6 +608,7 @@ export class CredentialsError extends Schema.TaggedError<CredentialsError>()("Cr
     "NotSupported",
     "Constraint",
     "Aborted",
+    "Network",
     "Encoding",
     "Failed",
   ]),
@@ -494,6 +626,7 @@ const REJECTION_REASONS = {
   NotSupportedError: "NotSupported",
   ConstraintError: "Constraint",
   AbortError: "Aborted",
+  NetworkError: "Network",
 } satisfies Readonly<Record<string, CredentialsErrorReason>>;
 
 const fromRejection = (cause: unknown) =>
@@ -668,6 +801,20 @@ const ask = (question?: () => Promise<boolean>) =>
  *   `signalCurrentUserDetails` — keep the user's passkey provider in step
  *   with the server. They are hints: `Effect.ignore` is the usual call.
  *
+ * - `passwordsSupported` — whether the agent stores passwords
+ *   (`PasswordCredential`, Chromium only).
+ * - `storePassword` — offers to save the password the user just signed in
+ *   with; resolves whether or not the user accepts.
+ * - `password` — the stored password for this site, `None` where the user
+ *   has none or dismisses the chooser.
+ * - `identitySupported` — whether the agent has FedCM.
+ * - `identity` — signs in through an identity provider; interrupting it
+ *   aborts the prompt.
+ * - `disconnectIdentity` — asks a provider to forget an account's sign-in
+ *   to this site.
+ * - `preventSilentAccess` — after a sign-out: the next password or
+ *   identity sign-in asks the user rather than signing in silently.
+ *
  * @since 0.1.0
  * @category services
  */
@@ -692,6 +839,20 @@ export class Credentials extends Context.Service<
     readonly signalCurrentUserDetails: (
       options: CurrentUserDetails,
     ) => Effect.Effect<void, CredentialsError>;
+    readonly passwordsSupported: boolean;
+    readonly storePassword: (data: PasswordData) => Effect.Effect<void, CredentialsError>;
+    readonly password: (
+      mediation?: SignInMediation,
+    ) => Effect.Effect<Option.Option<StoredPassword>, CredentialsError>;
+    readonly identitySupported: boolean;
+    readonly identity: (
+      request: IdentityRequest,
+      mediation?: SignInMediation,
+    ) => Effect.Effect<IdentityToken, CredentialsError>;
+    readonly disconnectIdentity: (
+      options: IdentityDisconnect,
+    ) => Effect.Effect<void, CredentialsError>;
+    readonly preventSilentAccess: Effect.Effect<void, CredentialsError>;
   }
 >()("@thomasfosterau/effect-platform-browser/Credentials") {}
 
@@ -702,6 +863,102 @@ const sendSignal =
     send === undefined
       ? Effect.fail(credentialsError("Unsupported", undefined))
       : Effect.tryPromise({ try: () => send(options), catch: fromRejection });
+
+const unsupportedError = () => Effect.fail(credentialsError("Unsupported", undefined));
+
+const isPasswordCredential = (
+  value: unknown,
+): value is {
+  readonly id: string;
+  readonly password: string;
+  readonly name?: string;
+  readonly iconURL?: string;
+} =>
+  P.hasProperty(value, "type") &&
+  value.type === "password" &&
+  P.hasProperty(value, "id") &&
+  P.isString(value.id) &&
+  P.hasProperty(value, "password") &&
+  P.isString(value.password);
+
+const isIdentityCredential = (
+  value: unknown,
+): value is {
+  readonly token: string;
+  readonly isAutoSelected?: boolean;
+  readonly configURL?: string;
+} => P.hasProperty(value, "token") && P.isString(value.token);
+
+/** The platform's `""` for an absent name or icon, as `None`. */
+const nonEmpty = (value?: string): Option.Option<string> =>
+  Option.filter(Option.fromUndefinedOr(value), (text) => text !== "");
+
+const storePasswordWith =
+  (container: CredentialsContainerLike, create?: (data: PasswordData) => CredentialLike) =>
+  (data: PasswordData): Effect.Effect<void, CredentialsError> => {
+    const store = container.store?.bind(container);
+    return create === undefined || store === undefined
+      ? unsupportedError()
+      : Effect.flatMap(
+          Effect.try({
+            try: () => create(data),
+            catch: (cause) => credentialsError("Failed", cause),
+          }),
+          (credential) => Effect.tryPromise({ try: () => store(credential), catch: fromRejection }),
+        );
+  };
+
+const passwordWith =
+  (container: CredentialsContainerLike, supported: boolean) =>
+  (mediation?: SignInMediation): Effect.Effect<Option.Option<StoredPassword>, CredentialsError> =>
+    supported
+      ? Effect.map(
+          Effect.tryPromise({
+            try: (signal) =>
+              container.get(
+                mediation === undefined
+                  ? { password: true, signal }
+                  : { password: true, mediation, signal },
+              ),
+            catch: fromRejection,
+          }),
+          (credential) =>
+            Option.map(
+              Option.liftPredicate(credential, isPasswordCredential),
+              (found): StoredPassword => ({
+                id: found.id,
+                password: found.password,
+                name: nonEmpty(found.name),
+                iconURL: nonEmpty(found.iconURL),
+              }),
+            ),
+        )
+      : unsupportedError();
+
+const identityWith =
+  (container: CredentialsContainerLike, supported: boolean) =>
+  (
+    request: IdentityRequest,
+    mediation?: SignInMediation,
+  ): Effect.Effect<IdentityToken, CredentialsError> =>
+    supported
+      ? Effect.tryPromise({
+          try: (signal) =>
+            container.get(
+              mediation === undefined
+                ? { identity: request, signal }
+                : { identity: request, mediation, signal },
+            ),
+          catch: fromRejection,
+        }).pipe(
+          Effect.flatMap(resolved(isIdentityCredential)),
+          Effect.map((credential): IdentityToken => ({
+            token: credential.token,
+            isAutoSelected: credential.isAutoSelected === true,
+            configURL: Option.fromUndefinedOr(credential.configURL),
+          })),
+        )
+      : unsupportedError();
 
 /**
  * Builds the {@link Credentials} service over WebAuthn; `undefined` builds
@@ -730,6 +987,13 @@ export const make = (webAuthn?: WebAuthnLike): Credentials["Service"] => {
       signalUnknownCredential: () => unsupported,
       signalAllAcceptedCredentials: () => unsupported,
       signalCurrentUserDetails: () => unsupported,
+      passwordsSupported: false,
+      storePassword: () => unsupported,
+      password: () => unsupported,
+      identitySupported: false,
+      identity: () => unsupported,
+      disconnectIdentity: () => unsupported,
+      preventSilentAccess: unsupported,
     });
   }
   const { container, statics } = webAuthn;
@@ -779,6 +1043,18 @@ export const make = (webAuthn?: WebAuthnLike): Credentials["Service"] => {
     signalUnknownCredential: sendSignal(statics.signalUnknownCredential),
     signalAllAcceptedCredentials: sendSignal(statics.signalAllAcceptedCredentials),
     signalCurrentUserDetails: sendSignal(statics.signalCurrentUserDetails),
+    passwordsSupported: webAuthn.passwordCredential !== undefined,
+    storePassword: storePasswordWith(container, webAuthn.passwordCredential),
+    password: passwordWith(container, webAuthn.passwordCredential !== undefined),
+    identitySupported: webAuthn.identityCredential !== undefined,
+    identity: identityWith(container, webAuthn.identityCredential !== undefined),
+    disconnectIdentity: sendSignal(webAuthn.identityCredential?.disconnect),
+    preventSilentAccess: Effect.suspend(() => {
+      const prevent = container.preventSilentAccess?.bind(container);
+      return prevent === undefined
+        ? Effect.fail(credentialsError("Unsupported", undefined))
+        : Effect.tryPromise({ try: prevent, catch: fromRejection });
+    }),
   });
 };
 
@@ -884,3 +1160,137 @@ export const capabilities: Effect.Effect<
   never,
   Credentials
 > = Effect.flatMap(Credentials, (credentials) => credentials.capabilities);
+
+/**
+ * Offers to save the password the user just signed in with, where the
+ * agent stores passwords; `Unsupported` elsewhere.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import { Credentials } from "@thomasfosterau/effect-platform-browser"
+ * import { TestCredentials } from "@thomasfosterau/effect-platform-browser/BrowserTesting"
+ *
+ * const program = Effect.gen(function* () {
+ *   yield* Credentials.storePassword({ id: "ada@example.com", password: "correct horse" })
+ *   const control = yield* TestCredentials.Control
+ *   return yield* control.passwords
+ * })
+ * Effect.runPromise(Effect.provide(program, TestCredentials.layer())).then((passwords) =>
+ *   console.log(passwords.map((stored) => stored.id)), // ["ada@example.com"]
+ * )
+ * ```
+ *
+ * @since 0.2.0
+ * @category accessors
+ */
+export const storePassword = (
+  data: PasswordData,
+): Effect.Effect<void, CredentialsError, Credentials> =>
+  Effect.flatMap(Credentials, (credentials) => credentials.storePassword(data));
+
+/**
+ * The stored password for this site: `None` where the user has none or
+ * dismisses the chooser.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import * as Option from "effect/Option"
+ * import { Credentials } from "@thomasfosterau/effect-platform-browser"
+ * import { TestCredentials } from "@thomasfosterau/effect-platform-browser/BrowserTesting"
+ *
+ * const program = Effect.gen(function* () {
+ *   yield* Credentials.storePassword({ id: "ada@example.com", password: "correct horse" })
+ *   const stored = yield* Credentials.password("optional")
+ *   return Option.map(stored, (found) => found.id)
+ * })
+ * Effect.runPromise(Effect.provide(program, TestCredentials.layer())).then(console.log) // { _id: "Option", _tag: "Some", value: "ada@example.com" }
+ * ```
+ *
+ * @since 0.2.0
+ * @category accessors
+ */
+export const password = (
+  mediation?: SignInMediation,
+): Effect.Effect<Option.Option<StoredPassword>, CredentialsError, Credentials> =>
+  Effect.flatMap(Credentials, (credentials) => credentials.password(mediation));
+
+/**
+ * Signs in through an identity provider (FedCM), returning its token for
+ * the server to verify. Interrupting it aborts the prompt.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import { Credentials } from "@thomasfosterau/effect-platform-browser"
+ * import { TestCredentials } from "@thomasfosterau/effect-platform-browser/BrowserTesting"
+ *
+ * const configURL = "https://idp.example/fedcm.json"
+ * const program = Effect.gen(function* () {
+ *   const control = yield* TestCredentials.Control
+ *   yield* control.identityAccount(configURL, "id-token-for-ada")
+ *   return yield* Credentials.identity({ providers: [{ configURL, clientId: "rp-1" }] })
+ * })
+ * Effect.runPromise(Effect.provide(program, TestCredentials.layer())).then((signedIn) =>
+ *   console.log(signedIn.token, signedIn.isAutoSelected), // "id-token-for-ada" false
+ * )
+ * ```
+ *
+ * @since 0.2.0
+ * @category accessors
+ */
+export const identity = (
+  request: IdentityRequest,
+  mediation?: SignInMediation,
+): Effect.Effect<IdentityToken, CredentialsError, Credentials> =>
+  Effect.flatMap(Credentials, (credentials) => credentials.identity(request, mediation));
+
+/**
+ * Asks an identity provider to forget an account's sign-in to this site.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import { Credentials } from "@thomasfosterau/effect-platform-browser"
+ * import { TestCredentials } from "@thomasfosterau/effect-platform-browser/BrowserTesting"
+ *
+ * const program = Credentials.disconnectIdentity({
+ *   configURL: "https://idp.example/fedcm.json",
+ *   clientId: "rp-1",
+ *   accountHint: "ada@example.com",
+ * })
+ * Effect.runPromise(Effect.provide(program, TestCredentials.layer())).then(() => console.log("done"))
+ * ```
+ *
+ * @since 0.2.0
+ * @category accessors
+ */
+export const disconnectIdentity = (
+  options: IdentityDisconnect,
+): Effect.Effect<void, CredentialsError, Credentials> =>
+  Effect.flatMap(Credentials, (credentials) => credentials.disconnectIdentity(options));
+
+/**
+ * After a sign-out: the next password or identity sign-in asks the user
+ * rather than signing in silently.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import { Credentials } from "@thomasfosterau/effect-platform-browser"
+ * import { TestCredentials } from "@thomasfosterau/effect-platform-browser/BrowserTesting"
+ *
+ * const program = Effect.gen(function* () {
+ *   yield* Credentials.storePassword({ id: "ada@example.com", password: "correct horse" })
+ *   yield* Credentials.preventSilentAccess
+ *   return yield* Credentials.password("silent")
+ * })
+ * Effect.runPromise(Effect.provide(program, TestCredentials.layer())).then(console.log) // { _id: "Option", _tag: "None" }
+ * ```
+ *
+ * @since 0.2.0
+ * @category accessors
+ */
+export const preventSilentAccess: Effect.Effect<void, CredentialsError, Credentials> =
+  Effect.flatMap(Credentials, (credentials) => credentials.preventSilentAccess);

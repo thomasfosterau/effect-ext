@@ -50,6 +50,18 @@ const resolving = ({ credential }: Resolution): Credentials.WebAuthnLike => {
 /** A rejection the platform would give: a `DOMException`. */
 const refused = () => Promise.reject(new DOMException("no", "NotAllowedError"));
 
+const configURL = "https://idp.example/fedcm.json";
+
+const identityRequest: Credentials.IdentityRequest = {
+  providers: [{ configURL, clientId: "rp-1" }],
+};
+
+const disconnect: Credentials.IdentityDisconnect = {
+  configURL,
+  clientId: "rp-1",
+  accountHint: "ada@example.com",
+};
+
 const buffer = (...bytes: ReadonlyArray<number>) => Uint8Array.from(bytes).buffer;
 
 describe("Credentials.make", () => {
@@ -73,11 +85,20 @@ describe("Credentials.make", () => {
             name: "ada",
             displayName: "Ada",
           }),
+          unsupported.storePassword({ id: "ada", password: "pw" }),
+          Effect.asVoid(unsupported.password()),
+          Effect.asVoid(unsupported.identity(identityRequest)),
+          unsupported.disconnectIdentity(disconnect),
+          unsupported.preventSilentAccess,
         ],
         reason,
         { concurrency: 1 },
       );
-      expect(reasons).toEqual(Array.from({ length: 5 }, () => "Unsupported"));
+      expect(reasons).toEqual(Array.from({ length: 10 }, () => "Unsupported"));
+      expect([unsupported.passwordsSupported, unsupported.identitySupported]).toEqual([
+        false,
+        false,
+      ]);
       expect(yield* unsupported.capabilities).toEqual({});
     }),
   );
@@ -400,5 +421,214 @@ describe("TestCredentials", () => {
     Effect.gen(function* () {
       expect((yield* Credentials.Credentials).supported).toBe(false);
     }).pipe(Effect.provide(TestCredentials.layer({ supported: false }))),
+  );
+});
+
+describe("Credentials passwords", () => {
+  it.effect("stores a password, replacing one with the same id, and fills it back", () =>
+    Effect.gen(function* () {
+      const c = yield* control;
+      expect((yield* Credentials.Credentials).passwordsSupported).toBe(true);
+      yield* Credentials.storePassword({ id: "ada@example.com", password: "old" });
+      yield* Credentials.storePassword({
+        id: "ada@example.com",
+        password: "correct horse",
+        name: "Ada",
+        iconURL: "https://example.com/ada.png",
+      });
+      expect((yield* c.passwords).map((stored) => stored.password)).toEqual(["correct horse"]);
+      expect(yield* Credentials.password()).toEqual(
+        Option.some({
+          id: "ada@example.com",
+          password: "correct horse",
+          name: Option.some("Ada"),
+          iconURL: Option.some("https://example.com/ada.png"),
+        }),
+      );
+      expect((yield* c.requests).map((r) => [r.ceremony, r.mediation])).toEqual([
+        ["store", Option.none()],
+        ["store", Option.none()],
+        ["password", Option.none()],
+      ]);
+    }).pipe(Effect.provide(TestCredentials.layer())),
+  );
+
+  it.effect("reads an absent name or icon as None", () =>
+    Effect.gen(function* () {
+      yield* Credentials.storePassword({ id: "ada", password: "pw" });
+      const stored = yield* Credentials.password("silent");
+      expect(Option.map(stored, (found) => [found.name, found.iconURL])).toEqual(
+        Option.some([Option.none(), Option.none()]),
+      );
+    }).pipe(Effect.provide(TestCredentials.layer())),
+  );
+
+  it.effect("signs in silently only until preventSilentAccess, then asks", () =>
+    Effect.gen(function* () {
+      const c = yield* control;
+      expect(yield* Credentials.password("silent")).toEqual(Option.none());
+      expect(yield* Credentials.password("optional")).toEqual(Option.none());
+      yield* Credentials.storePassword({ id: "ada", password: "pw" });
+      yield* Credentials.preventSilentAccess;
+      expect(yield* c.silentAccess).toBe(false);
+      expect(yield* Credentials.password("silent")).toEqual(Option.none());
+      yield* c.dismissNext;
+      expect(yield* Credentials.password("optional")).toEqual(Option.none());
+      expect(Option.isSome(yield* Credentials.password("optional"))).toBe(true);
+      expect(yield* c.silentAccess).toBe(true);
+      expect(Option.isSome(yield* Credentials.password("silent"))).toBe(true);
+    }).pipe(Effect.provide(TestCredentials.layer())),
+  );
+
+  it.effect("asks with required, and picks the first of several", () =>
+    Effect.gen(function* () {
+      const c = yield* control;
+      yield* Credentials.storePassword({ id: "ada", password: "pw" });
+      yield* Credentials.storePassword({ id: "grace", password: "pw2" });
+      expect(yield* Credentials.password("silent")).toEqual(Option.none());
+      const picked = yield* Credentials.password("required");
+      expect(Option.map(picked, (found) => found.id)).toEqual(Option.some("ada"));
+      yield* c.dismissNext;
+      expect(yield* Credentials.password("required")).toEqual(Option.none());
+    }).pipe(Effect.provide(TestCredentials.layer())),
+  );
+
+  it.effect("fails an empty password, a rejected store, and a rejected request", () =>
+    Effect.gen(function* () {
+      const c = yield* control;
+      expect(yield* reason(Credentials.storePassword({ id: "ada", password: "" }))).toBe("Failed");
+      yield* c.failNext("SecurityError");
+      expect(yield* reason(Credentials.storePassword({ id: "ada", password: "pw" }))).toBe(
+        "Security",
+      );
+      yield* c.failNext("NotAllowedError");
+      expect(yield* reason(Credentials.password())).toBe("NotAllowed");
+    }).pipe(Effect.provide(TestCredentials.layer())),
+  );
+
+  it.effect("fails Unsupported without PasswordCredential, or without store", () =>
+    Effect.gen(function* () {
+      const without = TestCredentials.make({ passwords: false }).credentials;
+      expect(without.passwordsSupported).toBe(false);
+      expect(yield* reason(without.storePassword({ id: "ada", password: "pw" }))).toBe(
+        "Unsupported",
+      );
+      expect(yield* reason(without.password())).toBe("Unsupported");
+      const noStore = Credentials.make({
+        container: { create: refused, get: refused },
+        statics: {},
+        passwordCredential: (data) => ({ id: data.id, type: "password" }),
+      });
+      expect(yield* reason(noStore.storePassword({ id: "ada", password: "pw" }))).toBe(
+        "Unsupported",
+      );
+      expect(yield* reason(noStore.preventSilentAccess)).toBe("Unsupported");
+    }),
+  );
+
+  it.effect("reads anything but a password credential as None", () =>
+    Effect.gen(function* () {
+      const odd = Credentials.make({
+        ...resolving({ credential: Option.some({ type: "federated", id: "ada" }) }),
+        passwordCredential: (data) => ({ id: data.id, type: "password" }),
+      });
+      expect(yield* odd.password()).toEqual(Option.none());
+    }),
+  );
+});
+
+describe("Credentials identity", () => {
+  it.effect("signs in through the first provider with an account, then auto-selects", () =>
+    Effect.gen(function* () {
+      const c = yield* control;
+      expect((yield* Credentials.Credentials).identitySupported).toBe(true);
+      yield* c.identityAccount(configURL, "old-token");
+      yield* c.identityAccount(configURL, "id-token");
+      const offered: Credentials.IdentityRequest = {
+        providers: [
+          { configURL: "https://other.example/fedcm.json", clientId: "x" },
+          ...identityRequest.providers,
+        ],
+        context: "signin",
+        mode: "active",
+      };
+      expect(yield* reason(Credentials.identity(offered, "silent"))).toBe("Network");
+      expect(yield* Credentials.identity(offered)).toEqual({
+        token: "id-token",
+        isAutoSelected: false,
+        configURL: Option.some(configURL),
+      });
+      expect((yield* Credentials.identity(offered, "silent")).isAutoSelected).toBe(true);
+      expect((yield* Credentials.identity(offered, "required")).isAutoSelected).toBe(false);
+      expect((yield* c.requests).map((r) => r.ceremony)).toEqual(
+        Array.from({ length: 4 }, () => "identity"),
+      );
+    }).pipe(Effect.provide(TestCredentials.layer())),
+  );
+
+  it.effect("fails Network with no account, a dismissed prompt, or after a disconnect", () =>
+    Effect.gen(function* () {
+      const c = yield* control;
+      expect(yield* reason(Credentials.identity(identityRequest))).toBe("Network");
+      yield* c.identityAccount(configURL, "id-token");
+      yield* c.dismissNext;
+      expect(yield* reason(Credentials.identity(identityRequest))).toBe("Network");
+      yield* Credentials.identity(identityRequest);
+      yield* Credentials.disconnectIdentity(disconnect);
+      yield* Credentials.disconnectIdentity(disconnect);
+      expect(yield* c.disconnects).toEqual([disconnect, disconnect]);
+      expect(yield* reason(Credentials.identity(identityRequest, "silent"))).toBe("Network");
+      yield* Credentials.identity(identityRequest);
+      yield* Credentials.preventSilentAccess;
+      expect(yield* reason(Credentials.identity(identityRequest, "silent"))).toBe("Network");
+    }).pipe(Effect.provide(TestCredentials.layer())),
+  );
+
+  it.effect("fails Unsupported without FedCM, and Failed for a credential with no token", () =>
+    Effect.gen(function* () {
+      const without = TestCredentials.make({ identity: false }).credentials;
+      expect(without.identitySupported).toBe(false);
+      expect(yield* reason(without.identity(identityRequest))).toBe("Unsupported");
+      expect(yield* reason(without.disconnectIdentity(disconnect))).toBe("Unsupported");
+      const empty = Credentials.make({
+        ...resolving({ credential: Option.none() }),
+        identityCredential: {},
+      });
+      expect(yield* reason(empty.identity(identityRequest, "optional"))).toBe("Failed");
+      expect(yield* reason(empty.disconnectIdentity(disconnect))).toBe("Unsupported");
+    }),
+  );
+
+  it.effect("reads a token without the optional fields, and aborts on interruption", () =>
+    Effect.gen(function* () {
+      const bare = Credentials.make({
+        ...resolving({ credential: Option.some({ token: "t" }) }),
+        identityCredential: {},
+      });
+      expect(yield* bare.identity(identityRequest)).toEqual({
+        token: "t",
+        isAutoSelected: false,
+        configURL: Option.none(),
+      });
+      const aborted: Array<boolean> = [];
+      const pending = Credentials.make({
+        container: {
+          create: refused,
+          get: (options) =>
+            new Promise((_resolve, reject) => {
+              options?.signal?.addEventListener("abort", () => {
+                aborted.push(true);
+                reject(new DOMException("aborted", "AbortError"));
+              });
+            }),
+        },
+        statics: {},
+        identityCredential: {},
+      });
+      const fiber = yield* Effect.forkChild(pending.identity(identityRequest));
+      yield* Effect.yieldNow;
+      yield* Fiber.interrupt(fiber);
+      expect(aborted).toEqual([true]);
+    }),
   );
 });
