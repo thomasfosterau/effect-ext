@@ -48,7 +48,7 @@ const coverageFloors = {
 
 /** effect-ext's AI abstractions; the same list as `aiModules` in its vite.config.ts. */
 const aiModuleFiles =
-  "packages/effect-ext/src/{ClassifierModel,ImageModel,ModerationModel,RerankerModel,SpeechModel,TranscriptionModel,VoiceConversionModel}.ts";
+  "packages/effect-ext/src/{ClassifierModel,Dictation,ImageModel,ModerationModel,RerankerModel,Speaker,SpeechModel,TranscriptionModel,VoiceConversionModel}.ts";
 
 /** The AI providers, and effect-ext's AI abstractions, evals toolkit and their tests. */
 const aiPackages = [

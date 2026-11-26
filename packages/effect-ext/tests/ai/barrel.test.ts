@@ -23,6 +23,8 @@ const EXTENSION_ONLY = [
   "ImageModel",
   "ModerationModel",
   "VoiceConversionModel",
+  "Speaker",
+  "Dictation",
 ] as const;
 
 describe("effect-ext barrel: the AI abstractions", () => {

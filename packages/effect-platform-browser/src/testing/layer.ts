@@ -5,6 +5,7 @@
  */
 import * as Layer from "effect/Layer";
 import * as TestAppBadge from "./app-badge.ts";
+import * as TestAudioOutput from "./audio-output.ts";
 import * as TestBattery from "./battery.ts";
 import * as TestBluetooth from "./bluetooth.ts";
 import * as TestBroadcast from "./broadcast.ts";
@@ -62,6 +63,7 @@ import * as TestWakeLock from "./wake-lock.ts";
  */
 export const layer = Layer.mergeAll(
   TestAppBadge.layer(),
+  TestAudioOutput.layer(),
   TestBattery.layer(),
   TestBluetooth.layer(),
   TestBroadcast.layer,

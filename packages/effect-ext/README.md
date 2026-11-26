@@ -148,6 +148,7 @@ Guide: [ai](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/eff
 | Subpath | What it is |
 | --- | --- |
 | `RerankerModel`, `ClassifierModel`, `SpeechModel`, `TranscriptionModel`, `ImageModel`, `ModerationModel`, `VoiceConversionModel` | The provider-neutral AI service abstractions `effect/ai` lacks, each shaped like its `EmbeddingModel`. |
+| `Speaker`, `Dictation` | Speech said out loud on the device and live speech to text, whoever provides them (the browser's own engines through `@thomasfosterau/effect-platform-browser`'s `LiveSpeech`, or a `SpeechModel` with an audio sink). |
 
 ### Evals
 

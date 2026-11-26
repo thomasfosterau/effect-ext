@@ -34,6 +34,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./AudioOutput": "./src/AudioOutput.ts",
     "./Battery": "./src/Battery.ts",
     "./Bluetooth": "./src/Bluetooth.ts",
     "./Broadcast": "./src/Broadcast.ts",
@@ -45,6 +46,7 @@
     "./FilePicker": "./src/FilePicker.ts",
     "./Frames": "./src/Frames.ts",
     "./InstalledApp": "./src/InstalledApp.ts",
+    "./LiveSpeech": "./src/LiveSpeech.ts",
     "./Fullscreen": "./src/Fullscreen.ts",
     "./IdleDetection": "./src/IdleDetection.ts",
     "./Locks": "./src/Locks.ts",
@@ -71,6 +73,10 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./AudioOutput": {
+        "types": "./dist/AudioOutput.d.ts",
+        "import": "./dist/AudioOutput.js"
       },
       "./Battery": {
         "types": "./dist/Battery.d.ts",
@@ -115,6 +121,10 @@
       "./InstalledApp": {
         "types": "./dist/InstalledApp.d.ts",
         "import": "./dist/InstalledApp.js"
+      },
+      "./LiveSpeech": {
+        "types": "./dist/LiveSpeech.d.ts",
+        "import": "./dist/LiveSpeech.js"
       },
       "./Fullscreen": {
         "types": "./dist/Fullscreen.d.ts",
@@ -188,6 +198,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@thomasfosterau/effect-ext": "workspace:^",
     "@thomasfosterau/effect-platform-worker-shared": "workspace:*"
   },
   "devDependencies": {

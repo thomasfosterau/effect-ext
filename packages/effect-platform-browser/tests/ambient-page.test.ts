@@ -12,6 +12,7 @@ import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import {
+  AudioOutput,
   Battery,
   Bluetooth,
   Browser,
@@ -125,6 +126,18 @@ const speechSynthesis = Object.assign(new EventTarget(), {
   resume: () => {},
 });
 
+/** An audio element that plays each clip to the end as soon as it starts. */
+const playedUrls: Array<string> = [];
+class FakeAudio extends EventTarget {
+  src = "";
+  play() {
+    playedUrls.push(this.src);
+    queueMicrotask(() => this.dispatchEvent(new Event("ended")));
+    return Promise.resolve();
+  }
+  pause() {}
+}
+
 /** Chromium's prefixed recogniser, which hears nothing and ends. */
 class FakeRecognition extends EventTarget {
   start() {
@@ -212,6 +225,7 @@ installGlobals({
   IdentityCredential: {},
   speechSynthesis,
   SpeechSynthesisUtterance: FakeUtterance,
+  Audio: FakeAudio,
   webkitSpeechRecognition: FakeRecognition,
   showOpenFilePicker: closedPicker,
   showSaveFilePicker: closedPicker,
@@ -245,6 +259,7 @@ describe("Browser.layer over a page's globals", () => {
       const stream = { id: "s", getTracks: () => [] };
       yield* Stream.runDrain(media.record(stream, { mimeType: "audio/webm" }));
       yield* SpeechSynthesis.speak("Hello");
+      yield* AudioOutput.play(new Uint8Array([1]), "audio/mpeg");
       const picked = yield* Effect.forEach(
         [
           Effect.asVoid(filePicker.open()),
@@ -274,6 +289,7 @@ describe("Browser.layer over a page's globals", () => {
         recordedStream: recorded[0] === stream,
         recordedOptions: recorded[1],
         spoken: utterances,
+        played: Arr.map(playedUrls, (url) => url.startsWith("blob:")),
         heard: yield* SpeechRecognition.once(),
         passkey: yield* Effect.flip(
           Credentials.register({
@@ -319,6 +335,7 @@ describe("Browser.layer over a page's globals", () => {
         recordedStream: true,
         recordedOptions: { mimeType: "audio/webm" },
         spoken: ["Hello"],
+        played: [true],
         heard: Option.none(),
         passkey: "NotAllowed",
         capabilities: { conditionalGet: true },
