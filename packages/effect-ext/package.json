@@ -398,6 +398,10 @@
       "types": "./dist/VoiceConversionModel.d.ts",
       "default": "./dist/VoiceConversionModel.js"
     },
+    "./Warc": {
+      "types": "./dist/Warc.d.ts",
+      "default": "./dist/Warc.js"
+    },
     "./Web": {
       "types": "./dist/Web.d.ts",
       "default": "./dist/Web.js"

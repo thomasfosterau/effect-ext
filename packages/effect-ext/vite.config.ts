@@ -147,6 +147,7 @@ export default distExportsPackageConfig({
     "UriTemplate",
     "Url",
     "Vec",
+    "Warc",
     "Web",
     "Wrapping",
     ...aiModules,

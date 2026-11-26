@@ -62,7 +62,7 @@ const aiPackages = [
 /** effect-ext's web-platform modules and their tests. */
 const webDirs = "{css,encoding,json-feed,langtag,mime,observability,uri-template,web}";
 const webTests =
-  "packages/effect-ext/tests/{atom-feed,css,encoding,har,json-feed,langtag,mime,robots,rss-feed,sitemap,uri-template,web}/**";
+  "packages/effect-ext/tests/{atom-feed,css,encoding,har,json-feed,langtag,mime,robots,rss-feed,sitemap,uri-template,warc,web}/**";
 /**
  * effect-platform-browser's platform services and doubles, which were
  * effect-ext's `Browser` / `BrowserTesting` and keep those modules' web
@@ -81,9 +81,10 @@ const browserModules = [
   ...browserTests,
 ];
 const webModules = [
-  "packages/effect-ext/src/{AtomFeed,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,Har,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,Sitemap,UriTemplate,Web}.ts",
+  "packages/effect-ext/src/{AtomFeed,Css,Encoding,EncodingBig5,EncodingEucKr,EncodingGb18030,EncodingJapanese,Har,JsonFeed,Langtag,LangtagRegistry,Mime,Negotiate,Net,Observability,Robots,RssFeed,Sitemap,UriTemplate,Warc,Web}.ts",
   `packages/effect-ext/src/${webDirs}/**`,
   `packages/effect-ext/src/internal/${webDirs}/**`,
+  "packages/effect-ext/src/internal/http-exchange.ts",
   "packages/effect-ext/src/internal/xml.ts",
   webTests,
   ...browserModules,

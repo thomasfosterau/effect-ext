@@ -11,26 +11,27 @@
 import * as Arr from "effect/Array";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
-import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import * as Match from "effect/Match";
 import * as Option from "effect/Option";
-import * as P from "effect/Predicate";
-import * as R from "effect/Record";
-import * as Redacted from "effect/Redacted";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
-import * as Str from "effect/String";
-import * as Headers from "effect/http/Headers";
 import * as HttpBody from "effect/http/HttpBody";
 import * as HttpClient from "effect/http/HttpClient";
 import * as HttpClientError from "effect/http/HttpClientError";
 import * as HttpClientResponse from "effect/http/HttpClientResponse";
-import * as HttpMiddleware from "effect/http/HttpMiddleware";
-import * as HttpServerRequest from "effect/http/HttpServerRequest";
-import type * as HttpServerResponse from "effect/http/HttpServerResponse";
-import * as UrlParams from "effect/http/UrlParams";
+import {
+  captureClient,
+  recordingServer,
+  type Exchange,
+  hasNullBody,
+  isTextual,
+  redactedHeaders,
+  redactedQuery,
+  bodyBytes,
+  contentTypeOf,
+  RedactedQueryNames as internalRedactedQueryNames,
+} from "./internal/http-exchange.ts";
 
 const comment = { comment: Schema.optionalKey(Schema.String) };
 
@@ -537,28 +538,6 @@ export const make = (options: {
 };
 
 /**
- * Whether a response of `status` must be built with a `null` body, the
- * Fetch `Response` constructor's spelling of "no body".
- */
-const hasNullBody = (status: number): boolean => Arr.contains([101, 103, 204, 205, 304], status);
-
-/** Written in place of a redacted header or query value. */
-const REDACTED = "<redacted>";
-
-const nameValues = (
-  pairs: Iterable<readonly [string, string | Redacted.Redacted]>,
-): ReadonlyArray<NameValue> =>
-  Arr.map(Arr.fromIterable(pairs), ([name, value]) => ({
-    name,
-    value: Redacted.isRedacted(value) ? REDACTED : value,
-  }));
-
-const redactedHeaders = (headers: Headers.Headers) =>
-  Effect.map(Effect.service(Headers.CurrentRedactedNames), (names) =>
-    nameValues(R.toEntries(Headers.redact(headers, names))),
-  );
-
-/**
  * Query parameter names (or patterns) whose values a recording writes as
  * `"<redacted>"`. The default is Effect's own list for
  * `UrlParams.CurrentRedactedNames` (signed-URL parameters); a custom list
@@ -577,41 +556,10 @@ const redactedHeaders = (headers: Headers.Headers) =>
  * @category redaction
  */
 export const RedactedQueryNames: Context.Reference<ReadonlyArray<string | RegExp>> =
-  Context.Reference<ReadonlyArray<string | RegExp>>(
-    "@thomasfosterau/effect-ext/Har/RedactedQueryNames",
-    {
-      defaultValue: () => ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"],
-    },
-  );
+  internalRedactedQueryNames;
 
-const redactedQuery = (params: UrlParams.UrlParams) =>
-  Effect.map(Effect.service(RedactedQueryNames), (names) =>
-    nameValues(
-      Arr.map(params.params, ([name, value]) => [
-        name,
-        P.isString(value) && Headers.isRedactedName(name, names) ? Redacted.make(value) : value,
-      ]),
-    ),
-  );
-
-/** Whether bytes of `mimeType` are recorded as text rather than base64. */
-const isTextual = (mimeType: string): boolean => {
-  const essence = Str.toLowerCase(Str.trim(Arr.headNonEmpty(Str.split(mimeType, ";"))));
-  return (
-    Str.startsWith("text/")(essence) ||
-    Str.endsWith("+json")(essence) ||
-    Str.endsWith("+xml")(essence) ||
-    Arr.contains(
-      [
-        "application/json",
-        "application/xml",
-        "application/javascript",
-        "application/x-www-form-urlencoded",
-      ],
-      essence,
-    )
-  );
-};
+const nameValues = (pairs: ReadonlyArray<readonly [string, string]>): ReadonlyArray<NameValue> =>
+  Arr.map(pairs, ([name, value]) => ({ name, value }));
 
 const decoder = () => new TextDecoder();
 const encodeBase64 = Schema.encodeSync(Schema.Uint8ArrayFromBase64);
@@ -623,31 +571,6 @@ const contentOf = (bytes: Uint8Array, mimeType: string): Content =>
     : isTextual(mimeType)
       ? { size: bytes.byteLength, mimeType, text: decoder().decode(bytes) }
       : { size: bytes.byteLength, mimeType, text: encodeBase64(bytes), encoding: "base64" };
-
-/** A body as HAR records it: its bytes where they can be read without consuming a stream. */
-const bodyBytes = (body: HttpBody.HttpBody): Option.Option<Uint8Array> =>
-  Match.valueTags(body, {
-    Empty: () => Option.some(new Uint8Array()),
-    Uint8Array: (bytes) => Option.some(bytes.body),
-    Raw: (raw) =>
-      P.isString(raw.body)
-        ? Option.some(new TextEncoder().encode(raw.body))
-        : P.isUint8Array(raw.body)
-          ? Option.some(raw.body)
-          : Option.none(),
-    FormData: () => Option.none(),
-    Stream: () => Option.none(),
-  });
-
-/** A body's declared media type, or `""`. */
-const contentTypeOf = (body: HttpBody.HttpBody): string =>
-  Match.valueTags(body, {
-    Empty: () => "",
-    Uint8Array: (bytes) => bytes.contentType,
-    Raw: (raw) => raw.contentType ?? "",
-    FormData: () => "",
-    Stream: (stream) => stream.contentType,
-  });
 
 const postDataOf = (body: HttpBody.HttpBody): Pick<Request, "postData" | "bodySize"> =>
   Option.match(bodyBytes(body), {
@@ -667,21 +590,6 @@ const postDataOf = (body: HttpBody.HttpBody): Pick<Request, "postData" | "bodySi
           },
   });
 
-/** What one exchange's entry is built from. */
-interface Exchange {
-  readonly started: DateTime.Utc;
-  readonly time: number;
-  readonly method: string;
-  readonly url: string;
-  readonly query: UrlParams.UrlParams;
-  readonly requestHeaders: Headers.Headers;
-  readonly requestBody: HttpBody.HttpBody;
-  readonly status: number;
-  readonly statusText: Option.Option<string>;
-  readonly responseHeaders: Headers.Headers;
-  readonly responseBody: Option.Option<Uint8Array>;
-}
-
 const entryOf = (exchange: Exchange): Effect.Effect<Entry> =>
   Effect.gen(function* () {
     const mimeType = exchange.responseHeaders["content-type"] ?? "";
@@ -694,8 +602,8 @@ const entryOf = (exchange: Exchange): Effect.Effect<Entry> =>
         url: exchange.url,
         httpVersion: "HTTP/1.1",
         cookies: [],
-        headers: yield* redactedHeaders(exchange.requestHeaders),
-        queryString: yield* redactedQuery(exchange.query),
+        headers: nameValues(yield* redactedHeaders(exchange.requestHeaders)),
+        queryString: nameValues(yield* redactedQuery(exchange.query)),
         headersSize: -1,
         ...postDataOf(exchange.requestBody),
       },
@@ -704,7 +612,7 @@ const entryOf = (exchange: Exchange): Effect.Effect<Entry> =>
         statusText: Option.getOrElse(exchange.statusText, () => ""),
         httpVersion: "HTTP/1.1",
         cookies: [],
-        headers: yield* redactedHeaders(exchange.responseHeaders),
+        headers: nameValues(yield* redactedHeaders(exchange.responseHeaders)),
         content: Option.match(exchange.responseBody, {
           onNone: () => ({ size: -1, mimeType, comment: "Stream body not recorded" }),
           onSome: (bytes) => contentOf(bytes, mimeType),
@@ -824,37 +732,7 @@ export const recordClient = <E, R>(
   Recorder
 > =>
   Effect.map(Effect.service(Recorder), (recorder) =>
-    HttpClient.transform(client, (effect, request) =>
-      Effect.gen(function* () {
-        const started = yield* DateTime.now;
-        const response = yield* effect;
-        const bytes = new Uint8Array(yield* response.arrayBuffer);
-        const finished = yield* DateTime.now;
-        yield* Effect.flatMap(
-          entryOf({
-            started,
-            time: Duration.toMillis(DateTime.distance(started, finished)),
-            method: request.method,
-            url: request.url,
-            query: request.urlParams,
-            requestHeaders: request.headers,
-            requestBody: request.body,
-            status: response.status,
-            statusText: Option.none(),
-            responseHeaders: response.headers,
-            responseBody: Option.some(bytes),
-          }),
-          recorder.add,
-        );
-        return HttpClientResponse.fromWeb(
-          request,
-          new globalThis.Response(hasNullBody(response.status) ? null : bytes, {
-            status: response.status,
-            headers: response.headers,
-          }),
-        );
-      }),
-    ),
+    captureClient(client, (exchange) => Effect.flatMap(entryOf(exchange), recorder.add)),
   );
 
 /**
@@ -889,44 +767,8 @@ export const recordClient = <E, R>(
  * @since 0.5.0
  * @category recording
  */
-export const recordServer = HttpMiddleware.make(
-  <E, R>(
-    app: Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>,
-  ): Effect.Effect<
-    HttpServerResponse.HttpServerResponse,
-    E,
-    R | Recorder | HttpServerRequest.HttpServerRequest
-  > =>
-    Effect.gen(function* () {
-      const recorder = yield* Recorder;
-      const request = yield* HttpServerRequest.HttpServerRequest;
-      const started = yield* DateTime.now;
-      const response = yield* app;
-      const finished = yield* DateTime.now;
-      const url = Option.getOrElse(
-        Option.map(HttpServerRequest.toURL(request), (parsed) => parsed.href),
-        () => request.originalUrl,
-      );
-      yield* Effect.flatMap(
-        entryOf({
-          started,
-          time: Duration.toMillis(DateTime.distance(started, finished)),
-          method: request.method,
-          url,
-          query: UrlParams.fromInput(new URL(url, "http://localhost").searchParams),
-          requestHeaders: request.headers,
-          requestBody: HttpBody.empty,
-          status: response.status,
-          statusText: Option.fromUndefinedOr(response.statusText),
-          responseHeaders: Str.isEmpty(contentTypeOf(response.body))
-            ? response.headers
-            : Headers.set(response.headers, "content-type", contentTypeOf(response.body)),
-          responseBody: bodyBytes(response.body),
-        }),
-        recorder.add,
-      );
-      return response;
-    }),
+export const recordServer = recordingServer(Recorder, (recorder, exchange) =>
+  Effect.flatMap(entryOf(exchange), recorder.add),
 );
 
 /** Whether an entry answers `request`: the same method and URL, the query included. */

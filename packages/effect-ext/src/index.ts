@@ -503,6 +503,13 @@ export * as Vec from "./Vec.ts";
 export * as VoiceConversionModel from "./VoiceConversionModel.ts";
 
 /**
+ * Web ARChive (WARC 1.0 / 1.1) files: read, streamed, written, and recorded from `HttpClient` and `HttpServer` exchanges.
+ *
+ * @since 0.5.0
+ */
+export * as Warc from "./Warc.ts";
+
+/**
  * Framework-neutral request / response policies: headers, cache control, cross-origin, client IP, sessions.
  *
  * @since 0.1.0
