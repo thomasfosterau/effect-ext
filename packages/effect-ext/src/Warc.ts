@@ -33,7 +33,6 @@ import {
   type Exchange,
   redactedHeaders,
   redactedQuery,
-  RedactedQueryNames as internalRedactedQueryNames,
 } from "./internal/http-exchange.ts";
 
 /**
@@ -616,7 +615,7 @@ const httpHeaderLines = (
     "",
   );
 
-/** `url` with its query parameters redacted as {@link RedactedQueryNames} says. */
+/** `url` with its query parameters redacted as `UrlParams.CurrentRedactedNames` says. */
 const targetUri = (exchange: Exchange): Effect.Effect<string> =>
   Effect.map(redactedQuery(exchange.query), (pairs) => {
     const url = new URL(exchange.url, "http://localhost");
@@ -693,27 +692,6 @@ const recordsOf = (
   });
 
 /**
- * Query parameter names (or patterns) whose values a recording writes as
- * `"<redacted>"`: the same reference as `Har.RedactedQueryNames`, defaulting
- * to Effect's own list for `UrlParams.CurrentRedactedNames` (signed-URL
- * parameters). A custom list replaces it.
- *
- * @example
- * ```ts
- * import * as Effect from "effect/Effect"
- * import { Warc } from "@thomasfosterau/effect-ext"
- *
- * Effect.runPromise(Effect.service(Warc.RedactedQueryNames)).then(console.log)
- * // ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"]
- * ```
- *
- * @since 0.5.0
- * @category redaction
- */
-export const RedactedQueryNames: Context.Reference<ReadonlyArray<string | RegExp>> =
-  internalRedactedQueryNames;
-
-/**
  * Options for {@link recordClient} and {@link recordServer}.
  *
  * @since 0.5.0
@@ -735,7 +713,7 @@ export interface RecordOptions {
  * `Transfer-Encoding` are dropped and `Content-Length` is the recorded
  * length. A request body that is a stream or form data is not recorded and
  * marked `WARC-Truncated: unspecified`. Headers and query parameters are
- * redacted as `Headers.CurrentRedactedNames` / {@link RedactedQueryNames}
+ * redacted as `Headers.CurrentRedactedNames` / `UrlParams.CurrentRedactedNames`
  * say.
  *
  * @example

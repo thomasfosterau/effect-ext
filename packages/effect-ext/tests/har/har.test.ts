@@ -14,6 +14,7 @@ import * as HttpClientRequest from "effect/http/HttpClientRequest";
 import * as HttpClientResponse from "effect/http/HttpClientResponse";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
+import * as UrlParams from "effect/http/UrlParams";
 import * as Har from "@thomasfosterau/effect-ext/Har";
 
 const CREATOR = { name: "test", version: "1.0" };
@@ -153,7 +154,7 @@ describe("Har.recordClient", () => {
       });
       expect(first?.time).toBeGreaterThanOrEqual(0);
     }).pipe(
-      Effect.provideService(Har.RedactedQueryNames, ["token"]),
+      Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]),
       Effect.provide(Har.layerRecorder),
     ),
   );

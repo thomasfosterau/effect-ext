@@ -4,7 +4,7 @@
  * replays one.
  *
  * Recorded headers and query parameters named in `Headers.CurrentRedactedNames`
- * / {@link RedactedQueryNames} are written as `"<redacted>"`.
+ * / `UrlParams.CurrentRedactedNames` are written as `"<redacted>"`.
  *
  * @since 0.5.0
  */
@@ -30,7 +30,6 @@ import {
   redactedQuery,
   bodyBytes,
   contentTypeOf,
-  RedactedQueryNames as internalRedactedQueryNames,
 } from "./internal/http-exchange.ts";
 
 const comment = { comment: Schema.optionalKey(Schema.String) };
@@ -536,27 +535,6 @@ export const make = (options: {
   const log = { version: "1.2", creator: options.creator, entries: options.entries };
   return { log: options.pages === undefined ? log : { ...log, pages: options.pages } };
 };
-
-/**
- * Query parameter names (or patterns) whose values a recording writes as
- * `"<redacted>"`. The default is Effect's own list for
- * `UrlParams.CurrentRedactedNames` (signed-URL parameters); a custom list
- * replaces it. Names match as `Headers.isRedactedName` matches them.
- *
- * @example
- * ```ts
- * import * as Effect from "effect/Effect"
- * import { Har } from "@thomasfosterau/effect-ext"
- *
- * const program = Effect.service(Har.RedactedQueryNames)
- * Effect.runPromise(program).then(console.log) // ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"]
- * ```
- *
- * @since 0.5.0
- * @category redaction
- */
-export const RedactedQueryNames: Context.Reference<ReadonlyArray<string | RegExp>> =
-  internalRedactedQueryNames;
 
 const nameValues = (pairs: ReadonlyArray<readonly [string, string]>): ReadonlyArray<NameValue> =>
   Arr.map(pairs, ([name, value]) => ({ name, value }));

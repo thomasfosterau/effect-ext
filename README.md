@@ -11,7 +11,7 @@ Experimental extensions to [Effect](https://effect.website) v4: standard-library
 pnpm add effect @thomasfosterau/effect-ext
 ```
 
-`effect` (`^4.0.0`) is a peer: keep a single copy in your app.
+`effect` (`^4.0.5`) is a peer: keep a single copy in your app.
 
 ## Usage
 

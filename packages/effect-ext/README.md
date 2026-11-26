@@ -10,7 +10,7 @@ Experimental extensions to the [Effect](https://effect.website) standard library
 pnpm add @thomasfosterau/effect-ext effect
 ```
 
-`effect` (`^4.0.0`) is a peer dependency: it must be a single copy across your app. Optional peers, each needed only by the subpaths that import it (those subpaths are not on the root barrel, so importing it never needs a peer you did not install):
+`effect` (`^4.0.5`) is a peer dependency: it must be a single copy across your app. Optional peers, each needed only by the subpaths that import it (those subpaths are not on the root barrel, so importing it never needs a peer you did not install):
 
 - `@thomasfosterau/effect-parse` `^0.4.1 || ^0.5.0 || ^0.6.0`: `Robots` and the eight time modules.
 - `@effect/platform-node` `^4.0.0`: the `effect-evals` CLI only.
