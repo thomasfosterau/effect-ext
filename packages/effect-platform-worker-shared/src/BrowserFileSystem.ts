@@ -8,6 +8,12 @@
  * `notes/a.txt` name the same file. What OPFS cannot express (permissions,
  * owners, links, access times, `watch`) fails `SystemError` `Unknown`.
  *
+ * Each write goes through its own writable, which the browser swaps in
+ * whole on close. In a dedicated worker, `syncAccess` (and
+ * {@link layerWorker}) makes `open` hold a sync access handle instead:
+ * in-place reads and writes under an exclusive lock, for many small writes
+ * (a database, a log).
+ *
  * @since 0.1.0
  */
 import * as Arr from "effect/Array";
@@ -65,7 +71,25 @@ export interface WritableLike {
 }
 
 /**
+ * The slice of a `FileSystemSyncAccessHandle` this module calls: in-place,
+ * synchronous reads and writes at a byte offset, under a lock on the file
+ * that `close` releases.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface SyncAccessHandleLike {
+  read(buffer: Uint8Array, options?: { readonly at?: number }): number;
+  write(buffer: Uint8Array, options?: { readonly at?: number }): number;
+  truncate(size: number): void;
+  getSize(): number;
+  flush(): void;
+  close(): void;
+}
+
+/**
  * The slice of a `FileSystemFileHandle` this module calls.
+ * `createSyncAccessHandle` exists in a dedicated worker over OPFS only.
  *
  * @since 0.1.0
  * @category models
@@ -75,6 +99,20 @@ export interface FileHandleLike {
   readonly name: string;
   getFile(): Promise<FileLike>;
   createWritable(options?: { readonly keepExistingData?: boolean }): Promise<WritableLike>;
+  createSyncAccessHandle?(): Promise<SyncAccessHandleLike>;
+}
+
+/**
+ * What {@link make} takes: `syncAccess` (default `false`) makes `open`
+ * hold a sync access handle where the file has one (a dedicated worker
+ * over OPFS), falling back to writables where it does not. A file another
+ * context holds open this way fails `Busy`.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface MakeOptions {
+  readonly syncAccess?: boolean;
 }
 
 /**
@@ -148,6 +186,14 @@ const unsupported = (method: string, path: string) =>
 const call = <A>(method: string, path: string, run: () => Promise<A>) =>
   Effect.tryPromise({ try: run, catch: failure(method, path) });
 
+const hasSyncAccess = (
+  handle: FileHandleLike,
+): handle is FileHandleLike & Required<Pick<FileHandleLike, "createSyncAccessHandle">> =>
+  handle.createSyncAccessHandle !== undefined;
+
+const callSync = <A>(method: string, path: string, run: () => A) =>
+  Effect.try({ try: run, catch: failure(method, path) });
+
 /**
  * The segments of a posix `path` below the root: `.` and empty segments
  * dropped, `..` climbing (never above the root).
@@ -207,7 +253,11 @@ const tempName = (prefix: string | undefined, suffix: string | undefined) =>
  * @since 0.1.0
  * @category constructors
  */
-export const make = (root: DirectoryHandleLike): FileSystem.FileSystem => {
+export const make = (
+  root: DirectoryHandleLike,
+  makeOptions?: MakeOptions,
+): FileSystem.FileSystem => {
+  const syncAccess = makeOptions?.syncAccess === true;
   const directoryAt = (method: string, parts: ReadonlyArray<string>, create = false) =>
     Effect.reduce(
       parts,
@@ -467,6 +517,9 @@ export const make = (root: DirectoryHandleLike): FileSystem.FileSystem => {
   ): Effect.Effect<FileSystem.File, PlatformError, Scope.Scope> {
     return Effect.gen(function* () {
       const handle = yield* fileForWrite("open", path, flag);
+      if (syncAccess && hasSyncAccess(handle)) {
+        return yield* openSync(path, flag, () => handle.createSyncAccessHandle());
+      }
       if (flag.startsWith("w")) yield* edit("open", path, handle, false, async () => {});
       const position = yield* Ref.make(0);
       const size = call("open", path, async () => (await handle.getFile()).size);
@@ -519,6 +572,72 @@ export const make = (root: DirectoryHandleLike): FileSystem.FileSystem => {
   }
 };
 
+/** A file over a sync access handle, held (and the file locked) for the scope. */
+function openSync(
+  path: string,
+  flag: FileSystem.OpenFlag,
+  create: () => Promise<SyncAccessHandleLike>,
+): Effect.Effect<FileSystem.File, PlatformError, Scope.Scope> {
+  return Effect.gen(function* () {
+    const access = yield* Effect.acquireRelease(call("open", path, create), (held) =>
+      Effect.ignore(
+        callSync("close", path, () => {
+          held.flush();
+          held.close();
+        }),
+      ),
+    );
+    if (flag.startsWith("w")) yield* callSync("open", path, () => access.truncate(0));
+    const position = yield* Ref.make(0);
+    const readAt = (buffer: Uint8Array, at: number) =>
+      callSync("read", path, () => access.read(buffer, { at }));
+    const readInto = (buffer: Uint8Array, options?: FileSystem.File.ReadOptions) =>
+      options?.position === undefined
+        ? Effect.flatMap(Ref.get(position), (at) =>
+            Effect.tap(readAt(buffer, at), (count) => Ref.update(position, (p) => p + count)),
+          )
+        : readAt(buffer, Number(options.position));
+    const write = (buffer: Uint8Array) =>
+      Effect.gen(function* () {
+        const at = flag.startsWith("a")
+          ? yield* callSync("write", path, () => access.getSize())
+          : yield* Ref.get(position);
+        const written = yield* callSync("write", path, () => access.write(buffer, { at }));
+        yield* Ref.set(position, at + written);
+        return written;
+      });
+    return {
+      [FileSystem.FileTypeId]: FileSystem.FileTypeId,
+      stat: Effect.map(
+        callSync("stat", path, () => access.getSize()),
+        (size) => fileInfo("File", size, Option.none()),
+      ),
+      seek: (offset, from) =>
+        Effect.map(
+          Ref.updateAndGet(position, (at) => (from === "start" ? 0 : at) + Number(offset)),
+          BigInt,
+        ),
+      sync: callSync("sync", path, () => access.flush()),
+      read: readInto,
+      readAlloc: (count, options) =>
+        Effect.suspend(() => {
+          const buffer = new Uint8Array(count);
+          return Effect.map(readInto(buffer, options), (n) =>
+            n === 0 ? Option.none() : Option.some(buffer.subarray(0, n)),
+          );
+        }),
+      truncate: (length) => callSync("truncate", path, () => access.truncate(length ?? 0)),
+      write,
+      writeAll: (buffer) =>
+        Effect.flatMap(write(buffer), (written) =>
+          written === buffer.length
+            ? Effect.void
+            : fail("writeAll", path, "Unknown", `wrote ${written} of ${buffer.length} bytes`),
+        ),
+    };
+  });
+}
+
 function fileInfo(
   type: FileSystem.File.Type,
   size: number,
@@ -566,8 +685,9 @@ function fileInfo(
  */
 export const layerHandle = (
   root: DirectoryHandleLike,
+  options?: MakeOptions,
 ): Layer.Layer<FileSystem.FileSystem | Path.Path> =>
-  Layer.merge(Layer.succeed(FileSystem.FileSystem, make(root)), Path.layer);
+  Layer.merge(Layer.succeed(FileSystem.FileSystem, make(root, options)), Path.layer);
 
 /**
  * `FileSystem` and posix `Path` rooted at this origin's private file
@@ -593,19 +713,57 @@ export const layerHandle = (
  * @since 0.1.0
  * @category layers
  */
-export const layer: Layer.Layer<FileSystem.FileSystem | Path.Path, PlatformError> = Layer.unwrap(
-  Effect.gen(function* () {
-    const scope: {
-      readonly navigator?: {
-        readonly storage?: { getDirectory?: () => Promise<DirectoryHandleLike> };
-      };
-    } = globalThis;
-    const getDirectory = Option.fromUndefinedOr(scope.navigator?.storage?.getDirectory);
-    if (Option.isNone(getDirectory)) {
-      return yield* fail("layer", "/", "NotFound", "no Origin Private File System here");
-    }
-    const storage = scope.navigator?.storage;
-    const root = yield* call("layer", "/", () => getDirectory.value.call(storage));
-    return layerHandle(root);
-  }),
-);
+export const layer: Layer.Layer<FileSystem.FileSystem | Path.Path, PlatformError> =
+  /*#__PURE__*/ layerOpfs({});
+
+/**
+ * {@link layer} for a dedicated worker: `open` holds a sync access handle
+ * on each file it opens (see {@link MakeOptions}), so many small writes go
+ * in place instead of through a swap file each. Every other operation is as
+ * in {@link layer}.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import * as FileSystem from "effect/FileSystem"
+ * import { layerWorker } from "@thomasfosterau/effect-platform-worker-shared/BrowserFileSystem"
+ *
+ * const program = Effect.scoped(
+ *   Effect.gen(function* () {
+ *     const fs = yield* FileSystem.FileSystem
+ *     const log = yield* fs.open("/app.log", { flag: "a" })
+ *     yield* log.writeAll(new TextEncoder().encode("started\n"))
+ *   }),
+ * )
+ * // Under Node there is no OPFS: the layer fails.
+ * Effect.runPromise(Effect.flip(Effect.provide(program, layerWorker))).then((error) =>
+ *   console.log(error.reason._tag), // "NotFound"
+ * )
+ * ```
+ *
+ * @since 0.2.0
+ * @category layers
+ */
+export const layerWorker: Layer.Layer<FileSystem.FileSystem | Path.Path, PlatformError> =
+  /*#__PURE__*/ layerOpfs({ syncAccess: true });
+
+function layerOpfs(
+  options: MakeOptions,
+): Layer.Layer<FileSystem.FileSystem | Path.Path, PlatformError> {
+  return Layer.unwrap(
+    Effect.gen(function* () {
+      const scope: {
+        readonly navigator?: {
+          readonly storage?: { getDirectory?: () => Promise<DirectoryHandleLike> };
+        };
+      } = globalThis;
+      const getDirectory = Option.fromUndefinedOr(scope.navigator?.storage?.getDirectory);
+      if (Option.isNone(getDirectory)) {
+        return yield* fail("layer", "/", "NotFound", "no Origin Private File System here");
+      }
+      const storage = scope.navigator?.storage;
+      const root = yield* call("layer", "/", () => getDirectory.value.call(storage));
+      return layerHandle(root, options);
+    }),
+  );
+}

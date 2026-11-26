@@ -40,4 +40,30 @@ describe("MemoryFileSystemHandle", () => {
     expect(new TextDecoder().decode(await file.slice().arrayBuffer())).toBe("abZ");
     expect(file.lastModified).toBe(1);
   });
+
+  it("writes in place through a sync access handle, which locks the file until closed", async () => {
+    const root = MemoryFileSystemHandle.make();
+    const file = await root.getFileHandle("db", { create: true });
+    const access = await file.createSyncAccessHandle?.();
+    expect(access).toBeDefined();
+    if (access === undefined) return;
+    expect(access.write(new TextEncoder().encode("abc"))).toBe(3);
+    expect(access.write(new TextEncoder().encode("Z"), { at: 1 })).toBe(1);
+    const buffer = new Uint8Array(5);
+    expect(access.read(buffer)).toBe(3);
+    expect(new TextDecoder().decode(buffer.subarray(0, 3))).toBe("aZc");
+    expect((await file.getFile()).size).toBe(3);
+    await expect(file.createSyncAccessHandle?.()).rejects.toMatchObject({
+      name: "NoModificationAllowedError",
+    });
+    await expect(file.createWritable()).rejects.toMatchObject({
+      name: "NoModificationAllowedError",
+    });
+    access.flush();
+    access.close();
+    access.close();
+    expect(() => access.getSize()).toThrow(expect.objectContaining({ name: "InvalidStateError" }));
+    const again = await file.createSyncAccessHandle?.();
+    expect(again?.getSize()).toBe(3);
+  });
 });
