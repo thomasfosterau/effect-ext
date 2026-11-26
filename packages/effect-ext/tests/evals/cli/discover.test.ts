@@ -2,9 +2,8 @@
  * Unit tests for `cli/Discover.findEvalFiles`: default and custom glob
  * patterns, `node_modules` exclusion, deduplication across overlapping
  * patterns, and the `GlobError` mapping — against a real (temp-directory)
- * filesystem, since this module wraps Node's own `fs.promises.glob` rather
- * than effect's `FileSystem`. The scratch tree is built and removed through
- * the Node `FileSystem` / `Path` services, scoped to each test.
+ * filesystem through the Node `FileSystem` / `Path` services, scoped to each
+ * test.
  *
  * @module tests/cli/discover
  */
@@ -15,10 +14,10 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Order from "effect/Order";
 import * as Path from "effect/Path";
+import * as PlatformError from "effect/PlatformError";
 import { NodeServices } from "@effect/platform-node";
 import { findEvalFiles, GlobError } from "../../../src/evals/cli/Discover.ts";
 import { expectFailureInstanceOf } from "../helpers/effect.ts";
-import { unsafeCoerce } from "../helpers/unsafe.ts";
 
 const DIRECTORIES = [
   "packages/jobs/evals",
@@ -50,9 +49,17 @@ const makeFixtureTree = Effect.fn("makeFixtureTree")(function* () {
   return dir;
 });
 
+/** A file system whose every glob fails, as an unreadable root would. */
+const failingGlob = FileSystem.makeNoop({
+  glob: () =>
+    Effect.fail(
+      PlatformError.systemError({ _tag: "PermissionDenied", module: "FileSystem", method: "glob" }),
+    ),
+});
+
 /** Runs `test` against a fresh scratch tree, with the Node platform services. */
 const inFixtureTree = <A, E>(
-  test: (dir: string, path: Path.Path) => Effect.Effect<A, E, Path.Path>,
+  test: (dir: string, path: Path.Path) => Effect.Effect<A, E, FileSystem.FileSystem | Path.Path>,
 ) =>
   Effect.gen(function* () {
     const dir = yield* makeFixtureTree();
@@ -102,16 +109,13 @@ layer(NodeServices.layer)("Discover.findEvalFiles", (t) => {
     }),
   );
 
-  t.effect("fails with GlobError instead of throwing when the underlying glob call errors", () =>
+  t.effect("fails with GlobError when the file system's glob fails", () =>
     Effect.gen(function* () {
-      // node:fs/promises' glob throws synchronously on a non-string cwd;
-      // bypass the type system to exercise the catch-path without feeding
-      // GlobError's own (schema-validated) `patterns` field bad data.
       const patterns = ["**/*.eval.ts"];
-      const malformedCwd = unsafeCoerce<string>(123);
-
       const error = yield* expectFailureInstanceOf(
-        findEvalFiles(patterns, malformedCwd),
+        findEvalFiles(patterns, "/").pipe(
+          Effect.provideService(FileSystem.FileSystem, failingGlob),
+        ),
         GlobError,
       );
       expect(error.patterns).toEqual(patterns);

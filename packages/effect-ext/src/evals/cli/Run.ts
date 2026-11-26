@@ -35,6 +35,7 @@ import * as Effect from "effect/Effect";
 import * as P from "effect/Predicate";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import type * as FileSystem from "effect/FileSystem";
 import type * as Path from "effect/Path";
 import * as EffectResult from "effect/Result";
 import * as Schema from "effect/Schema";
@@ -164,7 +165,11 @@ const processFile = (
 /** Discovers, loads, and runs every matched eval file's (optionally filtered) suites; see the module doc for the failure/defect distinction. */
 export const runEvals = (
   config: RunConfig,
-): Effect.Effect<CliReport, never, Cache.KeyValueStore.KeyValueStore | Path.Path> =>
+): Effect.Effect<
+  CliReport,
+  never,
+  Cache.KeyValueStore.KeyValueStore | FileSystem.FileSystem | Path.Path
+> =>
   Effect.gen(function* () {
     const patterns = Arr.isReadonlyArrayNonEmpty(config.globs) ? config.globs : [DEFAULT_GLOB];
     const filesResult = yield* Effect.result(findEvalFiles(patterns, config.cwd));
