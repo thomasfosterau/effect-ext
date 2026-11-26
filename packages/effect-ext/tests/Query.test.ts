@@ -107,7 +107,7 @@ describe("evaluation", () => {
   it("matches membership with oneOf, by Equal.equals", () => {
     expect(filtered(p.oneOf("name", ["Bo", "Cy", "Zed"]))).toStrictEqual(["Bo", "Cy"]);
     expect(filtered(p.oneOf("name", []))).toStrictEqual([]);
-    expect(filtered(p.oneOf("nickname", [Option.none()]))).toStrictEqual(["Bo", "Di"]);
+    expect(filtered(p.oneOf("nickname", ["Prof", "Zed"]))).toStrictEqual(["Cy"]);
   });
 
   it("tests text, looking inside an Option and skipping None", () => {
@@ -116,11 +116,17 @@ describe("evaluation", () => {
     expect(filtered(p.endsWith("nickname", "f"))).toStrictEqual(["Cy"]);
   });
 
-  it("compares an Option field by its inner value; None matches no ordering", () => {
+  it("compares an Option field by its inner value, as SQL compares a nullable column", () => {
     expect(filtered(p.gte("nickname", "P"))).toStrictEqual(["Cy"]);
     expect(filtered(p.lt("nickname", "zzz"))).toStrictEqual(["Ada", "Cy"]);
-    expect(filtered(p.eq("nickname", Option.none()))).toStrictEqual(["Bo", "Di"]);
-    expect(filtered(p.eq("nickname", Option.some("Prof")))).toStrictEqual(["Cy"]);
+    expect(filtered(p.eq("nickname", "Prof"))).toStrictEqual(["Cy"]);
+    // None is NULL: not even `ne` matches it.
+    expect(filtered(p.ne("nickname", "Prof"))).toStrictEqual(["Ada"]);
+  });
+
+  it("tests presence with isSome / isNone", () => {
+    expect(filtered(p.isSome("nickname"))).toStrictEqual(["Ada", "Cy"]);
+    expect(filtered(p.isNone("nickname"))).toStrictEqual(["Bo", "Di"]);
   });
 
   it("orders and equates DateTimes", () => {
@@ -200,6 +206,14 @@ describe("sorting and windowing", () => {
     expect(names(Query.run(desc, people))).toStrictEqual(["Cy", "Ada", "Bo", "Di"]);
   });
 
+  it("ties values of different kinds, keeping their input order", () => {
+    type Row = { readonly v: number | string };
+    const rows: ReadonlyArray<Row> = [{ v: "a" }, { v: 1 }];
+    const v = Query.fields<Row>();
+    expect(Query.run(Query.orderBy(v.asc("v"))(Query.make<Row>()), rows)).toStrictEqual(rows);
+    expect(Query.run(Query.orderBy(v.desc("v"))(Query.make<Row>()), rows)).toStrictEqual(rows);
+  });
+
   it("sorts DateTimes", () => {
     const q = pipe(Query.make<Person>(), Query.orderBy(p.asc("joined")));
     expect(names(Query.run(q, people))).toStrictEqual(["Ada", "Cy", "Di", "Bo"]);
@@ -252,7 +266,7 @@ describe("FilterFor", () => {
           _tag: "Compare",
           field: "nickname",
           op: "eq",
-          value: { _tag: "Some", value: "Countess" },
+          value: "Countess",
         },
       ],
     });
@@ -275,12 +289,42 @@ describe("FilterFor", () => {
   it("round-trips a built filter through its wire form", () => {
     const filter = Query.and(
       p.gte("joined", at("2021-01-01T00:00:00Z")),
-      Query.or(p.contains("name", "a"), Query.not(p.eq("nickname", Option.none()))),
+      Query.or(p.contains("name", "a"), p.isSome("nickname")),
       Query.all,
     );
     const text = Schema.encodeSync(Json)(filter);
     expect(text).toContain('"value":"2021-01-01T00:00:00.000Z"');
     expect(filtered(Schema.decodeSync(Json)(text))).toStrictEqual(filtered(filter));
+  });
+});
+
+describe("QueryFor", () => {
+  it("round-trips a whole query through JSON, with no limit as an absent key", () => {
+    const Json = Schema.fromJsonString(Query.QueryFor(Person));
+    const query = pipe(
+      Query.make<Person>(),
+      Query.where(p.isNone("nickname")),
+      Query.orderBy(p.desc("joined")),
+      Query.skip(1),
+    );
+    const text = Schema.encodeSync(Json)(query);
+    expect(text).not.toContain("limit");
+    expect(Schema.decodeSync(Json)(text)).toStrictEqual(query);
+    const limited = Query.take(query, 3);
+    expect(Schema.decodeSync(Json)(Schema.encodeSync(Json)(limited))).toStrictEqual(limited);
+    expect(
+      Exit.isFailure(Schema.decodeExit(Json)('{"filter":{"_tag":"All"},"sort":[],"offset":-1}')),
+    ).toBe(true);
+  });
+});
+
+describe("valueSchema", () => {
+  it("is a field's own type, or an Option field's inner type", () => {
+    expect(Schema.is(Query.valueSchema(Schema.Finite))(1)).toBe(true);
+    expect(Schema.is(Query.valueSchema(Schema.Option(Schema.String)))("x")).toBe(true);
+    expect(
+      Schema.is(Query.valueSchema(Schema.OptionFromNullOr(Schema.String)))(Option.none()),
+    ).toBe(false);
   });
 });
 
@@ -315,6 +359,7 @@ describe("a backend walks the same tree", () => {
         params.push(node.value);
         return `${node.field} LIKE ?`;
       },
+      Present: (node) => `${node.field} IS NOT NULL`,
       And: (node) => `(${Arr.map(node.filters, (child) => toSql(child, params)).join(" AND ")})`,
       Or: (node) => `(${Arr.map(node.filters, (child) => toSql(child, params)).join(" OR ")})`,
       Not: (node) => `NOT ${toSql(node.filter, params)}`,

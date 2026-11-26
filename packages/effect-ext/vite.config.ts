@@ -121,6 +121,7 @@ export default distExportsPackageConfig({
     "Overflowing",
     "PosixTz",
     "Query",
+    "QueryParams",
     "Range",
     "Ratio",
     "Rfc3339",

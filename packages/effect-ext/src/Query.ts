@@ -4,16 +4,22 @@
  * {@link Query} adds sorting and a window, and both are plain JSON-shaped
  * values.
  *
- * Because a query is data rather than a closure, one value serves three
+ * Because a query is data rather than a closure, one value serves four
  * places:
  *
  * - **Build it typed**: {@link fields} gives constructors whose field names
  *   and values are checked against the record type.
- * - **Accept it from a client**: {@link FilterFor} and {@link SortFor} are
- *   codecs derived from a `Schema.Struct`, which reject unknown fields and
- *   decode each value with that field's own schema.
+ * - **Store or send it**: {@link QueryFor}, {@link FilterFor} and
+ *   {@link SortFor} are JSON codecs derived from a `Schema.Struct`, which
+ *   reject unknown fields and decode each value with that field's schema.
+ * - **Parse it from a URL**: `QueryParams` reads one from `URLSearchParams`
+ *   in a pluggable dialect (JSON:API-style brackets, OData, your own).
  * - **Run it**: {@link run} evaluates it over any `Iterable`; a backend (SQL,
- *   an index, a remote API) can walk the same {@link Expr} tree instead.
+ *   an index, a remote API) walks the same {@link Expr} tree instead.
+ *
+ * **`Option` fields** are compared by their inner value, as SQL compares a
+ * nullable column: `None` matches no comparison, membership or text test
+ * (not even `ne`), and {@link Present} tests for `Some`.
  *
  * @copyright Thomas Foster
  * @since 0.5.0
@@ -29,6 +35,7 @@ import * as Order from "effect/Order";
 import * as P from "effect/Predicate";
 import * as R from "effect/Record";
 import * as Schema from "effect/Schema";
+import * as SchemaAST from "effect/SchemaAST";
 
 // ---------------------------------------------------------------------------
 // The expression tree
@@ -99,6 +106,18 @@ export interface Text {
 }
 
 /**
+ * Matches when the field holds a value: `Some` for an `Option` field,
+ * anything but `undefined` otherwise (SQL's `IS NOT NULL`).
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export interface Present {
+  readonly _tag: "Present";
+  readonly field: string;
+}
+
+/**
  * Matches when every child matches. An empty `And` matches everything.
  *
  * @since 0.5.0
@@ -133,12 +152,13 @@ export interface Not {
 
 /**
  * The untyped filter tree: what a backend walks to compile a query. Field
- * names are plain strings and values are the decoded (`Type`-side) values.
+ * names are plain strings and values are the decoded (`Type`-side) values; an
+ * `Option` field's values are its inner values.
  *
  * @since 0.5.0
  * @category models
  */
-export type Expr = All | Compare | In | Text | And | Or | Not;
+export type Expr = All | Compare | In | Text | Present | And | Or | Not;
 
 declare const FilterTarget: unique symbol;
 
@@ -203,19 +223,35 @@ export type KeysOf<A, V> = {
   string;
 
 /**
+ * The string keys of `A` whose values are `Option`s.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export type OptionKeys<A> = {
+  readonly [K in keyof A]-?: [A[K]] extends [Option.Option<unknown>] ? K : never;
+}[keyof A] &
+  string;
+
+/**
  * Typed constructors for filters and sort keys over `A`.
  *
  * @since 0.5.0
  * @category models
  */
 export interface Fields<A> {
-  readonly eq: <K extends keyof A & string>(field: K, value: A[K]) => Filter<A>;
-  readonly ne: <K extends keyof A & string>(field: K, value: A[K]) => Filter<A>;
+  readonly eq: <K extends keyof A & string>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
+  readonly ne: <K extends keyof A & string>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
   readonly lt: <K extends KeysOf<A, Ordered>>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
   readonly lte: <K extends KeysOf<A, Ordered>>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
   readonly gt: <K extends KeysOf<A, Ordered>>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
   readonly gte: <K extends KeysOf<A, Ordered>>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
-  readonly oneOf: <K extends keyof A & string>(field: K, values: Iterable<A[K]>) => Filter<A>;
+  readonly oneOf: <K extends keyof A & string>(
+    field: K,
+    values: Iterable<Unwrapped<A[K]>>,
+  ) => Filter<A>;
+  readonly isSome: (field: OptionKeys<A>) => Filter<A>;
+  readonly isNone: (field: OptionKeys<A>) => Filter<A>;
   readonly contains: (field: KeysOf<A, string>, value: string) => Filter<A>;
   readonly startsWith: (field: KeysOf<A, string>, value: string) => Filter<A>;
   readonly endsWith: (field: KeysOf<A, string>, value: string) => Filter<A>;
@@ -275,6 +311,8 @@ export const fields = <A>(): Fields<A> => ({
   contains: text("contains"),
   startsWith: text("startsWith"),
   endsWith: text("endsWith"),
+  isSome: (field) => ({ _tag: "Present", field }),
+  isNone: (field) => ({ _tag: "Not", filter: { _tag: "Present", field } }),
   asc: (field) => ({ field, direction: "asc" }),
   desc: (field) => ({ field, direction: "desc" }),
 });
@@ -510,8 +548,10 @@ const whole = (n: number): number => (Number.isFinite(n) ? Math.max(0, Math.trun
 // In-memory evaluation
 // ---------------------------------------------------------------------------
 
+// A field's value as SQL sees a nullable column: `None` (or a missing field)
+// is NULL, which no comparison matches.
 const unwrap = (value: unknown): Option.Option<unknown> =>
-  Option.isOption(value) ? value : Option.some(value);
+  Option.isOption(value) ? value : Option.fromUndefinedOr(value);
 
 /**
  * Orders two values of the same {@link Ordered} kind; `None` for different
@@ -540,21 +580,20 @@ const ordered = (op: Exclude<CompareOp, "eq" | "ne">, ordering: -1 | 0 | 1): boo
   );
 
 const compareMatches = (node: Compare, actual: unknown): boolean =>
-  Match.value(node.op).pipe(
-    Match.when("eq", () => Eq.equals(actual, node.value)),
-    Match.when("ne", () => !Eq.equals(actual, node.value)),
-    // An `Option` field compares by its inner value; `None` matches no
-    // ordering comparison.
-    Match.orElse((op) =>
-      Option.match(
-        Option.flatMap(unwrap(actual), (inner) => compareValues(inner, node.value)),
-        {
-          onNone: () => false,
-          onSome: (ordering) => ordered(op, ordering),
-        },
+  Option.match(unwrap(actual), {
+    onNone: () => false,
+    onSome: (inner) =>
+      Match.value(node.op).pipe(
+        Match.when("eq", () => Eq.equals(inner, node.value)),
+        Match.when("ne", () => !Eq.equals(inner, node.value)),
+        Match.orElse((op) =>
+          Option.match(compareValues(inner, node.value), {
+            onNone: () => false,
+            onSome: (ordering) => ordered(op, ordering),
+          }),
+        ),
       ),
-    ),
-  );
+  });
 
 const textMatches = (node: Text, actual: unknown): boolean =>
   Option.match(Option.filter(unwrap(actual), P.isString), {
@@ -572,10 +611,12 @@ const evaluate = (expr: Expr, record: unknown): boolean =>
   Match.valueTags(expr, {
     All: () => true,
     Compare: (node) => compareMatches(node, read(record, node.field)),
-    In: (node) => {
-      const actual = read(record, node.field);
-      return Arr.some(node.values, (value) => Eq.equals(actual, value));
-    },
+    In: (node) =>
+      Option.match(unwrap(read(record, node.field)), {
+        onNone: () => false,
+        onSome: (inner) => Arr.some(node.values, (value) => Eq.equals(inner, value)),
+      }),
+    Present: (node) => Option.isSome(unwrap(read(record, node.field))),
     Text: (node) => textMatches(node, read(record, node.field)),
     And: (node) => Arr.every(node.filters, (child) => evaluate(child, record)),
     Or: (node) => Arr.some(node.filters, (child) => evaluate(child, record)),
@@ -584,8 +625,8 @@ const evaluate = (expr: Expr, record: unknown): boolean =>
 
 /**
  * The filter as a `Predicate`, for `Array.filter`, `Stream.filter` and the
- * like. Equality is `Equal.equals` (so `Option`s, `DateTime`s and `Data`
- * values compare structurally). An ordering comparison
+ * like. Equality is `Equal.equals` (so `DateTime`s and `Data` values compare
+ * structurally); `None` and a missing field match no comparison. An ordering comparison
  * between values of different kinds never matches.
  *
  * @example
@@ -692,11 +733,43 @@ export const run: {
 const CompareOps = Schema.Literals(["eq", "ne", "lt", "lte", "gt", "gte"]);
 const TextOps = Schema.Literals(["contains", "startsWith", "endsWith"]);
 const Direction = Schema.Literals(["asc", "desc"]);
+const Count = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
+
+/**
+ * The schema of the values a filter compares a field with, on the `Type`
+ * side: the field's own type, or the inner type of an `Option` field. Every
+ * wire format decodes leaf values through it (in its JSON form here, its
+ * string form in `QueryParams`).
+ *
+ * @example
+ * ```ts
+ * import { Schema } from "effect"
+ * import { Query } from "@thomasfosterau/effect-ext"
+ *
+ * const nickname = Query.valueSchema(Schema.OptionFromNullOr(Schema.String))
+ * console.log(Schema.decodeUnknownSync(Schema.toCodecJson(nickname))("Prof"))
+ * // → Prof
+ * ```
+ *
+ * @since 0.5.0
+ * @category schemas
+ */
+export const valueSchema = (field: Schema.Constraint): Schema.Codec<unknown> => {
+  const type = Schema.toType(field);
+  const ast = type.ast;
+  // An `Option` schema is the one-parameter declaration that accepts `None`.
+  const inner =
+    SchemaAST.isDeclaration(ast) && Schema.is(type)(Option.none())
+      ? Arr.head(ast.typeParameters)
+      : Option.none();
+  return Schema.make<Schema.Codec<unknown>>(Option.getOrElse(inner, () => ast));
+};
 
 /**
  * A filter codec for the records `schema` describes. The wire form is the
  * {@link Expr} tree itself, with each value in its field's JSON encoding
- * (`Schema.toCodecJson`), so a `DateTime` field travels as a string. An
+ * (`Schema.toCodecJson` of its {@link valueSchema}), so a `DateTime` field
+ * travels as a string and an `Option` field as its inner value. An
  * unknown field, or a value its field's schema rejects, fails the decode at
  * that node's path.
  *
@@ -722,12 +795,13 @@ export const FilterFor = <F extends Schema.Struct.Fields>(
   schema: Schema.Struct<F>,
 ): Schema.Codec<Filter<Schema.Struct.Type<F>>, Expr> => {
   const leaves = Arr.flatMap(R.toEntries(schema.fields), ([name, field]) => {
-    const value = Schema.toCodecJson(Schema.toType(field));
+    const value = Schema.toCodecJson(valueSchema(field));
     const fieldName = Schema.Literal(name);
     return [
       Schema.TaggedStruct("Compare", { field: fieldName, op: CompareOps, value }),
       Schema.TaggedStruct("In", { field: fieldName, values: Schema.Array(value) }),
       Schema.TaggedStruct("Text", { field: fieldName, op: TextOps, value: Schema.String }),
+      Schema.TaggedStruct("Present", { field: fieldName }),
     ];
   });
   const self: Schema.Codec<Expr> = Schema.Union([
@@ -767,3 +841,47 @@ export const SortFor = <F extends Schema.Struct.Fields>(
   Schema.Array(
     Schema.Struct({ field: Schema.Literals(R.keys(schema.fields)), direction: Direction }),
   );
+
+/**
+ * A codec for a whole {@link Query} over the records `schema` describes: the
+ * portable form a query is stored or sent in, for a backend to run.
+ * `limit` is an absent key when the query has none.
+ *
+ * @example
+ * ```ts
+ * import { pipe, Schema } from "effect"
+ * import { Query } from "@thomasfosterau/effect-ext"
+ *
+ * const Person = Schema.Struct({ name: Schema.String, age: Schema.Finite })
+ * const p = Query.fields<typeof Person.Type>()
+ * const query = pipe(Query.make<typeof Person.Type>(), Query.where(p.gte("age", 18)), Query.take(10))
+ *
+ * console.log(Schema.encodeSync(Schema.fromJsonString(Query.QueryFor(Person)))(query))
+ * // → {"filter":{"_tag":"Compare","field":"age","op":"gte","value":18},"sort":[],"offset":0,"limit":10}
+ * ```
+ *
+ * @since 0.5.0
+ * @category schemas
+ */
+export const QueryFor = <F extends Schema.Struct.Fields>(
+  schema: Schema.Struct<F>,
+): Schema.Codec<Query<Schema.Struct.Type<F>>, QueryEncoded> =>
+  Schema.Struct({
+    filter: FilterFor(schema),
+    sort: SortFor(schema),
+    offset: Count,
+    limit: Schema.OptionFromOptionalKey(Count),
+  });
+
+/**
+ * The encoded form of a {@link Query}: see {@link QueryFor}.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export interface QueryEncoded {
+  readonly filter: Expr;
+  readonly sort: ReadonlyArray<Pick<Sort<unknown>, "field" | "direction">>;
+  readonly offset: number;
+  readonly limit?: number;
+}

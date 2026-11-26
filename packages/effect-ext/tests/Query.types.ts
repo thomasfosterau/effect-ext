@@ -28,6 +28,10 @@ const p = Query.fields<Person>();
 
 export const byName = p.eq("name", "Ada");
 export const byNickname = p.gt("nickname", "A");
+export const hasNickname = p.isSome("nickname");
+
+// @ts-expect-error -- isSome takes only Option fields
+export const someOnString = p.isSome("name");
 export const byTags = p.eq("tags", ["a"]);
 
 // @ts-expect-error -- not a field of Person

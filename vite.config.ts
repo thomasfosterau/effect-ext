@@ -661,7 +661,7 @@ export default defineConfig({
       // value is only known to be one of the kinds it compares at run time,
       // which is the evaluator's job to find out.
       {
-        files: ["packages/effect-ext/src/Query.ts"],
+        files: ["packages/effect-ext/src/{Query,QueryParams}.ts"],
         rules: {
           "effect/no-unknown-parameters": "off",
           "effect/no-unknown-returns": "off",
