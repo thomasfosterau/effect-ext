@@ -35,6 +35,7 @@
  *
  * @since 0.1.0
  */
+import * as Panic from "./Panic.ts";
 import * as Arr from "effect/Array";
 import * as Eq from "effect/Equal";
 import * as Equivalence_ from "effect/Equivalence";
@@ -164,7 +165,10 @@ const hashBytes = (bytes: Uint8Array): number =>
 
 const impl = (self: Str): StrImpl => {
   if (self instanceof StrImpl) return self;
-  throw new TypeError("Str: expected a Str created by this module");
+  throw new Panic.InvalidArgumentError({
+    operation: "Str",
+    reason: "expected a Str created by this module",
+  });
 };
 
 const bytesOf = (self: Str): Uint8Array => impl(self).bytes;
@@ -540,7 +544,7 @@ export const get: {
 );
 
 /**
- * Like {@link get}, but throws a `RangeError` instead of returning `None`
+ * Like {@link get}, but throws a `Panic.InvalidArgumentError` instead of returning `None`
  * (like indexing a Rust `str` with a range).
  *
  * @example
@@ -562,9 +566,10 @@ export const getUnsafe: {
   (args) => isStr(args[0]),
   (self: Str, start: number, end?: number): Str =>
     Option.getOrElse(get(self, start, end), () => {
-      throw new RangeError(
-        `Str: invalid range [${start}, ${end ?? len(self)}) of a ${len(self)}-byte string`,
-      );
+      throw new Panic.InvalidArgumentError({
+        operation: "Str",
+        reason: `invalid range [${start}, ${end ?? len(self)}) of a ${len(self)}-byte string`,
+      });
     }),
 );
 
@@ -597,7 +602,7 @@ export const splitAt: {
 );
 
 /**
- * Like {@link splitAt}, but throws a `RangeError` instead of returning `None`
+ * Like {@link splitAt}, but throws a `Panic.CharBoundaryError` instead of returning `None`
  * (like Rust's `str::split_at`).
  *
  * @example
@@ -617,7 +622,7 @@ export const splitAtUnsafe: {
   (self: Str, mid: number): readonly [Str, Str];
 } = dual(2, (self: Str, mid: number): readonly [Str, Str] =>
   Option.getOrElse(splitAt(self, mid), () => {
-    throw new RangeError(`Str: ${mid} is not a character boundary of a ${len(self)}-byte string`);
+    throw new Panic.CharBoundaryError({ type: "Str", index: mid, length: len(self) });
   }),
 );
 
@@ -1368,7 +1373,12 @@ export const repeat: {
   (n: number): (self: Str) => Str;
   (self: Str, n: number): Str;
 } = dual(2, (self: Str, n: number): Str => {
-  if (!Number.isSafeInteger(n) || n < 0) throw new RangeError(`Str: invalid repeat count ${n}`);
+  if (!Number.isSafeInteger(n) || n < 0) {
+    throw new Panic.InvalidArgumentError({
+      operation: "Str.repeat",
+      reason: `invalid repeat count ${n}`,
+    });
+  }
   const b = bytesOf(self);
   return new StrImpl(
     Utf8.joinBytes(

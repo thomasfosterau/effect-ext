@@ -53,6 +53,7 @@ Guide: [binary-data](https://github.com/thomasfosterau/effect-ext/blob/trunk/pac
 | `StructOfArrays` | A growable struct-of-arrays container with typed-array columns. |
 | `StringBuf` | A growable, Allocator-backed UTF-8 string, like Rust's `String`. |
 | `Str` | An immutable UTF-8 string slice, like Rust's `str`; usable as a `HashMap` key. |
+| `Panic` | The tagged errors the binary-data modules throw or die with on misuse (Rust's panics). |
 
 ### Schema
 

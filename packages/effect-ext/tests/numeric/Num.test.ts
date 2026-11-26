@@ -8,6 +8,7 @@ import * as Num from "@thomasfosterau/effect-ext/Num";
 import * as Ratio from "@thomasfosterau/effect-ext/Ratio";
 import { U8 } from "@thomasfosterau/effect-ext/U8";
 import { U64 } from "@thomasfosterau/effect-ext/U64";
+import { DomainError } from "@thomasfosterau/effect-ext/ArithmeticError";
 
 /** Trial division up to the square root, as an obviously correct reference for `isPrime`. */
 const isPrimeReference = (n: number) =>
@@ -20,7 +21,7 @@ describe("Num", () => {
     expect(Num.product(Num.bigint)([2n, 3n, 4n])).toBe(24n);
     expect(Num.pow(Num.bigint)(3n, 40)).toBe(3n ** 40n);
     expect(Num.pow(Num.bigint)(0)(3n)).toBe(1n);
-    expect(() => Num.pow(Num.number)(2, -1)).toThrow(RangeError);
+    expect(() => Num.pow(Num.number)(2, -1)).toThrow(DomainError);
     expect(Num.square(Num.number)(5)).toBe(25);
     expect(Num.mulAdd(Num.number)(2, 3, 4)).toBe(10);
     expect(Num.isPositive(Num.bigint)(1n)).toBe(true);
@@ -191,7 +192,7 @@ describe("Integer: remaining branches", () => {
   });
   it("modPow and modInverse edge cases", () => {
     expect(() => Integer.modPow(2n, 3n, 0n)).toThrow(/modPow by zero/);
-    expect(() => Integer.modPow(2n, -1n, 5n)).toThrow(RangeError);
+    expect(() => Integer.modPow(2n, -1n, 5n)).toThrow(DomainError);
     expect(Integer.modPow(7n, 100n, 1n)).toBe(0n);
     expect(Integer.modPow(7n, 100n, -1n)).toBe(0n);
     // The result is in [0, |modulus|).

@@ -34,6 +34,7 @@
  *
  * @since 0.1.0
  */
+import * as Panic from "./Panic.ts";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
@@ -110,7 +111,10 @@ class StringBufImpl implements StringBuf {
 
 const impl = (self: StringBuf): StringBufImpl => {
   if (self instanceof StringBufImpl) return self;
-  throw new TypeError("StringBuf: expected a StringBuf created by this module");
+  throw new Panic.InvalidArgumentError({
+    operation: "StringBuf",
+    reason: "expected a StringBuf created by this module",
+  });
 };
 
 const toBytes = (s: Str.Str | string): Uint8Array =>
@@ -129,14 +133,13 @@ const snapshot = (bytes: Uint8Array): Str.Str => Str.fromUtf8Unsafe(bytes.slice(
 const isChar = (char: string) => char.isWellFormed() && Array.from(char).length === 1;
 
 const invalidIndex = (self: StringBufImpl, index: number) =>
-  new RangeError(
-    `StringBuf: ${index} is not a character boundary of a ${self.buffer.len}-byte string`,
-  );
+  new Panic.CharBoundaryError({ type: "StringBuf", index, length: self.buffer.len });
 
 const invalidRange = (self: StringBufImpl, start: number, end: number) =>
-  new RangeError(
-    `StringBuf: [${start}, ${end}) is not a valid range of a ${self.buffer.len}-byte string`,
-  );
+  new Panic.InvalidArgumentError({
+    operation: "StringBuf",
+    reason: `[${start}, ${end}) is not a valid range of a ${self.buffer.len}-byte string`,
+  });
 
 const isRange = (bytes: Uint8Array, start: number, end: number) =>
   start <= end && Utf8.isCharBoundary(bytes, start) && Utf8.isCharBoundary(bytes, end);
@@ -892,7 +895,10 @@ export const push: {
     isChar(char)
       ? fromResult(impl(self).buffer.append(Utf8.encoder.encode(char)))
       : Effect.die(
-          new RangeError(`StringBuf.push: expected a single character, received "${char}"`),
+          new Panic.InvalidArgumentError({
+            operation: "StringBuf.push",
+            reason: `expected a single character, received "${char}"`,
+          }),
         ),
   ),
 );
@@ -997,7 +1003,10 @@ export const insert: {
     isChar(char)
       ? insertStr(self, index, char)
       : Effect.die(
-          new RangeError(`StringBuf.insert: expected a single character, received "${char}"`),
+          new Panic.InvalidArgumentError({
+            operation: "StringBuf.insert",
+            reason: `expected a single character, received "${char}"`,
+          }),
         ),
   ),
 );

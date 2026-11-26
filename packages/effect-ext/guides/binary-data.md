@@ -73,7 +73,7 @@ Effect.gen(function* () {
 
 ### Filling in a synchronous loop
 
-`push`, `reserve` and `extend` are `Effect`s, which is too slow to run once per element in a parser or other hot loop. Each container also has synchronous forms: `pushResult` and `reserveResult` return the `AllocationError` as a `Result`, `pushUnsafe` appends into capacity already reserved (throwing a `RangeError` when full), and for bulk fills `Vec.spareCapacity` / `Vec.spareBytes` and `StructOfArrays.spareColumn` view the memory past the length, which `setLenUnsafe` then adopts, as Rust's `spare_capacity_mut` and `set_len` do. Spare views are invalidated by reallocation, like every other view.
+`push`, `reserve` and `extend` are `Effect`s, which is too slow to run once per element in a parser or other hot loop. Each container also has synchronous forms: `pushResult` and `reserveResult` return the `AllocationError` as a `Result`, `pushUnsafe` appends into capacity already reserved (throwing a `Panic.CapacityError` when full), and for bulk fills `Vec.spareCapacity` / `Vec.spareBytes` and `StructOfArrays.spareColumn` view the memory past the length, which `setLenUnsafe` then adopts, as Rust's `spare_capacity_mut` and `set_len` do. Spare views are invalidated by reallocation, like every other view.
 
 ```ts
 import { Effect, Result } from "effect";

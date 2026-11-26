@@ -25,6 +25,7 @@
  *
  * @since 0.1.0
  */
+import * as Panic from "./Panic.ts";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import { format } from "effect/Formatter";
@@ -128,7 +129,7 @@ class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
 
   pushUnsafe(value: A): void {
     if (this.len >= this.cap) {
-      throw new RangeError(`Vec: pushUnsafe at full capacity (${this.cap})`);
+      throw new Panic.CapacityError({ type: "Vec", length: this.cap + 1, capacity: this.cap });
     }
     this.layout.write(this.view, this.len * this.stride, value);
     this.len++;
@@ -188,18 +189,24 @@ class VecImpl<A, L extends Layout.Layout<A>> implements Vec<A, L> {
 
 const impl = <A, L extends Layout.Layout<A>>(self: Vec<A, L>): VecImpl<A, L> => {
   if (self instanceof VecImpl) return self;
-  throw new TypeError("Vec: expected a Vec created by this module");
+  throw new Panic.InvalidArgumentError({
+    operation: "Vec",
+    reason: "expected a Vec created by this module",
+  });
 };
 
 const checkLayout = (layout: Layout.Any) => {
   if (layout.size === 0) {
-    throw new RangeError("Vec: zero-sized layouts are not supported");
+    throw new Panic.InvalidArgumentError({
+      operation: "Vec",
+      reason: "zero-sized layouts are not supported",
+    });
   }
 };
 
 const checkIndex = (self: VecImpl<any, any>, index: number) => {
   if (!Number.isSafeInteger(index) || index < 0 || index >= self.len) {
-    throw new RangeError(`Vec: index ${index} out of bounds (length ${self.len})`);
+    throw new Panic.IndexOutOfBoundsError({ type: "Vec", index, length: self.len });
   }
 };
 
@@ -428,8 +435,8 @@ export const get: {
 });
 
 /**
- * Reads the element at `index`, throwing a `RangeError` if it is out of
- * bounds.
+ * Reads the element at `index`, throwing a `Panic.IndexOutOfBoundsError` if
+ * it is out of bounds.
  *
  * @example
  * ```ts
@@ -485,8 +492,8 @@ export const set: {
 });
 
 /**
- * Overwrites the element at `index`, throwing a `RangeError` if it is out of
- * bounds.
+ * Overwrites the element at `index`, throwing a `Panic.IndexOutOfBoundsError`
+ * if it is out of bounds.
  *
  * @example
  * ```ts
@@ -747,7 +754,7 @@ export const pushResult: {
  * Appends an element into capacity already reserved, never allocating: the
  * fastest append, for a loop that has called {@link reserveResult} (or
  * {@link reserve}) first. Rust's `Vec::push_within_capacity`, except that a
- * full vector is a defect: it throws a `RangeError`.
+ * full vector is a defect: it throws a `Panic.CapacityError`.
  *
  * @example
  * ```ts
@@ -778,7 +785,7 @@ export const pushUnsafe: {
  * elements between the old and new length as whatever the memory holds, so
  * fill them first (through {@link spareCapacity} or {@link spareBytes});
  * shrinking it is {@link truncate}. A length that is not an integer in
- * `[0, capacity]` is a defect: it throws a `RangeError`.
+ * `[0, capacity]` is a defect: it throws a `Panic.CapacityError`.
  *
  * @example
  * ```ts
@@ -802,7 +809,7 @@ export const setLenUnsafe: {
 } = dual(2, <A, L extends Layout.Layout<A>>(self: Vec<A, L>, newLength: number) => {
   const s = impl(self);
   if (!Number.isSafeInteger(newLength) || newLength < 0 || newLength > s.cap) {
-    throw new RangeError(`Vec: length ${newLength} out of bounds (capacity ${s.cap})`);
+    throw new Panic.CapacityError({ type: "Vec", length: newLength, capacity: s.cap });
   }
   s.len = newLength;
 });
@@ -849,8 +856,8 @@ export const extend: {
 );
 
 /**
- * Inserts an element at `index`, shifting later elements up. Fails with a
- * `RangeError` defect if `index > length`.
+ * Inserts an element at `index`, shifting later elements up. Dies with a
+ * `Panic.IndexOutOfBoundsError` if `index > length`.
  *
  * @example
  * ```ts
@@ -886,9 +893,7 @@ export const insert: {
   Effect.suspend(() => {
     const s = impl(self);
     if (!Number.isSafeInteger(index) || index < 0 || index > s.len) {
-      return Effect.die(
-        new RangeError(`Vec: insert index ${index} out of bounds (length ${s.len})`),
-      );
+      return Effect.die(new Panic.IndexOutOfBoundsError({ type: "Vec", index, length: s.len }));
     }
     const result = s.reserve(1);
     if (Result.isFailure(result)) return Effect.fail(result.failure);

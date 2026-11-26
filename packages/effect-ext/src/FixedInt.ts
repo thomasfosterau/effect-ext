@@ -343,7 +343,11 @@ const bigintPrim = (bits: number, signed: boolean): Prim<bigint> => {
  */
 export const make = <A extends number>(spec: Spec): FixedInt<A, number> => {
   if (!Number.isInteger(spec.bits) || spec.bits < 1 || spec.bits > 32) {
-    throw new RangeError(`FixedInt.make: bits must be an integer in [1, 32], got ${spec.bits}`);
+    throw new DomainError({
+      operation: "FixedInt.make",
+      type: spec.name,
+      reason: `bits must be an integer in [1, 32], got ${spec.bits}`,
+    });
   }
   const prim = numberPrim(spec.bits, spec.signed);
   const schema = brandAs<A, number>(
@@ -381,7 +385,11 @@ export const make = <A extends number>(spec: Spec): FixedInt<A, number> => {
  */
 export const makeBig = <A extends bigint>(spec: Spec): FixedInt<A, bigint> => {
   if (!Number.isInteger(spec.bits) || spec.bits < 1) {
-    throw new RangeError(`FixedInt.makeBig: bits must be a positive integer, got ${spec.bits}`);
+    throw new DomainError({
+      operation: "FixedInt.makeBig",
+      type: spec.name,
+      reason: `bits must be a positive integer, got ${spec.bits}`,
+    });
   }
   const prim = bigintPrim(spec.bits, spec.signed);
   const schema = brandAs<A, bigint>(

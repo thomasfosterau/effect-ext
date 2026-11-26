@@ -26,6 +26,7 @@
  *
  * @since 0.1.0
  */
+import * as Panic from "./Panic.ts";
 import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
 import { format } from "effect/Formatter";
@@ -124,7 +125,10 @@ const prototypeFor = (layout: Layout.AnyStruct): object => {
   const proto: object = Object.create(BaseProto);
   R.keys(layout.fields).forEach((key) => {
     if (HashSet.has(reserved, key)) {
-      throw new TypeError(`BufferStruct: field name "${key}" is reserved`);
+      throw new Panic.InvalidArgumentError({
+        operation: "BufferStruct",
+        reason: `field name "${key}" is reserved`,
+      });
     }
     const field: Layout.Any = layout.fields[key];
     const offset: number = layout.offsets[key];
@@ -219,12 +223,16 @@ export const view = <F extends Layout.Fields>(
         ? new DataView(memory)
         : Allocator.dataView(memory);
   if (!Number.isSafeInteger(byteOffset) || byteOffset < 0) {
-    throw new RangeError(`BufferStruct.view: invalid byte offset ${byteOffset}`);
+    throw new Panic.InvalidArgumentError({
+      operation: "BufferStruct.view",
+      reason: `invalid byte offset ${byteOffset}`,
+    });
   }
   if (byteOffset + layout.size > dataView.byteLength) {
-    throw new RangeError(
-      `BufferStruct.view: struct of ${layout.size} bytes at offset ${byteOffset} exceeds ${dataView.byteLength} bytes`,
-    );
+    throw new Panic.InvalidArgumentError({
+      operation: "BufferStruct.view",
+      reason: `struct of ${layout.size} bytes at offset ${byteOffset} exceeds ${dataView.byteLength} bytes`,
+    });
   }
   return viewAt(layout, dataView, byteOffset, Option.none());
 };

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import * as Layout from "@thomasfosterau/effect-ext/Layout";
+import * as Panic from "@thomasfosterau/effect-ext/Panic";
 
 describe("Layout", () => {
   it("alignUp is exact past 2^31 bytes", () => {
@@ -63,7 +64,9 @@ describe("Layout", () => {
 
   it("fixed array rejects wrong lengths", () => {
     const A = Layout.array(Layout.u8, 2);
-    expect(() => A.write(new DataView(new ArrayBuffer(2)), 0, [1])).toThrow(RangeError);
+    expect(() => A.write(new DataView(new ArrayBuffer(2)), 0, [1])).toThrow(
+      Panic.InvalidArgumentError,
+    );
   });
 
   it("guards", () => {

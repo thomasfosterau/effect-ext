@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Allocator from "@thomasfosterau/effect-ext/Allocator";
 import * as BufferStruct from "@thomasfosterau/effect-ext/BufferStruct";
 import * as Layout from "@thomasfosterau/effect-ext/Layout";
+import * as Panic from "@thomasfosterau/effect-ext/Panic";
 
 const Vec2 = Layout.struct({ x: Layout.f64, y: Layout.f64 });
 const Body = Layout.struct({ position: Vec2, mass: Layout.f32, alive: Layout.bool });
@@ -42,7 +43,7 @@ describe("BufferStruct", () => {
     const p = BufferStruct.view(Vec2, buffer, 16);
     p.y = 3.25;
     expect(new Float64Array(buffer)[3]).toBe(3.25);
-    expect(() => BufferStruct.view(Vec2, buffer, 24)).toThrow(RangeError);
+    expect(() => BufferStruct.view(Vec2, buffer, 24)).toThrow(Panic.InvalidArgumentError);
   });
 
   it.effect("pipe, get, set and assign", () =>
@@ -76,7 +77,7 @@ describe("BufferStruct", () => {
 
   it("rejects reserved field names", () => {
     const Bad = Layout.struct({ pipe: Layout.u8 });
-    expect(() => BufferStruct.view(Bad, new ArrayBuffer(1))).toThrow(TypeError);
+    expect(() => BufferStruct.view(Bad, new ArrayBuffer(1))).toThrow(Panic.InvalidArgumentError);
   });
 
   it("is inspectable", () => {

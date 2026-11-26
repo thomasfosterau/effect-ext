@@ -14,6 +14,7 @@
  *
  * @since 0.1.0
  */
+import { DomainError } from "./ArithmeticError.ts";
 import * as Eq from "effect/Equal";
 import type * as Eqv from "effect/Equivalence";
 import * as Hash from "effect/Hash";
@@ -278,8 +279,13 @@ export const sqrt = (a: Complex): Complex => {
  * @since 0.1.0
  */
 export const powi: Operator<Complex, number, Complex> = operator((a: Complex, n: number) => {
-  if (!Number.isSafeInteger(n))
-    throw new RangeError(`Complex.powi: exponent must be a safe integer, got ${n}`);
+  if (!Number.isSafeInteger(n)) {
+    throw new DomainError({
+      operation: "powi",
+      type: "Complex",
+      reason: `exponent must be a safe integer, got ${n}`,
+    });
+  }
   return powBySquaring(
     one,
     (x: Complex, y: Complex) => mul(x, y),

@@ -10,6 +10,7 @@ import * as fc from "fast-check";
 import * as Float from "@thomasfosterau/effect-ext/Float";
 import * as Ratio from "@thomasfosterau/effect-ext/Ratio";
 import { getFailure, getSome, getSuccess } from "./helpers.ts";
+import { DomainError } from "@thomasfosterau/effect-ext/ArithmeticError";
 
 const arbRatio = fc
   .tuple(
@@ -25,7 +26,7 @@ describe("Ratio", () => {
     expect(Ratio.toString(Ratio.make(4, 2))).toBe("2");
     expect(Ratio.make(0, -5)).toBe(Ratio.zero);
     expect(() => Ratio.make(1, 0)).toThrow(/by zero/);
-    expect(() => Ratio.make(1.5)).toThrow(RangeError);
+    expect(() => Ratio.make(1.5)).toThrow(DomainError);
     expect(Result.isFailure(Ratio.fromFraction(1n, 0n))).toBe(true);
   });
   it("structural equality and hashing", () => {
@@ -229,7 +230,7 @@ describe("Ratio: remaining operations", () => {
 
   it("toFixed rejects a bad digit count; rounds half away from zero", () => {
     expect(() => Ratio.toFixed(Ratio.one, -1)).toThrow(/digits must be >= 0/);
-    expect(() => Ratio.toFixed(Ratio.one, 1.5)).toThrow(RangeError);
+    expect(() => Ratio.toFixed(Ratio.one, 1.5)).toThrow(DomainError);
     expect(Ratio.toFixed(Ratio.make(-5, 2), 0)).toBe("-3");
     expect(Ratio.toFixed(Ratio.make(1, 200), 2)).toBe("0.01");
     expect(Ratio.toFixed(2)(Ratio.make(1, 3))).toBe("0.33");

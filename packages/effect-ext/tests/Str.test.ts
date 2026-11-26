@@ -8,6 +8,7 @@ import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as fc from "fast-check";
 import * as Str from "@thomasfosterau/effect-ext/Str";
+import * as Panic from "@thomasfosterau/effect-ext/Panic";
 
 const s = Str.fromString;
 const reference = new TextDecoder("utf-8", { ignoreBOM: true });
@@ -194,7 +195,7 @@ describe("Str", () => {
       expect(Option.map(Str.get(str, 0, 7), (x) => x.toString())).toEqual(Option.some("🗻∈"));
       expect(Str.get(str, 0, 42)).toEqual(Option.none());
       expect(str.pipe(Str.getUnsafe(4, 7)).toString()).toBe("∈");
-      expect(() => Str.getUnsafe(str, 1)).toThrow(RangeError);
+      expect(() => Str.getUnsafe(str, 1)).toThrow(Panic.InvalidArgumentError);
     });
 
     it("slices share memory", () => {
@@ -206,7 +207,7 @@ describe("Str", () => {
       const str = s("Per Martin-Löf");
       expect(Option.map(Str.splitAt(str, 3), text)).toEqual(Option.some(["Per", " Martin-Löf"]));
       expect(Str.splitAt(str, 13)).toEqual(Option.none());
-      expect(() => Str.splitAtUnsafe(str, 13)).toThrow(RangeError);
+      expect(() => Str.splitAtUnsafe(str, 13)).toThrow(Panic.CharBoundaryError);
     });
   });
 
@@ -414,7 +415,7 @@ describe("Str", () => {
     it("repeat", () => {
       expect(Str.repeat(s("abc"), 4).toString()).toBe("abcabcabcabc");
       expect(Str.repeat(s("abc"), 0).toString()).toBe("");
-      expect(() => Str.repeat(s("abc"), -1)).toThrow(RangeError);
+      expect(() => Str.repeat(s("abc"), -1)).toThrow(Panic.InvalidArgumentError);
     });
 
     it("case conversion", () => {

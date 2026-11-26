@@ -15,6 +15,7 @@ import { U32 } from "@thomasfosterau/effect-ext/U32";
 import { U64 } from "@thomasfosterau/effect-ext/U64";
 import { U128 } from "@thomasfosterau/effect-ext/U128";
 import { getFailure, getSome } from "./helpers.ts";
+import { DomainError } from "@thomasfosterau/effect-ext/ArithmeticError";
 
 type Any = FixedInt.FixedInt<any, any>;
 
@@ -383,8 +384,8 @@ describe("custom widths", () => {
     expect(Option.isNone(I256.checkedAdd(I256.MAX, I256.one))).toBe(true);
   });
   it("rejects invalid widths", () => {
-    expect(() => FixedInt.make({ name: "X", bits: 33, signed: true })).toThrow(RangeError);
-    expect(() => FixedInt.makeBig({ name: "X", bits: 0, signed: true })).toThrow(RangeError);
+    expect(() => FixedInt.make({ name: "X", bits: 33, signed: true })).toThrow(DomainError);
+    expect(() => FixedInt.makeBig({ name: "X", bits: 0, signed: true })).toThrow(DomainError);
   });
   it("convert", () => {
     expect(FixedInt.convert(U8)(I16.make(255))).toEqual(Option.some(255));

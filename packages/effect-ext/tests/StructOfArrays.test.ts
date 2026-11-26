@@ -8,6 +8,7 @@ import * as Result from "effect/Result";
 import * as Allocator from "@thomasfosterau/effect-ext/Allocator";
 import * as Layout from "@thomasfosterau/effect-ext/Layout";
 import * as StructOfArrays from "@thomasfosterau/effect-ext/StructOfArrays";
+import * as Panic from "@thomasfosterau/effect-ext/Panic";
 
 const Particle = {
   id: Layout.u16,
@@ -85,7 +86,7 @@ describe("StructOfArrays", () => {
       );
       StructOfArrays.setField(soa, 0, "b", 11);
       expect(StructOfArrays.getField(soa, 0, "b")).toBe(11);
-      expect(() => StructOfArrays.getField(soa, 3, "b")).toThrow(RangeError);
+      expect(() => StructOfArrays.getField(soa, 3, "b")).toThrow(Panic.IndexOutOfBoundsError);
       expect(StructOfArrays.set(soa, 1, { a: 9, b: 90 })).toBe(true);
       expect(StructOfArrays.swapRemove(soa, 0)).toEqual(Option.some({ a: 1, b: 11 }));
       expect(StructOfArrays.toArray(soa)).toEqual([
@@ -188,11 +189,11 @@ describe("StructOfArrays", () => {
       Effect.gen(function* () {
         const empty = yield* StructOfArrays.make(Token);
         const record = { kind: 1, next: 2, start: 3, end: 4 };
-        expect(() => StructOfArrays.pushUnsafe(empty, record)).toThrow(RangeError);
+        expect(() => StructOfArrays.pushUnsafe(empty, record)).toThrow(Panic.CapacityError);
         const soa = yield* StructOfArrays.make(Token, { capacity: 2 });
         StructOfArrays.pushUnsafe(soa, record);
         soa.pipe(StructOfArrays.pushUnsafe({ ...record, kind: 9 }));
-        expect(() => StructOfArrays.pushUnsafe(soa, record)).toThrow(RangeError);
+        expect(() => StructOfArrays.pushUnsafe(soa, record)).toThrow(Panic.CapacityError);
         expect(StructOfArrays.column(soa, "kind")).toEqual(Uint32Array.of(1, 9));
         expect(StructOfArrays.getUnsafe(soa, 1)).toEqual({ ...record, kind: 9 });
       }),
@@ -248,9 +249,9 @@ describe("StructOfArrays", () => {
     it.effect("setLenUnsafe beyond the capacity, negative or fractional is a defect", () =>
       Effect.gen(function* () {
         const soa = yield* StructOfArrays.make(Token, { capacity: 4 });
-        expect(() => StructOfArrays.setLenUnsafe(soa, 5)).toThrow(RangeError);
-        expect(() => StructOfArrays.setLenUnsafe(soa, -1)).toThrow(RangeError);
-        expect(() => StructOfArrays.setLenUnsafe(soa, 0.5)).toThrow(RangeError);
+        expect(() => StructOfArrays.setLenUnsafe(soa, 5)).toThrow(Panic.CapacityError);
+        expect(() => StructOfArrays.setLenUnsafe(soa, -1)).toThrow(Panic.CapacityError);
+        expect(() => StructOfArrays.setLenUnsafe(soa, 0.5)).toThrow(Panic.CapacityError);
         const exit = yield* Effect.exit(Effect.sync(() => StructOfArrays.setLenUnsafe(soa, 5)));
         expect(Exit.hasDies(exit)).toBe(true);
         soa.pipe(StructOfArrays.setLenUnsafe(4));

@@ -27,6 +27,7 @@
  *
  * @since 0.1.0
  */
+import * as Panic from "./Panic.ts";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import { format } from "effect/Formatter";
@@ -215,7 +216,11 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
 
   pushUnsafe(value: Layout.StructType<F>): void {
     if (this.len >= this.cap) {
-      throw new RangeError(`StructOfArrays: pushUnsafe at full capacity (${this.cap})`);
+      throw new Panic.CapacityError({
+        type: "StructOfArrays",
+        length: this.cap + 1,
+        capacity: this.cap,
+      });
     }
     Kernel.write(this.view, this.columns, 0, this.len, value);
     this.len++;
@@ -271,7 +276,10 @@ class StructOfArraysImpl<F extends Layout.Fields> implements StructOfArrays<F> {
 
 const impl = <F extends Layout.Fields>(self: StructOfArrays<F>): StructOfArraysImpl<F> => {
   if (self instanceof StructOfArraysImpl) return self;
-  throw new TypeError("StructOfArrays: expected a StructOfArrays created by this module");
+  throw new Panic.InvalidArgumentError({
+    operation: "StructOfArrays",
+    reason: "expected a StructOfArrays created by this module",
+  });
 };
 
 const isStructLayout = <F extends Layout.Fields>(
@@ -289,7 +297,10 @@ const primitiveView = (s: StructOfArraysImpl<any>, key: string, start: number, l
   const col = s.byKey[key];
   const layout = col.layout;
   if (!Layout.isPrimitive(layout)) {
-    throw new TypeError(`StructOfArrays: field "${key}" is not a primitive layout`);
+    throw new Panic.InvalidArgumentError({
+      operation: "StructOfArrays",
+      reason: `field "${key}" is not a primitive layout`,
+    });
   }
   return Option.match(s.block, {
     onNone: () => new layout.TypedArray(new ArrayBuffer(0), 0, 0),
@@ -300,7 +311,7 @@ const primitiveView = (s: StructOfArraysImpl<any>, key: string, start: number, l
 
 const checkIndex = (self: StructOfArraysImpl<any>, index: number) => {
   if (!isIndex(self, index)) {
-    throw new RangeError(`StructOfArrays: index ${index} out of bounds (length ${self.len})`);
+    throw new Panic.IndexOutOfBoundsError({ type: "StructOfArrays", index, length: self.len });
   }
 };
 
@@ -571,7 +582,8 @@ export const get: {
 });
 
 /**
- * Reads the record at `index`, throwing a `RangeError` if it is out of bounds.
+ * Reads the record at `index`, throwing a `Panic.IndexOutOfBoundsError` if it
+ * is out of bounds.
  *
  * @example
  * ```ts
@@ -655,8 +667,8 @@ export const set: {
 );
 
 /**
- * Reads a single field of the record at `index`, throwing a `RangeError` if
- * the index is out of bounds.
+ * Reads a single field of the record at `index`, throwing a
+ * `Panic.IndexOutOfBoundsError` if the index is out of bounds.
  *
  * @example
  * ```ts
@@ -699,8 +711,8 @@ export const getField: {
 );
 
 /**
- * Writes a single field of the record at `index`, throwing a `RangeError` if
- * the index is out of bounds.
+ * Writes a single field of the record at `index`, throwing a
+ * `Panic.IndexOutOfBoundsError` if the index is out of bounds.
  *
  * @example
  * ```ts
@@ -1067,7 +1079,7 @@ export const pushResult: {
  * Appends a record into capacity already reserved, never allocating: the
  * fastest append, for a loop that has called {@link reserveResult} (or
  * {@link reserve}) first. A full container is a defect: it throws a
- * `RangeError`.
+ * `Panic.CapacityError`.
  *
  * @example
  * ```ts
@@ -1100,7 +1112,7 @@ export const pushUnsafe: {
  * ({@link setField} checks the length, so it cannot). Fill and set the length
  * with no reallocation in between, since growing moves only the records
  * within the length. A length that is not an integer in `[0, capacity]` is a
- * defect: it throws a `RangeError`.
+ * defect: it throws a `Panic.CapacityError`.
  *
  * @example
  * ```ts
@@ -1126,7 +1138,7 @@ export const setLenUnsafe: {
 } = dual(2, <F extends Layout.Fields>(self: StructOfArrays<F>, newLength: number) => {
   const s = impl(self);
   if (!Number.isSafeInteger(newLength) || newLength < 0 || newLength > s.cap) {
-    throw new RangeError(`StructOfArrays: length ${newLength} out of bounds (capacity ${s.cap})`);
+    throw new Panic.CapacityError({ type: "StructOfArrays", length: newLength, capacity: s.cap });
   }
   s.len = newLength;
 });

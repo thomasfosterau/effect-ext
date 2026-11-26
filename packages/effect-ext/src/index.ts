@@ -332,6 +332,13 @@ export * as OptionalKey from "./OptionalKey.ts";
 export * as Overflowing from "./Overflowing.ts";
 
 /**
+ * The tagged panics of the binary-data modules.
+ *
+ * @since 0.5.0
+ */
+export * as Panic from "./Panic.ts";
+
+/**
  * LINQ-style queries as data: typed filters, sort keys, an in-memory runner
  * and wire codecs.
  *
