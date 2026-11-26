@@ -9,6 +9,11 @@ export * as Caches from "./Caches.ts";
 export * as Clients from "./Clients.ts";
 
 /**
+ * @since 0.2.0
+ */
+export * as CookieSubscriptions from "./CookieSubscriptions.ts";
+
+/**
  * @since 0.1.0
  */
 export * as Events from "./Events.ts";

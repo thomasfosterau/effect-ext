@@ -15,6 +15,7 @@ import * as WorkerRunner from "effect/workers/WorkerRunner";
 import {
   Caches,
   Clients,
+  CookieSubscriptions,
   NavigationPreload,
   Notifications,
   ServiceWorkerRunner,
@@ -32,6 +33,7 @@ installGlobals({
       shown.push(title);
     },
     getNotifications: async () => [],
+    cookies: CookieSubscriptions.memoryCookieSubscriptions(),
     navigationPreload: {
       enable: async () => {},
       disable: async () => {},
@@ -68,6 +70,13 @@ describe("the ambient defaults", () => {
   it.effect("is self.registration.navigationPreload", () =>
     Effect.gen(function* () {
       expect(yield* NavigationPreload.state).toEqual({ enabled: true, headerValue: "true" });
+    }),
+  );
+
+  it.effect("is self.registration.cookies", () =>
+    Effect.gen(function* () {
+      yield* CookieSubscriptions.subscribe([{ url: "/" }]);
+      expect(yield* CookieSubscriptions.subscriptions).toEqual([{ name: Option.none(), url: "/" }]);
     }),
   );
 

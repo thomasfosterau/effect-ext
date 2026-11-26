@@ -15,6 +15,7 @@ export default packageConfig({
     index: "src/index.ts",
     Caches: "src/Caches.ts",
     Clients: "src/Clients.ts",
+    CookieSubscriptions: "src/CookieSubscriptions.ts",
     Events: "src/Events.ts",
     Fetch: "src/Fetch.ts",
     NavigationPreload: "src/NavigationPreload.ts",
