@@ -186,10 +186,10 @@ export const packageConfig = ({
         // would; development `exports` here point at `src/`, so each
         // docgen.json maps those names onto `dist/` through
         // `examplesCompilerOptions.paths` (honoured by both the examples' `tsc`
-        // and the `tsx` that runs them). Hence the build edges: the package's
+        // and `scripts/bin/tsx`, which runs them with `vpx`). Hence the build edges: the package's
         // own and its workspace dependencies' (`@thomasfosterau/effect-ext`).
         docgen: {
-          command: "docgen",
+          command: 'PATH="$(cd ../../scripts/bin && pwd):$PATH" docgen',
           dependsOn: ["build", { task: "build", from: "dependencies" }],
           cache: { input: cacheInputs, output: ["docs/**"] },
         },
@@ -304,7 +304,7 @@ export const distExportsPackageConfig = ({
         // Compiles and runs every JSDoc `@example`. Examples import the package
         // by name, which resolves through `exports` to `dist/`.
         docgen: {
-          command: "docgen --run-examples",
+          command: 'PATH="$(cd ../../scripts/bin && pwd):$PATH" docgen --run-examples',
           dependsOn: ["build"],
           cache: { input: cacheInputs, output: ["docs/**"] },
         },
