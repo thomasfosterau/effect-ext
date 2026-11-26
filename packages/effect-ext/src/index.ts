@@ -14,7 +14,7 @@
  * zone names, TZif), and the provider-neutral AI service abstractions
  * `effect/ai` lacks (`RerankerModel`, `ClassifierModel`, `SpeechModel`,
  * `TranscriptionModel`, `ImageModel`, `ModerationModel`,
- * `VoiceConversionModel`). The LLM evaluation toolkit is its own barrel,
+ * `VoiceConversionModel`, `Speaker`, `Dictation`). The LLM evaluation toolkit is its own barrel,
  * `@thomasfosterau/effect-ext/evals`, and not re-exported here. Each module
  * is also its own entry point
  * (`@thomasfosterau/effect-ext/Vec`, …); this barrel re-exports them as
@@ -106,6 +106,13 @@ export * as Complex from "./Complex.ts";
  * @since 0.1.0
  */
 export * as Css from "./Css.ts";
+
+/**
+ * The provider-neutral live speech-to-text service: what the user says, as it is heard.
+ *
+ * @since 0.5.0
+ */
+export * as Dictation from "./Dictation.ts";
 
 /**
  * The WHATWG Encoding Standard: labels, BOM sniffing, fatal decoding and encoding.
@@ -374,6 +381,13 @@ export * as Saturating from "./Saturating.ts";
  * @since 0.1.0
  */
 export * as Sitemap from "./Sitemap.ts";
+
+/**
+ * The provider-neutral on-device speech service: text said out loud.
+ *
+ * @since 0.5.0
+ */
+export * as Speaker from "./Speaker.ts";
 
 /**
  * The provider-neutral text-to-speech service (one-shot and streaming).

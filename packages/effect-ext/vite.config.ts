@@ -12,9 +12,11 @@ export const coverageFloor: CoverageFloor = {
 /** The AI service abstractions. */
 const aiModules = [
   "ClassifierModel",
+  "Dictation",
   "ImageModel",
   "ModerationModel",
   "RerankerModel",
+  "Speaker",
   "SpeechModel",
   "TranscriptionModel",
   "VoiceConversionModel",

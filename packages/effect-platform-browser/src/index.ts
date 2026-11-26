@@ -1,4 +1,9 @@
 /**
+ * @since 0.2.0
+ */
+export * as AudioOutput from "./AudioOutput.ts";
+
+/**
  * @since 0.1.0
  */
 export * as Battery from "./Battery.ts";
@@ -45,6 +50,11 @@ export * as Fullscreen from "./Fullscreen.ts";
  * @since 0.1.0
  */
 export * as IdleDetection from "./IdleDetection.ts";
+
+/**
+ * @since 0.2.0
+ */
+export * as LiveSpeech from "./LiveSpeech.ts";
 
 /**
  * @since 0.1.0

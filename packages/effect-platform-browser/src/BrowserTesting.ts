@@ -56,6 +56,8 @@
  * - `TestSpeechSynthesis` and `TestSpeechRecognition` — a synthesiser that
  *   speaks at once (or holds until told) and a recogniser that hears what a
  *   `Control` says.
+ * - `TestAudioOutput` — speakers that play each clip at once (or hold it),
+ *   with a `Control` that refuses or fails playback and reads what played.
  * - `TestNavigator`, `TestPageVisibility`, `TestMediaQuery`, `TestWakeLock`,
  *   `TestBroadcast`, `TestIdleDetection`, `TestBattery`, `TestFullscreen`,
  *   `TestScreenOrientation`, `TestNotifications` — this package's services.
@@ -67,6 +69,7 @@
 export { layer } from "./testing/layer.ts";
 export { observe } from "./testing/stream.ts";
 export * as TestAppBadge from "./testing/app-badge.ts";
+export * as TestAudioOutput from "./testing/audio-output.ts";
 export * as TestBattery from "./testing/battery.ts";
 export * as TestBluetooth from "./testing/bluetooth.ts";
 export * as TestBroadcast from "./testing/broadcast.ts";

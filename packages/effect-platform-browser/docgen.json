@@ -36,6 +36,8 @@
       "@thomasfosterau/effect-platform-worker-shared/*": [
         "../../../effect-platform-worker-shared/dist/*"
       ],
+      "@thomasfosterau/effect-ext": ["../../../effect-ext/dist/index"],
+      "@thomasfosterau/effect-ext/*": ["../../../effect-ext/dist/*"],
       "@thomasfosterau/effect-platform-browser": ["../../dist/index"],
       "@thomasfosterau/effect-platform-browser/*": ["../../dist/*"]
     }

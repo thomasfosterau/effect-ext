@@ -13,6 +13,7 @@ export default packageConfig({
   coverageFloor,
   entry: {
     index: "src/index.ts",
+    AudioOutput: "src/AudioOutput.ts",
     Battery: "src/Battery.ts",
     Bluetooth: "src/Bluetooth.ts",
     Broadcast: "src/Broadcast.ts",
@@ -36,6 +37,7 @@ export default packageConfig({
     FilePicker: "src/FilePicker.ts",
     Frames: "src/Frames.ts",
     InstalledApp: "src/InstalledApp.ts",
+    LiveSpeech: "src/LiveSpeech.ts",
     MediaDevices: "src/MediaDevices.ts",
     SpeechRecognition: "src/SpeechRecognition.ts",
     SpeechSynthesis: "src/SpeechSynthesis.ts",

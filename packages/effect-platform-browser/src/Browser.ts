@@ -8,6 +8,7 @@ import * as Clipboard from "@effect/platform-browser/Clipboard";
 import * as Geolocation from "@effect/platform-browser/Geolocation";
 import * as Permissions from "@effect/platform-browser/Permissions";
 import * as Layer from "effect/Layer";
+import * as AudioOutput from "./AudioOutput.ts";
 import * as Battery from "./Battery.ts";
 import * as Bluetooth from "./Bluetooth.ts";
 import * as Broadcast from "./Broadcast.ts";
@@ -31,7 +32,7 @@ import * as SpeechSynthesis from "./SpeechSynthesis.ts";
 import * as WakeLock from "./WakeLock.ts";
 
 /**
- * Every live service this package defines (`Battery`, `Bluetooth`, `Broadcast`,
+ * Every live service this package defines (`AudioOutput`, `Battery`, `Bluetooth`, `Broadcast`,
  * `Credentials`, `DomObservers`, `FilePicker`, `Frames`, `Fullscreen`, `IdleDetection`, `InstalledApp`, `Locks`, `MediaDevices`, `MediaQuery`, `Navigation`, `Navigator`,
  * `Notifications`, `PageVisibility`, `ScreenOrientation`, `SpeechRecognition`, `SpeechSynthesis`, `WakeLock`) and the
  * `@effect/platform-browser` `Clipboard`, `Geolocation` and `Permissions`
@@ -57,6 +58,7 @@ import * as WakeLock from "./WakeLock.ts";
  * @category layers
  */
 export const layer: Layer.Layer<
+  | AudioOutput.AudioOutput
   | Battery.Battery
   | Bluetooth.Bluetooth
   | Broadcast.Broadcast
@@ -82,6 +84,7 @@ export const layer: Layer.Layer<
   | Geolocation.Geolocation
   | Permissions.Permissions
 > = Layer.mergeAll(
+  AudioOutput.layer,
   Battery.layer,
   Bluetooth.layer,
   Broadcast.layer,

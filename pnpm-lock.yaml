@@ -464,6 +464,9 @@ importers:
 
   packages/effect-platform-browser:
     dependencies:
+      '@thomasfosterau/effect-ext':
+        specifier: workspace:^
+        version: link:../effect-ext
       '@thomasfosterau/effect-platform-worker-shared':
         specifier: workspace:*
         version: link:../effect-platform-worker-shared

@@ -11,6 +11,7 @@
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import type * as Stream from "effect/Stream";
+import type { AudioElementLike, AudioOutputLike } from "../AudioOutput.ts";
 import type { BatteryManagerLike } from "../Battery.ts";
 import type { BluetoothLike } from "../Bluetooth.ts";
 import type {
@@ -149,6 +150,23 @@ export const ambientMediaRecorder = (): Option.Option<MediaRecorderFactoryLike> 
       // `getDisplayMedia`, so it is the platform's `MediaStream`.
       make: (stream, options) => new Recorder(stream as MediaStream, options),
       isTypeSupported: (mimeType) => Recorder.isTypeSupported(mimeType),
+    }),
+  );
+
+/**
+ * The `Audio` constructor and `URL`'s object-URL functions, where the
+ * context has both (a window).
+ */
+export const ambientAudioOutput = (): Option.Option<AudioOutputLike> =>
+  Option.map(
+    Option.all([
+      Option.fromUndefinedOr<typeof globalThis.Audio>(globalThis.Audio),
+      Option.fromUndefinedOr<typeof globalThis.URL>(globalThis.URL),
+    ]),
+    ([Audio, Url]) => ({
+      element: (): AudioElementLike => new Audio(),
+      createObjectURL: (blob: Blob) => Url.createObjectURL(blob),
+      revokeObjectURL: (url: string) => Url.revokeObjectURL(url),
     }),
   );
 

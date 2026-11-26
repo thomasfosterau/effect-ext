@@ -145,7 +145,7 @@
       },
       {
         "from": "browser",
-        "allow": ["worker-shared"]
+        "allow": ["worker-shared", "effect-ext"]
       }
     ]
   },
@@ -199,7 +199,7 @@
       "exports": ["make", "layer", "Options", "contramap"]
     },
     {
-      "file": "packages/effect-ext/src/{ClassifierModel,ImageModel,ModerationModel,RerankerModel,SpeechModel,TranscriptionModel,VoiceConversionModel}.ts",
+      "file": "packages/effect-ext/src/{ClassifierModel,Dictation,ImageModel,ModerationModel,RerankerModel,Speaker,SpeechModel,TranscriptionModel,VoiceConversionModel}.ts",
       "exports": ["make", "layer", "Options", "contramap"]
     },
     {

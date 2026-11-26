@@ -3,6 +3,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { installGlobals } from "../../effect-platform-worker-shared/tests/globals.ts";
 import * as Effect from "effect/Effect";
 import {
+  AudioOutput,
   Bluetooth,
   Browser,
   Credentials,
@@ -38,6 +39,7 @@ describe("Browser.layer without a navigator", () => {
         recognition: (yield* SpeechRecognition.SpeechRecognition).supported,
         installedApp: (yield* InstalledApp.InstalledApp).supported,
         bluetooth: (yield* Bluetooth.Bluetooth).supported,
+        audio: (yield* AudioOutput.AudioOutput).supported,
       }).toStrictEqual({
         userAgent: "",
         languages: [],
@@ -52,6 +54,7 @@ describe("Browser.layer without a navigator", () => {
         recognition: false,
         installedApp: { installPrompt: false, launchQueue: false, relatedApps: false },
         bluetooth: { bluetooth: false, devices: false },
+        audio: false,
       });
     }).pipe(Effect.provide(Browser.layer)),
   );

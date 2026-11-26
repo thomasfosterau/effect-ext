@@ -142,6 +142,10 @@
       "types": "./dist/Css.d.ts",
       "default": "./dist/Css.js"
     },
+    "./Dictation": {
+      "types": "./dist/Dictation.d.ts",
+      "default": "./dist/Dictation.js"
+    },
     "./Encoding": {
       "types": "./dist/Encoding.d.ts",
       "default": "./dist/Encoding.js"
@@ -321,6 +325,10 @@
     "./Sitemap": {
       "types": "./dist/Sitemap.d.ts",
       "default": "./dist/Sitemap.js"
+    },
+    "./Speaker": {
+      "types": "./dist/Speaker.d.ts",
+      "default": "./dist/Speaker.js"
     },
     "./SpeechModel": {
       "types": "./dist/SpeechModel.d.ts",
