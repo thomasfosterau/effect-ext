@@ -569,6 +569,15 @@ export default defineConfig({
           "effect/no-unknown-parameters": "off",
         },
       },
+      // `Performance.measuredTracer` records a measure from `Span.end`, a
+      // synchronous callback the fiber runtime makes, so it runs the measure
+      // there: that callback is the run boundary.
+      {
+        files: ["packages/effect-platform-worker-shared/src/Performance.ts"],
+        rules: {
+          "effect/effect-run-in-body": "off",
+        },
+      },
       // The service worker's cache, strategy and notification suites came
       // from effect-ext's web suites and, like them, run each program with
       // `Effect.runPromise` rather than `@effect/vitest`'s `it.effect`.

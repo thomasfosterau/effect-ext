@@ -4,7 +4,10 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
+import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
+import * as Tracer from "effect/Tracer";
+import * as TestClock from "effect/testing/TestClock";
 import * as Performance from "@thomasfosterau/effect-platform-worker-shared/Performance";
 
 type ObserveInit = Parameters<Performance.PerformanceObserverLike["observe"]>[0];
@@ -297,6 +300,127 @@ describe("Performance's ambient default", () => {
       expect(Option.map(head, (value) => value.entryType)).toStrictEqual(Option.some("mark"));
       const measured = yield* Performance.measure("ambient", { start: "ambient-start" });
       expect(Option.map(measured, (value) => value.name)).toStrictEqual(Option.some("ambient"));
+    }),
+  );
+});
+
+/** A tracer that records the names of the spans it creates and ends. */
+const recordingTracer = () => {
+  const started: Array<string> = [];
+  const ended: Array<string> = [];
+  const tracer = Tracer.make({
+    span: (options) => {
+      started.push(options.name);
+      const span = Tracer.nativeTracer.span(options);
+      const end = span.end.bind(span);
+      span.end = (endTime, exit) => {
+        ended.push(options.name);
+        end(endTime, exit);
+      };
+      return span;
+    },
+  });
+  return { tracer, started, ended };
+};
+
+describe("Performance.layerTracer", () => {
+  it.effect("measures each span from the time origin, and the wrapped tracer sees every span", () =>
+    Effect.gen(function* () {
+      const { performance, calls } = stubPerformance();
+      const { tracer, started, ended } = recordingTracer();
+      yield* TestClock.setTime(2000);
+      const program = Effect.gen(function* () {
+        yield* TestClock.adjust("5 millis");
+        yield* Effect.annotateCurrentSpan({ id: 7, tags: ["a"], ok: true });
+      }).pipe(Effect.withSpan("inner"), Effect.withSpan("outer"));
+      yield* program.pipe(
+        Effect.provide(Performance.layerTracer({ attributes: true })),
+        Effect.provideService(Tracer.Tracer, tracer),
+        Effect.provideService(Performance.Performance, Performance.make({ performance })),
+      );
+      expect(started).toStrictEqual(["outer", "inner"]);
+      expect(ended).toStrictEqual(["inner", "outer"]);
+      expect(calls).toStrictEqual([
+        {
+          method: "measure",
+          name: "inner",
+          options: { start: 1000, end: 1005, detail: { id: 7, ok: true } },
+        },
+        { method: "measure", name: "outer", options: { start: 1000, end: 1005, detail: {} } },
+      ]);
+    }),
+  );
+
+  it.effect("skips filtered, unsampled and untimed spans, and the span still works", () =>
+    Effect.gen(function* () {
+      const { performance, calls } = stubPerformance();
+      yield* TestClock.setTime(1500);
+      const kept = Effect.gen(function* () {
+        const span = yield* Effect.currentSpan;
+        span.attribute("k", "v");
+        span.event("tick", 0n);
+        span.addLinks([]);
+        expect([span.name, span.kind, span.sampled, span.attributes.get("k")]).toStrictEqual([
+          "kept",
+          "internal",
+          true,
+          "v",
+        ]);
+        expect(span.parent).toStrictEqual(Option.none());
+        expect(span.links).toStrictEqual([]);
+        expect(span.status._tag).toBe("Started");
+        expect([span.spanId, span.traceId]).not.toContain("");
+        expect(span.annotations).toBeDefined();
+      }).pipe(Effect.withSpan("kept"));
+      yield* Effect.all(
+        [
+          kept,
+          Effect.void.pipe(Effect.withSpan("dropped")),
+          Effect.void.pipe(Effect.withSpan("unsampled", { sampled: false })),
+          Effect.void.pipe(Effect.withSpan("untimed"), Effect.withTracerTiming(false)),
+        ],
+        { concurrency: 1 },
+      ).pipe(
+        Effect.provide(Performance.layerTracer({ spans: (name) => name !== "dropped" })),
+        Effect.provideService(Performance.Performance, Performance.make({ performance })),
+      );
+      expect(calls).toStrictEqual([
+        { method: "measure", name: "kept", options: { start: 500, end: 500 } },
+      ]);
+    }),
+  );
+
+  it.effect("keeps the wrapped tracer's context hook", () =>
+    Effect.gen(function* () {
+      const service = Performance.make({});
+      let evaluated = 0;
+      const withHook = Tracer.make({
+        span: (options) => Tracer.nativeTracer.span(options),
+        context: (primitive, fiber) => {
+          evaluated += 1;
+          return primitive["~effect/Effect/evaluate"](fiber);
+        },
+      });
+      const result = yield* Effect.withTracer(
+        Effect.succeed(1).pipe(Effect.withSpan("x")),
+        Performance.measuredTracer(withHook, service),
+      );
+      expect(result).toBe(1);
+      expect(evaluated).toBeGreaterThan(0);
+      expect(Performance.measuredTracer(Tracer.nativeTracer, service).context).toBeUndefined();
+    }),
+  );
+
+  it.effect("never fails the traced effect over a measure the agent refuses", () =>
+    Effect.gen(function* () {
+      const service = Performance.make(stubPerformance({ throws: new TypeError("nope") }));
+      yield* TestClock.setTime(2000);
+      const result = yield* Effect.succeed(1).pipe(
+        Effect.withSpan("x"),
+        Effect.provide(Layer.fresh(Performance.layerTracer())),
+        Effect.provideService(Performance.Performance, service),
+      );
+      expect(result).toBe(1);
     }),
   );
 });
