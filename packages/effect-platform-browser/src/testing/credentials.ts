@@ -1,8 +1,9 @@
 /**
  * An in-memory passkey authenticator for tests of code that uses
  * `Credentials`: {@link layer} provides the real adapter over it, plus
- * {@link Control} to read the stored passkeys, fail a ceremony, pick a
- * passkey from autofill, and read the signals sent.
+ * {@link Control} to read the stored passkeys and passwords, fail a
+ * ceremony, pick a passkey from autofill, script an identity provider, and
+ * read the signals sent.
  *
  * @since 0.1.0
  */
@@ -20,15 +21,20 @@ import {
   Credentials,
   CreationOptionsJson,
   type CreationOptionsLike,
+  type CredentialLike,
   type CredentialsContainerLike,
   type CurrentUserDetails,
   type DescriptorJson,
   type DescriptorLike,
+  type IdentityDisconnect,
+  type IdentityRequest,
   make as makeCredentials,
+  type PasswordData,
   type PublicKeyCredentialStaticsLike,
   RequestOptionsJson,
   type RequestOptionsLike,
   type UnknownCredential,
+  type WebAuthnLike,
 } from "../Credentials.ts";
 
 /**
@@ -37,8 +43,9 @@ import {
  * `false`: `parsers` (`parseCreationOptionsFromJSON` /
  * `parseRequestOptionsFromJSON`), `clientCapabilities`
  * (`getClientCapabilities`; without it, the two older yes/no checks),
- * `level2` (the attestation response's accessors) and `signals`. `rpId`
- * is the page's domain, `example.com` by default.
+ * `level2` (the attestation response's accessors), `signals`,
+ * `passwords` (`PasswordCredential`) and `identity` (FedCM). `rpId` is the
+ * page's domain, `example.com` by default.
  *
  * @since 0.1.0
  * @category models
@@ -49,6 +56,8 @@ export interface Options {
   readonly clientCapabilities?: boolean;
   readonly level2?: boolean;
   readonly signals?: boolean;
+  readonly passwords?: boolean;
+  readonly identity?: boolean;
   readonly rpId?: string;
 }
 
@@ -84,7 +93,7 @@ export type Signal =
  * @category models
  */
 export interface Request {
-  readonly ceremony: "create" | "get";
+  readonly ceremony: "create" | "get" | "store" | "password" | "identity";
   readonly mediation: Option.Option<string>;
 }
 
@@ -99,9 +108,25 @@ export interface Request {
  *   the waiting conditional sign-in.
  * - `signals` — every signal sent, in order.
  * - `requests` — every ceremony started, in order.
+ * - `passwords` — every password stored, by id, in the order first stored.
+ * - `dismissNext` — the user dismisses the next password or identity
+ *   prompt: a password request resolves `null`, an identity one rejects
+ *   `NetworkError`.
+ * - `identityAccount` — the provider at `configURL` has a signed-in
+ *   account, issuing `token`.
+ * - `silentAccess` — whether a silent sign-in may succeed: `false` after
+ *   `preventSilentAccess`, until the user next signs in through a prompt.
+ * - `disconnects` — every identity disconnect sent, in order.
  *
  * A modal sign-in uses the first passkey that matches; with none, it
  * rejects `NotAllowedError`, as the platform does once the user gives up.
+ * A password request signs in without a prompt where silent access is
+ * allowed and exactly one password is stored (always for `silent`, which
+ * otherwise resolves `null`; never for `required`); the prompt picks the
+ * first stored. An identity request uses the first offered provider with
+ * an account, rejecting `NetworkError` with none; it signs in without a
+ * prompt (`isAutoSelected`) where silent access is allowed and the user has
+ * signed in to this client before.
  *
  * @since 0.1.0
  * @category services
@@ -115,6 +140,11 @@ export class Control extends Context.Service<
     readonly pick: (id: string) => Effect.Effect<void>;
     readonly signals: Effect.Effect<ReadonlyArray<Signal>>;
     readonly requests: Effect.Effect<ReadonlyArray<Request>>;
+    readonly passwords: Effect.Effect<ReadonlyArray<PasswordData>>;
+    readonly dismissNext: Effect.Effect<void>;
+    readonly identityAccount: (configURL: string, token: string) => Effect.Effect<void>;
+    readonly silentAccess: Effect.Effect<boolean>;
+    readonly disconnects: Effect.Effect<ReadonlyArray<IdentityDisconnect>>;
   }
 >()("@thomasfosterau/effect-platform-browser/BrowserTesting/CredentialsControl") {}
 
@@ -134,6 +164,21 @@ interface Stored {
   readonly rawId: Bytes;
   readonly passkey: Passkey;
 }
+
+interface Account {
+  readonly configURL: string;
+  readonly token: string;
+}
+
+/** What `new PasswordCredential(data)` builds: a `TypeError` for an empty id or password, as the platform throws. */
+const passwordCredential = (data: PasswordData): CredentialLike & PasswordData => {
+  if (data.id === "" || data.password === "") {
+    throw new TypeError("a password credential needs an id and a password");
+  }
+  return { type: "password", ...data, name: data.name ?? "", iconURL: data.iconURL ?? "" };
+};
+
+const noAccount = () => Promise.reject(new DOMException("no account", "NetworkError"));
 
 const ALGORITHMS: ReadonlyArray<number> = [-7, -257];
 
@@ -201,7 +246,13 @@ const clientData = (type: string, challenge: Bytes, rpId: string) =>
 class FakeContainer implements CredentialsContainerLike {
   readonly stored: Array<Stored> = [];
   readonly requests: Array<Request> = [];
+  readonly passwords: Array<PasswordData> = [];
+  readonly accounts: Array<Account> = [];
+  readonly connected: Array<string> = [];
+  readonly disconnects: Array<IdentityDisconnect> = [];
   failure = Option.none<string>();
+  dismiss = false;
+  silentAccess = true;
   waiting = Option.none<(id: string) => void>();
   readonly #rpId: string;
   readonly #level2: boolean;
@@ -255,15 +306,91 @@ class FakeContainer implements CredentialsContainerLike {
         publicKey.extensions?.["credProps"] === true ? { credProps: { rk: true } } : {},
     });
   }
+  #takeDismiss(): boolean {
+    const dismiss = this.dismiss;
+    this.dismiss = false;
+    return dismiss;
+  }
+  store(credential: CredentialLike & PasswordData): Promise<void> {
+    this.requests.push({ ceremony: "store", mediation: Option.none() });
+    const failure = this.#takeFailure();
+    if (Option.isSome(failure)) return Promise.reject(failure.value);
+    const { type: _type, ...data } = credential;
+    const index = Arr.findFirstIndex(this.passwords, (stored) => stored.id === data.id);
+    Option.match(index, {
+      onNone: () => this.passwords.push(data),
+      onSome: (at) => this.passwords.splice(at, 1, data),
+    });
+    return Promise.resolve();
+  }
+  preventSilentAccess(): Promise<void> {
+    this.silentAccess = false;
+    return Promise.resolve();
+  }
+  disconnect(options: IdentityDisconnect): Promise<void> {
+    this.disconnects.push(options);
+    const key = `${options.configURL} ${options.clientId}`;
+    const index = this.connected.indexOf(key);
+    if (index !== -1) this.connected.splice(index, 1);
+    return Promise.resolve();
+  }
+  #password(mediation?: string): Promise<object | null> {
+    const silent = mediation !== "required" && this.silentAccess && this.passwords.length === 1;
+    if (silent) return Promise.resolve(passwordCredential(this.passwords[0]));
+    if (mediation === "silent" || this.#takeDismiss()) return Promise.resolve(null);
+    return Option.match(Arr.head(this.passwords), {
+      onNone: () => Promise.resolve(null),
+      onSome: (stored) => {
+        this.silentAccess = true;
+        return Promise.resolve(passwordCredential(stored));
+      },
+    });
+  }
+  #identity(request: IdentityRequest, mediation?: string): Promise<object | null> {
+    const offered = Arr.findFirst(request.providers, (provider) =>
+      Option.map(
+        Arr.findFirst(this.accounts, (account) => account.configURL === provider.configURL),
+        (account) => ({ provider, token: account.token }),
+      ),
+    );
+    return Option.match(offered, {
+      onNone: noAccount,
+      onSome: ({ provider, token }) => {
+        const key = `${provider.configURL} ${provider.clientId}`;
+        const credential = (isAutoSelected: boolean) => ({
+          type: "identity",
+          token,
+          isAutoSelected,
+          configURL: provider.configURL,
+        });
+        const auto = mediation !== "required" && this.silentAccess && this.connected.includes(key);
+        if (auto) return Promise.resolve(credential(true));
+        if (mediation === "silent" || this.#takeDismiss()) return noAccount();
+        if (!this.connected.includes(key)) this.connected.push(key);
+        this.silentAccess = true;
+        return Promise.resolve(credential(false));
+      },
+    });
+  }
   get(options: {
-    readonly publicKey: RequestOptionsLike;
+    readonly publicKey?: RequestOptionsLike;
+    readonly password?: boolean;
+    readonly identity?: IdentityRequest;
     readonly mediation?: string;
     readonly signal?: AbortSignal;
   }): Promise<object | null> {
-    this.requests.push({ ceremony: "get", mediation: Option.fromUndefinedOr(options.mediation) });
-    const publicKey = options.publicKey;
+    const ceremony =
+      options.identity === undefined
+        ? options.password === true
+          ? "password"
+          : "get"
+        : "identity";
+    this.requests.push({ ceremony, mediation: Option.fromUndefinedOr(options.mediation) });
     const failure = this.#takeFailure();
     if (Option.isSome(failure)) return Promise.reject(failure.value);
+    if (options.identity !== undefined) return this.#identity(options.identity, options.mediation);
+    const publicKey = options.publicKey;
+    if (publicKey === undefined) return this.#password(options.mediation);
     const rpId = publicKey.rpId ?? this.#rpId;
     const allowed = publicKey.allowCredentials ?? [];
     const candidates = Arr.filter(
@@ -381,10 +508,19 @@ export const make = (options?: Options): Fixture => {
           signalCurrentUserDetails: (signal) =>
             record({ kind: "currentUserDetails", options: signal }),
         };
+  const withPasswords: WebAuthnLike =
+    options?.passwords === false
+      ? { container, statics: withSignals }
+      : { container, statics: withSignals, passwordCredential };
+  const webAuthn: WebAuthnLike =
+    options?.identity === false
+      ? withPasswords
+      : {
+          ...withPasswords,
+          identityCredential: { disconnect: (signal) => container.disconnect(signal) },
+        };
   return {
-    credentials: makeCredentials(
-      options?.supported === false ? undefined : { container, statics: withSignals },
-    ),
+    credentials: makeCredentials(options?.supported === false ? undefined : webAuthn),
     control: Control.of({
       passkeys: Effect.sync(() => Arr.map(container.stored, (stored) => stored.passkey)),
       failNext: (name) =>
@@ -395,6 +531,20 @@ export const make = (options?: Options): Fixture => {
       pick: (id) => Effect.sync(() => Option.map(container.waiting, (resolve) => resolve(id))),
       signals: Effect.sync(() => [...signals]),
       requests: Effect.sync(() => [...container.requests]),
+      passwords: Effect.sync(() => [...container.passwords]),
+      dismissNext: Effect.sync(() => {
+        container.dismiss = true;
+      }),
+      identityAccount: (configURL, token) =>
+        Effect.sync(() => {
+          const others = Arr.filter(
+            container.accounts,
+            (account) => account.configURL !== configURL,
+          );
+          container.accounts.splice(0, container.accounts.length, ...others, { configURL, token });
+        }),
+      silentAccess: Effect.sync(() => container.silentAccess),
+      disconnects: Effect.sync(() => [...container.disconnects]),
     }),
   };
 };

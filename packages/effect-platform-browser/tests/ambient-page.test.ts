@@ -44,6 +44,10 @@ class FakeNavigator {
   readonly credentials = {
     create: () => Promise.reject(new DOMException("cancelled", "NotAllowedError")),
     get: () => Promise.reject(new DOMException("cancelled", "NotAllowedError")),
+    store: (credential: Credentials.CredentialLike) => {
+      stored.push(credential);
+      return Promise.resolve();
+    },
   };
   readonly mediaDevices = Object.assign(new EventTarget(), {
     getUserMedia: () => Promise.reject(new DOMException("denied", "NotAllowedError")),
@@ -131,6 +135,19 @@ class FakeRecognition extends EventTarget {
 }
 
 /** The window's frame and idle functions, recording whether each was called on the window. */
+/** What the page's `navigator.credentials.store` was handed. */
+const stored: Array<Credentials.CredentialLike> = [];
+
+class FakePasswordCredential {
+  readonly type = "password";
+  readonly id: string;
+  readonly origin: string;
+  constructor(data: { readonly id: string; readonly origin: string }) {
+    this.id = data.id;
+    this.origin = data.origin;
+  }
+}
+
 const frameCalls: Array<string> = [];
 const frameTimers: Array<ReturnType<typeof setTimeout>> = [];
 function requestAnimationFrame(this: unknown, callback: (time: number) => void) {
@@ -191,6 +208,8 @@ installGlobals({
   cancelIdleCallback,
   MediaRecorder: FakeMediaRecorder,
   PublicKeyCredential: { isConditionalMediationAvailable: () => Promise.resolve(true) },
+  PasswordCredential: FakePasswordCredential,
+  IdentityCredential: {},
   speechSynthesis,
   SpeechSynthesisUtterance: FakeUtterance,
   webkitSpeechRecognition: FakeRecognition,
@@ -203,7 +222,7 @@ installGlobals({
     removeEventListener: () => {},
   },
   history: { state: null },
-  location: { href: "https://example.com/page", assign: () => {} },
+  location: { href: "https://example.com/page", origin: "https://example.com", assign: () => {} },
   IntersectionObserver: FakeObserver,
   ResizeObserver: FakeObserver,
   MutationObserver: FakeObserver,
@@ -265,6 +284,14 @@ describe("Browser.layer over a page's globals", () => {
           }),
         ).pipe(Effect.map((error) => error.reason)),
         capabilities: yield* Credentials.capabilities,
+        storedPassword: yield* Effect.map(
+          Credentials.storePassword({ id: "ada", password: "pw" }),
+          () => Arr.map(stored, (credential) => ({ ...credential })),
+        ),
+        signIns: yield* Effect.map(Credentials.Credentials, (credentials) => [
+          credentials.passwordsSupported,
+          credentials.identitySupported,
+        ]),
         frame: yield* Frames.next,
         tick: Arr.map(yield* Stream.runCollect(Stream.take(Frames.ticks, 1)), (tick) => tick.time),
         idle: Duration.toMillis((yield* Frames.idle({ timeout: "1 second" })).timeRemaining),
@@ -295,6 +322,8 @@ describe("Browser.layer over a page's globals", () => {
         heard: Option.none(),
         passkey: "NotAllowed",
         capabilities: { conditionalGet: true },
+        storedPassword: [{ type: "password", id: "ada", origin: "https://example.com" }],
+        signIns: [true, true],
         frame: 16,
         tick: [16],
         idle: 10,
