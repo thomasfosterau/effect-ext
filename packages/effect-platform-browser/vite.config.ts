@@ -32,6 +32,7 @@ export default packageConfig({
     PushManager: "src/PushManager.ts",
     ScreenOrientation: "src/ScreenOrientation.ts",
     ServiceWorkerContainer: "src/ServiceWorkerContainer.ts",
+    FileDrop: "src/FileDrop.ts",
     FilePicker: "src/FilePicker.ts",
     Frames: "src/Frames.ts",
     InstalledApp: "src/InstalledApp.ts",

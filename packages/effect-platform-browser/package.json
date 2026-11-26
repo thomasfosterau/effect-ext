@@ -41,6 +41,7 @@
     "./BrowserTesting": "./src/BrowserTesting.ts",
     "./Credentials": "./src/Credentials.ts",
     "./DomObservers": "./src/DomObservers.ts",
+    "./FileDrop": "./src/FileDrop.ts",
     "./FilePicker": "./src/FilePicker.ts",
     "./Frames": "./src/Frames.ts",
     "./InstalledApp": "./src/InstalledApp.ts",
@@ -98,6 +99,10 @@
       "./DomObservers": {
         "types": "./dist/DomObservers.d.ts",
         "import": "./dist/DomObservers.js"
+      },
+      "./FileDrop": {
+        "types": "./dist/FileDrop.d.ts",
+        "import": "./dist/FileDrop.js"
       },
       "./FilePicker": {
         "types": "./dist/FilePicker.d.ts",
