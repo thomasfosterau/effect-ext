@@ -82,6 +82,7 @@ Guide: [web](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages/ef
 | `Observability` | The structured JSON-line sink, the allow-listed span tracer, the `logEvent` trio, `describeError`, the auth-outcome signal and per-request metrics. |
 | `Negotiate` | The content-negotiation verdict over the representations you declare. |
 | `Robots` | The Robots Exclusion Protocol (RFC 9309): the library, the crawler side and the serving side. Needs `@thomasfosterau/effect-parse`. |
+| `Har` | HTTP Archive (HAR 1.2) documents: the schema and reader, a recorder for `HttpClient` and server exchanges (secrets redacted), and a client that replays a document. |
 
 ### Sitemaps and feeds
 

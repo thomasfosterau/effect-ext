@@ -218,6 +218,10 @@
       "types": "./dist/IsoDuration.d.ts",
       "default": "./dist/IsoDuration.js"
     },
+    "./Har": {
+      "types": "./dist/Har.d.ts",
+      "default": "./dist/Har.js"
+    },
     "./Issues": {
       "types": "./dist/Issues.d.ts",
       "default": "./dist/Issues.js"

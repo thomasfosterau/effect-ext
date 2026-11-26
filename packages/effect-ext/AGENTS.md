@@ -8,7 +8,7 @@ Shared internals live in `src/internal/`: `bytes.ts` (a growable byte buffer), `
 
 ## Boundary
 
-Imports nothing from this workspace (`.fallowrc.json` zone `effect-ext`, no outbound rule). Modules may import each other (`Bounded` → `Ids`, `Vec` → `Layout` → `Allocator`); `index.ts` only re-exports. The seven families do not import each other today. Within the web family: `Negotiate` imports `Mime` (it compares media types as `MimeType`s) and `isMutatingMethod` from `Web`'s `web/jsonapi-error.ts`; `Sitemap` imports `Observability` (`logErrorEvent` / `describeError` for the purge outcome) and `JsonFeed` (its JSON Feed builder is an adapter over that one). An optional peer is imported only by the modules named in the first paragraph, which keeps every other subpath, and the barrel, free of it (`vp run check:dist` proves it over the built chunks: `optionalPeerSubpaths` in `scripts/check-dist.mjs` is the same list, and `/Encoding` and `/Mime` must load with no optional peer installed, which effect-document relies on); `Robots` and the time modules import effect-parse's subpaths (`/Parser`, `/Token`, `/ParserSchema`, `/Ascii`, `/Binary`, `/ParseError`), never its root barrel. Within the time family `Rfc9557` imports `Rfc3339`, `Tzif` imports `PosixTz`, and `Rfc3339` and `RRule` share `internal/time/calendar.ts`. Within the numeric family every integer module is a `FixedInt.make` / `makeBig` instance, and the strategy modules import the integer modules for their per-type instances.
+Imports nothing from this workspace (`.fallowrc.json` zone `effect-ext`, no outbound rule). Modules may import each other (`Bounded` → `Ids`, `Vec` → `Layout` → `Allocator`); `index.ts` only re-exports. The seven families do not import each other today. Within the web family: `Har` imports only `effect`; `Negotiate` imports `Mime` (it compares media types as `MimeType`s) and `isMutatingMethod` from `Web`'s `web/jsonapi-error.ts`; `Sitemap` imports `Observability` (`logErrorEvent` / `describeError` for the purge outcome) and `JsonFeed` (its JSON Feed builder is an adapter over that one). An optional peer is imported only by the modules named in the first paragraph, which keeps every other subpath, and the barrel, free of it (`vp run check:dist` proves it over the built chunks: `optionalPeerSubpaths` in `scripts/check-dist.mjs` is the same list, and `/Encoding` and `/Mime` must load with no optional peer installed, which effect-document relies on); `Robots` and the time modules import effect-parse's subpaths (`/Parser`, `/Token`, `/ParserSchema`, `/Ascii`, `/Binary`, `/ParseError`), never its root barrel. Within the time family `Rfc9557` imports `Rfc3339`, `Tzif` imports `PosixTz`, and `Rfc3339` and `RRule` share `internal/time/calendar.ts`. Within the numeric family every integer module is a `FixedInt.make` / `makeBig` instance, and the strategy modules import the integer modules for their per-type instances.
 
 ## Binary-data invariants
 
@@ -266,6 +266,15 @@ Rust's documented semantics are the spec, and `tests/numeric/examples.test.ts` p
 - **Supplied type** — the type a resource arrived with (a `Content-Type`); **computed type** — what `sniff` decides.
 - **Signature** — `(bytes) => Option<string>`: a custom detector for an unknown resource.
 - **Scriptable** — HTML, XML and PDF, which `sniff` detects in an unknown resource only while `scriptable` is not `false` (the specification's sniff-scriptable flag).
+
+### Har
+
+**Invariants.**
+
+- **The schema is HAR 1.2's**, members optional where the specification says so (`Schema.optionalKey`), and the reader is lenient only about what HAR allows: unknown members (the `_` custom fields) are dropped, nothing else is repaired. A decoded document encodes back to itself.
+- **A recording never holds a secret by default.** Headers and query parameters are redacted through Effect's own `Headers.CurrentRedactedNames` and `Har.RedactedQueryNames` (a copy of `UrlParams.CurrentRedactedNames`'s defaults, which Effect only has from 4.0.5, past the peer floor), written as `"<redacted>"`; cookies are not parsed out of their headers (`cookies` is empty).
+- **Recording never changes the exchange.** `recordClient` returns the response it received (its body buffered, then served again); `recordServer` never reads the request body, which the handler owns.
+- **Replay matches method and URL exactly**, query included, first entry wins; a miss is a `TransportError`, never a made-up response.
 
 ## AI service abstractions
 

@@ -99,6 +99,7 @@ export default distExportsPackageConfig({
     "F32",
     "FixedInt",
     "Float",
+    "Har",
     "I8",
     "I16",
     "I32",

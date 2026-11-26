@@ -290,6 +290,61 @@ export const GET = () =>
 | `LOW_CHURN_CACHE_CONTROL` | `public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400` — the edge caches the document an hour (PERF-CACHE-002). |
 | `isRobotsBody(value)` | A refinement for a test or a handler. |
 
+## Har
+
+HTTP Archive (HAR 1.2) documents, as browsers' developer tools export them.
+
+### Usage
+
+Read one, and replay it as an `HttpClient` in a test:
+
+```ts
+import * as Effect from "effect/Effect";
+import { Har } from "@thomasfosterau/effect-ext";
+
+const program = (text: string) =>
+  Effect.gen(function* () {
+    const har = yield* Har.parse(text);
+    const client = Har.replayClient(har);
+    const response = yield* client.get("https://example.com/api/items");
+    return yield* response.json;
+  });
+```
+
+Record what a client does, then write the document:
+
+```ts
+import * as Effect from "effect/Effect";
+import * as FetchHttpClient from "effect/http/FetchHttpClient";
+import * as HttpClient from "effect/http/HttpClient";
+import { Har } from "@thomasfosterau/effect-ext";
+
+const recorded = Effect.gen(function* () {
+  const client = yield* Har.recordClient(yield* HttpClient.HttpClient);
+  yield* client.get("https://example.com/");
+  const recorder = yield* Har.Recorder;
+  return Har.stringify(yield* recorder.har({ name: "my-app", version: "1.0" }));
+}).pipe(Effect.provide([Har.layerRecorder, FetchHttpClient.layer]));
+```
+
+`recordServer` is the server side: middleware over an `HttpServerResponse` handler that records each request it serves.
+
+### API
+
+| Export | What it does |
+| --- | --- |
+| `Har`, `Entry`, `Request`, `Response`, `Content`, `PostData`, `Timings`, `Page`, `Creator`, `Cookie`, `NameValue` | The HAR 1.2 schemas. Optional members are optional keys; the `_` custom fields browsers add are dropped on decode. |
+| `parse(text)` | Reads a document; fails `HarError` with `reason` `InvalidJson` or `NotAHar`. |
+| `stringify(har)` | Two-space JSON. |
+| `make({ creator, entries, pages? })` | A version 1.2 document. |
+| `Recorder`, `makeRecorder`, `layerRecorder` | Collects entries: `add`, `entries`, `clear`, `har(creator)`. |
+| `RedactedQueryNames` | The query parameter names a recording redacts (a `Context.Reference`). |
+| `recordClient(client)` | The client, recording each exchange. The response body is buffered to record it; a stream or form-data request body is noted, not recorded. |
+| `recordServer` | Server middleware recording each exchange. The request body is not read (the handler needs it); a stream or form-data response body is noted, not recorded. |
+| `replayClient(har)` | A client answering from the first entry with the same method and URL, query included; anything else fails with a `TransportError`. |
+
+Recorded headers named in `Headers.CurrentRedactedNames` (by default `authorization`, `cookie`, `set-cookie` and the like) and query parameters named in `RedactedQueryNames` (by default Effect's signed-URL names: `Signature`, `sig`, …) are written as `"<redacted>"`, so a recording can be shared. Text-like bodies (`text/*`, JSON, XML, form-encoded) are recorded as text, anything else as base64. Timings are the whole exchange in `wait`: an `HttpClient` exposes no finer phases.
+
 ## Moving from effect-web
 
 Each `@thomasfosterau/effect-web` entry point, and each of its sibling packages, is now one subpath here with the same exports, so a move is an import change:
