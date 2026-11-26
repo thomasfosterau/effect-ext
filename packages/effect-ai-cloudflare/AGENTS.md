@@ -7,7 +7,7 @@ Cloudflare AI for Effect, extending the official `@effect/ai-cloudflare`. Two ha
 
 ## Boundary
 
-Peers: `effect` and `@effect/ai-cloudflare` (both `^4.0.6`, `catalogs.ai-cloudflare-peers`: `CloudflareClient`'s `gatewayId` option first shipped in @effect/ai-cloudflare 4.0.6, which peers on `effect ^4.0.6`), `@effect/ai-anthropic`, and `@cloudflare/workers-types` (optional, types only). May import `@thomasfosterau/effect-ext` and nothing else from this workspace (`.fallowrc.json` zone `cloudflare`). The barrel is flat (`export *` of each module; `WorkersAi` adds upstream's three namespaces) and re-exports no `RerankerModel` name; consumers import it from `@thomasfosterau/effect-ext/RerankerModel`.
+Peers: `effect` and `@effect/ai-cloudflare` (both `^4.0.6`, `catalogs.ai-cloudflare-peers`: `CloudflareClient`'s `gatewayId` option first shipped in @effect/ai-cloudflare 4.0.6, which peers on `effect ^4.0.6`), `@effect/ai-anthropic`, and `@cloudflare/workers-types` (optional, types only). May import `@thomasfosterau/effect-ext` and nothing else from this workspace (`.fallowrc.json` zone `cloudflare`). The barrel re-exports each module as a namespace (`export * as Cohere from "./Cohere"`), like every other package; `WorkersAi` adds upstream's three namespaces inside its own and re-exports no `RerankerModel` name; consumers import it from `@thomasfosterau/effect-ext/RerankerModel`.
 
 ## Invariants
 

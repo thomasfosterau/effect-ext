@@ -73,7 +73,7 @@ export interface CloudflareClientOptions {
  *
  * @example
  * ```ts
- * import { cloudflareClientLayer, CloudflareDecisionModel } from "@thomasfosterau/effect-ai-cloudflare";
+ * import { cloudflareClientLayer, CloudflareDecisionModel } from "@thomasfosterau/effect-ai-cloudflare/WorkersAi";
  * import * as Layer from "effect/Layer";
  * import * as Redacted from "effect/Redacted";
  *

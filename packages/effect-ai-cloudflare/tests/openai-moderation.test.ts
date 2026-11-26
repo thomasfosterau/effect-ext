@@ -1,6 +1,6 @@
 /**
  * Unit tests for the gateway-routed OpenAI `ModerationModel` provider
- * (`makeOpenAiModerationModel` in `src/OpenAiModeration.ts`).
+ * (`makeModel` in `src/OpenAiModeration.ts`).
  *
  * The `AI` binding's `gateway(id).run(data, options)` is stubbed to capture
  * the outgoing universal-endpoint request and return a canned
@@ -19,13 +19,13 @@ import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
 import { AiError } from "effect/ai";
 import type { ModerationModel } from "@thomasfosterau/effect-ext";
+import { type WorkersAiBinding } from "@thomasfosterau/effect-ai-cloudflare/Binding";
 import {
-  OPENAI_MODERATION_MODEL,
-  makeOpenAiModerationModel,
-  type OpenAiModerationCall,
-  type OpenAiModerationOptions,
-  type WorkersAiBinding,
-} from "@thomasfosterau/effect-ai-cloudflare";
+  MODEL,
+  makeModel,
+  type Call,
+  type Options,
+} from "@thomasfosterau/effect-ai-cloudflare/OpenAiModeration";
 import { stubAiBinding } from "./helpers/ai";
 import { expectFailureInstanceOf } from "./helpers/effect";
 
@@ -71,16 +71,16 @@ const omniBody = (results: ReadonlyArray<unknown>, extra: Record<string, unknown
 const moderate = (
   ai: WorkersAiBinding,
   inputs: ReadonlyArray<ModerationModel.ModerationInput>,
-  options?: OpenAiModerationOptions,
+  options?: Options,
 ) =>
   Effect.gen(function* () {
     const model = yield* options === undefined
-      ? makeOpenAiModerationModel(binding(ai))
-      : makeOpenAiModerationModel(binding(ai), options);
+      ? makeModel(binding(ai))
+      : makeModel(binding(ai), options);
     return yield* model.moderate({ inputs });
   });
 
-describe("makeOpenAiModerationModel", () => {
+describe("makeModel", () => {
   it.effect("posts the moderations request through the universal endpoint, BYOK by default", () =>
     Effect.gen(function* () {
       const { ai, calls } = stubAi({
@@ -95,7 +95,7 @@ describe("makeOpenAiModerationModel", () => {
           provider: "openai",
           endpoint: "moderations",
           headers: { "content-type": "application/json" },
-          query: { model: OPENAI_MODERATION_MODEL, input: ["hello"] },
+          query: { model: MODEL, input: ["hello"] },
         },
       ]);
       expect(response.results).toHaveLength(1);
@@ -325,9 +325,9 @@ describe("makeOpenAiModerationModel", () => {
       ]);
 
       expect(calls.map((call) => (call as { query: unknown }).query)).toEqual([
-        { model: OPENAI_MODERATION_MODEL, input: ["a caption"] },
+        { model: MODEL, input: ["a caption"] },
         {
-          model: OPENAI_MODERATION_MODEL,
+          model: MODEL,
           input: [
             { type: "text", text: "what is this" },
             { type: "image_url", image_url: { url: "data:image/png;base64,AQID" } },
@@ -404,8 +404,8 @@ describe("makeOpenAiModerationModel", () => {
 
   it.effect("reports each settled call to onCall, on success and on failure", () =>
     Effect.gen(function* () {
-      const seen: Array<OpenAiModerationCall> = [];
-      const onCall = (call: OpenAiModerationCall) => Effect.sync(() => seen.push(call));
+      const seen: Array<Call> = [];
+      const onCall = (call: Call) => Effect.sync(() => seen.push(call));
       const ok = stubAi({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
       const limited = stubAi({ status: 429, body: { error: { message: "slow down" } } });
 
@@ -425,7 +425,7 @@ describe("makeOpenAiModerationModel", () => {
 
   it.effect("reports a transport failure to onCall with no status", () =>
     Effect.gen(function* () {
-      const seen: Array<OpenAiModerationCall> = [];
+      const seen: Array<Call> = [];
       const ai = stubAiBinding(() => ({
         run: () => Promise.reject(new TypeError("socket hang up")),
       }));

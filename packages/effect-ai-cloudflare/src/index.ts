@@ -12,15 +12,15 @@
  * naming the provider module and method.
  *
  * The barrel re-exports no `RerankerModel` name: the reranker abstraction
- * that `makeCohereReranker` implements lives in
+ * that `Cohere.makeReranker` implements lives in
  * `@thomasfosterau/effect-ext/RerankerModel`, so import it from there.
  *
  * @module effect-ai-cloudflare
  */
 
-export * from "./Anthropic";
-export * from "./Binding";
-export * from "./Cohere";
-export * from "./OpenAiModeration";
-export * from "./Url";
-export * from "./WorkersAi";
+export * as Anthropic from "./Anthropic";
+export * as Binding from "./Binding";
+export * as Cohere from "./Cohere";
+export * as OpenAiModeration from "./OpenAiModeration";
+export * as Url from "./Url";
+export * as WorkersAi from "./WorkersAi";

@@ -15,19 +15,19 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
+import { type WorkersAiBinding } from "@thomasfosterau/effect-ai-cloudflare/Binding";
 import {
-  COHERE_EMBEDDING_DIMENSIONS,
-  COHERE_EMBEDDING_MODEL,
-  COHERE_RERANK_MODEL,
-  makeCohereEmbeddingModel,
-  makeCohereReranker,
-  type WorkersAiBinding,
-} from "@thomasfosterau/effect-ai-cloudflare";
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
+  RERANK_MODEL,
+  makeEmbeddingModel,
+  makeReranker,
+} from "@thomasfosterau/effect-ai-cloudflare/Cohere";
 import { stubAiBinding } from "./helpers/ai";
 import { expectFailureInstanceOf } from "./helpers/effect";
 
 /** Expected embedding width for `embed-v4.0`. */
-const EMBEDDING_DIMENSIONS = 1024;
+const EXPECTED_DIMENSIONS = 1024;
 
 /** Builds a stub binding whose `gateway(id).run(data)` is canned. */
 const stubAi = (response: { status: number; body: unknown }) => {
@@ -65,7 +65,7 @@ const binding = (ai: WorkersAiBinding) => ({ ai, gatewayId: "website" });
 
 describe("Cohere embeddings", () => {
   it("pins output_dimension to the database's vector column width", () => {
-    expect(COHERE_EMBEDDING_DIMENSIONS).toBe(EMBEDDING_DIMENSIONS);
+    expect(EMBEDDING_DIMENSIONS).toBe(EXPECTED_DIMENSIONS);
   });
 
   it.effect("posts the embed request with output_dimension pinned to 1024", () =>
@@ -84,7 +84,7 @@ describe("Cohere embeddings", () => {
       });
 
       const response = yield* Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModel(binding(ai), {
+        const model = yield* makeEmbeddingModel(binding(ai), {
           inputType: "search_document",
         });
         return yield* model.embedMany(["first", "second"]);
@@ -96,7 +96,7 @@ describe("Cohere embeddings", () => {
           endpoint: "v2/embed",
           headers: { "content-type": "application/json" },
           query: {
-            model: COHERE_EMBEDDING_MODEL,
+            model: EMBEDDING_MODEL,
             input_type: "search_document",
             texts: ["first", "second"],
             output_dimension: 1024,
@@ -120,7 +120,7 @@ describe("Cohere embeddings", () => {
       });
 
       yield* Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModel(binding(ai), { inputType: "search_query" });
+        const model = yield* makeEmbeddingModel(binding(ai), { inputType: "search_query" });
         return yield* model.embedMany(["query text"]);
       });
 
@@ -133,7 +133,7 @@ describe("Cohere embeddings", () => {
       const { ai, calls } = stubAi({ status: 200, body: { embeddings: { float: [] } } });
 
       yield* Effect.gen(function* () {
-        const model = yield* makeCohereEmbeddingModel(binding(ai), {
+        const model = yield* makeEmbeddingModel(binding(ai), {
           inputType: "search_document",
         });
         return yield* model.embedMany([]);
@@ -149,7 +149,7 @@ describe("Cohere embeddings", () => {
 
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const model = yield* makeCohereEmbeddingModel(binding(ai), {
+          const model = yield* makeEmbeddingModel(binding(ai), {
             inputType: "search_document",
           });
           return yield* model.embedMany(["text"]);
@@ -167,7 +167,7 @@ describe("Cohere embeddings", () => {
 
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const model = yield* makeCohereEmbeddingModel(binding(ai), {
+          const model = yield* makeEmbeddingModel(binding(ai), {
             inputType: "search_document",
           });
           return yield* model.embedMany(["text"]);
@@ -183,7 +183,7 @@ describe("Cohere embeddings", () => {
     Effect.gen(function* () {
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const model = yield* makeCohereEmbeddingModel(binding(stubAiMalformedBody()), {
+          const model = yield* makeEmbeddingModel(binding(stubAiMalformedBody()), {
             inputType: "search_document",
           });
           return yield* model.embedMany(["text"]);
@@ -199,7 +199,7 @@ describe("Cohere embeddings", () => {
     Effect.gen(function* () {
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const model = yield* makeCohereEmbeddingModel(binding(stubAiReject()), {
+          const model = yield* makeEmbeddingModel(binding(stubAiReject()), {
             inputType: "search_document",
           });
           return yield* model.embedMany(["text"]);
@@ -229,7 +229,7 @@ describe("Cohere reranker", () => {
       });
 
       const response = yield* Effect.gen(function* () {
-        const reranker = yield* makeCohereReranker(binding(ai));
+        const reranker = yield* makeReranker(binding(ai));
         return yield* reranker.rerank({
           query: "needle",
           documents: ["hay", "needle-adjacent"],
@@ -243,7 +243,7 @@ describe("Cohere reranker", () => {
           endpoint: "v2/rerank",
           headers: { "content-type": "application/json" },
           query: {
-            model: COHERE_RERANK_MODEL,
+            model: RERANK_MODEL,
             query: "needle",
             documents: ["hay", "needle-adjacent"],
             top_n: 2,
@@ -264,7 +264,7 @@ describe("Cohere reranker", () => {
       });
 
       yield* Effect.gen(function* () {
-        const reranker = yield* makeCohereReranker(binding(ai));
+        const reranker = yield* makeReranker(binding(ai));
         return yield* reranker.rerank({ query: "q", documents: ["only"] });
       });
 
@@ -278,7 +278,7 @@ describe("Cohere reranker", () => {
 
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const reranker = yield* makeCohereReranker(binding(ai));
+          const reranker = yield* makeReranker(binding(ai));
           return yield* reranker.rerank({ query: "q", documents: ["a", "b"] });
         }),
         AiError.AiError,
@@ -304,7 +304,7 @@ describe("Cohere reranker", () => {
 
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const reranker = yield* makeCohereReranker(binding(ai));
+          const reranker = yield* makeReranker(binding(ai));
           return yield* reranker.rerank({ query: "q", documents: ["a", "b"] });
         }),
         AiError.AiError,
@@ -318,7 +318,7 @@ describe("Cohere reranker", () => {
     Effect.gen(function* () {
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const reranker = yield* makeCohereReranker(binding(stubAiReject()));
+          const reranker = yield* makeReranker(binding(stubAiReject()));
           return yield* reranker.rerank({ query: "q", documents: ["a", "b"] });
         }),
         AiError.AiError,

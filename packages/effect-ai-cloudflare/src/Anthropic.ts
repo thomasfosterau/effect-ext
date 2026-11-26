@@ -11,7 +11,7 @@
  * the gateway's resolved base URL with no key (the gateway injects the
  * stored BYOK credential upstream, and omits the `x-api-key` header
  * entirely per Cloudflare's BYOK contract). Callers swap this module's
- * `anthropicLanguageModelLayer` in for the old `AnthropicClient.layer` +
+ * `languageModelLayer` in for the old `AnthropicClient.layer` +
  * `AnthropicLanguageModel.layer` pair; nothing downstream of
  * `LanguageModel.LanguageModel` changes.
  *
@@ -40,7 +40,7 @@ const ANTHROPIC_PROVIDER = "anthropic";
  * })` + `AnthropicClient.layer({ apiKey })`: same `LanguageModel`
  * tag, same `never` error/requirement shape.
  */
-export const anthropicLanguageModelLayer = (
+export const languageModelLayer = (
   binding: GatewayBinding,
   options: { readonly model: AnthropicLanguageModel.Model | (string & Record<never, never>) },
 ): Layer.Layer<LanguageModel.LanguageModel> =>
@@ -59,7 +59,7 @@ export const anthropicLanguageModelLayer = (
  * through the AI Gateway's **public HTTPS endpoint**
  * (`https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/anthropic`),
  * authenticated via the gateway's `cf-aig-authorization` token — the
- * binding-free sibling of {@link anthropicLanguageModelLayer}, usable from
+ * binding-free sibling of {@link languageModelLayer}, usable from
  * a plain Node process, a local CLI, or CI, where there is no Worker `AI`
  * binding to resolve the URL from. BYOK still applies: `apiKey: undefined`
  * on the `AnthropicClient` — the Anthropic provider key stays configured
@@ -68,12 +68,12 @@ export const anthropicLanguageModelLayer = (
  * Config (`CF_ACCOUNT_ID`, `CF_AIG_GATEWAY_ID`, `CF_AIG_TOKEN`) is loaded
  * via `Url.gatewayUrlConfig`; a missing required value fails layer
  * construction with a typed `Config.ConfigError`, not a silent fallback.
- * Rides `FetchHttpClient` (like {@link anthropicLanguageModelLayer}), whose
+ * Rides `FetchHttpClient` (like {@link languageModelLayer}), whose
  * `fetch` calls are already interruption-safe — no manual `signal`
  * plumbing needed here, unlike
  * `Binding.ts`'s raw `ai.gateway(id).run()` seam.
  */
-export const anthropicLanguageModelLayerFromUrl = (options: {
+export const languageModelLayerFromUrl = (options: {
   readonly model: AnthropicLanguageModel.Model | (string & Record<never, never>);
 }): Layer.Layer<LanguageModel.LanguageModel, Config.ConfigError> =>
   Layer.unwrap(

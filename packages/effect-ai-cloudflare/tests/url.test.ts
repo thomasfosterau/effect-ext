@@ -16,7 +16,7 @@ import {
   cfAigAuthorizationHeader,
   gatewayBaseUrl,
   gatewayUrlConfig,
-} from "@thomasfosterau/effect-ai-cloudflare";
+} from "@thomasfosterau/effect-ai-cloudflare/Url";
 
 const withConfig = (values: Record<string, string>) =>
   gatewayUrlConfig.pipe(

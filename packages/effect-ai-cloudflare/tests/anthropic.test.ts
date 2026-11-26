@@ -19,10 +19,8 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import { LanguageModel } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
-import {
-  anthropicLanguageModelLayer,
-  type WorkersAiBinding,
-} from "@thomasfosterau/effect-ai-cloudflare";
+import { languageModelLayer } from "@thomasfosterau/effect-ai-cloudflare/Anthropic";
+import { type WorkersAiBinding } from "@thomasfosterau/effect-ai-cloudflare/Binding";
 import { stubAiBinding } from "./helpers/ai";
 
 const GATEWAY_URL = "https://gateway.ai.cloudflare.com/v1/acct/website/anthropic";
@@ -75,11 +73,11 @@ const anthropicMessageResponse = (text: string) => ({
   },
 });
 
-describe("anthropicLanguageModelLayer", () => {
+describe("languageModelLayer", () => {
   const ai = stubAi(GATEWAY_URL);
 
   layer(
-    anthropicLanguageModelLayer({ ai, gatewayId: "website" }, { model: "claude-sonnet-4-6" }).pipe(
+    languageModelLayer({ ai, gatewayId: "website" }, { model: "claude-sonnet-4-6" }).pipe(
       Layer.provide(FetchHttpClient.layer),
     ),
   )((t) => {

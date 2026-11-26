@@ -1,7 +1,7 @@
 /**
  * Unit tests for the binding-free, URL-based Cohere `EmbeddingModel` and
- * `RerankerModel` providers (`makeCohereEmbeddingModelFromUrl` and
- * `makeCohereRerankerFromUrl` in `src/Cohere.ts`).
+ * `RerankerModel` providers (`makeEmbeddingModelFromUrl` and
+ * `makeRerankerFromUrl` in `src/Cohere.ts`).
  *
  * Config is supplied through `ConfigProvider.fromUnknown` instead of real
  * environment variables, and the network is stubbed at
@@ -19,11 +19,11 @@ import * as Option from "effect/Option";
 import { AiError } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
 import {
-  COHERE_EMBEDDING_MODEL,
-  COHERE_RERANK_MODEL,
-  makeCohereEmbeddingModelFromUrl,
-  makeCohereRerankerFromUrl,
-} from "@thomasfosterau/effect-ai-cloudflare";
+  EMBEDDING_MODEL,
+  RERANK_MODEL,
+  makeEmbeddingModelFromUrl,
+  makeRerankerFromUrl,
+} from "@thomasfosterau/effect-ai-cloudflare/Cohere";
 import { expectFailureInstanceOf } from "./helpers/effect";
 
 interface CapturedRequest {
@@ -67,7 +67,7 @@ const GATEWAY_CONFIG = {
   CF_AIG_TOKEN: "test-token",
 };
 
-describe("makeCohereEmbeddingModelFromUrl", () => {
+describe("makeEmbeddingModelFromUrl", () => {
   it.effect(
     "posts the embed request to the config-resolved gateway URL with the cf-aig-authorization header",
     () =>
@@ -86,7 +86,7 @@ describe("makeCohereEmbeddingModelFromUrl", () => {
         });
 
         const response = yield* Effect.gen(function* () {
-          const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
+          const model = yield* makeEmbeddingModelFromUrl({ inputType: "search_document" });
           return yield* model.embedMany(["first", "second"]);
         }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG));
 
@@ -96,7 +96,7 @@ describe("makeCohereEmbeddingModelFromUrl", () => {
         );
         expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
         expect(calls[0]?.body).toEqual({
-          model: COHERE_EMBEDDING_MODEL,
+          model: EMBEDDING_MODEL,
           input_type: "search_document",
           texts: ["first", "second"],
           output_dimension: 1024,
@@ -119,7 +119,7 @@ describe("makeCohereEmbeddingModelFromUrl", () => {
 
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
+          const model = yield* makeEmbeddingModelFromUrl({ inputType: "search_document" });
           return yield* model.embedMany(["text"]);
         }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG)),
         AiError.AiError,
@@ -133,7 +133,7 @@ describe("makeCohereEmbeddingModelFromUrl", () => {
     Effect.gen(function* () {
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
+          const model = yield* makeEmbeddingModelFromUrl({ inputType: "search_document" });
           return yield* model.embedMany(["text"]);
         }).pipe(
           Effect.provideService(FetchHttpClient.Fetch, malformedBodyFetch),
@@ -150,7 +150,7 @@ describe("makeCohereEmbeddingModelFromUrl", () => {
     Effect.gen(function* () {
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
+          const model = yield* makeEmbeddingModelFromUrl({ inputType: "search_document" });
           return yield* model.embedMany(["text"]);
         }).pipe(
           Effect.provideService(FetchHttpClient.Fetch, rejectingFetch),
@@ -169,7 +169,7 @@ describe("makeCohereEmbeddingModelFromUrl", () => {
 
       const exit = yield* Effect.exit(
         Effect.gen(function* () {
-          const model = yield* makeCohereEmbeddingModelFromUrl({ inputType: "search_document" });
+          const model = yield* makeEmbeddingModelFromUrl({ inputType: "search_document" });
           return yield* model.embedMany(["text"]);
         }).pipe(
           Effect.provideService(FetchHttpClient.Fetch, fetch),
@@ -182,7 +182,7 @@ describe("makeCohereEmbeddingModelFromUrl", () => {
   );
 });
 
-describe("makeCohereRerankerFromUrl", () => {
+describe("makeRerankerFromUrl", () => {
   const rerankResponse = {
     results: [
       { index: 1, relevance_score: 0.2 },
@@ -198,7 +198,7 @@ describe("makeCohereRerankerFromUrl", () => {
         const { calls, fetch } = stubFetch({ status: 200, body: rerankResponse });
 
         const response = yield* Effect.gen(function* () {
-          const reranker = yield* makeCohereRerankerFromUrl;
+          const reranker = yield* makeRerankerFromUrl;
           return yield* reranker.rerank({ query: "monstera", documents: ["a", "b"], topN: 2 });
         }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG));
 
@@ -208,7 +208,7 @@ describe("makeCohereRerankerFromUrl", () => {
         );
         expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
         expect(calls[0]?.body).toEqual({
-          model: COHERE_RERANK_MODEL,
+          model: RERANK_MODEL,
           query: "monstera",
           documents: ["a", "b"],
           top_n: 2,
@@ -228,12 +228,12 @@ describe("makeCohereRerankerFromUrl", () => {
       const { calls, fetch } = stubFetch({ status: 200, body: rerankResponse });
 
       yield* Effect.gen(function* () {
-        const reranker = yield* makeCohereRerankerFromUrl;
+        const reranker = yield* makeRerankerFromUrl;
         return yield* reranker.rerank({ query: "monstera", documents: ["a", "b"] });
       }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG));
 
       expect(calls[0]?.body).toEqual({
-        model: COHERE_RERANK_MODEL,
+        model: RERANK_MODEL,
         query: "monstera",
         documents: ["a", "b"],
       });
@@ -245,7 +245,7 @@ describe("makeCohereRerankerFromUrl", () => {
       const { calls, fetch } = stubFetch({ status: 200, body: rerankResponse });
 
       yield* Effect.gen(function* () {
-        const reranker = yield* makeCohereRerankerFromUrl;
+        const reranker = yield* makeRerankerFromUrl;
         yield* reranker.rerank({ query: "one", documents: ["a", "b"] });
         yield* reranker.rerank({ query: "two", documents: ["a", "b"] });
       }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG));
@@ -263,7 +263,7 @@ describe("makeCohereRerankerFromUrl", () => {
 
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const reranker = yield* makeCohereRerankerFromUrl;
+          const reranker = yield* makeRerankerFromUrl;
           return yield* reranker.rerank({ query: "q", documents: ["a"] });
         }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG)),
         AiError.AiError,
@@ -279,7 +279,7 @@ describe("makeCohereRerankerFromUrl", () => {
     Effect.gen(function* () {
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const reranker = yield* makeCohereRerankerFromUrl;
+          const reranker = yield* makeRerankerFromUrl;
           return yield* reranker.rerank({ query: "q", documents: ["a"] });
         }).pipe(
           Effect.provideService(FetchHttpClient.Fetch, malformedBodyFetch),
@@ -296,7 +296,7 @@ describe("makeCohereRerankerFromUrl", () => {
     Effect.gen(function* () {
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const reranker = yield* makeCohereRerankerFromUrl;
+          const reranker = yield* makeRerankerFromUrl;
           return yield* reranker.rerank({ query: "q", documents: ["a"] });
         }).pipe(
           Effect.provideService(FetchHttpClient.Fetch, rejectingFetch),
@@ -315,7 +315,7 @@ describe("makeCohereRerankerFromUrl", () => {
 
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
-          const reranker = yield* makeCohereRerankerFromUrl;
+          const reranker = yield* makeRerankerFromUrl;
           return yield* reranker.rerank({ query: "q", documents: ["a"] });
         }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG)),
         AiError.AiError,
@@ -330,7 +330,7 @@ describe("makeCohereRerankerFromUrl", () => {
       const { calls, fetch } = stubFetch({ status: 200, body: rerankResponse });
 
       const exit = yield* Effect.exit(
-        makeCohereRerankerFromUrl.pipe(
+        makeRerankerFromUrl.pipe(
           Effect.provideService(FetchHttpClient.Fetch, fetch),
           stubConfig({ CF_ACCOUNT_ID: "acct" }),
         ),

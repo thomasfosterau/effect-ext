@@ -15,12 +15,12 @@ pnpm add @thomasfosterau/effect-ai-cloudflare @thomasfosterau/effect-ext effect 
 ```ts
 import { Effect } from "effect";
 import { LanguageModel } from "effect/ai";
-import { anthropicLanguageModelLayer } from "@thomasfosterau/effect-ai-cloudflare";
+import { Anthropic } from "@thomasfosterau/effect-ai-cloudflare";
 
 // Inside a Worker with an `AI` binding (`Ai` is from @cloudflare/workers-types).
 declare const env: { AI: Ai };
 
-const layer = anthropicLanguageModelLayer(
+const layer = Anthropic.languageModelLayer(
   { ai: env.AI, gatewayId: "my-gateway" },
   { model: "claude-sonnet-4-5" },
 );
@@ -30,11 +30,13 @@ const program = LanguageModel.generateText({ prompt: "Hello" }).pipe(Effect.prov
 
 ## Modules
 
+Each module is a namespace on the root (`import { Cohere } from "@thomasfosterau/effect-ai-cloudflare"`) and its own subpath (`@thomasfosterau/effect-ai-cloudflare/Cohere`).
+
 | Module | What it is |
 | --- | --- |
-| `Anthropic` | `anthropicLanguageModelLayer` / `…FromUrl`: repoints `@effect/ai-anthropic`'s client at the gateway's Anthropic route. |
-| `Cohere` | `EmbeddingModel` (`embed-v4.0`) and `RerankerModel` (`rerank-v3.5`) through the gateway's universal endpoint. |
-| `OpenAiModeration` | A `ModerationModel` over `omni-moderation-latest`, for text and images. |
+| `Anthropic` | `languageModelLayer` / `…FromUrl`: repoints `@effect/ai-anthropic`'s client at the gateway's Anthropic route. |
+| `Cohere` | `makeEmbeddingModel` (`embed-v4.0`) and `makeReranker` (`rerank-v3.5`) through the gateway's universal endpoint. |
+| `OpenAiModeration` | `makeModel`: a `ModerationModel` over `omni-moderation-latest`, for text and images. |
 | `WorkersAi` | `@effect/ai-cloudflare`'s `CloudflareClient` and `CloudflareDecisionModel`, wired to the gateway (REST only). |
 | `Binding` | The Worker-binding transport: `GatewayBinding`, `gatewayUrl`, `gatewayRun`. |
 | `Url` | The public-HTTPS transport: `gatewayUrlConfig` (`CF_ACCOUNT_ID`, `CF_AIG_GATEWAY_ID`, `CF_AIG_TOKEN`), `gatewayBaseUrl`, `cfAigAuthorizationHeader`. |
