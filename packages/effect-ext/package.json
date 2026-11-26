@@ -274,6 +274,10 @@
       "types": "./dist/PosixTz.d.ts",
       "default": "./dist/PosixTz.js"
     },
+    "./Query": {
+      "types": "./dist/Query.d.ts",
+      "default": "./dist/Query.js"
+    },
     "./Range": {
       "types": "./dist/Range.d.ts",
       "default": "./dist/Range.js"

@@ -61,6 +61,7 @@ Guide: [schema](https://github.com/thomasfosterau/effect-ext/blob/trunk/packages
 | Subpath | What it is |
 | --- | --- |
 | `TriState` | Partial-update fields that keep "absent" and "cleared" apart, and their readers. |
+| `Query` | LINQ-style queries as data: typed filters and sort keys, an in-memory runner, and codecs that accept them from a client. |
 | `Issues` | `SchemaIssue` trees to RFC 6901 JSON Pointers. |
 | `Bounded` | Bounded pagination and id-list codecs. |
 | `Ids` | UUIDs, branded UUID ids and slugs. |

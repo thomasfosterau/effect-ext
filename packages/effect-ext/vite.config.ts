@@ -120,6 +120,7 @@ export default distExportsPackageConfig({
     "OptionalKey",
     "Overflowing",
     "PosixTz",
+    "Query",
     "Range",
     "Ratio",
     "Rfc3339",
