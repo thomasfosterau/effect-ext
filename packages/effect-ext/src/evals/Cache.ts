@@ -41,6 +41,7 @@ import * as Effect from "effect/Effect";
 import * as P from "effect/Predicate";
 import * as R from "effect/Record";
 import * as Schema from "effect/Schema";
+import * as Hex from "effect/encoding/Hex";
 import { KeyValueStore } from "effect/persistence";
 
 export {
@@ -132,9 +133,6 @@ const slot = (json: Option.Option<Schema.Json>): Schema.Json =>
 const encodeCanonicalJson = Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown));
 
 const encoder = new TextEncoder();
-const toHex = (bytes: ArrayBuffer): string =>
-  Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
-
 /**
  * A deterministic cache key for the given inputs — stable across process
  * runs. A full SHA-256 hex digest (not a 32-bit structural hash — this key
@@ -152,7 +150,7 @@ export const hashKey = (input: CacheKeyInput): Effect.Effect<string> =>
         catch: (cause) => new Cause.UnknownError(cause),
       }),
     ),
-    Effect.map(toHex),
+    Effect.map((digest) => Hex.encode(new Uint8Array(digest))),
     // An input `JSON.stringify` cannot serialise (a cycle, a `BigInt`) is a
     // caller bug, and SHA-256 over bytes cannot fail, so either is a defect.
     Effect.orDie,

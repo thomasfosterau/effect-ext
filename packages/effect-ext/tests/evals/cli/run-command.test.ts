@@ -47,22 +47,24 @@ afterEach(() => {
 const runCli = (
   args: ReadonlyArray<string>,
   writes: Array<{ path: string; content: string }> = [],
-) => {
-  const testFs = FileSystem.makeNoop({
-    writeFileString: (path, content) =>
-      Effect.sync(() => {
-        writes.push({ path: path, content });
-      }),
-    makeDirectory: () => Effect.void,
+) =>
+  Effect.gen(function* () {
+    // The suite's `describeLayerPerTest(...)` block provides the real Node services;
+    // discovery globs through them, and this double, the innermost provider,
+    // keeps the JSON report off the disk.
+    const nodeFs = yield* FileSystem.FileSystem;
+    const testFs = FileSystem.makeNoop({
+      glob: nodeFs.glob,
+      writeFileString: (path, content) =>
+        Effect.sync(() => {
+          writes.push({ path: path, content });
+        }),
+      makeDirectory: () => Effect.void,
+    });
+    return yield* Command.runWith(runCommand, { version: "0.0.0" })(args).pipe(
+      Effect.provideService(FileSystem.FileSystem, testFs),
+    );
   });
-
-  // The suite's `describeLayerPerTest(...)` block provides the real Node services; this
-  // `FileSystem` double is the innermost provider, so it wins over the Node one
-  // and the JSON report never reaches the disk.
-  return Command.runWith(runCommand, { version: "0.0.0" })(args).pipe(
-    Effect.provideService(FileSystem.FileSystem, testFs),
-  );
-};
 
 describeLayerPerTest(Layer.merge(NodeServices.layer, Cache.layerMemory), { live: true })(
   "cli/RunCommand — run",

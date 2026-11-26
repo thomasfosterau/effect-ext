@@ -1,22 +1,16 @@
 /**
- * Glob discovery of `*.eval.ts` files for the `run` command. Uses Node's own
- * `fs.promises.glob` (stable as of the pinned Node version — see
- * the `engines.node` floor) rather than a dependency: this module is CLI-only and
- * already Node-coupled (dynamic `import()`, process argv), so pulling in a
- * userland glob package would buy nothing. Effect's `FileSystem` service has
- * no glob, so this is the one direct `node:fs` import (the root lint config
- * exempts this file from `use-filesystem-service`); paths go through the
- * `Path` service.
+ * Glob discovery of `*.eval.ts` files for the `run` command, through the
+ * `FileSystem` and `Path` services.
  *
  * @module cli/Discover
  *
  * @copyright Thomas Foster
  */
 
-import { glob } from "node:fs/promises";
 import * as Order from "effect/Order";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
@@ -29,16 +23,8 @@ export class GlobError extends Schema.TaggedError<GlobError, { readonly brand: u
   },
 ) {}
 
-/**
- * Matches "node_modules"/".git" as a whole path segment (start, middle, or
- * end of the candidate) without allocating an array per call the way
- * `candidate.split(sep)` would on this glob-walk hot path.
- */
-const excludedMatcher = (sep: string): ((candidate: string) => boolean) => {
-  const escaped = sep === "\\" ? "\\\\" : sep;
-  const pattern = new RegExp(`(^|${escaped})(node_modules|\\.git)(${escaped}|$)`);
-  return (candidate) => pattern.test(candidate);
-};
+/** Never searched: dependencies and git internals (dot-directories are skipped already). */
+const EXCLUDE = ["**/node_modules", "**/.git"];
 
 /**
  * Resolves every file matching any of `patterns` (relative to `cwd`,
@@ -48,18 +34,17 @@ const excludedMatcher = (sep: string): ((candidate: string) => boolean) => {
 export const findEvalFiles = (
   patterns: ReadonlyArray<string>,
   cwd: string = process.cwd(),
-): Effect.Effect<ReadonlyArray<string>, GlobError, Path.Path> =>
+): Effect.Effect<ReadonlyArray<string>, GlobError, FileSystem.FileSystem | Path.Path> =>
   Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const exclude = excludedMatcher(path.sep);
-    return yield* Effect.tryPromise({
-      try: async () => {
-        const matches = await Array.fromAsync(glob([...patterns], { cwd, exclude }));
-        return Arr.sort(
-          Arr.dedupe(Arr.map(matches, (match) => path.resolve(cwd, match))),
-          Order.String,
-        );
-      },
-      catch: (cause) => new GlobError({ patterns: [...patterns], cause }),
-    });
+    const matches = yield* Effect.forEach(
+      patterns,
+      (pattern) => fs.glob(pattern, { root: cwd, exclude: EXCLUDE }),
+      { concurrency: "unbounded" },
+    ).pipe(Effect.mapError((cause) => new GlobError({ patterns: [...patterns], cause })));
+    return Arr.sort(
+      Arr.dedupe(Arr.map(Arr.flatten(matches), (match) => path.resolve(cwd, match))),
+      Order.String,
+    );
   });

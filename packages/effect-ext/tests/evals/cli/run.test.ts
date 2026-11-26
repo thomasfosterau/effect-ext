@@ -12,15 +12,16 @@
 import { expect } from "@effect/vitest";
 import { describeLayerPerTest } from "../helpers/layerPerTest.ts";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import { NodePath } from "@effect/platform-node";
+import * as PlatformError from "effect/PlatformError";
+import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { Cache } from "../../../src/evals/index.ts";
 import { runEvals } from "../../../src/evals/cli/Run.ts";
-import { unsafeCoerce } from "../helpers/unsafe.ts";
 
 /** The in-memory result cache plus the `Path` service discovery and loading read. */
-const testLayer = Layer.merge(Cache.layerMemory, NodePath.layer);
+const testLayer = Layer.mergeAll(Cache.layerMemory, NodeFileSystem.layer, NodePath.layer);
 
 const FIXTURES = new URL("../fixtures/", import.meta.url);
 const fixture = (name: string): string => new URL(name, FIXTURES).pathname;
@@ -178,15 +179,21 @@ describeLayerPerTest(testLayer)("cli/Run.runEvals", (t) => {
     "returns a failed-run report instead of throwing when glob discovery itself errors",
     () =>
       Effect.gen(function* () {
-        // node:fs/promises' glob throws synchronously on a non-string cwd;
-        // bypass the type system to exercise runEvals' own error mapping.
-        const malformedCwd = unsafeCoerce<string>(123);
-
-        const report = yield* runEvals({
-          ...baseConfig,
-          globs: [fixture("sample.eval.ts")],
-          cwd: malformedCwd,
-        });
+        const report = yield* runEvals({ ...baseConfig, globs: [fixture("sample.eval.ts")] }).pipe(
+          Effect.provideService(
+            FileSystem.FileSystem,
+            FileSystem.makeNoop({
+              glob: () =>
+                Effect.fail(
+                  PlatformError.systemError({
+                    _tag: "PermissionDenied",
+                    module: "FileSystem",
+                    method: "glob",
+                  }),
+                ),
+            }),
+          ),
+        );
 
         expect(report.passed).toBe(false);
         expect(report.failed).toHaveLength(1);

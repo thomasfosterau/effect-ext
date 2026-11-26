@@ -412,14 +412,6 @@ export default defineConfig({
           "effect/use-temp-file-scoped": "off",
         },
       },
-      // `cli/Discover` globs with Node's `fs.promises.glob`: effect's
-      // `FileSystem` has no glob (its paths go through the `Path` service).
-      {
-        files: ["packages/effect-ext/src/evals/cli/Discover.ts"],
-        rules: {
-          "effect/use-filesystem-service": "off",
-        },
-      },
       // `Cache.hashKey` canonicalises native `Map` / `Set` inputs (a golden
       // is any user value), so its tests must build native ones: a `HashMap`
       // would test a different input and break the pinned digest.
