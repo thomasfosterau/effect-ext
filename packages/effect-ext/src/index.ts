@@ -171,6 +171,13 @@ export * as FixedInt from "./FixedInt.ts";
 export * as Float from "./Float.ts";
 
 /**
+ * HTTP Archive (HAR 1.2) documents: read, recorded from `HttpClient` and `HttpServer` exchanges, and replayed.
+ *
+ * @since 0.5.0
+ */
+export * as Har from "./Har.ts";
+
+/**
  * Signed 8-bit integers, like Rust's `i8`.
  *
  * @since 0.1.0
