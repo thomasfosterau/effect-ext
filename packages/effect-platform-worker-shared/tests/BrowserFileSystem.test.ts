@@ -16,6 +16,54 @@ const probe = Effect.service(FileSystem.FileSystem);
 const rejectingStorage = (name: string) => ({
   getDirectory: () => Promise.reject(new DOMException("x", name)),
 });
+const decode = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
+
+const closed = () => new DOMException("closed", "InvalidStateError");
+
+/** A sync access handle closed underneath its file: reads and flushes throw, writes come up short. */
+const brokenAccess = () => {
+  const calls = { writes: 0 };
+  const handle: BrowserFileSystem.SyncAccessHandleLike = {
+    read: () => {
+      throw closed();
+    },
+    write: (buffer) => {
+      calls.writes += 1;
+      return buffer.length - 1;
+    },
+    truncate: () => {},
+    getSize: () => 0,
+    flush: () => {
+      throw closed();
+    },
+    close: () => {},
+  };
+  return { handle, calls };
+};
+
+/** A root whose every file opens `access` as its sync access handle. */
+const rootWithAccess = (access: BrowserFileSystem.SyncAccessHandleLike) => {
+  const root = MemoryFileSystemHandle.make();
+  const self: BrowserFileSystem.DirectoryHandleLike = {
+    kind: "directory",
+    name: "",
+    getDirectoryHandle: (name, options) => root.getDirectoryHandle(name, options),
+    removeEntry: (name, options) => root.removeEntry(name, options),
+    entries: () => root.entries(),
+    getFileHandle: (name, options) =>
+      root.getFileHandle(name, options).then((file) => ({
+        kind: "file",
+        name: file.name,
+        getFile: () => file.getFile(),
+        createWritable: (writable) => file.createWritable(writable),
+        createSyncAccessHandle: () => Promise.resolve(access),
+      })),
+  };
+  return self;
+};
+
+const synced = () => BrowserFileSystem.make(MemoryFileSystemHandle.make(), { syncAccess: true });
+
 const fresh = () => BrowserFileSystem.make(MemoryFileSystemHandle.make());
 
 /** The `SystemError` / `BadArgument` tag an effect failed with. */
@@ -289,6 +337,99 @@ describe("open", () => {
   );
 });
 
+describe("open with syncAccess", () => {
+  it.effect("reads and writes in place at a position it keeps", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fs = synced();
+        yield* fs.writeFileString("/a.txt", "abcdef");
+        const file = yield* fs.open("/a.txt", { flag: "r+" });
+        expect(Option.map(yield* file.readAlloc(2), decode)).toEqual(Option.some("ab"));
+        yield* file.write(text.encode("XY"));
+        yield* file.sync;
+        expect(yield* fs.readFileString("/a.txt")).toBe("abXYef");
+        expect(yield* file.seek(1n, "start")).toBe(1n);
+        expect(yield* file.seek(1n, "current")).toBe(2n);
+        const buffer = new Uint8Array(3);
+        expect(yield* file.read(buffer)).toBe(3);
+        expect(decode(buffer)).toBe("XYe");
+        expect(yield* file.read(buffer, { position: 0n })).toBe(3);
+        expect(decode(buffer)).toBe("abX");
+        yield* file.seek(10n, "start");
+        expect(yield* file.readAlloc(4)).toEqual(Option.none());
+        yield* file.truncate(2);
+        expect(Number((yield* file.stat).size)).toBe(2);
+        yield* file.truncate();
+        expect(Number((yield* file.stat).size)).toBe(0);
+        yield* file.seek(0n, "start");
+        yield* file.writeAll(text.encode("end"));
+        expect(yield* fs.readFileString("/a.txt")).toBe("end");
+      }),
+    ),
+  );
+
+  it.effect("truncates on w, appends on a, and locks the file until the scope closes", () =>
+    Effect.gen(function* () {
+      const fs = synced();
+      yield* fs.writeFileString("/log.txt", "abc");
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          const appender = yield* fs.open("/log.txt", { flag: "a" });
+          yield* appender.writeAll(text.encode("d"));
+          yield* appender.writeAll(text.encode("e"));
+          expect(yield* fs.readFileString("/log.txt")).toBe("abcde");
+          expect(yield* reasonOf(fs.open("/log.txt", { flag: "a" }))).toBe("Busy");
+          expect(yield* reasonOf(fs.writeFileString("/log.txt", "x"))).toBe("Busy");
+        }),
+      );
+      yield* fs.writeFileString("/log.txt", "again");
+      yield* Effect.scoped(Effect.asVoid(fs.open("/log.txt", { flag: "w" })));
+      expect(yield* fs.readFileString("/log.txt")).toBe("");
+    }),
+  );
+
+  it.effect("fails a call on a handle closed underneath it, and a short write", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { handle, calls } = brokenAccess();
+        const fs = BrowserFileSystem.make(rootWithAccess(handle), { syncAccess: true });
+        yield* fs.writeFileString("/a", "");
+        const opened = yield* fs.open("/a", { flag: "r+" });
+        expect(yield* reasonOf(opened.read(new Uint8Array(1)))).toBe("Busy");
+        expect(yield* reasonOf(opened.writeAll(text.encode("ab")))).toBe("Unknown");
+        expect(yield* reasonOf(opened.sync)).toBe("Busy");
+        expect(calls.writes).toBe(1);
+      }),
+    ),
+  );
+
+  it.effect("falls back to writables where a file has no sync access handle", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = MemoryFileSystemHandle.make();
+        const plain: BrowserFileSystem.DirectoryHandleLike = {
+          kind: "directory",
+          name: "",
+          getDirectoryHandle: (name, options) => root.getDirectoryHandle(name, options),
+          removeEntry: (name, options) => root.removeEntry(name, options),
+          entries: () => root.entries(),
+          getFileHandle: (name, options) =>
+            root.getFileHandle(name, options).then((file) => ({
+              kind: "file",
+              name: file.name,
+              getFile: () => file.getFile(),
+              createWritable: (writable) => file.createWritable(writable),
+            })),
+        };
+        const fs = BrowserFileSystem.make(plain, { syncAccess: true });
+        const file = yield* fs.open("/a.txt", { flag: "w" });
+        yield* file.writeAll(text.encode("hi"));
+        expect(yield* fs.readFileString("/a.txt")).toBe("hi");
+      }),
+    ),
+  );
+});
+
 describe("layers", () => {
   it.effect("layerHandle provides a FileSystem and Path over a handle", () =>
     Effect.gen(function* () {
@@ -330,6 +471,24 @@ describe("layers", () => {
         }).pipe(Effect.provide(BrowserFileSystem.layer)),
       );
       expect(listing).toEqual(["a.txt"]);
+    }),
+  );
+
+  it.effect("layerWorker roots at OPFS and opens files with sync access", () =>
+    Effect.gen(function* () {
+      const root = MemoryFileSystemHandle.make();
+      const storage = { getDirectory: () => Promise.resolve(root) };
+      const busy = yield* withNavigator(
+        { storage },
+        Effect.scoped(
+          Effect.gen(function* () {
+            const fs = yield* FileSystem.FileSystem;
+            yield* fs.open("/db", { flag: "w" });
+            return yield* reasonOf(fs.writeFileString("/db", "x"));
+          }),
+        ).pipe(Effect.provide(BrowserFileSystem.layerWorker)),
+      );
+      expect(busy).toBe("Busy");
     }),
   );
 

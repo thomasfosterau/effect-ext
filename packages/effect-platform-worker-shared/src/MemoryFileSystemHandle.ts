@@ -4,7 +4,10 @@
  * under Node, with no OPFS. It follows the platform's rules: a writable
  * writes to a swap copy that replaces the file on `close`, a missing entry
  * rejects `NotFoundError`, a kind mismatch `TypeMismatchError`, removing a
- * non-empty directory without `recursive` `InvalidModificationError`.
+ * non-empty directory without `recursive` `InvalidModificationError`. A
+ * file's sync access handle writes in place and locks the file until it
+ * closes: another sync access handle or a writable rejects
+ * `NoModificationAllowedError` meanwhile.
  *
  * @since 0.1.0
  */
@@ -15,6 +18,7 @@ import type {
   FileHandleLike,
   FileLike,
   HandleEntryLike,
+  SyncAccessHandleLike,
   WritableLike,
 } from "./BrowserFileSystem.ts";
 
@@ -22,6 +26,7 @@ import type {
 interface Stored {
   bytes: Uint8Array<ArrayBuffer>;
   lastModified: number;
+  locked: boolean;
 }
 
 /** Shared by every handle of one tree: a clock that only moves on writes. */
@@ -80,6 +85,60 @@ class MemoryWritable implements WritableLike {
   }
 }
 
+class MemorySyncAccessHandle implements SyncAccessHandleLike {
+  readonly #stored: Stored;
+  readonly #clock: Clock;
+  #open = true;
+  constructor(stored: Stored, clock: Clock) {
+    this.#stored = stored;
+    this.#clock = clock;
+  }
+  #check(): void {
+    if (!this.#open) throw domError("InvalidStateError", "the access handle is closed");
+  }
+  read(buffer: Uint8Array, options?: { readonly at?: number }): number {
+    this.#check();
+    const at = options?.at ?? 0;
+    const bytes = this.#stored.bytes.subarray(at, at + buffer.length);
+    buffer.set(bytes);
+    return bytes.length;
+  }
+  write(buffer: Uint8Array, options?: { readonly at?: number }): number {
+    this.#check();
+    const at = options?.at ?? 0;
+    const end = at + buffer.length;
+    if (end > this.#stored.bytes.length) {
+      const grown = new Uint8Array(end);
+      grown.set(this.#stored.bytes);
+      this.#stored.bytes = grown;
+    }
+    this.#stored.bytes.set(buffer, at);
+    this.#clock.now += 1;
+    this.#stored.lastModified = this.#clock.now;
+    return buffer.length;
+  }
+  truncate(size: number): void {
+    this.#check();
+    const resized = new Uint8Array(size);
+    resized.set(this.#stored.bytes.subarray(0, size));
+    this.#stored.bytes = resized;
+  }
+  getSize(): number {
+    this.#check();
+    return this.#stored.bytes.length;
+  }
+  flush(): void {
+    this.#check();
+  }
+  close(): void {
+    if (this.#open) this.#stored.locked = false;
+    this.#open = false;
+  }
+}
+
+const locked = (name: string) =>
+  Promise.reject(domError("NoModificationAllowedError", `${name} is locked by an access handle`));
+
 class MemoryFileHandle implements FileHandleLike {
   readonly kind = "file";
   readonly name: string;
@@ -94,9 +153,15 @@ class MemoryFileHandle implements FileHandleLike {
     return Promise.resolve(snapshot(this.#stored));
   }
   createWritable(options?: { readonly keepExistingData?: boolean }): Promise<WritableLike> {
+    if (this.#stored.locked) return locked(this.name);
     return Promise.resolve(
       new MemoryWritable(this.#stored, this.#clock, options?.keepExistingData === true),
     );
+  }
+  createSyncAccessHandle(): Promise<SyncAccessHandleLike> {
+    if (this.#stored.locked) return locked(this.name);
+    this.#stored.locked = true;
+    return Promise.resolve(new MemorySyncAccessHandle(this.#stored, this.#clock));
   }
 }
 
@@ -167,7 +232,10 @@ class MemoryDirectoryHandle implements DirectoryHandleLike {
     const node: Node =
       kind === "directory"
         ? new MemoryDirectoryHandle(name, this.#clock)
-        : { kind: "file", stored: { bytes: new Uint8Array(), lastModified: this.#clock.now } };
+        : {
+            kind: "file",
+            stored: { bytes: new Uint8Array(), lastModified: this.#clock.now, locked: false },
+          };
     this.#children.push({ name, node });
     return Promise.resolve(node);
   }
