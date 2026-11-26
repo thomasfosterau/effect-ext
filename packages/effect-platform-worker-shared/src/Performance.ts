@@ -13,11 +13,15 @@ import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import * as Queue from "effect/Queue";
+import * as R from "effect/Record";
+import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
+import * as Tracer from "effect/Tracer";
 
 /**
  * The fields every performance entry carries. A `PerformanceEntry`
@@ -460,3 +464,156 @@ export const timed: {
     ),
   ),
 );
+
+/**
+ * What {@link layerTracer} takes: `spans`, which spans to measure (default
+ * all), and `attributes` (default `false`), whether to attach a span's
+ * attributes as the measure's `detail`. Only attributes whose value is a
+ * string, number, boolean or bigint are attached, since `detail` must be
+ * structured-cloneable.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface TracerOptions {
+  readonly spans?: (name: string) => boolean;
+  readonly attributes?: boolean;
+}
+
+const NANOS_PER_MICRO = 1000n;
+
+/** Epoch nanoseconds (Effect's span clock) as milliseconds since the time origin. */
+const toTimeline = (nanos: bigint, timeOrigin: number): number =>
+  Number(nanos / NANOS_PER_MICRO) / 1000 - timeOrigin;
+
+const isCloneable = (value: unknown): value is string | number | boolean | bigint =>
+  P.isString(value) || P.isNumber(value) || P.isBoolean(value) || P.isBigInt(value);
+
+const cloneableDetail = (
+  attributes: ReadonlyMap<string, unknown>,
+): Record<string, string | number | boolean | bigint> =>
+  R.fromEntries(
+    Arr.filterMap(Arr.fromIterable(attributes), ([key, value]) =>
+      isCloneable(value) ? Result.succeed([key, value] as const) : Result.failVoid,
+    ),
+  );
+
+/** `span`, with a measure recorded once its `end` has run. */
+const measuredSpan = (span: Tracer.Span, onEnd: (span: Tracer.Span) => void): Tracer.Span => ({
+  _tag: "Span",
+  get name() {
+    return span.name;
+  },
+  get spanId() {
+    return span.spanId;
+  },
+  get traceId() {
+    return span.traceId;
+  },
+  get parent() {
+    return span.parent;
+  },
+  get annotations() {
+    return span.annotations;
+  },
+  get status() {
+    return span.status;
+  },
+  get attributes() {
+    return span.attributes;
+  },
+  get links() {
+    return span.links;
+  },
+  get sampled() {
+    return span.sampled;
+  },
+  get kind() {
+    return span.kind;
+  },
+  end: (endTime, exit) => {
+    span.end(endTime, exit);
+    onEnd(span);
+  },
+  attribute: (key, value) => span.attribute(key, value),
+  event: (name, startTime, attributes) => span.event(name, startTime, attributes),
+  addLinks: (links) => span.addLinks(links),
+});
+
+/**
+ * Wraps `tracer` so that every sampled span it creates is also recorded as
+ * a user-timing measure on `performance` when it ends, named after the
+ * span. `tracer` still creates and receives every span; a measure the
+ * agent refuses is dropped, so tracing never fails the traced effect. A
+ * span whose timing is disabled (`Effect.withTracerTiming(false)`) is not
+ * measured.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import * as Tracer from "effect/Tracer"
+ * import { make, measuredTracer } from "@thomasfosterau/effect-platform-worker-shared/Performance"
+ *
+ * const tracer = measuredTracer(Tracer.nativeTracer, make({ performance: globalThis.performance }))
+ * const program = Effect.sleep("5 millis").pipe(Effect.withSpan("nap"))
+ * Effect.runPromise(Effect.withTracer(program, tracer)).then(() =>
+ *   console.log(performance.getEntriesByName("nap").length), // 1
+ * )
+ * ```
+ *
+ * @since 0.2.0
+ * @category tracing
+ */
+export const measuredTracer = (
+  tracer: Tracer.Tracer,
+  performance: PerformanceService,
+  options?: TracerOptions,
+): Tracer.Tracer => {
+  const include = options?.spans ?? (() => true);
+  const attach = options?.attributes === true;
+  const measureEnded = (span: Tracer.Span): void => {
+    if (span.status._tag !== "Ended" || span.status.startTime === 0n) return;
+    const timing: MeasureOptions = {
+      start: toTimeline(span.status.startTime, performance.timeOrigin),
+      end: toTimeline(span.status.endTime, performance.timeOrigin),
+    };
+    const measureOptions = attach
+      ? { ...timing, detail: cloneableDetail(span.attributes) }
+      : timing;
+    Effect.runSync(Effect.ignore(performance.measure(span.name, measureOptions)));
+  };
+  const span: Tracer.Tracer["span"] = (spanOptions) => {
+    const created = tracer.span(spanOptions);
+    return created.sampled && include(created.name) ? measuredSpan(created, measureEnded) : created;
+  };
+  return Tracer.make(tracer.context === undefined ? { span } : { span, context: tracer.context });
+};
+
+/**
+ * A layer that replaces the current `Tracer` with one that wraps it (see
+ * {@link measuredTracer}), so every Effect span also shows as a measure in
+ * the browser's performance panel. Provide it after the tracer it should
+ * wrap, an exporter's for example.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import { layerTracer } from "@thomasfosterau/effect-platform-worker-shared/Performance"
+ *
+ * const program = Effect.sleep("5 millis").pipe(Effect.withSpan("load"))
+ * Effect.runPromise(program.pipe(Effect.provide(layerTracer()))).then(() =>
+ *   console.log(performance.getEntriesByName("load").length), // 1
+ * )
+ * ```
+ *
+ * @since 0.2.0
+ * @category tracing
+ */
+export const layerTracer = (options?: TracerOptions): Layer.Layer<never> =>
+  Layer.effect(
+    Tracer.Tracer,
+    Effect.map(
+      Effect.all([Tracer.Tracer, Performance], { concurrency: 1 }),
+      ([tracer, performance]) => measuredTracer(tracer, performance, options),
+    ),
+  );
