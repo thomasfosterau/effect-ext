@@ -245,25 +245,17 @@ for (const { manifest } of published) {
 const checkWorkersBinding = (dir, paths) => {
   const probe = path.join(dir, "check-dist-workers-binding.ts");
   const text = `
-import {
-  anthropicLanguageModelLayer,
-  gatewayRun,
-  gatewayUrl,
-  makeCohereEmbeddingModel,
-  makeCohereReranker,
-  makeOpenAiModerationModel,
-  type GatewayBinding,
-} from "@thomasfosterau/effect-ai-cloudflare";
+import { Anthropic, Binding, Cohere, OpenAiModeration } from "@thomasfosterau/effect-ai-cloudflare";
 
 declare const env: { readonly AI: Ai };
-const binding: GatewayBinding = { ai: env.AI, gatewayId: "website" };
+const binding: Binding.GatewayBinding = { ai: env.AI, gatewayId: "website" };
 export const probes = [
-  gatewayUrl({ ai: env.AI, gatewayId: "website" }, "anthropic"),
-  gatewayRun(binding, { provider: "cohere", endpoint: "v2/rerank", headers: {}, query: {} }),
-  anthropicLanguageModelLayer(binding, { model: "claude" }),
-  makeCohereEmbeddingModel(binding, { inputType: "search_query" }),
-  makeCohereReranker(binding),
-  makeOpenAiModerationModel(binding),
+  Binding.gatewayUrl({ ai: env.AI, gatewayId: "website" }, "anthropic"),
+  Binding.gatewayRun(binding, { provider: "cohere", endpoint: "v2/rerank", headers: {}, query: {} }),
+  Anthropic.languageModelLayer(binding, { model: "claude" }),
+  Cohere.makeEmbeddingModel(binding, { inputType: "search_query" }),
+  Cohere.makeReranker(binding),
+  OpenAiModeration.makeModel(binding),
 ];
 `;
   const options = {

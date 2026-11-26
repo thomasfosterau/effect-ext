@@ -9,7 +9,7 @@ import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Option from "effect/Option";
-import { gatewayRun, gatewayUrl } from "@thomasfosterau/effect-ai-cloudflare";
+import { gatewayRun, gatewayUrl } from "@thomasfosterau/effect-ai-cloudflare/Binding";
 import { stubAiBinding } from "./helpers/ai";
 
 /** Builds a stub binding whose `gateway(id).getUrl(provider)` is canned. */

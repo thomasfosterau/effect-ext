@@ -30,7 +30,7 @@ import {
   CloudflareSchema,
   cloudflareClientLayer,
   decisionModelLayerConfig,
-} from "@thomasfosterau/effect-ai-cloudflare";
+} from "@thomasfosterau/effect-ai-cloudflare/WorkersAi";
 
 interface CapturedRequest {
   readonly url: string;

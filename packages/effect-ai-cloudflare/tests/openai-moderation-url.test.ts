@@ -1,6 +1,6 @@
 /**
  * Unit tests for the binding-free, URL-based OpenAI `ModerationModel`
- * provider (`makeOpenAiModerationModelFromUrl` in `src/OpenAiModeration.ts`).
+ * provider (`makeModelFromUrl` in `src/OpenAiModeration.ts`).
  *
  * Config is supplied through `ConfigProvider.fromUnknown` instead of real
  * environment variables, and the network is stubbed at
@@ -21,11 +21,11 @@ import { AiError } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
 import type { ModerationModel } from "@thomasfosterau/effect-ext";
 import {
-  OPENAI_MODERATION_MODEL,
-  makeOpenAiModerationModelFromUrl,
-  type OpenAiModerationCall,
-  type OpenAiModerationOptions,
-} from "@thomasfosterau/effect-ai-cloudflare";
+  MODEL,
+  makeModelFromUrl,
+  type Call,
+  type Options,
+} from "@thomasfosterau/effect-ai-cloudflare/OpenAiModeration";
 import { expectFailureInstanceOf } from "./helpers/effect";
 
 interface CapturedRequest {
@@ -75,16 +75,13 @@ const omniBody = (results: ReadonlyArray<unknown>, extra: Record<string, unknown
 
 const okResult = { flagged: false, categories: { hate: false }, category_scores: { hate: 0.01 } };
 
-const moderate = (
-  inputs: ReadonlyArray<ModerationModel.ModerationInput>,
-  options: OpenAiModerationOptions = {},
-) =>
+const moderate = (inputs: ReadonlyArray<ModerationModel.ModerationInput>, options: Options = {}) =>
   Effect.gen(function* () {
-    const model = yield* makeOpenAiModerationModelFromUrl(options);
+    const model = yield* makeModelFromUrl(options);
     return yield* model.moderate({ inputs });
   });
 
-describe("makeOpenAiModerationModelFromUrl", () => {
+describe("makeModelFromUrl", () => {
   it.effect(
     "posts the moderations request to the config-resolved gateway URL with the cf-aig-authorization header",
     () =>
@@ -103,7 +100,7 @@ describe("makeOpenAiModerationModelFromUrl", () => {
         expect(calls[0]?.cfAigAuthorizationHeader).toEqual(Option.some("Bearer test-token"));
         // BYOK by default: no provider key leaves this process.
         expect(calls[0]?.authorizationHeader).toEqual(Option.none());
-        expect(calls[0]?.body).toEqual({ model: OPENAI_MODERATION_MODEL, input: ["hello"] });
+        expect(calls[0]?.body).toEqual({ model: MODEL, input: ["hello"] });
         expect(response.results[0]).toMatchObject({ isFlagged: false, categories: { hate: 0.01 } });
         expect(response.usage.inputTokens).toStrictEqual(Option.none());
       }),
@@ -236,7 +233,7 @@ describe("makeOpenAiModerationModelFromUrl", () => {
       const { calls, fetch } = stubFetch(jsonResponse(200, omniBody([okResult])));
 
       const exit = yield* Effect.exit(
-        makeOpenAiModerationModelFromUrl().pipe(
+        makeModelFromUrl().pipe(
           Effect.provideService(FetchHttpClient.Fetch, fetch),
           stubConfig({ CF_AIG_TOKEN: "test-token" }),
         ),
@@ -274,7 +271,7 @@ describe("makeOpenAiModerationModelFromUrl", () => {
         ]).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch), stubConfig(GATEWAY_CONFIG));
 
         expect(calls[0]?.body).toEqual({
-          model: OPENAI_MODERATION_MODEL,
+          model: MODEL,
           input: [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/" } }],
         });
         expect(response.results[0]).toMatchObject({
@@ -288,7 +285,7 @@ describe("makeOpenAiModerationModelFromUrl", () => {
 
   it.effect("reports each HTTP call's status and timing to onCall", () =>
     Effect.gen(function* () {
-      const seen: Array<OpenAiModerationCall> = [];
+      const seen: Array<Call> = [];
       const { fetch } = stubFetch(jsonResponse(503, { error: { message: "down" } }));
 
       const failure = yield* expectFailureInstanceOf(

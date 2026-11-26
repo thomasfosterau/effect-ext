@@ -29,19 +29,10 @@ const acceptsFile = `${packageDir}/tests/workers-types-binding.accepts.ts`;
 const rejectsFile = `${packageDir}/tests/workers-types-binding.rejects.ts`;
 
 const ACCEPTS = `
-import {
-  anthropicLanguageModelLayer,
-  gatewayRun,
-  gatewayUrl,
-  makeCohereEmbeddingModel,
-  makeCohereReranker,
-  makeOpenAiModerationModel,
-  type GatewayBinding,
-  type GatewayProvider,
-  type GatewayUniversalRequest,
-  type WorkersAiBinding,
-  type WorkersAiGateway,
-} from "@thomasfosterau/effect-ai-cloudflare";
+import { languageModelLayer } from "@thomasfosterau/effect-ai-cloudflare/Anthropic";
+import { gatewayRun, gatewayUrl, type GatewayBinding, type GatewayProvider, type GatewayUniversalRequest, type WorkersAiBinding, type WorkersAiGateway } from "@thomasfosterau/effect-ai-cloudflare/Binding";
+import { makeEmbeddingModel, makeReranker } from "@thomasfosterau/effect-ai-cloudflare/Cohere";
+import { makeModel } from "@thomasfosterau/effect-ai-cloudflare/OpenAiModeration";
 
 interface Env {
   readonly AI: Ai;
@@ -62,10 +53,10 @@ export const run = gatewayRun(binding, {
   headers: { "content-type": "application/json" },
   query: {},
 });
-export const anthropic = anthropicLanguageModelLayer(binding, { model: "claude" });
-export const embeddings = makeCohereEmbeddingModel(binding, { inputType: "search_query" });
-export const reranker = makeCohereReranker(binding);
-export const moderation = makeOpenAiModerationModel(binding);
+export const anthropic = languageModelLayer(binding, { model: "claude" });
+export const embeddings = makeEmbeddingModel(binding, { inputType: "search_query" });
+export const reranker = makeReranker(binding);
+export const moderation = makeModel(binding);
 
 // Every workers-types provider slug is a GatewayProvider, and the request
 // gatewayRun sends is one the binding's run() accepts.
@@ -97,7 +88,7 @@ export const older: WorkersAiGateway = olderGateway;
 `;
 
 const REJECTS = `
-import type { WorkersAiBinding } from "@thomasfosterau/effect-ai-cloudflare";
+import type { WorkersAiBinding } from "@thomasfosterau/effect-ai-cloudflare/Binding";
 
 // A binding without gateway() is rejected.
 declare const notABinding: { readonly run: Ai["run"] };

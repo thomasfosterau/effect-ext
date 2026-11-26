@@ -4,8 +4,8 @@
  * Gateway's universal endpoint. OpenAI has no `@effect/ai-*` package to
  * repoint, so — like `Cohere.ts` — this module is built directly on the two
  * gateway transports (`internal/transport.ts`): the Worker `AI` binding
- * ({@link makeOpenAiModerationModel}) and the config-resolved public HTTPS
- * endpoint ({@link makeOpenAiModerationModelFromUrl}) for callers with no
+ * ({@link makeModel}) and the config-resolved public HTTPS
+ * endpoint ({@link makeModelFromUrl}) for callers with no
  * binding to ask.
  *
  * ## The key
@@ -92,22 +92,22 @@ const ORIGIN = { module: "OpenAiModeration", method: "moderate" } as const;
  * OpenAI's moderation model — the omni model classifies text and images
  * against one category vocabulary. A constant so a rotation is one edit.
  */
-export const OPENAI_MODERATION_MODEL = "omni-moderation-latest";
+export const MODEL = "omni-moderation-latest";
 
 /** Caller options shared by both transports. */
-export interface OpenAiModerationOptions {
+export interface Options {
   /**
    * The application's own OpenAI key, sent as `Authorization: Bearer`.
    * Omit it when the key is configured on the gateway (BYOK).
    */
   readonly apiKey?: Redacted.Redacted;
-  /** The moderation model to request. Defaults to {@link OPENAI_MODERATION_MODEL}. */
+  /** The moderation model to request. Defaults to {@link MODEL}. */
   readonly model?: string;
   /**
    * Observes each HTTP call once it settles, success or failure, for a cost /
-   * latency ledger. See {@link OpenAiModerationCall}.
+   * latency ledger. See {@link Call}.
    */
-  readonly onCall?: (call: OpenAiModerationCall) => Effect.Effect<void>;
+  readonly onCall?: (call: Call) => Effect.Effect<void>;
 }
 
 /**
@@ -116,7 +116,7 @@ export interface OpenAiModerationOptions {
  * `durationMillis` from sending the request to decoding its response, and the
  * `error` it failed with (`None` on success).
  */
-export type OpenAiModerationCall = GatewayCall;
+export type Call = GatewayCall;
 
 /**
  * The provider's response, decoded leniently rather than trusted: a
@@ -238,13 +238,13 @@ const wireInputs = (
       );
 
 /** The moderations request body, identical on both transports. */
-const moderationQuery = (options: OpenAiModerationOptions, input: WireInput) => ({
-  model: options.model ?? OPENAI_MODERATION_MODEL,
+const moderationQuery = (options: Options, input: WireInput) => ({
+  model: options.model ?? MODEL,
   input,
 });
 
 /** The provider-facing headers: JSON, plus the caller's own key when it holds one. */
-const moderationHeaders = (options: OpenAiModerationOptions) =>
+const moderationHeaders = (options: Options) =>
   options.apiKey === undefined
     ? { "content-type": "application/json" }
     : {
@@ -293,9 +293,9 @@ const moderateVia =
  * Builds a `ModerationModel.Service` backed by OpenAI `omni-moderation-latest`
  * over the gateway's Worker-binding universal endpoint.
  */
-export const makeOpenAiModerationModel = (
+export const makeModel = (
   binding: GatewayBinding,
-  options: OpenAiModerationOptions = {},
+  options: Options = {},
 ): Effect.Effect<ModerationModel.Service> =>
   ModerationModel.make({
     moderate: moderateVia((input) =>
@@ -317,7 +317,7 @@ export const makeOpenAiModerationModel = (
 /**
  * Builds a `ModerationModel.Service` backed by OpenAI `omni-moderation-latest`
  * over the AI Gateway's **public HTTPS endpoint** — the binding-free sibling
- * of {@link makeOpenAiModerationModel}, usable from a plain Node process, a
+ * of {@link makeModel}, usable from a plain Node process, a
  * local CLI, or CI.
  *
  * Config (`CF_ACCOUNT_ID`, `CF_AIG_GATEWAY_ID`, `CF_AIG_TOKEN`) is loaded
@@ -326,8 +326,8 @@ export const makeOpenAiModerationModel = (
  * internally, so the returned effect carries no `HttpClient` (or Worker
  * binding) requirement.
  */
-export const makeOpenAiModerationModelFromUrl = (
-  options: OpenAiModerationOptions = {},
+export const makeModelFromUrl = (
+  options: Options = {},
 ): Effect.Effect<ModerationModel.Service, Config.ConfigError> =>
   Effect.gen(function* () {
     const gatewayConfig = yield* Url.gatewayUrlConfig;

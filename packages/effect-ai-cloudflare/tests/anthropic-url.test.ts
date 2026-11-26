@@ -1,6 +1,6 @@
 /**
  * Unit tests for the binding-free, URL-based Anthropic `LanguageModel`
- * provider (`anthropicLanguageModelLayerFromUrl` in `src/Anthropic.ts`).
+ * provider (`languageModelLayerFromUrl` in `src/Anthropic.ts`).
  *
  * Config (`CF_ACCOUNT_ID`, `CF_AIG_GATEWAY_ID`, `CF_AIG_TOKEN`) is supplied
  * through a `ConfigProvider.fromUnknown` layer instead of real environment
@@ -23,7 +23,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import { LanguageModel } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
-import { anthropicLanguageModelLayerFromUrl } from "@thomasfosterau/effect-ai-cloudflare";
+import { languageModelLayerFromUrl } from "@thomasfosterau/effect-ai-cloudflare/Anthropic";
 
 interface CapturedRequest {
   readonly url: string;
@@ -71,9 +71,9 @@ const anthropicMessageResponse = (text: string) => ({
   },
 });
 
-describe("anthropicLanguageModelLayerFromUrl", () => {
+describe("languageModelLayerFromUrl", () => {
   layer(
-    anthropicLanguageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
+    languageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
       Layer.provide(FetchHttpClient.layer),
       Layer.provide(
         stubConfig({
@@ -115,7 +115,7 @@ describe("anthropicLanguageModelLayerFromUrl", () => {
       Effect.gen(function* () {
         const exit = yield* Effect.exit(
           Layer.build(
-            anthropicLanguageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
+            languageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
               Layer.provide(FetchHttpClient.layer),
               Layer.provide(stubConfig({ CF_ACCOUNT_ID: "acct", CF_AIG_TOKEN: "test-token" })),
             ),
@@ -133,7 +133,7 @@ describe("anthropicLanguageModelLayerFromUrl", () => {
     Effect.gen(function* () {
       const exit = yield* Effect.exit(
         Layer.build(
-          anthropicLanguageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
+          languageModelLayerFromUrl({ model: "claude-sonnet-4-6" }).pipe(
             Layer.provide(FetchHttpClient.layer),
             Layer.provide(stubConfig({ CF_AIG_TOKEN: "test-token" })),
           ),
