@@ -61,6 +61,12 @@ Rust's documented semantics are the spec, and `tests/numeric/examples.test.ts` p
 - **Leaf** — a terminal `SchemaIssue` with the path that reaches it; **pointed issue** — a leaf rendered as an RFC 6901 pointer (under a caller-chosen prefix), its tag and its formatted message.
 - **Probe** — a decode of a fixed input (`null`, `[]`, an ISO timestamp) through a schema's JSON codec, used to read a field's traits without unpicking its AST.
 
+## Query invariants
+
+- **The `Expr` tree is the contract.** `Query` is a portable, dialect-neutral data tree that backends (SQL, an index, the in-memory `run`) walk; a new URL convention is a `QueryParams.Dialect`, never a new node shape. A new node needs an evaluator case, a `FilterFor` member, a `mapTree` case and a printer in every dialect (or a documented refusal).
+- **`Option` fields are nullable columns.** Leaf values are the field's inner value (`valueSchema`); `None` or a missing field matches no comparison, membership or text test, not even `ne`; `Present` tests for `Some`.
+- **A dialect only reads and writes strings.** `QueryParams.decode` does what every dialect shares: aliases, unknown-field refusal, decoding each value through its field's `toCodecStringTree`, and the caller's `maxLimit` (no default cap). `decode(encode(query))` is the identity for every query a dialect can spell; the tests pin it.
+
 ## Web-platform modules
 
 ### Web, Net, Observability, Negotiate

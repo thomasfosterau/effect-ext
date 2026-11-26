@@ -318,6 +318,22 @@ export * as OptionalKey from "./OptionalKey.ts";
 export * as Overflowing from "./Overflowing.ts";
 
 /**
+ * LINQ-style queries as data: typed filters, sort keys, an in-memory runner
+ * and wire codecs.
+ *
+ * @since 0.5.0
+ */
+export * as Query from "./Query.ts";
+
+/**
+ * `Query`s from and to URL query strings, in pluggable dialects (JSON:API-style
+ * brackets, OData, your own).
+ *
+ * @since 0.5.0
+ */
+export * as QueryParams from "./QueryParams.ts";
+
+/**
  * Numeric ranges (`num-iter`).
  *
  * @since 0.1.0

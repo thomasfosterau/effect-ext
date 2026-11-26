@@ -671,6 +671,16 @@ export default defineConfig({
           "effect/casting-awareness": "off",
         },
       },
+      // `Query` interprets a filter tree over records of any type: a field's
+      // value is only known to be one of the kinds it compares at run time,
+      // which is the evaluator's job to find out.
+      {
+        files: ["packages/effect-ext/src/{Query,QueryParams}.ts"],
+        rules: {
+          "effect/no-unknown-parameters": "off",
+          "effect/no-unknown-returns": "off",
+        },
+      },
       // `bytesEqual`, `compareBytes` and the short-ASCII decoder behind `Str`
       // and `StringBuf`: equality, `Order` and `toString` run per key in a
       // parser, and a callback per byte (`every`, `findIndex`) costs several
