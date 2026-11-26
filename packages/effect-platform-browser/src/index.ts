@@ -25,6 +25,11 @@ export * as Credentials from "./Credentials.ts";
 export * as DomObservers from "./DomObservers.ts";
 
 /**
+ * @since 0.2.0
+ */
+export * as FileDrop from "./FileDrop.ts";
+
+/**
  * @since 0.1.0
  */
 export * as FilePicker from "./FilePicker.ts";

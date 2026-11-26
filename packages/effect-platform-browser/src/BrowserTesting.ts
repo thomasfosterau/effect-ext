@@ -28,6 +28,8 @@
  *   events, drops connections and refuses them.
  * - `TestFilePicker` — pickers over an in-memory disk, with a `Control`
  *   that seeds the disk and chooses what the user picks.
+ * - `TestFileDrop` — a drop target, with a `Control` that drops files and
+ *   directories from an in-memory disk onto it.
  * - `TestFrames` — animation frames and idle callbacks on a manual clock,
  *   with a `Control` that runs each frame and idle period.
  * - `TestInstalledApp` — an installable app, with a `Control` that offers
@@ -73,6 +75,7 @@ export * as TestCookieStore from "./testing/cookie-store.ts";
 export * as TestCredentials from "./testing/credentials.ts";
 export * as TestDomObservers from "./testing/dom-observers.ts";
 export * as TestEventSource from "./testing/event-source.ts";
+export * as TestFileDrop from "./testing/file-drop.ts";
 export * as TestFilePicker from "./testing/file-picker.ts";
 export * as TestFrames from "./testing/frames.ts";
 export * as TestHid from "./testing/hid.ts";

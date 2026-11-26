@@ -461,6 +461,11 @@ export default defineConfig({
           // `value`, each missing until the platform has one.
           "packages/effect-platform-browser/src/Bluetooth.ts",
           "packages/effect-platform-browser/src/testing/bluetooth.ts",
+          // A drag event's `dataTransfer`, `null` for a synthetic event, and a
+          // dropped item's `getAsFile` and `getAsFileSystemHandle`, `null` for
+          // an item that is not a file.
+          "packages/effect-platform-browser/src/FileDrop.ts",
+          "packages/effect-platform-browser/src/testing/file-drop.ts",
           // `cookieStore.get`, which resolves `null` for a cookie that is not set.
           "packages/effect-platform-worker-shared/src/CookieStore.ts",
           // `mark` and `measure`, which return no entry in older agents.
