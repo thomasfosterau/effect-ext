@@ -14,7 +14,6 @@ import * as HttpClientRequest from "effect/http/HttpClientRequest";
 import * as HttpClientResponse from "effect/http/HttpClientResponse";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
-import * as UrlParams from "effect/http/UrlParams";
 import * as Har from "@thomasfosterau/effect-ext/Har";
 
 const CREATOR = { name: "test", version: "1.0" };
@@ -154,7 +153,7 @@ describe("Har.recordClient", () => {
       });
       expect(first?.time).toBeGreaterThanOrEqual(0);
     }).pipe(
-      Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]),
+      Effect.provideService(Har.RedactedQueryNames, ["token"]),
       Effect.provide(Har.layerRecorder),
     ),
   );
@@ -241,7 +240,7 @@ describe("Har.recordClient", () => {
 const serve = (
   response: HttpServerResponse.HttpServerResponse,
   request = HttpServerRequest.fromWeb(
-    new Request("https://example.com/hello?lang=en", {
+    new Request("http://example.com/hello?lang=en", {
       headers: { host: "example.com", cookie: "id=1" },
     }),
   ),
@@ -262,7 +261,7 @@ describe("Har.recordServer", () => {
       );
       expect(first?.request).toMatchObject({
         method: "GET",
-        url: "https://example.com/hello?lang=en",
+        url: "http://example.com/hello?lang=en",
         queryString: [{ name: "lang", value: "en" }],
         headers: expect.arrayContaining([{ name: "cookie", value: "<redacted>" }]),
         bodySize: 0,

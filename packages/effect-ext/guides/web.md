@@ -338,11 +338,12 @@ const recorded = Effect.gen(function* () {
 | `stringify(har)` | Two-space JSON. |
 | `make({ creator, entries, pages? })` | A version 1.2 document. |
 | `Recorder`, `makeRecorder`, `layerRecorder` | Collects entries: `add`, `entries`, `clear`, `har(creator)`. |
+| `RedactedQueryNames` | The query parameter names a recording redacts (a `Context.Reference`). |
 | `recordClient(client)` | The client, recording each exchange. The response body is buffered to record it; a stream or form-data request body is noted, not recorded. |
 | `recordServer` | Server middleware recording each exchange. The request body is not read (the handler needs it); a stream or form-data response body is noted, not recorded. |
 | `replayClient(har)` | A client answering from the first entry with the same method and URL, query included; anything else fails with a `TransportError`. |
 
-Recorded headers named in `Headers.CurrentRedactedNames` (by default `authorization`, `cookie`, `set-cookie` and the like) and query parameters named in `UrlParams.CurrentRedactedNames` are written as `"<redacted>"`, so a recording can be shared. Text-like bodies (`text/*`, JSON, XML, form-encoded) are recorded as text, anything else as base64. Timings are the whole exchange in `wait`: an `HttpClient` exposes no finer phases.
+Recorded headers named in `Headers.CurrentRedactedNames` (by default `authorization`, `cookie`, `set-cookie` and the like) and query parameters named in `RedactedQueryNames` (by default Effect's signed-URL names: `Signature`, `sig`, …) are written as `"<redacted>"`, so a recording can be shared. Text-like bodies (`text/*`, JSON, XML, form-encoded) are recorded as text, anything else as base64. Timings are the whole exchange in `wait`: an `HttpClient` exposes no finer phases.
 
 ## Moving from effect-web
 

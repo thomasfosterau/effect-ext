@@ -4,7 +4,7 @@
  * replays one.
  *
  * Recorded headers and query parameters named in `Headers.CurrentRedactedNames`
- * / `UrlParams.CurrentRedactedNames` are written as `"<redacted>"`.
+ * / {@link RedactedQueryNames} are written as `"<redacted>"`.
  *
  * @since 0.5.0
  */
@@ -558,9 +558,40 @@ const redactedHeaders = (headers: Headers.Headers) =>
     nameValues(R.toEntries(Headers.redact(headers, names))),
   );
 
+/**
+ * Query parameter names (or patterns) whose values a recording writes as
+ * `"<redacted>"`. The default is Effect's own list for
+ * `UrlParams.CurrentRedactedNames` (signed-URL parameters); a custom list
+ * replaces it. Names match as `Headers.isRedactedName` matches them.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import { Har } from "@thomasfosterau/effect-ext"
+ *
+ * const program = Effect.service(Har.RedactedQueryNames)
+ * Effect.runPromise(program).then(console.log) // ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"]
+ * ```
+ *
+ * @since 0.5.0
+ * @category redaction
+ */
+export const RedactedQueryNames: Context.Reference<ReadonlyArray<string | RegExp>> =
+  Context.Reference<ReadonlyArray<string | RegExp>>(
+    "@thomasfosterau/effect-ext/Har/RedactedQueryNames",
+    {
+      defaultValue: () => ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"],
+    },
+  );
+
 const redactedQuery = (params: UrlParams.UrlParams) =>
-  Effect.map(Effect.service(UrlParams.CurrentRedactedNames), (names) =>
-    nameValues(UrlParams.redact(params, names)),
+  Effect.map(Effect.service(RedactedQueryNames), (names) =>
+    nameValues(
+      Arr.map(params.params, ([name, value]) => [
+        name,
+        P.isString(value) && Headers.isRedactedName(name, names) ? Redacted.make(value) : value,
+      ]),
+    ),
   );
 
 /** Whether bytes of `mimeType` are recorded as text rather than base64. */
