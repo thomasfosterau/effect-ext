@@ -88,11 +88,14 @@ export type IdleErrorReason = "Unsupported" | "NotAllowed" | "InvalidRequest" | 
  * @since 0.1.0
  * @category errors
  */
-export class IdleError extends Schema.TaggedError<IdleError>()("IdleError", {
-  reason: Schema.Literals(["Unsupported", "NotAllowed", "InvalidRequest", "Failed"]),
-  message: Schema.String,
-  cause: Schema.Unknown,
-}) {}
+export class IdleError extends Schema.TaggedError<IdleError, { readonly brand: unique symbol }>()(
+  "IdleError",
+  {
+    reason: Schema.Literals(["Unsupported", "NotAllowed", "InvalidRequest", "Failed"]),
+    message: Schema.String,
+    cause: Schema.Unknown,
+  },
+) {}
 
 const idleError = (reason: IdleErrorReason, cause: unknown) =>
   new IdleError({ reason, cause, message: `idle detection: ${reason}` });

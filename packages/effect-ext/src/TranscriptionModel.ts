@@ -53,9 +53,10 @@ export class TranscriptionModel extends Context.Service<TranscriptionModel, Serv
  *
  * @since 0.1.0
  */
-export class TranscriptionUsage extends Schema.Class<TranscriptionUsage>(
-  "@thomasfosterau/effect-ext/TranscriptionModel/TranscriptionUsage",
-)({
+export class TranscriptionUsage extends Schema.Class<
+  TranscriptionUsage,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/TranscriptionModel/TranscriptionUsage")({
   durationSeconds: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
@@ -66,9 +67,10 @@ export class TranscriptionUsage extends Schema.Class<TranscriptionUsage>(
  *
  * @since 0.1.0
  */
-export class TranscriptionSegment extends Schema.Class<TranscriptionSegment>(
-  "@thomasfosterau/effect-ext/TranscriptionModel/TranscriptionSegment",
-)({
+export class TranscriptionSegment extends Schema.Class<
+  TranscriptionSegment,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/TranscriptionModel/TranscriptionSegment")({
   text: Schema.String,
   /** Segment start offset in seconds. */
   start: Schema.Finite,
@@ -91,9 +93,10 @@ export class TranscriptionSegment extends Schema.Class<TranscriptionSegment>(
  *
  * @since 0.1.0
  */
-export class TranscriptionResponse extends Schema.Class<TranscriptionResponse>(
-  "@thomasfosterau/effect-ext/TranscriptionModel/TranscriptionResponse",
-)({
+export class TranscriptionResponse extends Schema.Class<
+  TranscriptionResponse,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/TranscriptionModel/TranscriptionResponse")({
   text: Schema.String,
   segments: Schema.OptionFromOptionalKey(Schema.Array(TranscriptionSegment)),
   language: Schema.OptionFromOptionalKey(Schema.String),

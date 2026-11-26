@@ -63,13 +63,13 @@ export interface RunConfig {
 const encodeJson = Schema.encodeOption(Schema.fromJsonString(Schema.Unknown));
 
 /** A human-readable message for any error this module handles — typed CLI errors get a precise reason; anything else falls back to its own message or a JSON dump. */
-const describeError = (error: unknown): string => {
-  if (error instanceof GlobError) return `glob discovery failed: ${describeError(error.cause)}`;
-  if (error instanceof EvalFileImportError) return `import failed: ${describeError(error.cause)}`;
-  if (error instanceof InvalidEvalFileError) return error.reason;
-  if (P.isError(error)) return error.message;
-  if (P.isString(error)) return error;
-  return Option.getOrElse(encodeJson(error), () => String(error));
+const describeError = (cause: unknown): string => {
+  if (cause instanceof GlobError) return `glob discovery failed: ${describeError(cause.cause)}`;
+  if (cause instanceof EvalFileImportError) return `import failed: ${describeError(cause.cause)}`;
+  if (cause instanceof InvalidEvalFileError) return cause.reason;
+  if (P.isError(cause)) return cause.message;
+  if (P.isString(cause)) return cause;
+  return Option.getOrElse(encodeJson(cause), () => String(cause));
 };
 
 const buildRunnerOptions = (

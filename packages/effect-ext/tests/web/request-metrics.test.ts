@@ -34,7 +34,9 @@ class FakeClient {
 }
 
 /** The failure the settle-on-failure test injects. */
-class Boom extends Schema.TaggedError<Boom>()("Boom", { message: Schema.String }) {}
+class Boom extends Schema.TaggedError<Boom, { readonly brand: unique symbol }>()("Boom", {
+  message: Schema.String,
+}) {}
 
 const QUERY_METHODS = HashSet.make("select", "insert", "transaction");
 

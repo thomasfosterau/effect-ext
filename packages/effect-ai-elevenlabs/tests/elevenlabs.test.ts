@@ -89,12 +89,20 @@ const readBody = <A>(read: () => Promise<A>) =>
 
 const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 
+/** The first request's body, decoded as a JSON object. */
+const readJsonBody = (calls: ReadonlyArray<Captured>) =>
+  readBody(() => firstRequest(calls).text()).pipe(
+    Effect.flatMap(
+      Schema.decodeEffect(Schema.fromJsonString(Schema.Record(Schema.String, Schema.Json))),
+    ),
+  );
+
 // `None` omits the content-type header entirely (undici adds none for a byte body).
 const audioResponse = (
   bytes: Uint8Array,
   contentType: Option.Option<string> = Option.some("audio/mpeg"),
 ): Response =>
-  new Response(bytes as BodyInit, {
+  new Response(new Uint8Array(bytes), {
     status: 200,
     headers: Option.match(contentType, {
       onNone: () => ({}),
@@ -102,7 +110,7 @@ const audioResponse = (
     }),
   });
 
-const jsonResponse = (body: unknown, status = 200): Response => Response.json(body, { status });
+const jsonResponse = (body: Schema.Json, status = 200): Response => Response.json(body, { status });
 
 const bytes = (...values: ReadonlyArray<number>): Uint8Array => Uint8Array.from(values);
 
@@ -142,7 +150,7 @@ describe("ElevenLabsSpeechModel.generate", () => {
         expect(calls[0]?.method).toBe("POST");
         expect(calls[0]?.apiKey).toEqual(Option.some("test-key"));
 
-        const body = (yield* readBody(() => firstRequest(calls).json())) as Record<string, unknown>;
+        const body = yield* readJsonBody(calls);
         expect(body.text).toBe("hello world");
         expect(body.model_id).toBe("eleven_multilingual_v2");
 
@@ -168,9 +176,7 @@ describe("ElevenLabsSpeechModel.generate", () => {
         );
 
         expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/text-to-speech/override_voice");
-        const body = (yield* readBody(() => firstRequest(calls).json())) as {
-          voice_settings?: Record<string, number>;
-        };
+        const body = yield* readJsonBody(calls);
         expect(body.voice_settings).toEqual({ stability: 0.4, similarity_boost: 0.8 });
       }),
     );
@@ -439,7 +445,7 @@ layer(speechLayer())("ElevenLabsSpeechModel.stream", (t) => {
 
 // ── Speech-to-text (Scribe) ───────────────────────────────────────────
 
-const scribeResponse = (over?: Record<string, unknown>) => ({
+const scribeResponse = (over?: Record<string, Schema.Json>) => ({
   language_code: "en",
   language_probability: 0.99,
   text: "hello world",
@@ -521,8 +527,8 @@ layer(transcriptionLayer())("ElevenLabsTranscriptionModel.transcribe", (t) => {
       ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
       const form = yield* readBody(() => firstRequest(calls).formData());
-      const file = form.get("file") as File;
-      expect(file).toBeInstanceOf(Blob);
+      const file = form.get("file");
+      assert.instanceOf(file, Blob);
       expect(Array.from(new Uint8Array(yield* readBody(() => file.arrayBuffer())))).toEqual([
         1, 2, 3, 4,
       ]);

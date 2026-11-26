@@ -41,7 +41,6 @@ import * as Layer from "effect/Layer";
 import * as MutableHashMap from "effect/MutableHashMap";
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
-import * as R from "effect/Record";
 import * as Stream from "effect/Stream";
 import type * as AiError from "effect/ai/AiError";
 import * as AiErrorNs from "effect/ai/AiError";
@@ -154,12 +153,8 @@ export const make = Effect.fnUntraced(function* ({
       const messages = yield* prepareMessages(options.prompt);
       const { tools, toolChoice } = yield* prepareTools(options);
       const responseFormat = yield* prepareResponseFormat(options);
-      // Assemble every field (undefined for those unset) and drop the
-      // undefined keys in one pass, rather than branching per field.
-      // SAFETY: `compact` removes every `undefined` field, so each optional
-      // `ChatCompletionRequest` field is either absent or set, as the wire
-      // type requires.
-      return compact({
+      // An unset field is `undefined`, which the JSON body leaves out.
+      return {
         model: config.model,
         messages,
         stream,
@@ -173,7 +168,7 @@ export const make = Effect.fnUntraced(function* ({
         tools,
         tool_choice: toolChoice,
         response_format: Option.getOrUndefined(responseFormat),
-      }) as Wire.ChatCompletionRequest;
+      };
     });
 
   return yield* LanguageModel.make({
@@ -196,7 +191,7 @@ export const make = Effect.fnUntraced(function* ({
           const context: StreamContext = {
             textId,
             timestamp,
-            response: buildResponseDetails(response),
+            response: yield* buildResponseDetails(response),
           };
           const state: StreamState = {
             metadataEmitted: false,
@@ -252,12 +247,6 @@ export const withConfigOverride: {
 
 const failure = (method: string, reason: AiError.AiErrorReason): AiError.AiError =>
   AiErrorNs.make({ module: MODULE, method, reason });
-
-/** Drops keys whose value is `undefined`, preserving the object's type. */
-const compact = <T extends Record<string, unknown>>(record: T): T =>
-  // SAFETY: only keys whose value is `undefined` are dropped; every other key
-  // keeps the value, and so the type, it had in `record`.
-  R.filter(record, P.isNotUndefined) as T;
 
 const normalizeImageMediaType = (mediaType: string): string =>
   mediaType === "image/*" ? "image/jpeg" : mediaType;
@@ -551,10 +540,11 @@ const makeUsage = (usage: Wire.ChatCompletionResponse["usage"]): typeof Response
 
 const buildResponseDetails = (
   response: HttpClientResponse.HttpClientResponse,
-): typeof Response.HttpResponseDetails.Encoded => ({
-  status: response.status,
-  headers: Errors.redactHeaders(response.headers),
-});
+): Effect.Effect<typeof Response.HttpResponseDetails.Encoded> =>
+  Effect.map(Errors.redactHeaders(response.headers), (headers) => ({
+    status: response.status,
+    headers,
+  }));
 
 // =============================================================================
 // Non-streaming Response Conversion
@@ -567,7 +557,7 @@ const makeResponse = (
   Effect.gen(function* () {
     const parts: Array<Response.PartEncoded> = [];
     const now = yield* DateTime.now;
-    const responseDetails = buildResponseDetails(response);
+    const responseDetails = yield* buildResponseDetails(response);
 
     parts.push({
       type: "response-metadata",

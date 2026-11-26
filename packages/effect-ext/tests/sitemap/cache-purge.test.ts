@@ -19,9 +19,15 @@ import {
   SITEMAP_CACHE_TAG,
 } from "@thomasfosterau/effect-ext/Sitemap";
 
-class TestFailure extends Schema.TaggedError<TestFailure>()("TestFailure", {
-  message: Schema.String,
-}) {}
+/** A log line's annotations, as the logger reads them. */
+type Annotations = (typeof References.CurrentLogAnnotations)["Service"];
+
+class TestFailure extends Schema.TaggedError<TestFailure, { readonly brand: unique symbol }>()(
+  "TestFailure",
+  {
+    message: Schema.String,
+  },
+) {}
 
 const purgeTagsForResourceType = makePurgeTagsForResourceType([
   "posts",
@@ -32,8 +38,7 @@ const purgeTagsForResourceType = makePurgeTagsForResourceType([
 
 /** Runs `effect` capturing every log line's annotations. */
 const runLogging = async <A>(effect: Effect.Effect<A>) => {
-  const lines: Array<{ readonly message: unknown; readonly annotations: Record<string, unknown> }> =
-    [];
+  const lines: Array<{ readonly message: unknown; readonly annotations: Annotations }> = [];
   const capture = Logger.make<unknown, void>(({ message, fiber }) => {
     lines.push({ message, annotations: fiber.getRef(References.CurrentLogAnnotations) });
   });

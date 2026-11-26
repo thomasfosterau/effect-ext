@@ -15,6 +15,7 @@
  *
  * @since 0.1.0
  */
+import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Logger from "effect/Logger";
@@ -22,6 +23,7 @@ import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import * as References from "effect/References";
 import * as Schema from "effect/Schema";
+import * as Str from "effect/String";
 import * as Tracer from "effect/Tracer";
 
 /**
@@ -60,10 +62,7 @@ const encodeJsonLine = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
  * scope is not a per-request construction.
  */
 const jsonLogger: Logger.Logger<unknown, void> = Logger.make(({ message }) => {
-  // SAFETY: `Effect.log` collects its arguments into `message` verbatim, and
-  // `logStructured` — the only caller that reaches this sink — always passes
-  // exactly one; the tuple type restates that invariant.
-  const [payload] = message as readonly [unknown];
+  const payload = Arr.isArray(message) ? message[0] : message;
   // oxlint-disable-next-line effect/use-console-service -- `console.log` IS the output contract: Cloudflare Workers observability captures a Worker's console output as the queryable invocation log, with no exporter and no binding. This function is itself the `Logger` sink, so routing it through the `Console` service would be circular.
   console.log(encodeJsonLine(payload));
 });
@@ -101,7 +100,7 @@ const jsonLoggerLayer = Logger.layer([jsonLogger]);
  * @since 0.1.0
  * @category logging
  */
-export const logStructured = (payload: Record<string, unknown>): void => {
+export const logStructured = (payload: LogFields): void => {
   // oxlint-disable-next-line effect/effect-run-in-body -- this is the boundary: `logStructured` is called from plain (non-Effect) JS — a tracer's `Span#end` hook, a metrics `onSettle` callback — so something has to run the effect. The pipeline never suspends (context lookup + a synchronous `console.log`).
   Effect.runSync(
     Effect.log(payload).pipe(
@@ -206,6 +205,25 @@ export const spanTracer = (trackedSpanNames: Iterable<string>): Tracer.Tracer =>
 };
 
 /**
+ * The fields of a structured log line: JSON values, so every sink (the JSON
+ * line of {@link logStructured}, a log annotation) renders them the same
+ * way. Leave an absent field out, and render a failure with
+ * {@link describeError} first.
+ *
+ * @example
+ * ```ts
+ * import type { LogFields } from "@thomasfosterau/effect-ext/Observability"
+ *
+ * const fields: LogFields = { path: "/posts", dbQueryCount: 3, cached: false }
+ * console.log(fields.path) // "/posts"
+ * ```
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export type LogFields = { readonly [key: string]: Schema.Json };
+
+/**
  * An informational event: `event` is the discriminant a log query filters
  * on (`feed.consume`, `crawl.completed`, …), the fields ride as log
  * annotations. The ambient logger decides the output format; this only
@@ -222,10 +240,8 @@ export const spanTracer = (trackedSpanNames: Iterable<string>): Tracer.Tracer =>
  * @since 0.1.0
  * @category logging
  */
-export const logEvent = (
-  event: string,
-  fields: Record<string, unknown> = {},
-): Effect.Effect<void> => Effect.logInfo(event).pipe(Effect.annotateLogs({ event, ...fields }));
+export const logEvent = (event: string, fields: LogFields = {}): Effect.Effect<void> =>
+  Effect.logInfo(event).pipe(Effect.annotateLogs({ event, ...fields }));
 
 /**
  * A degraded-but-continuing outcome: a dropped message, a skipped entry, a
@@ -242,10 +258,8 @@ export const logEvent = (
  * @since 0.1.0
  * @category logging
  */
-export const logWarningEvent = (
-  event: string,
-  fields: Record<string, unknown> = {},
-): Effect.Effect<void> => Effect.logWarning(event).pipe(Effect.annotateLogs({ event, ...fields }));
+export const logWarningEvent = (event: string, fields: LogFields = {}): Effect.Effect<void> =>
+  Effect.logWarning(event).pipe(Effect.annotateLogs({ event, ...fields }));
 
 /**
  * A recorded failure: the row carries the error, and so does the log.
@@ -261,10 +275,8 @@ export const logWarningEvent = (
  * @since 0.1.0
  * @category logging
  */
-export const logErrorEvent = (
-  event: string,
-  fields: Record<string, unknown> = {},
-): Effect.Effect<void> => Effect.logError(event).pipe(Effect.annotateLogs({ event, ...fields }));
+export const logErrorEvent = (event: string, fields: LogFields = {}): Effect.Effect<void> =>
+  Effect.logError(event).pipe(Effect.annotateLogs({ event, ...fields }));
 
 /**
  * Renders any failure value as the one-line text an `error` column and a
@@ -291,20 +303,13 @@ export const logErrorEvent = (
  * @since 0.1.0
  * @category logging
  */
-export const describeError = (error: unknown): string => {
-  if (!P.isObjectOrArray(error)) return String(error);
-  // SAFETY: a structural read of three optional members on an arbitrary
-  // object or array; each is checked with `Predicate.isString` before use.
-  const failure = error as {
-    readonly _tag?: unknown;
-    readonly message?: unknown;
-    readonly name?: unknown;
-  };
-  const tag = P.isString(failure._tag) ? Option.some(failure._tag) : Option.none();
-  const message =
-    P.isString(failure.message) && failure.message !== ""
-      ? Option.some(failure.message)
-      : Option.none();
+export const describeError = (cause: unknown): string => {
+  if (!P.isObjectOrArray(cause)) return String(cause);
+  const member = (key: string): Option.Option<string> =>
+    P.hasProperty(cause, key) && P.isString(cause[key]) ? Option.some(cause[key]) : Option.none();
+  const tag = member("_tag");
+  const rawMessage = member("message");
+  const message = Option.filter(rawMessage, Str.isNonEmpty);
   if (Option.isSome(tag)) {
     return Option.match(message, {
       onNone: () => tag.value,
@@ -312,10 +317,10 @@ export const describeError = (error: unknown): string => {
     });
   }
   if (Option.isSome(message)) return message.value;
-  if (P.isString(failure.message)) {
-    return P.isString(failure.name) ? failure.name : "";
+  if (Option.isSome(rawMessage)) {
+    return Option.getOrElse(member("name"), () => "");
   }
-  return String(error);
+  return String(cause);
 };
 
 /**

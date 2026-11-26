@@ -50,13 +50,13 @@ export interface ParsedJsonFeed {
  * @since 0.1.0
  * @category errors
  */
-export class JsonFeedParseError extends Schema.TaggedError<JsonFeedParseError>()(
-  "JsonFeedParseError",
-  {
-    reason: Schema.Literals(["InvalidJson", "NotAnObject", "NotAJsonFeed"]),
-    message: Schema.String,
-  },
-) {}
+export class JsonFeedParseError extends Schema.TaggedError<
+  JsonFeedParseError,
+  { readonly brand: unique symbol }
+>()("JsonFeedParseError", {
+  reason: Schema.Literals(["InvalidJson", "NotAnObject", "NotAJsonFeed"]),
+  message: Schema.String,
+}) {}
 
 /** A JSON object's members. */
 type Members = { readonly [key: string]: unknown };

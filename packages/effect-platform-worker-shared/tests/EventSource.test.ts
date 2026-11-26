@@ -155,7 +155,7 @@ describe("EventSource.make", () => {
 });
 
 describe("EventSource.events", () => {
-  const Quote = Schema.Struct({ symbol: Schema.String, price: Schema.Number });
+  const Quote = Schema.Struct({ symbol: Schema.String, price: Schema.Finite });
 
   it.effect("decodes each payload as JSON, dropping one that does not decode", () =>
     Effect.gen(function* () {

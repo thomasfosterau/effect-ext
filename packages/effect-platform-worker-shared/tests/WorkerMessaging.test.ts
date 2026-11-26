@@ -7,7 +7,7 @@ import * as Stream from "effect/Stream";
 import * as Transferable from "effect/workers/Transferable";
 import * as WorkerMessaging from "@thomasfosterau/effect-platform-worker-shared/WorkerMessaging";
 
-const Ping = Schema.Struct({ n: Schema.Number });
+const Ping = Schema.Struct({ n: Schema.Finite });
 
 describe("WorkerMessaging", () => {
   it.effect("raw round-trips over a channel", () =>

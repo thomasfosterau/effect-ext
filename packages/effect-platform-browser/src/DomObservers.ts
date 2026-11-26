@@ -245,7 +245,10 @@ export type DomObserverErrorReason = "Unsupported" | "InvalidOptions" | "Failed"
  * @since 0.1.0
  * @category errors
  */
-export class DomObserverError extends Schema.TaggedError<DomObserverError>()("DomObserverError", {
+export class DomObserverError extends Schema.TaggedError<
+  DomObserverError,
+  { readonly brand: unique symbol }
+>()("DomObserverError", {
   observer: Schema.Literals(["intersection", "resize", "mutation"]),
   reason: Schema.Literals(["Unsupported", "InvalidOptions", "Failed"]),
   message: Schema.String,

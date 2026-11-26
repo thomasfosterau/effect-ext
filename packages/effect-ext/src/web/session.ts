@@ -51,7 +51,7 @@ export interface SessionDegradedReport {
  * @since 0.1.0
  * @category constructors
  */
-export const describeSessionDegraded = (error: unknown): SessionDegradedReport => ({
-  logArgs: [SESSION_DEGRADED_LOG_MESSAGE, error],
-  reportedError: error,
+export const describeSessionDegraded = (cause: unknown): SessionDegradedReport => ({
+  logArgs: [SESSION_DEGRADED_LOG_MESSAGE, cause],
+  reportedError: cause,
 });

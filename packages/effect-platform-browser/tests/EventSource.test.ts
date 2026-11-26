@@ -49,7 +49,7 @@ describe("TestEventSource", () => {
     Effect.gen(function* () {
       const c = yield* control;
       const fiber = yield* Effect.forkChild(
-        Effect.flip(Stream.runCollect(EventSource.events("/prices", Schema.Number))),
+        Effect.flip(Stream.runCollect(EventSource.events("/prices", Schema.Finite))),
       );
       yield* c.connected("/prices");
       yield* c.send("/prices", [{ data: "1", id: "a" }]);

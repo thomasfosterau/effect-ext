@@ -52,9 +52,10 @@ export class VoiceConversionModel extends Context.Service<VoiceConversionModel, 
  *
  * @since 0.1.0
  */
-export class VoiceConversionUsage extends Schema.Class<VoiceConversionUsage>(
-  "@thomasfosterau/effect-ext/VoiceConversionModel/VoiceConversionUsage",
-)({
+export class VoiceConversionUsage extends Schema.Class<
+  VoiceConversionUsage,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/VoiceConversionModel/VoiceConversionUsage")({
   durationSeconds: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
@@ -67,9 +68,10 @@ export class VoiceConversionUsage extends Schema.Class<VoiceConversionUsage>(
  *
  * @since 0.1.0
  */
-export class VoiceConversionResponse extends Schema.Class<VoiceConversionResponse>(
-  "@thomasfosterau/effect-ext/VoiceConversionModel/VoiceConversionResponse",
-)({
+export class VoiceConversionResponse extends Schema.Class<
+  VoiceConversionResponse,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/VoiceConversionModel/VoiceConversionResponse")({
   /** The re-voiced audio bytes. */
   audio: Schema.Uint8Array,
   /** IANA media type of the audio (e.g. `audio/mpeg`). */

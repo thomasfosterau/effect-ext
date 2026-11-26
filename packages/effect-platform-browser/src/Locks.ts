@@ -132,19 +132,22 @@ export type LockErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class LockError extends Schema.TaggedError<LockError>()("LockError", {
-  lock: Schema.Option(Schema.String),
-  reason: Schema.Literals([
-    "Unsupported",
-    "Stolen",
-    "InvalidRequest",
-    "NotAllowed",
-    "InvalidState",
-    "Failed",
-  ]),
-  message: Schema.String,
-  cause: Schema.Unknown,
-}) {}
+export class LockError extends Schema.TaggedError<LockError, { readonly brand: unique symbol }>()(
+  "LockError",
+  {
+    lock: Schema.Option(Schema.String),
+    reason: Schema.Literals([
+      "Unsupported",
+      "Stolen",
+      "InvalidRequest",
+      "NotAllowed",
+      "InvalidState",
+      "Failed",
+    ]),
+    message: Schema.String,
+    cause: Schema.Unknown,
+  },
+) {}
 
 const lockError = (lock: Option.Option<string>, reason: LockErrorReason, cause: unknown) =>
   new LockError({

@@ -168,10 +168,7 @@ describe("Reporter.json", () => {
         .report(erroredResult)
         .pipe(Effect.provideService(FileSystem.FileSystem, testFs));
 
-      const parsed = parseJson(written) as {
-        cases: Array<{ metrics: Array<Record<string, unknown>> }>;
-      };
-      expect(parsed.cases[0]?.metrics[0]).toHaveProperty("summary", null);
+      expect(parseJson(written)).toMatchObject({ cases: [{ metrics: [{ summary: null }] }] });
     }),
   );
 

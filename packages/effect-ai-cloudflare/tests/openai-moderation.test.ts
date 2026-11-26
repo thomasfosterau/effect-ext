@@ -15,6 +15,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
 import { AiError } from "effect/ai";
@@ -26,20 +27,8 @@ import {
   type Call,
   type Options,
 } from "@thomasfosterau/effect-ai-cloudflare/OpenAiModeration";
-import { stubAiBinding } from "./helpers/ai";
+import { stubAiBinding, stubRun } from "./helpers/ai";
 import { expectFailureInstanceOf } from "./helpers/effect";
-
-/** Builds a stub binding whose `gateway(id).run(data)` is canned. */
-const stubAi = (response: { status: number; body: unknown }) => {
-  const calls: unknown[] = [];
-  const ai = stubAiBinding(() => ({
-    run: async (data) => {
-      calls.push(data);
-      return Response.json(response.body, { status: response.status });
-    },
-  }));
-  return { ai, calls };
-};
 
 const binding = (ai: WorkersAiBinding) => ({ ai, gatewayId: "website" });
 
@@ -60,7 +49,10 @@ const omniResult = (
   ),
 });
 
-const omniBody = (results: ReadonlyArray<unknown>, extra: Record<string, unknown> = {}) => ({
+const omniBody = (
+  results: ReadonlyArray<Schema.Json>,
+  extra: Record<string, Schema.Json> = {},
+) => ({
   id: "modr-test",
   model: "omni-moderation-latest",
   results,
@@ -83,7 +75,7 @@ const moderate = (
 describe("makeModel", () => {
   it.effect("posts the moderations request through the universal endpoint, BYOK by default", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({
+      const { ai, calls } = stubRun({
         status: 200,
         body: omniBody([omniResult(false, { hate: false }, { hate: 0.01 })]),
       });
@@ -107,12 +99,11 @@ describe("makeModel", () => {
 
   it.effect("sends the caller's own key as a bearer token when given one", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
+      const { ai, calls } = stubRun({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
 
       yield* moderate(ai, ["hello"], { apiKey: Redacted.make("sk-test") });
 
-      const sent = calls[0] as { readonly headers: Record<string, string> };
-      expect(sent.headers).toEqual({
+      expect(calls[0]?.headers).toEqual({
         "content-type": "application/json",
         authorization: "Bearer sk-test",
       });
@@ -121,18 +112,17 @@ describe("makeModel", () => {
 
   it.effect("requests the model the caller names", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
+      const { ai, calls } = stubRun({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
 
       yield* moderate(ai, ["hello"], { model: "omni-moderation-2024-09-26" });
 
-      const sent = calls[0] as { readonly query: { readonly model: string } };
-      expect(sent.query.model).toBe("omni-moderation-2024-09-26");
+      expect(calls[0]?.query.model).toBe("omni-moderation-2024-09-26");
     }),
   );
 
   it.effect("maps one result per input, in order, with every category score", () =>
     Effect.gen(function* () {
-      const { ai } = stubAi({
+      const { ai } = stubRun({
         status: 200,
         body: omniBody([
           omniResult(true, { hate: true, violence: false }, { hate: 0.94, violence: 0.02 }),
@@ -150,7 +140,7 @@ describe("makeModel", () => {
 
   it.effect("drops null (unassessed) category scores rather than grading them as zero", () =>
     Effect.gen(function* () {
-      const { ai } = stubAi({
+      const { ai } = stubRun({
         status: 200,
         body: omniBody([
           omniResult(false, { hate: UNASSESSED, sexual: false }, { hate: UNASSESSED, sexual: 0.2 }),
@@ -167,7 +157,7 @@ describe("makeModel", () => {
     "never fails an otherwise-valid response over a vendor field it has never heard of",
     () =>
       Effect.gen(function* () {
-        const { ai } = stubAi({
+        const { ai } = stubRun({
           status: 200,
           body: omniBody(
             [
@@ -189,7 +179,7 @@ describe("makeModel", () => {
 
   it.effect("tolerates a result with no category maps at all", () =>
     Effect.gen(function* () {
-      const { ai } = stubAi({ status: 200, body: omniBody([{ flagged: true }]) });
+      const { ai } = stubRun({ status: 200, body: omniBody([{ flagged: true }]) });
 
       const response = yield* moderate(ai, ["hello"]);
 
@@ -199,7 +189,7 @@ describe("makeModel", () => {
 
   it.effect("returns an empty response for no inputs without calling the gateway", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({ status: 200, body: omniBody([]) });
+      const { ai, calls } = stubRun({ status: 200, body: omniBody([]) });
 
       const response = yield* moderate(ai, []);
 
@@ -210,7 +200,7 @@ describe("makeModel", () => {
 
   it.effect("fails with AiError on a non-2xx status, mapping the status to a reason", () =>
     Effect.gen(function* () {
-      const { ai } = stubAi({ status: 429, body: { error: { message: "rate limited" } } });
+      const { ai } = stubRun({ status: 429, body: { error: { message: "rate limited" } } });
 
       const failure = yield* expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
@@ -223,7 +213,7 @@ describe("makeModel", () => {
 
   it.effect("fails with AiError (AuthenticationError) on a 401", () =>
     Effect.gen(function* () {
-      const { ai } = stubAi({ status: 401, body: { error: { message: "bad key" } } });
+      const { ai } = stubRun({ status: 401, body: { error: { message: "bad key" } } });
 
       const failure = yield* expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
@@ -233,7 +223,7 @@ describe("makeModel", () => {
 
   it.effect("fails with AiError (InvalidOutputError) when the body does not decode", () =>
     Effect.gen(function* () {
-      const { ai } = stubAi({ status: 200, body: { results: "nope" } });
+      const { ai } = stubRun({ status: 200, body: { results: "nope" } });
 
       const failure = yield* expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
@@ -245,7 +235,7 @@ describe("makeModel", () => {
     "fails with AiError (InvalidOutputError) when the result count does not match the inputs",
     () =>
       Effect.gen(function* () {
-        const { ai } = stubAi({ status: 200, body: omniBody([]) });
+        const { ai } = stubRun({ status: 200, body: omniBody([]) });
 
         const failure = yield* expectFailureInstanceOf(moderate(ai, ["..."]), AiError.AiError);
 
@@ -282,7 +272,7 @@ describe("makeModel", () => {
     "carries the provider's per-category verdicts and the dated model that served the call",
     () =>
       Effect.gen(function* () {
-        const { ai } = stubAi({
+        const { ai } = stubRun({
           status: 200,
           body: omniBody(
             [omniResult(true, { hate: true, violence: false, sexual: UNASSESSED }, { hate: 0.9 })],
@@ -301,7 +291,7 @@ describe("makeModel", () => {
 
   it.effect("leaves flags undefined when the provider sends no categories map", () =>
     Effect.gen(function* () {
-      const { ai } = stubAi({ status: 200, body: omniBody([{ flagged: false }]) });
+      const { ai } = stubRun({ status: 200, body: omniBody([{ flagged: false }]) });
 
       const response = yield* moderate(ai, ["..."]);
 
@@ -311,7 +301,7 @@ describe("makeModel", () => {
 
   it.effect("sends an image input as an image_url part, one request per input", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({
+      const { ai, calls } = stubRun({
         status: 200,
         body: omniBody([omniResult(false, { sexual: false }, { sexual: 0.02 })]),
       });
@@ -324,7 +314,7 @@ describe("makeModel", () => {
         ],
       ]);
 
-      expect(calls.map((call) => (call as { query: unknown }).query)).toEqual([
+      expect(calls.map((call) => call.query)).toEqual([
         { model: MODEL, input: ["a caption"] },
         {
           model: MODEL,
@@ -341,7 +331,7 @@ describe("makeModel", () => {
 
   it.effect("sends a data: URI, a URL or a base64 string as the image URL", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({
+      const { ai, calls } = stubRun({
         status: 200,
         body: omniBody([omniResult(false, {}, {})]),
       });
@@ -352,7 +342,7 @@ describe("makeModel", () => {
         [{ type: "file", mediaType: "image/webp", data: "UklGRg==" }],
       ]);
 
-      expect(calls.map((call) => (call as { query: { input: unknown } }).query.input)).toEqual([
+      expect(calls.map((call) => call.query.input)).toEqual([
         [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/" } }],
         [{ type: "image_url", image_url: { url: "https://example.com/a.jpg" } }],
         [{ type: "image_url", image_url: { url: "data:image/webp;base64,UklGRg==" } }],
@@ -362,7 +352,7 @@ describe("makeModel", () => {
 
   it.effect("sends the tagged JSON forms of a byte array and a URL as the image URL", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({
+      const { ai, calls } = stubRun({
         status: 200,
         body: omniBody([omniResult(false, {}, {})]),
       });
@@ -378,7 +368,7 @@ describe("makeModel", () => {
         ],
       ]);
 
-      expect(calls.map((call) => (call as { query: { input: unknown } }).query.input)).toEqual([
+      expect(calls.map((call) => call.query.input)).toEqual([
         [{ type: "image_url", image_url: { url: "data:image/png;base64,AQID" } }],
         [{ type: "image_url", image_url: { url: "https://example.com/b.jpg" } }],
       ]);
@@ -387,7 +377,7 @@ describe("makeModel", () => {
 
   it.effect("fails with InvalidUserInputError on a non-image file part, before any request", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({ status: 200, body: omniBody([]) });
+      const { ai, calls } = stubRun({ status: 200, body: omniBody([]) });
 
       const failure = yield* expectFailureInstanceOf(
         moderate(ai, [
@@ -406,8 +396,8 @@ describe("makeModel", () => {
     Effect.gen(function* () {
       const seen: Array<Call> = [];
       const onCall = (call: Call) => Effect.sync(() => seen.push(call));
-      const ok = stubAi({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
-      const limited = stubAi({ status: 429, body: { error: { message: "slow down" } } });
+      const ok = stubRun({ status: 200, body: omniBody([omniResult(false, {}, {})]) });
+      const limited = stubRun({ status: 429, body: { error: { message: "slow down" } } });
 
       yield* moderate(ok.ai, ["hello"], { onCall });
       const failure = yield* expectFailureInstanceOf(

@@ -210,16 +210,6 @@ export default defineConfig({
       {
         files: aiPackages,
         rules: {
-          // `casting-awareness` is an awareness prompt, not a defect rule — it
-          // fires on every `as`, including the narrowings the Fetch / Workers
-          // types structurally require. Stays visible as a warning.
-          "effect/casting-awareness": "warn",
-          // `unknown` is the honest type at the boundaries these libraries sit
-          // on: a caught failure handed to an error tracker or a log line, and
-          // the free-form fields of a structured log event.
-          "effect/no-unknown-parameters": "warn",
-          "effect/no-unsafe-dictionary-type": "warn",
-          "effect/no-runtime-typeof": "warn",
           // Spreading into a fresh object or array inside `map` is how this
           // family builds immutable values (a `readonly` embedding copied into
           // a mutable result); mutating in place would break the readonly
@@ -244,11 +234,88 @@ export default defineConfig({
       },
       // `unsafeCoerce<T>` is the evals suites' one deliberate escape hatch:
       // the caller names `T` to hand an ill-typed input to a failure path, so
-      // the type parameter appears only in the return type by design.
+      // the type parameter appears only in the return type by design, and the
+      // unchecked assertion of an `unknown` input is the helper's whole job.
       {
         files: ["packages/effect-ext/tests/evals/helpers/unsafe.ts"],
         rules: {
           "typescript/no-unnecessary-type-parameters": "off",
+          "effect/casting-awareness": "off",
+          "effect/no-unknown-parameters": "off",
+        },
+      },
+      // Lenient readers of a value whose shape is not known until it is read
+      // member by member: a JSON Feed document, a sitemap `lastmod` (a `Date`,
+      // a string or anything else, which reads as absent), an eval file's
+      // default export, and an eval case's free-form fields rendered for a
+      // judge or hashed into a cache key. Each narrows what it reads with a
+      // `Predicate`, so `unknown` is the honest input type.
+      {
+        files: [
+          "packages/effect-ext/src/json-feed/parse.ts",
+          "packages/effect-ext/src/Sitemap.ts",
+          "packages/effect-ext/src/evals/cli/LoadEvalFile.ts",
+          "packages/effect-ext/src/evals/metrics/GEval.ts",
+          "packages/effect-ext/src/evals/Cache.ts",
+        ],
+        rules: {
+          "effect/no-unknown-parameters": "off",
+          "effect/no-unsafe-dictionary-type": "off",
+        },
+      },
+      // The evals result cache stores a task's output or a metric's score, of
+      // the caller's type, as JSON, with no schema for it: the content-hash
+      // key ties each read to the write of that same type.
+      {
+        files: ["packages/effect-ext/src/evals/Runner.ts"],
+        rules: {
+          "effect/casting-awareness": "off",
+          "effect/no-unknown-parameters": "off",
+        },
+      },
+      // `compact` rebuilds an object from its present members: `fromEntries`
+      // widens the key set to `string`, and the mapped parameter type is what
+      // guarantees every member was listed, so the result is restated as `A`.
+      {
+        files: ["packages/effect-ext/src/internal/json-feed/compact.ts"],
+        rules: {
+          "effect/casting-awareness": "off",
+        },
+      },
+      // The `MediaRecorder` factory hands a `MediaStreamLike` to the platform
+      // constructor; the stream came from this agent's own `getUserMedia` /
+      // `getDisplayMedia`, so it is the platform's `MediaStream`.
+      {
+        files: ["packages/effect-platform-browser/src/internal/globals.ts"],
+        rules: {
+          "effect/casting-awareness": "off",
+        },
+      },
+      // A lock request's withdraw controller lives as long as the request's
+      // scope, not a fiber: the scope's finalizer aborts it to withdraw a
+      // still-queued request, which `Effect.abortSignal` cannot express.
+      {
+        files: ["packages/effect-platform-browser/src/Locks.ts"],
+        rules: {
+          "effecttsgo/abort-controller-in-effect": "off",
+        },
+      },
+      // The stub `LanguageModel` answers `generateObject` with whatever value
+      // the test hands it, of any type.
+      {
+        files: ["packages/effect-ext/tests/ai/helpers/language-model.ts"],
+        rules: {
+          "effect/no-unknown-parameters": "off",
+        },
+      },
+      // `FileSystem`, `Path`, `PlatformError`, `Sse` and `Cookies` are marked
+      // unstable throughout Effect 4, and the browser file system, the event
+      // source and the cookie store implement them; the language service keeps
+      // the reminder as an editor suggestion (tsconfig.base.json).
+      {
+        files: ["packages/effect-platform-worker-shared/src/**"],
+        rules: {
+          "effecttsgo/unstable-api-usage": "off",
         },
       },
       // `layerPerTest` provides each evals test its own layer build (the test
@@ -393,22 +460,6 @@ export default defineConfig({
           "effecttsgo/any-unknown-in-error-context": "off",
         },
       },
-      // The AI packages' test fixtures are the seams under test, not domain
-      // code: a `CI` variable toggled to drive a reporter, or a single type
-      // assertion that narrows a stub or a decoded fixture. Each stays visible as a
-      // warning, because a fixture cannot be written another way.
-      {
-        files: [
-          "packages/effect-ai-*/tests/**/*.ts",
-          "packages/effect-ext/tests/ai/**/*.ts",
-          "packages/effect-ext/tests/evals/**/*.ts",
-        ],
-        rules: {
-          "effect/require-safety-comment-for-type-assertion": "warn",
-          "effect/avoid-process-env": "warn",
-          "effect/require-effect-concurrency": "warn",
-        },
-      },
       // ---- `effect/prefer-option-over-null`: where a nullable spelling is the contract ----
       {
         // The `*Like` interfaces mirror platform objects (`NetworkInformation`,
@@ -504,13 +555,6 @@ export default defineConfig({
       {
         files: webModules,
         rules: {
-          // Narrowings the Fetch / DOM types structurally require; each
-          // assertion carries a `SAFETY:` comment.
-          "effect/casting-awareness": "warn",
-          // `unknown` is the honest type of a caught failure handed to a log
-          // line (`describeError`) and of a structured log event's fields.
-          "effect/no-unknown-parameters": "warn",
-          "effect/no-unsafe-dictionary-type": "warn",
           // The `effect/http*` modules are marked unstable throughout
           // Effect 4; the feeds, sitemap and request policies are built on them.
           "effecttsgo/unstable-api-usage": "off",
@@ -598,7 +642,7 @@ export default defineConfig({
       {
         files: ["packages/effect-ext/src/Observability.ts"],
         rules: {
-          "typescript/no-base-to-string": "warn",
+          "typescript/no-base-to-string": "off",
         },
       },
       // `logStructured` is called from plain code and runs its effect with
@@ -821,7 +865,7 @@ export default defineConfig({
       // Everything CI runs, in order, stopping at the first failure.
       ci: {
         command: [
-          "vp check",
+          "vp check --deny-warnings",
           "vp run --concurrency-limit 2 check",
           "vp run -r test:unit",
           "vp run -r test:coverage",

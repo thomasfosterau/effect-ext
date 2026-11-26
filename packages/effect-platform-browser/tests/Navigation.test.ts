@@ -13,7 +13,7 @@ import { TestNavigation, observe } from "@thomasfosterau/effect-platform-browser
 const pathOf = (url: Option.Option<URL>) =>
   Option.map(url, (value) => `${value.pathname}${value.hash}`);
 
-const Scroll = Schema.Struct({ y: Schema.Number });
+const Scroll = Schema.Struct({ y: Schema.Finite });
 
 const reasonOf = <A, R>(effect: Effect.Effect<A, Navigation.NavigationError, R>) =>
   Effect.map(Effect.flip(effect), (error) => error.reason);

@@ -163,24 +163,24 @@ export type SpeechSynthesisErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class SpeechSynthesisError extends Schema.TaggedError<SpeechSynthesisError>()(
-  "SpeechSynthesisError",
-  {
-    reason: Schema.Literals([
-      "Unsupported",
-      "NotAllowed",
-      "VoiceUnavailable",
-      "LanguageUnavailable",
-      "TextTooLong",
-      "AudioBusy",
-      "Network",
-      "Interrupted",
-      "Failed",
-    ]),
-    message: Schema.String,
-    cause: Schema.Unknown,
-  },
-) {}
+export class SpeechSynthesisError extends Schema.TaggedError<
+  SpeechSynthesisError,
+  { readonly brand: unique symbol }
+>()("SpeechSynthesisError", {
+  reason: Schema.Literals([
+    "Unsupported",
+    "NotAllowed",
+    "VoiceUnavailable",
+    "LanguageUnavailable",
+    "TextTooLong",
+    "AudioBusy",
+    "Network",
+    "Interrupted",
+    "Failed",
+  ]),
+  message: Schema.String,
+  cause: Schema.Unknown,
+}) {}
 
 const synthesisError = (reason: SpeechSynthesisErrorReason, cause: unknown) =>
   new SpeechSynthesisError({ reason, cause, message: `speech synthesis: ${reason}` });

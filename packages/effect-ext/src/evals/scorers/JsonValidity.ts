@@ -14,6 +14,7 @@
  * @since 0.1.0
  */
 
+import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Scorer from "../Scorer.ts";
 
@@ -41,10 +42,13 @@ export const jsonValidity: Scorer.Scorer<JsonCase> = Scorer.makeScorer({
       try: (): void => {
         JSON.parse(evalCase.output);
       },
-      catch: (cause) => cause,
+      catch: (cause) => new Cause.UnknownError(cause),
     }).pipe(
       Effect.map(() => ({ score: 1 })),
-      Effect.catchIf(isSyntaxError, (error) => Effect.succeed({ score: 0, reason: error.message })),
-      Effect.orDie,
+      Effect.catch((error) =>
+        isSyntaxError(error.cause)
+          ? Effect.succeed({ score: 0, reason: error.cause.message })
+          : Effect.die(error.cause),
+      ),
     ),
 });

@@ -52,7 +52,7 @@ const outcome = (template: string, variables: UriTemplate.Variables): string | f
     { onSuccess: (expanded) => expanded, onFailure: () => false },
   );
 
-const cases = (suite: unknown) =>
+const cases = (suite: Schema.Json) =>
   R.toEntries(Schema.decodeUnknownSync(Suite)(suite)).flatMap(([group, { variables, testcases }]) =>
     testcases.map(([template, expected]) => ({
       group,

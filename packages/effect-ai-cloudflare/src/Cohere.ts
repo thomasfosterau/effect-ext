@@ -63,7 +63,7 @@ export const EMBEDDING_DIMENSIONS = 1024;
 const cohereRequest = <S extends Schema.Top>(
   binding: GatewayBinding,
   endpoint: string,
-  query: unknown,
+  query: Schema.Json,
   schema: S,
   method: string,
 ): Effect.Effect<S["Type"], AiError.AiError, S["DecodingServices"]> =>
@@ -86,7 +86,7 @@ const cohereRequestFromUrl = <S extends Schema.Top>(
   baseUrl: string,
   authHeader: Record<string, string>,
   endpoint: string,
-  query: unknown,
+  query: Schema.Json,
   schema: S,
   method: string,
 ): Effect.Effect<S["Type"], AiError.AiError, S["DecodingServices"]> =>

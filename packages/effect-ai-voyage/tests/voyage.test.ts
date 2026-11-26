@@ -16,6 +16,7 @@ import { describe, expect, it, layer } from "@effect/vitest";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 import * as Layer from "effect/Layer";
 import * as R from "effect/Record";
 import * as Redacted from "effect/Redacted";
@@ -35,17 +36,21 @@ interface CapturedRequest {
   readonly url: string;
   readonly authorization: Option.Option<string>;
   readonly headers: Record<string, string>;
-  readonly body: Record<string, unknown>;
+  readonly body: Record<string, Schema.Json>;
 }
+
+/** A captured body: the decoded JSON object, or `{}` for a request without one. */
+const decodeBody = (text: string): Record<string, Schema.Json> =>
+  Option.getOrElse(
+    Schema.decodeOption(Schema.fromJsonString(Schema.Record(Schema.String, Schema.Json)))(text),
+    () => ({}),
+  );
 
 const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
   const calls: Array<CapturedRequest> = [];
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
-    const body = (await request
-      .clone()
-      .json()
-      .catch(() => ({}))) as Record<string, unknown>;
+    const body = decodeBody(await request.clone().text());
     const captured: CapturedRequest = {
       url: request.url,
       authorization: Option.fromNullishOr(request.headers.get("authorization")),
@@ -58,11 +63,11 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
   return { calls, fetch };
 };
 
-const jsonResponse = (body: unknown, status = 200): Response => Response.json(body, { status });
+const jsonResponse = (body: Schema.Json, status = 200): Response => Response.json(body, { status });
 
 const embeddingBody = (
   vectors: ReadonlyArray<ReadonlyArray<number>>,
-  over?: Record<string, unknown>,
+  over?: Record<string, Schema.Json>,
 ) => ({
   object: "list",
   data: vectors.map((embedding, index) => ({ object: "embedding", embedding, index })),
@@ -73,7 +78,7 @@ const embeddingBody = (
 
 const rerankBody = (
   results: ReadonlyArray<{ index: number; relevance_score: number }>,
-  over?: Record<string, unknown>,
+  over?: Record<string, Schema.Json>,
 ) => ({
   object: "list",
   data: results.map((r) => ({ index: r.index, relevance_score: r.relevance_score })),

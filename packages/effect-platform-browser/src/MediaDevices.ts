@@ -166,23 +166,23 @@ export type MediaDevicesErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class MediaDevicesError extends Schema.TaggedError<MediaDevicesError>()(
-  "MediaDevicesError",
-  {
-    reason: Schema.Literals([
-      "Unsupported",
-      "NotAllowed",
-      "NotFound",
-      "NotReadable",
-      "Overconstrained",
-      "Aborted",
-      "Failed",
-    ]),
-    constraint: Schema.Option(Schema.String),
-    message: Schema.String,
-    cause: Schema.Unknown,
-  },
-) {}
+export class MediaDevicesError extends Schema.TaggedError<
+  MediaDevicesError,
+  { readonly brand: unique symbol }
+>()("MediaDevicesError", {
+  reason: Schema.Literals([
+    "Unsupported",
+    "NotAllowed",
+    "NotFound",
+    "NotReadable",
+    "Overconstrained",
+    "Aborted",
+    "Failed",
+  ]),
+  constraint: Schema.Option(Schema.String),
+  message: Schema.String,
+  cause: Schema.Unknown,
+}) {}
 
 /**
  * Why a recording failed.
@@ -216,14 +216,14 @@ export type MediaRecorderErrorReason = "Unsupported" | "NotSupported" | "Failed"
  * @since 0.1.0
  * @category errors
  */
-export class MediaRecorderError extends Schema.TaggedError<MediaRecorderError>()(
-  "MediaRecorderError",
-  {
-    reason: Schema.Literals(["Unsupported", "NotSupported", "Failed"]),
-    message: Schema.String,
-    cause: Schema.Unknown,
-  },
-) {}
+export class MediaRecorderError extends Schema.TaggedError<
+  MediaRecorderError,
+  { readonly brand: unique symbol }
+>()("MediaRecorderError", {
+  reason: Schema.Literals(["Unsupported", "NotSupported", "Failed"]),
+  message: Schema.String,
+  cause: Schema.Unknown,
+}) {}
 
 const CAPTURE_REASONS = {
   NotAllowedError: "NotAllowed",

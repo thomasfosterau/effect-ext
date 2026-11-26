@@ -103,10 +103,10 @@ export const Uncaught = /*#__PURE__*/ Data.taggedEnum<Uncaught>();
  * @since 0.1.0
  * @category errors
  */
-export class WorkerScopeUnavailable extends Schema.TaggedError<WorkerScopeUnavailable>()(
-  "WorkerScopeUnavailable",
-  {},
-) {
+export class WorkerScopeUnavailable extends Schema.TaggedError<
+  WorkerScopeUnavailable,
+  { readonly brand: unique symbol }
+>()("WorkerScopeUnavailable", {}) {
   override get message(): string {
     return "not running in a worker: no WorkerGlobalScope";
   }

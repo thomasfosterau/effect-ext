@@ -71,7 +71,10 @@ export const registeredSuffixes: ReadonlyArray<RegisteredSuffix> = [
  * @since 0.1.0
  * @category errors
  */
-export class WellKnownError extends Schema.TaggedError<WellKnownError>()("WellKnownError", {
+export class WellKnownError extends Schema.TaggedError<
+  WellKnownError,
+  { readonly brand: unique symbol }
+>()("WellKnownError", {
   reason: Schema.Literals(["InvalidSuffix", "InvalidOrigin"]),
   message: Schema.String,
 }) {}

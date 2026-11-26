@@ -27,7 +27,7 @@ const logged = <A, E>(effect: Effect.Effect<A, E>) => {
   const logger = Logger.make(({ message }) => {
     messages.push(message);
   });
-  return Effect.map(Effect.provide(effect, Logger.layer([logger])), () => messages);
+  return Effect.as(Effect.provide(effect, Logger.layer([logger])), messages);
 };
 
 /** `PushMessageData.json` on a payload that is not JSON. */

@@ -16,6 +16,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 import * as Redacted from "effect/Redacted";
 import { AiError } from "effect/ai";
 import { FetchHttpClient } from "effect/http";
@@ -50,7 +51,7 @@ const stubFetch = (respond: () => Response) => {
   return { calls, fetch };
 };
 
-const jsonResponse = (status: number, body: unknown) => () => Response.json(body, { status });
+const jsonResponse = (status: number, body: Schema.Json) => () => Response.json(body, { status });
 
 /** A response callback that throws, as `fetch` does when the network is unreachable. */
 const networkUnreachable = (): Response => {
@@ -66,7 +67,10 @@ const GATEWAY_CONFIG = {
   CF_AIG_TOKEN: "test-token",
 };
 
-const omniBody = (results: ReadonlyArray<unknown>, extra: Record<string, unknown> = {}) => ({
+const omniBody = (
+  results: ReadonlyArray<Schema.Json>,
+  extra: Record<string, Schema.Json> = {},
+) => ({
   id: "modr-test",
   model: "omni-moderation-latest",
   results,

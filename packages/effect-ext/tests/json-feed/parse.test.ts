@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
+import { flow } from "effect/Function";
 import * as Exit from "effect/Exit";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
@@ -14,14 +15,18 @@ import {
   JSON_FEED_VERSION,
   JsonFeedParseError,
   parseJsonFeed,
-  type ParsedJsonFeed,
 } from "@thomasfosterau/effect-ext/JsonFeed";
 
-const success = (input: unknown): ParsedJsonFeed =>
-  Result.getOrThrowWith(decodeJsonFeed(input), (error) => error);
+const success = flow(
+  decodeJsonFeed,
+  Result.getOrThrowWith((error) => error),
+);
 
-const reasonOf = (input: unknown): Option.Option<string> =>
-  Option.map(Result.getFailure(decodeJsonFeed(input)), (error) => error.reason);
+const reasonOf = flow(
+  decodeJsonFeed,
+  Result.getFailure,
+  Option.map((error) => error.reason),
+);
 
 describe("decodeJsonFeed", () => {
   it("reads the JSON Feed 1.1 specification's example", () => {

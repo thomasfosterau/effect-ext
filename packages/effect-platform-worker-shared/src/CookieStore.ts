@@ -194,7 +194,10 @@ export type CookieStoreErrorReason = "Unsupported" | "InvalidCookie" | "Security
  * @since 0.1.0
  * @category errors
  */
-export class CookieStoreError extends Schema.TaggedError<CookieStoreError>()("CookieStoreError", {
+export class CookieStoreError extends Schema.TaggedError<
+  CookieStoreError,
+  { readonly brand: unique symbol }
+>()("CookieStoreError", {
   operation: Schema.Literals(["get", "getAll", "set", "delete", "changes"]),
   reason: Schema.Literals(["Unsupported", "InvalidCookie", "Security", "Failed"]),
   message: Schema.String,

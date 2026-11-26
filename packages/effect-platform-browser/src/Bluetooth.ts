@@ -208,7 +208,10 @@ export type BluetoothErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class BluetoothError extends Schema.TaggedError<BluetoothError>()("BluetoothError", {
+export class BluetoothError extends Schema.TaggedError<
+  BluetoothError,
+  { readonly brand: unique symbol }
+>()("BluetoothError", {
   operation: Schema.Literals([
     "request",
     "devices",

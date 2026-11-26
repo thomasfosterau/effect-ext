@@ -131,25 +131,28 @@ export type PushErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class PushError extends Schema.TaggedError<PushError>()("PushError", {
-  operation: Schema.Literals([
-    "subscribe",
-    "getSubscription",
-    "unsubscribe",
-    "permissionState",
-    "toJSON",
-  ]),
-  reason: Schema.Literals([
-    "Unsupported",
-    "NotAllowed",
-    "InvalidState",
-    "InvalidKey",
-    "PushService",
-    "InvalidSubscription",
-    "Failed",
-  ]),
-  cause: Schema.Unknown,
-}) {
+export class PushError extends Schema.TaggedError<PushError, { readonly brand: unique symbol }>()(
+  "PushError",
+  {
+    operation: Schema.Literals([
+      "subscribe",
+      "getSubscription",
+      "unsubscribe",
+      "permissionState",
+      "toJSON",
+    ]),
+    reason: Schema.Literals([
+      "Unsupported",
+      "NotAllowed",
+      "InvalidState",
+      "InvalidKey",
+      "PushService",
+      "InvalidSubscription",
+      "Failed",
+    ]),
+    cause: Schema.Unknown,
+  },
+) {
   override get message(): string {
     return `pushManager.${this.operation}: ${this.reason}`;
   }

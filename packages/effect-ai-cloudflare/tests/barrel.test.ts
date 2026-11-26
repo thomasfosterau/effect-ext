@@ -6,7 +6,7 @@ import * as RerankerModelExt from "@thomasfosterau/effect-ext/RerankerModel";
 
 describe("barrel", () => {
   it.each(R.keys(RerankerModelExt))("re-exports no RerankerModel value %s", async (name) => {
-    const entry: Record<string, unknown> = await import("@thomasfosterau/effect-ai-cloudflare");
+    const entry = await import("@thomasfosterau/effect-ai-cloudflare");
 
     expect(entry, name).not.toHaveProperty(name);
   });

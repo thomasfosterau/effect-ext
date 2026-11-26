@@ -85,15 +85,15 @@ export type ShowNotificationErrorReason = "Unsupported" | "NotAllowed" | "Invali
  * @since 0.1.0
  * @category errors
  */
-export class ShowNotificationError extends Schema.TaggedError<ShowNotificationError>()(
-  "ShowNotificationError",
-  {
-    operation: Schema.Literals(["show", "get"]),
-    reason: Schema.Literals(["Unsupported", "NotAllowed", "InvalidData", "Failed"]),
-    message: Schema.String,
-    cause: Schema.Unknown,
-  },
-) {}
+export class ShowNotificationError extends Schema.TaggedError<
+  ShowNotificationError,
+  { readonly brand: unique symbol }
+>()("ShowNotificationError", {
+  operation: Schema.Literals(["show", "get"]),
+  reason: Schema.Literals(["Unsupported", "NotAllowed", "InvalidData", "Failed"]),
+  message: Schema.String,
+  cause: Schema.Unknown,
+}) {}
 
 const NOTIFICATION_REJECTIONS = {
   NotAllowedError: "NotAllowed",

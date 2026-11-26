@@ -194,23 +194,26 @@ export type UsbErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class UsbError extends Schema.TaggedError<UsbError>()("UsbError", {
-  operation: Schema.Literals(["request", "devices", "open", "transfer", "control", "clearHalt"]),
-  reason: Schema.Literals([
-    "Unsupported",
-    "NotFound",
-    "NotAllowed",
-    "InvalidState",
-    "Network",
-    "Aborted",
-    "Closed",
-    "Stall",
-    "Babble",
-    "Failed",
-  ]),
-  message: Schema.String,
-  cause: Schema.Unknown,
-}) {}
+export class UsbError extends Schema.TaggedError<UsbError, { readonly brand: unique symbol }>()(
+  "UsbError",
+  {
+    operation: Schema.Literals(["request", "devices", "open", "transfer", "control", "clearHalt"]),
+    reason: Schema.Literals([
+      "Unsupported",
+      "NotFound",
+      "NotAllowed",
+      "InvalidState",
+      "Network",
+      "Aborted",
+      "Closed",
+      "Stall",
+      "Babble",
+      "Failed",
+    ]),
+    message: Schema.String,
+    cause: Schema.Unknown,
+  },
+) {}
 
 type Operation = UsbError["operation"];
 

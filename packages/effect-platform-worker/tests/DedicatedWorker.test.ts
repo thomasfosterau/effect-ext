@@ -7,7 +7,7 @@ import * as Stream from "effect/Stream";
 import { DedicatedWorker } from "@thomasfosterau/effect-platform-worker";
 import { dedicatedStub, fire } from "./helpers.ts";
 
-const Job = Schema.Struct({ id: Schema.Number });
+const Job = Schema.Struct({ id: Schema.Finite });
 
 describe("DedicatedWorker", () => {
   it.effect("fails outside a dedicated worker", () =>
