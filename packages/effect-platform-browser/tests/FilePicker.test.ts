@@ -1,11 +1,16 @@
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as Option from "effect/Option";
+import * as MemoryFileSystemHandle from "@thomasfosterau/effect-platform-worker-shared/MemoryFileSystemHandle";
 import { FilePicker } from "@thomasfosterau/effect-platform-browser";
 import { TestFilePicker } from "@thomasfosterau/effect-platform-browser/BrowserTesting";
 
 const picker = Effect.service(FilePicker.FilePicker);
 const control = Effect.service(TestFilePicker.Control);
+
+/** A platform promise, its rejection as a string. */
+const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: String });
 
 /** Pickers that reject every call with `cause`. */
 const rejecting = (cause: unknown): FilePicker.FilePickerLike => ({
@@ -151,5 +156,133 @@ describe("TestFilePicker", () => {
     Effect.map(picker, (pickers) => {
       expect(pickers.supported).toBe(false);
     }).pipe(Effect.provide(TestFilePicker.layer({ supported: false }))),
+  );
+});
+
+describe("FilePicker permissions", () => {
+  it.effect("reads and requests a stored handle's permission", () =>
+    Effect.gen(function* () {
+      const drive = yield* control;
+      const stored = yield* drive.stored("/project");
+      expect(yield* FilePicker.permission(stored)).toBe("prompt");
+      yield* drive.respondToRequest("dismiss");
+      expect(yield* FilePicker.requestPermission(stored, "readwrite")).toBe("prompt");
+      yield* drive.respondToRequest("grant");
+      expect(yield* FilePicker.requestPermission(stored, "readwrite")).toBe("granted");
+      expect(yield* FilePicker.permission(stored, "readwrite")).toBe("granted");
+      expect(yield* FilePicker.requestPermission(stored)).toBe("granted");
+      yield* drive.setPermission(stored, "denied");
+      expect(yield* FilePicker.requestPermission(stored)).toBe("denied");
+      expect(yield* drive.permissionRequests).toEqual(["readwrite", "readwrite", "read", "read"]);
+    }).pipe(Effect.provide(TestFilePicker.layer())),
+  );
+
+  it.effect("grants a picked handle, and refuses a request without a gesture", () =>
+    Effect.gen(function* () {
+      const drive = yield* control;
+      const pickers = yield* picker;
+      yield* drive.disk.writeFileString("/a.txt", "a");
+      yield* drive.pick(["/a.txt"]);
+      const [file] = yield* pickers.open();
+      expect(yield* FilePicker.permission(file)).toBe("granted");
+      const stored = yield* drive.stored("/later");
+      yield* drive.respondToRequest("refuse");
+      const refused = yield* Effect.flip(FilePicker.requestPermission(stored));
+      expect([refused.method, refused.reason]).toEqual(["requestPermission", "NotAllowed"]);
+      yield* drive.respondToRequest("deny");
+      expect(yield* FilePicker.requestPermission(stored)).toBe("denied");
+    }).pipe(Effect.provide(TestFilePicker.layer())),
+  );
+
+  it.effect("fails Unsupported for a handle without the permission methods", () =>
+    Effect.gen(function* () {
+      const plain = MemoryFileSystemHandle.make();
+      const errors = yield* Effect.all(
+        [
+          Effect.flip(FilePicker.permission(plain)),
+          Effect.flip(FilePicker.requestPermission(plain)),
+        ],
+        { concurrency: 1 },
+      );
+      expect(errors.map((error) => [error.method, error.reason])).toEqual([
+        ["permission", "Unsupported"],
+        ["requestPermission", "Unsupported"],
+      ]);
+    }),
+  );
+});
+
+describe("FilePicker.fileSystem over a stored handle", () => {
+  it.effect("asks for the permission it lacks, then roots a FileSystem at the handle", () =>
+    Effect.gen(function* () {
+      const drive = yield* control;
+      yield* drive.disk.makeDirectory("/project");
+      yield* drive.disk.writeFileString("/project/README.md", "# Hi");
+      const stored = yield* drive.stored("/project");
+      yield* drive.respondToRequest("grant");
+      const fs = yield* FilePicker.fileSystem({ handle: stored, mode: "readwrite" });
+      expect(yield* fs.readDirectory("/")).toEqual(["README.md"]);
+      const again = yield* FilePicker.fileSystem({ handle: stored });
+      expect(yield* again.readFileString("/README.md")).toBe("# Hi");
+      expect(yield* drive.permissionRequests).toEqual(["readwrite"]);
+      expect(yield* drive.requests).toEqual([]);
+    }).pipe(Effect.provide(TestFilePicker.layer())),
+  );
+
+  it.effect("fails NotAllowed when the user denies or dismisses, or it was denied", () =>
+    Effect.gen(function* () {
+      const drive = yield* control;
+      const stored = yield* drive.stored("/project");
+      yield* drive.respondToRequest("deny");
+      const denied = yield* Effect.flip(FilePicker.fileSystem({ handle: stored }));
+      expect([denied.method, denied.reason, denied.cause]).toEqual([
+        "requestPermission",
+        "NotAllowed",
+        "denied",
+      ]);
+      const again = yield* Effect.flip(FilePicker.fileSystem({ handle: stored }));
+      expect(again.reason).toBe("NotAllowed");
+      const other = yield* drive.stored("/other");
+      const dismissed = yield* Effect.flip(FilePicker.fileSystem({ handle: other }));
+      expect([dismissed.reason, dismissed.cause]).toEqual(["NotAllowed", "prompt"]);
+      expect(yield* drive.permissionRequests).toEqual(["read", "read"]);
+    }).pipe(Effect.provide(TestFilePicker.layer())),
+  );
+
+  it.effect("reads and writes through the handles it hands out", () =>
+    Effect.gen(function* () {
+      const drive = yield* control;
+      const pickers = yield* picker;
+      yield* drive.disk.writeFileString("/notes.txt", "old");
+      yield* drive.pick(["/notes.txt"]);
+      const [file] = yield* pickers.open();
+      const writable = yield* attempt(() => file.createWritable());
+      yield* attempt(() => writable.write(new TextEncoder().encode("new")));
+      yield* attempt(() => writable.close());
+      const read = yield* attempt(() => file.getFile());
+      expect(read.size).toBe(3);
+      const stored = yield* drive.stored("/project");
+      yield* drive.setPermission(stored, "granted");
+      const fs = yield* FilePicker.fileSystem({ handle: stored });
+      yield* fs.makeDirectory("/tmp");
+      yield* fs.remove("/tmp");
+      expect(yield* fs.readDirectory("/")).toEqual([]);
+    }).pipe(Effect.provide(TestFilePicker.layer())),
+  );
+
+  it.effect("dies when a stored path runs through a file", () =>
+    Effect.gen(function* () {
+      const drive = yield* control;
+      yield* drive.disk.writeFileString("/file", "x");
+      const exit = yield* Effect.exit(drive.stored("/file/inner"));
+      expect(Exit.hasDies(exit)).toBe(true);
+    }).pipe(Effect.provide(TestFilePicker.layer())),
+  );
+
+  it.effect("uses a handle without the permission methods as it is", () =>
+    Effect.gen(function* () {
+      const fs = yield* FilePicker.fileSystem({ handle: MemoryFileSystemHandle.make() });
+      expect(yield* fs.readDirectory("/")).toEqual([]);
+    }).pipe(Effect.provide(TestFilePicker.layer())),
   );
 });

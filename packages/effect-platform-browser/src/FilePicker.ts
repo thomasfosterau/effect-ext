@@ -8,6 +8,11 @@
  * input handler. A user who closes the picker fails the call with reason
  * `Aborted`, which {@link optional} turns into `Option.none()`.
  *
+ * A picked handle keeps its permission for the session only. A handle
+ * stored (in IndexedDB) and read back later asks again: {@link permission}
+ * reads its state, {@link requestPermission} asks the user, and
+ * {@link fileSystem} does both for a stored directory.
+ *
  * @since 0.1.0
  */
 import * as BrowserFileSystem from "@thomasfosterau/effect-platform-worker-shared/BrowserFileSystem";
@@ -21,6 +26,7 @@ import * as Effect from "effect/Effect";
 import type * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import { reasonOf } from "./internal/dom.ts";
 import { ambientFilePicker } from "./internal/globals.ts";
@@ -101,7 +107,35 @@ export interface SaveOptions extends PickerOptions {
  * @category models
  */
 export interface DirectoryOptions extends PickerOptions {
-  readonly mode?: "read" | "readwrite";
+  readonly mode?: PermissionMode;
+}
+
+/**
+ * The access a handle's permission covers.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export type PermissionMode = "read" | "readwrite";
+
+/**
+ * A handle's permission: `granted`, `denied`, or `prompt` (the next
+ * {@link requestPermission} asks the user).
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export type HandlePermission = "granted" | "denied" | "prompt";
+
+/**
+ * Options for {@link fileSystem}: a stored directory `handle` to use instead
+ * of opening the picker, with `mode` the access to make sure of first.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface FileSystemOptions extends DirectoryOptions {
+  readonly handle?: DirectoryHandleLike;
 }
 
 /**
@@ -119,10 +153,12 @@ export interface FilePickerLike {
 /**
  * Why a picker returned nothing.
  *
- * - `Unsupported` — the agent has no pickers (every browser but Chromium).
+ * - `Unsupported` — the agent has no pickers (every browser but Chromium),
+ *   or a handle without the permission methods.
  * - `Aborted` — the user closed the picker.
  * - `NotAllowed` — no user gesture, a cross-origin frame, or a blocked
- *   location.
+ *   location; for {@link fileSystem} over a stored handle, a permission the
+ *   user denied.
  * - `Failed` — any other rejection; `cause` carries it.
  *
  * @since 0.1.0
@@ -152,7 +188,7 @@ export type FilePickerErrorReason = "Unsupported" | "Aborted" | "NotAllowed" | "
  */
 export class FilePickerError extends Schema.TaggedError<FilePickerError>()("FilePickerError", {
   reason: Schema.Literals(["Unsupported", "Aborted", "NotAllowed", "Failed"]),
-  method: Schema.Literals(["open", "save", "directory"]),
+  method: Schema.Literals(["open", "save", "directory", "permission", "requestPermission"]),
   message: Schema.String,
   cause: Schema.Unknown,
 }) {}
@@ -288,8 +324,120 @@ export const optional = <A, E, R>(
   );
 
 /**
- * Asks the user for a directory and returns an Effect `FileSystem` rooted
- * at it (paths are relative to the picked directory, `/` its root).
+ * The permission methods a Chromium file or directory handle adds. A
+ * handle without them (another browser's, an OPFS handle) reports no
+ * permission of its own.
+ *
+ * @since 0.2.0
+ * @category models
+ */
+export interface PermissionHandleLike {
+  queryPermission(descriptor: { readonly mode: PermissionMode }): Promise<HandlePermission>;
+  requestPermission(descriptor: { readonly mode: PermissionMode }): Promise<HandlePermission>;
+}
+
+type Handle = FileHandleLike | DirectoryHandleLike;
+
+const hasPermissionMethods = (handle: Handle): handle is Handle & PermissionHandleLike =>
+  P.hasProperty(handle, "queryPermission") &&
+  P.isFunction(handle.queryPermission) &&
+  P.hasProperty(handle, "requestPermission") &&
+  P.isFunction(handle.requestPermission);
+
+const askHandle = (
+  handle: Handle,
+  method: "permission" | "requestPermission",
+  ask: (handle: PermissionHandleLike) => Promise<HandlePermission>,
+): Effect.Effect<HandlePermission, FilePickerError> =>
+  hasPermissionMethods(handle)
+    ? call(method, () => ask(handle))
+    : Effect.fail(pickerError(method, "Unsupported", undefined));
+
+/**
+ * A handle's permission for `mode` (default `"read"`), without asking the
+ * user. Fails `Unsupported` for a handle without `queryPermission`.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import { FilePicker } from "@thomasfosterau/effect-platform-browser"
+ * import { TestFilePicker } from "@thomasfosterau/effect-platform-browser/BrowserTesting"
+ *
+ * const program = Effect.gen(function* () {
+ *   const control = yield* TestFilePicker.Control
+ *   const stored = yield* control.stored("/project")
+ *   return yield* FilePicker.permission(stored, "readwrite")
+ * })
+ * Effect.runPromise(Effect.provide(program, TestFilePicker.layer())).then(console.log) // "prompt"
+ * ```
+ *
+ * @since 0.2.0
+ * @category permissions
+ */
+export const permission = (
+  handle: FileHandleLike | DirectoryHandleLike,
+  mode: PermissionMode = "read",
+): Effect.Effect<HandlePermission, FilePickerError> =>
+  askHandle(handle, "permission", (self) => self.queryPermission({ mode }));
+
+/**
+ * Asks the user for `mode` (default `"read"`) on a handle, and returns the
+ * permission that results; one already granted is returned without asking.
+ * The browser asks only from a user gesture: without one it fails
+ * `NotAllowed`. Fails `Unsupported` for a handle without
+ * `requestPermission`.
+ *
+ * @example
+ * ```ts
+ * import * as Effect from "effect/Effect"
+ * import { FilePicker } from "@thomasfosterau/effect-platform-browser"
+ * import { TestFilePicker } from "@thomasfosterau/effect-platform-browser/BrowserTesting"
+ *
+ * const program = Effect.gen(function* () {
+ *   const control = yield* TestFilePicker.Control
+ *   const stored = yield* control.stored("/project")
+ *   yield* control.respondToRequest("grant")
+ *   return yield* FilePicker.requestPermission(stored, "readwrite")
+ * })
+ * Effect.runPromise(Effect.provide(program, TestFilePicker.layer())).then(console.log) // "granted"
+ * ```
+ *
+ * @since 0.2.0
+ * @category permissions
+ */
+export const requestPermission = (
+  handle: FileHandleLike | DirectoryHandleLike,
+  mode: PermissionMode = "read",
+): Effect.Effect<HandlePermission, FilePickerError> =>
+  askHandle(handle, "requestPermission", (self) => self.requestPermission({ mode }));
+
+/**
+ * Makes sure of `mode` on a stored directory: granted already, or granted
+ * when asked. A handle without the permission methods (an OPFS handle, or
+ * a browser that grants for good) is used as it is.
+ */
+const ensurePermission = (
+  handle: DirectoryHandleLike,
+  mode: PermissionMode,
+): Effect.Effect<void, FilePickerError> =>
+  !hasPermissionMethods(handle)
+    ? Effect.void
+    : Effect.flatMap(permission(handle, mode), (state) => {
+        if (state === "granted") return Effect.void;
+        const asked = state === "prompt" ? requestPermission(handle, mode) : Effect.succeed(state);
+        return Effect.flatMap(asked, (granted) =>
+          granted === "granted"
+            ? Effect.void
+            : Effect.fail(pickerError("requestPermission", "NotAllowed", granted)),
+        );
+      });
+
+/**
+ * An Effect `FileSystem` rooted at a directory (paths are relative to it,
+ * `/` its root): the one the user picks, or a stored `handle`, after
+ * making sure of `mode` (asking the user when its permission is `prompt`,
+ * which needs a user gesture; a permission the user denies fails
+ * `NotAllowed`).
  *
  * @example
  * ```ts
@@ -312,8 +460,12 @@ export const optional = <A, E, R>(
  * @category combinators
  */
 export const fileSystem = (
-  options?: DirectoryOptions,
-): Effect.Effect<FileSystem.FileSystem, FilePickerError, FilePicker> =>
-  Effect.flatMap(FilePicker, (picker) =>
-    Effect.map(picker.directory(options), BrowserFileSystem.make),
-  );
+  options?: FileSystemOptions,
+): Effect.Effect<FileSystem.FileSystem, FilePickerError, FilePicker> => {
+  const handle = options?.handle;
+  return handle === undefined
+    ? Effect.flatMap(FilePicker, (picker) =>
+        Effect.map(picker.directory(options), BrowserFileSystem.make),
+      )
+    : Effect.as(ensurePermission(handle, options?.mode ?? "read"), BrowserFileSystem.make(handle));
+};
