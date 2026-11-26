@@ -30,6 +30,7 @@
     ".": "./src/index.ts",
     "./Caches": "./src/Caches.ts",
     "./Clients": "./src/Clients.ts",
+    "./CookieSubscriptions": "./src/CookieSubscriptions.ts",
     "./Events": "./src/Events.ts",
     "./Fetch": "./src/Fetch.ts",
     "./NavigationPreload": "./src/NavigationPreload.ts",
@@ -52,6 +53,10 @@
       "./Clients": {
         "types": "./dist/Clients.d.ts",
         "import": "./dist/Clients.js"
+      },
+      "./CookieSubscriptions": {
+        "types": "./dist/CookieSubscriptions.d.ts",
+        "import": "./dist/CookieSubscriptions.js"
       },
       "./Events": {
         "types": "./dist/Events.d.ts",
