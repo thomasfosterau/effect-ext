@@ -20,6 +20,7 @@ import * as Effect from "effect/Effect";
 import * as HashSet from "effect/HashSet";
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
+import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
 import * as JsonFeedDocument from "./JsonFeed.ts";
@@ -545,6 +546,12 @@ export interface CachePurgeContext {
   };
 }
 
+const decodeJson = Schema.decodeUnknownOption(Schema.Json);
+
+/** A purge error as a log field: its JSON as the API sent it, else its description. */
+const asLogValue = (cause: unknown): Schema.Json =>
+  Option.getOrElse(decodeJson(cause), () => describeError(cause));
+
 /**
  * Purges the given `Cache-Tag`s from THIS Worker's Workers Cache (a
  * `purge({ tags })` purges only the calling Worker's own cache). A no-op
@@ -586,7 +593,10 @@ export const purgeCacheTags = (
     Effect.flatMap((result) =>
       result.success
         ? Effect.void
-        : logErrorEvent("cache-purge.rejected", { tags, errors: result.errors }),
+        : logErrorEvent("cache-purge.rejected", {
+            tags,
+            errors: Arr.map(result.errors, asLogValue),
+          }),
     ),
     Effect.catch((cause) => logErrorEvent("cache-purge.failed", { tags, cause })),
   );

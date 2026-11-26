@@ -33,11 +33,14 @@ export type CacheOperation = "open" | "delete-cache" | "keys" | "match" | "put" 
  * @since 0.1.0
  * @category errors
  */
-export class CacheError extends Schema.TaggedError<CacheError>()("CacheError", {
-  operation: Schema.Literals(["open", "delete-cache", "keys", "match", "put", "delete"]),
-  cacheName: Schema.String,
-  cause: Schema.Unknown,
-}) {}
+export class CacheError extends Schema.TaggedError<CacheError, { readonly brand: unique symbol }>()(
+  "CacheError",
+  {
+    operation: Schema.Literals(["open", "delete-cache", "keys", "match", "put", "delete"]),
+    cacheName: Schema.String,
+    cause: Schema.Unknown,
+  },
+) {}
 
 /**
  * The `CacheStorage` every cache operation here opens caches from. Defaults
@@ -84,7 +87,7 @@ export interface CacheHandle {
     request: RequestInfo | URL,
     options?: CacheQueryOptions,
   ) => Effect.Effect<boolean, CacheError>;
-  readonly keys: () => Effect.Effect<ReadonlyArray<Request>, CacheError>;
+  readonly keys: Effect.Effect<ReadonlyArray<Request>, CacheError>;
 }
 
 const cacheCall = <A>(
@@ -106,7 +109,7 @@ const cacheHandle = (name: string, cache: Cache): CacheHandle => ({
     ),
   put: (request, response) => cacheCall("put", name, () => cache.put(request, response)),
   delete: (request, options) => cacheCall("delete", name, () => cache.delete(request, options)),
-  keys: () => cacheCall("keys", name, () => cache.keys()),
+  keys: cacheCall("keys", name, () => cache.keys()),
 });
 
 /**

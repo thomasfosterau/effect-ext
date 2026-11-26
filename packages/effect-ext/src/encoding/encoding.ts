@@ -143,7 +143,10 @@ export interface DecodeOptions {
  * @since 0.1.0
  * @category errors
  */
-export class DecodeError extends Schema.TaggedError<DecodeError>()("DecodeError", {
+export class DecodeError extends Schema.TaggedError<
+  DecodeError,
+  { readonly brand: unique symbol }
+>()("DecodeError", {
   encoding: Schema.String,
   offset: Schema.Int,
   message: Schema.String,
@@ -158,13 +161,13 @@ export class DecodeError extends Schema.TaggedError<DecodeError>()("DecodeError"
  * @since 0.1.0
  * @category errors
  */
-export class UnsupportedEncodingError extends Schema.TaggedError<UnsupportedEncodingError>()(
-  "UnsupportedEncodingError",
-  {
-    encoding: Schema.String,
-    message: Schema.String,
-  },
-) {}
+export class UnsupportedEncodingError extends Schema.TaggedError<
+  UnsupportedEncodingError,
+  { readonly brand: unique symbol }
+>()("UnsupportedEncodingError", {
+  encoding: Schema.String,
+  message: Schema.String,
+}) {}
 
 /**
  * Whether this runtime can decode the encoding: its `TextDecoder` knows
@@ -251,8 +254,10 @@ export const decode = (
   options: DecodeOptions = {},
 ): Effect.Effect<string, DecodeError | UnsupportedEncodingError> =>
   Effect.flatMap(makeDecoder(options), (decoder) =>
-    Effect.flatMap(lift(decoder.push(bytes)), (text) =>
-      Effect.map(lift(decoder.flush()), (rest) => text + rest),
+    Effect.zipWith(
+      lift(decoder.push(bytes)),
+      Effect.suspend(() => lift(decoder.flush())),
+      (text, rest) => text + rest,
     ),
   );
 
@@ -451,7 +456,10 @@ export interface EncodeOptions {
  * @since 0.1.0
  * @category errors
  */
-export class EncodeError extends Schema.TaggedError<EncodeError>()("EncodeError", {
+export class EncodeError extends Schema.TaggedError<
+  EncodeError,
+  { readonly brand: unique symbol }
+>()("EncodeError", {
   encoding: Schema.String,
   offset: Schema.Int,
   codePoint: Schema.Int,

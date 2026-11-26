@@ -170,7 +170,10 @@ export type PerformanceErrorReason = "Unsupported" | "InvalidName" | "InvalidOpt
  * @since 0.1.0
  * @category errors
  */
-export class PerformanceError extends Schema.TaggedError<PerformanceError>()("PerformanceError", {
+export class PerformanceError extends Schema.TaggedError<
+  PerformanceError,
+  { readonly brand: unique symbol }
+>()("PerformanceError", {
   operation: Schema.Literals(["mark", "measure", "observe"]),
   reason: Schema.Literals(["Unsupported", "InvalidName", "InvalidOptions", "Failed"]),
   message: Schema.String,

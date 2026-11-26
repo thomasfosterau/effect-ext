@@ -159,7 +159,7 @@ describe("Credentials.make", () => {
         },
       });
       // What a page posts back decodes on the server with the same schema.
-      expect(Schema.decodeUnknownSync(Credentials.AuthenticationResponseJson)(response)).toEqual(
+      expect(yield* Schema.decodeEffect(Credentials.AuthenticationResponseJson)(response)).toEqual(
         response,
       );
     }),

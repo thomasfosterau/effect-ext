@@ -51,7 +51,7 @@ export class SpeechModel extends Context.Service<SpeechModel, Service>()(
  *
  * @since 0.1.0
  */
-export class SpeechUsage extends Schema.Class<SpeechUsage>(
+export class SpeechUsage extends Schema.Class<SpeechUsage, { readonly brand: unique symbol }>(
   "@thomasfosterau/effect-ext/SpeechModel/SpeechUsage",
 )({
   inputCharacters: Schema.OptionFromOptionalKey(Schema.Finite),
@@ -66,7 +66,7 @@ export class SpeechUsage extends Schema.Class<SpeechUsage>(
  *
  * @since 0.1.0
  */
-export class SpeechResponse extends Schema.Class<SpeechResponse>(
+export class SpeechResponse extends Schema.Class<SpeechResponse, { readonly brand: unique symbol }>(
   "@thomasfosterau/effect-ext/SpeechModel/SpeechResponse",
 )({
   /** The synthesised audio bytes. */

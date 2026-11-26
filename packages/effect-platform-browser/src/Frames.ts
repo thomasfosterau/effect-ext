@@ -131,7 +131,10 @@ export type FramesApi = "animationFrame" | "idleCallback";
  * @since 0.1.0
  * @category errors
  */
-export class FramesError extends Schema.TaggedError<FramesError>()("FramesError", {
+export class FramesError extends Schema.TaggedError<
+  FramesError,
+  { readonly brand: unique symbol }
+>()("FramesError", {
   reason: Schema.Literal("Unsupported"),
   api: Schema.Literals(["animationFrame", "idleCallback"]),
   message: Schema.String,

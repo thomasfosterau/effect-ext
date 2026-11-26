@@ -47,10 +47,10 @@ export interface DedicatedWorkerGlobalScopeLike
  * @since 0.1.0
  * @category errors
  */
-export class NotADedicatedWorker extends Schema.TaggedError<NotADedicatedWorker>()(
-  "NotADedicatedWorker",
-  {},
-) {
+export class NotADedicatedWorker extends Schema.TaggedError<
+  NotADedicatedWorker,
+  { readonly brand: unique symbol }
+>()("NotADedicatedWorker", {}) {
   override get message(): string {
     return "not running in a dedicated worker";
   }

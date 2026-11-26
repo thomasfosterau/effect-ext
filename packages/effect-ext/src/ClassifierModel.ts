@@ -65,9 +65,10 @@ export class ClassifierModel extends Context.Service<ClassifierModel, Service>()
  *
  * @since 0.1.0
  */
-export class ClassifierUsage extends Schema.Class<ClassifierUsage>(
-  "@thomasfosterau/effect-ext/ClassifierModel/ClassifierUsage",
-)({
+export class ClassifierUsage extends Schema.Class<
+  ClassifierUsage,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/ClassifierModel/ClassifierUsage")({
   inputTokens: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
@@ -78,7 +79,7 @@ export class ClassifierUsage extends Schema.Class<ClassifierUsage>(
  *
  * @since 0.1.0
  */
-export class ClassScore extends Schema.Class<ClassScore>(
+export class ClassScore extends Schema.Class<ClassScore, { readonly brand: unique symbol }>(
   "@thomasfosterau/effect-ext/ClassifierModel/ClassScore",
 )({
   /** The candidate label. */
@@ -97,7 +98,7 @@ export class ClassScore extends Schema.Class<ClassScore>(
  *
  * @since 0.1.0
  */
-export class Classification extends Schema.Class<Classification>(
+export class Classification extends Schema.Class<Classification, { readonly brand: unique symbol }>(
   "@thomasfosterau/effect-ext/ClassifierModel/Classification",
 )({
   classes: Schema.Array(ClassScore),
@@ -119,9 +120,10 @@ export class Classification extends Schema.Class<Classification>(
  *
  * @since 0.1.0
  */
-export class ClassifyResponse extends Schema.Class<ClassifyResponse>(
-  "@thomasfosterau/effect-ext/ClassifierModel/ClassifyResponse",
-)({
+export class ClassifyResponse extends Schema.Class<
+  ClassifyResponse,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/ClassifierModel/ClassifyResponse")({
   classifications: Schema.Array(Classification),
   usage: ClassifierUsage,
 }) {}

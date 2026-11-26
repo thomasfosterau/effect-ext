@@ -52,7 +52,10 @@ export type AppBadgeErrorReason = "Unsupported" | "InvalidCount" | "NotAllowed" 
  * @since 0.1.0
  * @category errors
  */
-export class AppBadgeError extends Schema.TaggedError<AppBadgeError>()("AppBadgeError", {
+export class AppBadgeError extends Schema.TaggedError<
+  AppBadgeError,
+  { readonly brand: unique symbol }
+>()("AppBadgeError", {
   reason: Schema.Literals(["Unsupported", "InvalidCount", "NotAllowed", "Failed"]),
   message: Schema.String,
   cause: Schema.Unknown,

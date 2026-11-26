@@ -67,9 +67,10 @@ export class ModerationModel extends Context.Service<ModerationModel, Service>()
  *
  * @since 0.1.0
  */
-export class ModerationUsage extends Schema.Class<ModerationUsage>(
-  "@thomasfosterau/effect-ext/ModerationModel/ModerationUsage",
-)({
+export class ModerationUsage extends Schema.Class<
+  ModerationUsage,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/ModerationModel/ModerationUsage")({
   inputTokens: Schema.OptionFromOptionalKey(Schema.Finite),
 }) {}
 
@@ -90,9 +91,10 @@ export class ModerationUsage extends Schema.Class<ModerationUsage>(
  *
  * @since 0.1.0
  */
-export class ModerationResult extends Schema.Class<ModerationResult>(
-  "@thomasfosterau/effect-ext/ModerationModel/ModerationResult",
-)({
+export class ModerationResult extends Schema.Class<
+  ModerationResult,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/ModerationModel/ModerationResult")({
   isFlagged: Schema.Boolean,
   categories: Schema.Record(Schema.String, Schema.Finite),
   flags: Schema.OptionFromOptionalKey(Schema.Record(Schema.String, Schema.Boolean)),
@@ -117,9 +119,10 @@ export class ModerationResult extends Schema.Class<ModerationResult>(
  *
  * @since 0.1.0
  */
-export class ModerationResponse extends Schema.Class<ModerationResponse>(
-  "@thomasfosterau/effect-ext/ModerationModel/ModerationResponse",
-)({
+export class ModerationResponse extends Schema.Class<
+  ModerationResponse,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/ModerationModel/ModerationResponse")({
   results: Schema.Array(ModerationResult),
   usage: ModerationUsage,
   modelId: Schema.OptionFromOptionalKey(Schema.String),

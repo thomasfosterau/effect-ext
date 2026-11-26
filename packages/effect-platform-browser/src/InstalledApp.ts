@@ -187,15 +187,15 @@ export type InstalledAppErrorReason = "Unsupported" | "NoPrompt" | "NotAllowed" 
  * @since 0.1.0
  * @category errors
  */
-export class InstalledAppError extends Schema.TaggedError<InstalledAppError>()(
-  "InstalledAppError",
-  {
-    operation: Schema.Literals(["prompt", "launches", "relatedApps"]),
-    reason: Schema.Literals(["Unsupported", "NoPrompt", "NotAllowed", "Failed"]),
-    message: Schema.String,
-    cause: Schema.Unknown,
-  },
-) {}
+export class InstalledAppError extends Schema.TaggedError<
+  InstalledAppError,
+  { readonly brand: unique symbol }
+>()("InstalledAppError", {
+  operation: Schema.Literals(["prompt", "launches", "relatedApps"]),
+  reason: Schema.Literals(["Unsupported", "NoPrompt", "NotAllowed", "Failed"]),
+  message: Schema.String,
+  cause: Schema.Unknown,
+}) {}
 
 type Operation = InstalledAppError["operation"];
 

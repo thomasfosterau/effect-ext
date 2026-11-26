@@ -15,7 +15,10 @@ import { SchemaMatch } from "../../../src/evals/index.ts";
 
 const Person = Schema.Struct({ name: Schema.String, age: Schema.Finite });
 
-class TransformationBug extends Schema.TaggedError<TransformationBug>()("TransformationBug", {
+class TransformationBug extends Schema.TaggedError<
+  TransformationBug,
+  { readonly brand: unique symbol }
+>()("TransformationBug", {
   message: Schema.String,
 }) {}
 

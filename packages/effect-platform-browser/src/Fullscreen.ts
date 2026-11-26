@@ -74,7 +74,10 @@ export type FullscreenErrorReason = "Unsupported" | "NotAllowed" | "Failed";
  * @since 0.1.0
  * @category errors
  */
-export class FullscreenError extends Schema.TaggedError<FullscreenError>()("FullscreenError", {
+export class FullscreenError extends Schema.TaggedError<
+  FullscreenError,
+  { readonly brand: unique symbol }
+>()("FullscreenError", {
   reason: Schema.Literals(["Unsupported", "NotAllowed", "Failed"]),
   message: Schema.String,
   cause: Schema.Unknown,

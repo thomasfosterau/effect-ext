@@ -145,22 +145,22 @@ export type SpeechRecognitionErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class SpeechRecognitionError extends Schema.TaggedError<SpeechRecognitionError>()(
-  "SpeechRecognitionError",
-  {
-    reason: Schema.Literals([
-      "Unsupported",
-      "NotAllowed",
-      "AudioCapture",
-      "Network",
-      "LanguageNotSupported",
-      "Aborted",
-      "Failed",
-    ]),
-    message: Schema.String,
-    cause: Schema.Unknown,
-  },
-) {}
+export class SpeechRecognitionError extends Schema.TaggedError<
+  SpeechRecognitionError,
+  { readonly brand: unique symbol }
+>()("SpeechRecognitionError", {
+  reason: Schema.Literals([
+    "Unsupported",
+    "NotAllowed",
+    "AudioCapture",
+    "Network",
+    "LanguageNotSupported",
+    "Aborted",
+    "Failed",
+  ]),
+  message: Schema.String,
+  cause: Schema.Unknown,
+}) {}
 
 const recognitionError = (reason: SpeechRecognitionErrorReason, cause: unknown) =>
   new SpeechRecognitionError({ reason, cause, message: `speech recognition: ${reason}` });

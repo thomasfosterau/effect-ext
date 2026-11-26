@@ -25,9 +25,12 @@ import {
  * `Error`, not the `SyntaxError` of unparseable text. It stands in for a
  * failure that is no verdict on the output (a bug in a case adapter).
  */
-class AdapterBug extends Schema.TaggedError<AdapterBug>()("AdapterBug", {
-  message: Schema.String,
-}) {}
+class AdapterBug extends Schema.TaggedError<AdapterBug, { readonly brand: unique symbol }>()(
+  "AdapterBug",
+  {
+    message: Schema.String,
+  },
+) {}
 
 const unreadableCase = (): JsonValidity.JsonCase => ({
   get output(): string {

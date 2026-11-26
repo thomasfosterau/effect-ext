@@ -22,9 +22,12 @@ import * as Stream from "effect/Stream";
 import { AiError, LanguageModel, type Response } from "effect/ai";
 
 /** The defect a stub raises when a test reaches a method it did not stub. */
-class NotStubbed extends Schema.TaggedError<NotStubbed>()("NotStubbed", {
-  method: Schema.String,
-}) {}
+class NotStubbed extends Schema.TaggedError<NotStubbed, { readonly brand: unique symbol }>()(
+  "NotStubbed",
+  {
+    method: Schema.String,
+  },
+) {}
 
 /**
  * A `LanguageModel` service whose `generateObject` resolves to the given value,
@@ -45,6 +48,8 @@ export const stubLanguageModel = (
 ): LanguageModel.LanguageModel =>
   LanguageModel.LanguageModel.of({
     [LanguageModel.TypeId]: LanguageModel.TypeId,
+    // SAFETY: `generateObject` is generic in the caller's schema; this stub
+    // answers every instantiation with the one value the test supplied.
     generateObject: ((options: {
       prompt: unknown;
       objectName: unknown;
@@ -55,6 +60,8 @@ export const stubLanguageModel = (
         objectName: options.objectName,
         schema: options.schema,
       });
+      // SAFETY: the parts are the test's own `Response.AnyPart`s, which the
+      // response's part type (generic in the toolkit) cannot name here.
       return Effect.succeed(new LanguageModel.GenerateObjectResponse(value, [...content] as never));
     }) as never,
     generateText: () => Effect.die(new NotStubbed({ method: "generateText" })),
@@ -65,6 +72,7 @@ export const stubLanguageModel = (
 export const failingLanguageModel = (): LanguageModel.LanguageModel =>
   LanguageModel.LanguageModel.of({
     [LanguageModel.TypeId]: LanguageModel.TypeId,
+    // SAFETY: a failure is valid for every instantiation of the generic `generateObject`.
     generateObject: (() =>
       Effect.fail(
         AiError.make({

@@ -51,7 +51,7 @@ export class ImageModel extends Context.Service<ImageModel, Service>()(
  *
  * @since 0.1.0
  */
-export class ImageUsage extends Schema.Class<ImageUsage>(
+export class ImageUsage extends Schema.Class<ImageUsage, { readonly brand: unique symbol }>(
   "@thomasfosterau/effect-ext/ImageModel/ImageUsage",
 )({
   inputTokens: Schema.OptionFromOptionalKey(Schema.Finite),
@@ -64,7 +64,7 @@ export class ImageUsage extends Schema.Class<ImageUsage>(
  *
  * @since 0.1.0
  */
-export class ImagePart extends Schema.Class<ImagePart>(
+export class ImagePart extends Schema.Class<ImagePart, { readonly brand: unique symbol }>(
   "@thomasfosterau/effect-ext/ImageModel/ImagePart",
 )({
   /** Image payload: `Uint8Array` for raw bytes, `string` for base64. */
@@ -83,7 +83,7 @@ export class ImagePart extends Schema.Class<ImagePart>(
  *
  * @since 0.1.0
  */
-export class ImageResponse extends Schema.Class<ImageResponse>(
+export class ImageResponse extends Schema.Class<ImageResponse, { readonly brand: unique symbol }>(
   "@thomasfosterau/effect-ext/ImageModel/ImageResponse",
 )({
   images: Schema.Array(ImagePart),

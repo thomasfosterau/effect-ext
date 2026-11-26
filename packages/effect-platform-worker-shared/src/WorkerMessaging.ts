@@ -80,7 +80,10 @@ export type MessagingErrorReason = "DataClone" | "Failed";
  * @since 0.1.0
  * @category errors
  */
-export class MessagingError extends Schema.TaggedError<MessagingError>()("MessagingError", {
+export class MessagingError extends Schema.TaggedError<
+  MessagingError,
+  { readonly brand: unique symbol }
+>()("MessagingError", {
   reason: Schema.Literals(["DataClone", "Failed"]),
   cause: Schema.Unknown,
 }) {
@@ -272,7 +275,7 @@ export const endpoint = <Send, SendEncoded, Receive, ReceiveEncoded>(
     messages.pipe(
       Stream.mapEffect((message) =>
         decode(message).pipe(
-          Effect.map(Option.some),
+          Effect.asSome,
           Effect.catchTag("SchemaError", (error) =>
             Effect.as(
               Effect.logWarning("worker messaging: dropped a message", error.message),

@@ -344,14 +344,10 @@ describe("jsonApiErrorResponseWeb", () => {
     });
     expect(response.status).toBe(415);
     expect(response.headers.get("content-type")).toBe(JSONAPI_MEDIA_TYPE);
-    // SAFETY: `jsonApiErrorResponseWeb` serialises `jsonApiErrorDocument`, whose shape this names.
-    const body = (await response.json()) as {
-      errors: ReadonlyArray<{ status: string; code: string }>;
-      jsonapi: { version: string };
-    };
-    expect(body.jsonapi.version).toBe("1.1");
-    expect(body.errors[0]?.status).toBe("415");
-    expect(body.errors[0]?.code).toBe("unsupported-media-type");
+    expect(await response.json()).toMatchObject({
+      jsonapi: { version: "1.1" },
+      errors: [{ status: "415", code: "unsupported-media-type" }],
+    });
   });
 });
 
@@ -576,17 +572,13 @@ describe("exported seam guard errors", () => {
     const response = jsonApiErrorResponseWeb(CROSS_ORIGIN_REJECTED);
     expect(response.status).toBe(403);
     expect(response.headers.get("content-type")).toBe(JSONAPI_MEDIA_TYPE);
-    // SAFETY: the JSON:API error document `jsonApiErrorDocument` emits.
-    const body = (await response.json()) as { errors: ReadonlyArray<{ code: string }> };
-    expect(body.errors[0]?.code).toBe("auth.forbidden");
+    expect(await response.json()).toMatchObject({ errors: [{ code: "auth.forbidden" }] });
   });
 
   it("serialises the service-unavailable guard as a 503 JSON:API document", async () => {
     const response = jsonApiErrorResponseWeb(SERVICE_UNAVAILABLE);
     expect(response.status).toBe(503);
-    // SAFETY: the JSON:API error document `jsonApiErrorDocument` emits.
-    const body = (await response.json()) as { errors: ReadonlyArray<{ code: string }> };
-    expect(body.errors[0]?.code).toBe("unavailable");
+    expect(await response.json()).toMatchObject({ errors: [{ code: "unavailable" }] });
   });
 });
 

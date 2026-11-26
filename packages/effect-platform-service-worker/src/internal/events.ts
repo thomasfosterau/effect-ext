@@ -73,10 +73,10 @@ export const extendableListener = <Event extends ExtendableEventLike, E, R>(
   });
 
 /** A payload a listener could not read (a push whose data is not JSON). */
-export class UnreadablePayload extends Schema.TaggedError<UnreadablePayload>()(
-  "UnreadablePayload",
-  { cause: Schema.Unknown },
-) {}
+export class UnreadablePayload extends Schema.TaggedError<
+  UnreadablePayload,
+  { readonly brand: unique symbol }
+>()("UnreadablePayload", { cause: Schema.Unknown }) {}
 
 /**
  * An {@link extendableListener} that reads a payload with `read` and

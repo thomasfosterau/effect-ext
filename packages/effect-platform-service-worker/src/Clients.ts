@@ -108,7 +108,10 @@ export type ClientsErrorReason = "Unsupported" | "NotAllowed" | "InvalidUrl" | "
  * @since 0.1.0
  * @category errors
  */
-export class ClientsError extends Schema.TaggedError<ClientsError>()("ClientsError", {
+export class ClientsError extends Schema.TaggedError<
+  ClientsError,
+  { readonly brand: unique symbol }
+>()("ClientsError", {
   operation: Schema.Literals(["get", "matchAll", "openWindow", "claim", "focus", "navigate"]),
   reason: Schema.Literals(["Unsupported", "NotAllowed", "InvalidUrl", "Failed"]),
   cause: Schema.Unknown,
@@ -449,7 +452,7 @@ export const focusOrOpen = (
       Arr.findFirst(found, (client) => withoutFragment(client.url) === target),
       {
         onNone: () => openWindow(target),
-        onSome: (client) => Effect.map(focus(client), Option.some),
+        onSome: (client) => Effect.asSome(focus(client)),
       },
     ),
   );

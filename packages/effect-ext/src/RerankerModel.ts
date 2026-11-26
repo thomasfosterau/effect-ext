@@ -63,7 +63,7 @@ export class RerankerModel extends Context.Service<RerankerModel, Service>()(
  *
  * @since 0.1.0
  */
-export class RerankerUsage extends Schema.Class<RerankerUsage>(
+export class RerankerUsage extends Schema.Class<RerankerUsage, { readonly brand: unique symbol }>(
   "@thomasfosterau/effect-ext/RerankerModel/RerankerUsage",
 )({
   inputTokens: Schema.OptionFromOptionalKey(Schema.Finite),
@@ -77,9 +77,10 @@ export class RerankerUsage extends Schema.Class<RerankerUsage>(
  *
  * @since 0.1.0
  */
-export class RerankedDocument extends Schema.Class<RerankedDocument>(
-  "@thomasfosterau/effect-ext/RerankerModel/RerankedDocument",
-)({
+export class RerankedDocument extends Schema.Class<
+  RerankedDocument,
+  { readonly brand: unique symbol }
+>("@thomasfosterau/effect-ext/RerankerModel/RerankedDocument")({
   /** Index of the document in the caller's input `documents` array. */
   index: Schema.Int,
   /** Provider relevance score for the query; higher is more relevant. */
@@ -101,7 +102,7 @@ export class RerankedDocument extends Schema.Class<RerankedDocument>(
  *
  * @since 0.1.0
  */
-export class RerankResponse extends Schema.Class<RerankResponse>(
+export class RerankResponse extends Schema.Class<RerankResponse, { readonly brand: unique symbol }>(
   "@thomasfosterau/effect-ext/RerankerModel/RerankResponse",
 )({
   results: Schema.Array(RerankedDocument),

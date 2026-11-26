@@ -56,32 +56,42 @@ interface CapturedRequest {
   readonly body: RequestBody;
 }
 
-interface RequestBody {
-  readonly model?: string;
-  readonly stream?: boolean;
-  readonly temperature?: number;
-  readonly messages?: ReadonlyArray<Record<string, unknown>>;
-  readonly tools?: ReadonlyArray<Record<string, unknown>>;
-  readonly tool_choice?: unknown;
-  readonly response_format?: { readonly type?: string; readonly schema?: unknown };
-  readonly input_type?: string;
-  readonly texts?: ReadonlyArray<string>;
-  readonly output_dimension?: number;
-  readonly embedding_types?: ReadonlyArray<string>;
-  readonly query?: string;
-  readonly documents?: ReadonlyArray<string>;
-  readonly top_n?: number;
-  readonly [key: string]: unknown;
-}
+/** The JSON body of a captured request, decoded: the fields the tests read, then any other key. */
+const RequestBody = Schema.StructWithRest(
+  Schema.Struct({
+    model: Schema.optionalKey(Schema.String),
+    stream: Schema.optionalKey(Schema.Boolean),
+    temperature: Schema.optionalKey(Schema.Finite),
+    messages: Schema.optionalKey(Schema.Array(Schema.Record(Schema.String, Schema.Json))),
+    tools: Schema.optionalKey(Schema.Array(Schema.Record(Schema.String, Schema.Json))),
+    tool_choice: Schema.optionalKey(Schema.Json),
+    response_format: Schema.optionalKey(
+      Schema.Struct({
+        type: Schema.optionalKey(Schema.String),
+        schema: Schema.optionalKey(Schema.Json),
+      }),
+    ),
+    input_type: Schema.optionalKey(Schema.String),
+    texts: Schema.optionalKey(Schema.Array(Schema.String)),
+    output_dimension: Schema.optionalKey(Schema.Finite),
+    embedding_types: Schema.optionalKey(Schema.Array(Schema.String)),
+    query: Schema.optionalKey(Schema.String),
+    documents: Schema.optionalKey(Schema.Array(Schema.String)),
+    top_n: Schema.optionalKey(Schema.Finite),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)],
+);
+type RequestBody = typeof RequestBody.Type;
+
+/** A captured body: the decoded JSON, or `{}` for a request without one. */
+const decodeBody = (text: string): RequestBody =>
+  Option.getOrElse(Schema.decodeOption(Schema.fromJsonString(RequestBody))(text), () => ({}));
 
 const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
   const calls: Array<CapturedRequest> = [];
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
-    const body = (await request
-      .clone()
-      .json()
-      .catch(() => ({}))) as RequestBody;
+    const body = decodeBody(await request.clone().text());
     const captured: CapturedRequest = {
       url: request.url,
       authorization: Option.fromNullishOr(request.headers.get("authorization")),
@@ -97,7 +107,7 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
 /** Serialises a canned response fixture as JSON text. */
 const toJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 
-const jsonResponse = (body: unknown, status = 200): Response =>
+const jsonResponse = (body: Schema.Json, status = 200): Response =>
   new Response(toJson(body), {
     status,
     headers: { "content-type": "application/json" },
@@ -114,7 +124,7 @@ const sseResponse = (frames: ReadonlyArray<unknown>): Response => {
   });
 };
 
-const chatReply = (over?: Record<string, unknown>) => ({
+const chatReply = (over?: Record<string, Schema.Json>) => ({
   id: "c1",
   message: { role: "assistant", content: [{ type: "text", text: "Bonjour" }] },
   finish_reason: "COMPLETE",
@@ -508,7 +518,7 @@ describe("CohereLanguageModel configuration", () => {
           Effect.provideService(FetchHttpClient.Fetch, fetch),
         );
 
-        const body = calls[0]?.body as Record<string, unknown>;
+        const body = calls[0]?.body ?? {};
         expect(body.p).toBe(0.9);
         expect(body.k).toBe(20);
         expect(body.max_tokens).toBe(64);
@@ -654,7 +664,7 @@ const weatherToolRequest = {
   },
 };
 
-const toolCallReply = (over?: Record<string, unknown>) =>
+const toolCallReply = (over?: Record<string, Schema.Json>) =>
   chatReply({
     message: {
       role: "assistant",
@@ -683,7 +693,7 @@ describe("CohereLanguageModel tool calling", () => {
         }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
         const tools = calls[0]?.body.tools ?? [];
-        expect((tools[0] as { function?: { name?: string } })?.function?.name).toBe("get_weather");
+        expect(tools[0]).toMatchObject({ function: { name: "get_weather" } });
         // "auto" — Cohere expresses it by omitting tool_choice.
         expect(calls[0]?.body.tool_choice).toBeUndefined();
         expect(response.toolCalls).toHaveLength(1);
@@ -880,12 +890,10 @@ layer(modelLayer())("CohereLanguageModel finish reasons", (t) => {
   t.effect("reads usage reported under meta when usage is absent", () =>
     Effect.gen(function* () {
       const { fetch } = makeFetch(() =>
-        jsonResponse(
-          chatReply({
-            usage: undefined,
-            meta: { tokens: { input_tokens: 7, output_tokens: 2 } },
-          }),
-        ),
+        jsonResponse({
+          ...Struct.omit(chatReply(), ["usage"]),
+          meta: { tokens: { input_tokens: 7, output_tokens: 2 } },
+        }),
       );
 
       const response = yield* LanguageModel.generateText({ prompt: "hi" }).pipe(
@@ -981,13 +989,13 @@ describe("CohereLanguageModel.streamText", () => {
 
         const text = parts
           .filter((part) => part.type === "text-delta")
-          .map((part) => (part as { delta: string }).delta)
+          .map((part) => part.delta)
           .join("");
         expect(text).toBe("Hello world");
 
         const finish = parts.find((part) => part.type === "finish");
         expect(finish).toBeDefined();
-        expect((finish as { reason?: string }).reason).toBe("stop");
+        expect(finish?.reason).toBe("stop");
       }),
     );
   });
@@ -1039,8 +1047,8 @@ describe("CohereLanguageModel.streamText", () => {
 
         const toolCall = parts.find((part) => part.type === "tool-call");
         expect(toolCall).toBeDefined();
-        expect((toolCall as { params?: unknown }).params).toEqual({ city: "Nice" });
-        expect((toolCall as { name?: string }).name).toBe("get_weather");
+        expect(toolCall?.params).toEqual({ city: "Nice" });
+        expect(toolCall?.name).toBe("get_weather");
       }),
     );
   });

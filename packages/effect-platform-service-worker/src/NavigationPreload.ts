@@ -80,14 +80,14 @@ export type NavigationPreloadErrorReason = "Unsupported" | "InvalidState" | "Fai
  * @since 0.1.0
  * @category errors
  */
-export class NavigationPreloadError extends Schema.TaggedError<NavigationPreloadError>()(
-  "NavigationPreloadError",
-  {
-    operation: Schema.Literals(["enable", "disable", "setHeaderValue", "getState"]),
-    reason: Schema.Literals(["Unsupported", "InvalidState", "Failed"]),
-    cause: Schema.Unknown,
-  },
-) {
+export class NavigationPreloadError extends Schema.TaggedError<
+  NavigationPreloadError,
+  { readonly brand: unique symbol }
+>()("NavigationPreloadError", {
+  operation: Schema.Literals(["enable", "disable", "setHeaderValue", "getState"]),
+  reason: Schema.Literals(["Unsupported", "InvalidState", "Failed"]),
+  cause: Schema.Unknown,
+}) {
   override get message(): string {
     return `service-worker: navigation preload ${this.operation}: ${this.reason}`;
   }

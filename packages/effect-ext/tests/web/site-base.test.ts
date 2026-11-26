@@ -9,6 +9,9 @@ import * as Effect from "effect/Effect";
 import * as Logger from "effect/Logger";
 import * as Option from "effect/Option";
 import * as References from "effect/References";
+
+/** A log line's annotations, as the logger reads them. */
+type Annotations = (typeof References.CurrentLogAnnotations)["Service"];
 import { normalizeSiteBase, siteBase } from "@thomasfosterau/effect-ext/Web";
 
 const FALLBACK = "https://example.com";
@@ -16,7 +19,7 @@ const linkBase = siteBase({ key: "PUBLIC_SITE_URL", fallback: FALLBACK });
 
 /** Runs `linkBase` under `provider`, recording each log line's level and annotations. */
 const read = async (provider: ConfigProvider.ConfigProvider, effect = linkBase) => {
-  const lines: Array<{ level: string; annotations: Record<string, unknown> }> = [];
+  const lines: Array<{ level: string; annotations: Annotations }> = [];
   const logger = Logger.make(({ logLevel, fiber }) => {
     lines.push({
       level: logLevel,

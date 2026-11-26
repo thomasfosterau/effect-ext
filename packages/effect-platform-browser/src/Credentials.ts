@@ -599,7 +599,10 @@ export type CredentialsErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class CredentialsError extends Schema.TaggedError<CredentialsError>()("CredentialsError", {
+export class CredentialsError extends Schema.TaggedError<
+  CredentialsError,
+  { readonly brand: unique symbol }
+>()("CredentialsError", {
   reason: Schema.Literals([
     "Unsupported",
     "NotAllowed",

@@ -172,11 +172,14 @@ export type UnsafeUrlReason = "invalid" | "scheme" | "credentials" | "blocked-ho
  * @since 0.1.0
  * @category errors
  */
-export class UnsafeUrl extends Schema.TaggedError<UnsafeUrl>()("UnsafeUrl", {
-  url: Schema.String,
-  reason: Schema.Literals(["invalid", "scheme", "credentials", "blocked-host"]),
-  message: Schema.String,
-}) {}
+export class UnsafeUrl extends Schema.TaggedError<UnsafeUrl, { readonly brand: unique symbol }>()(
+  "UnsafeUrl",
+  {
+    url: Schema.String,
+    reason: Schema.Literals(["invalid", "scheme", "credentials", "blocked-host"]),
+    message: Schema.String,
+  },
+) {}
 
 /**
  * Parses and validates a URL against the outbound-request safety policy:
@@ -265,7 +268,10 @@ export type RedirectRejectedReason = "no-location" | "invalid-target" | "too-man
  * @since 0.1.0
  * @category errors
  */
-export class RedirectRejected extends Schema.TaggedError<RedirectRejected>()("RedirectRejected", {
+export class RedirectRejected extends Schema.TaggedError<
+  RedirectRejected,
+  { readonly brand: unique symbol }
+>()("RedirectRejected", {
   url: Schema.String,
   reason: Schema.Literals(["no-location", "invalid-target", "too-many-hops"]),
   message: Schema.String,
@@ -277,7 +283,10 @@ export class RedirectRejected extends Schema.TaggedError<RedirectRejected>()("Re
  * @since 0.1.0
  * @category errors
  */
-export class FetchFailed extends Schema.TaggedError<FetchFailed>()("FetchFailed", {
+export class FetchFailed extends Schema.TaggedError<
+  FetchFailed,
+  { readonly brand: unique symbol }
+>()("FetchFailed", {
   url: Schema.String,
   cause: Schema.Unknown,
 }) {}

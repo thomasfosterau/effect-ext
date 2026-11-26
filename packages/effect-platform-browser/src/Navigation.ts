@@ -198,7 +198,10 @@ export type NavigationErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class NavigationError extends Schema.TaggedError<NavigationError>()("NavigationError", {
+export class NavigationError extends Schema.TaggedError<
+  NavigationError,
+  { readonly brand: unique symbol }
+>()("NavigationError", {
   operation: Schema.Literals(["navigate", "back", "forward", "setState", "intercept"]),
   reason: Schema.Literals([
     "Unsupported",

@@ -89,7 +89,7 @@ describe("Clients", () => {
   it.effect("postTo and broadcast encode per client", () => {
     const a = client("a");
     const b = client("b");
-    const At = Schema.Struct({ n: Schema.NumberFromString });
+    const At = Schema.Struct({ n: Schema.FiniteFromString });
     return Effect.gen(function* () {
       yield* Clients.postTo(At)(a, { n: 1 });
       expect(a.posted).toEqual([{ n: "1" }]);

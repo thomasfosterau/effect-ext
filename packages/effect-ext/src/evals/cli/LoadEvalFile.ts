@@ -22,22 +22,22 @@ import * as Schema from "effect/Schema";
 import type * as EvalFile from "../EvalFile.ts";
 
 /** The dynamic `import()` of an eval file threw (syntax error, missing file, a throwing top-level side effect, …). */
-export class EvalFileImportError extends Schema.TaggedError<EvalFileImportError>()(
-  "EvalFileImportError",
-  {
-    file: Schema.String,
-    cause: Schema.Defect(),
-  },
-) {}
+export class EvalFileImportError extends Schema.TaggedError<
+  EvalFileImportError,
+  { readonly brand: unique symbol }
+>()("EvalFileImportError", {
+  file: Schema.String,
+  cause: Schema.Defect(),
+}) {}
 
 /** An eval file's default export doesn't match the {@link EvalFile.EvalFile} contract. */
-export class InvalidEvalFileError extends Schema.TaggedError<InvalidEvalFileError>()(
-  "InvalidEvalFileError",
-  {
-    file: Schema.String,
-    reason: Schema.String,
-  },
-) {}
+export class InvalidEvalFileError extends Schema.TaggedError<
+  InvalidEvalFileError,
+  { readonly brand: unique symbol }
+>()("InvalidEvalFileError", {
+  file: Schema.String,
+  reason: Schema.String,
+}) {}
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   P.isObjectOrArray(value);

@@ -62,10 +62,10 @@ export interface ConnectionPort extends WorkerMessaging.PortLike {
  * @since 0.1.0
  * @category errors
  */
-export class NotASharedWorker extends Schema.TaggedError<NotASharedWorker>()(
-  "NotASharedWorker",
-  {},
-) {
+export class NotASharedWorker extends Schema.TaggedError<
+  NotASharedWorker,
+  { readonly brand: unique symbol }
+>()("NotASharedWorker", {}) {
   override get message(): string {
     return "not running in a shared worker";
   }

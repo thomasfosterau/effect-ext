@@ -19,6 +19,7 @@
  * @copyright Thomas Foster
  */
 
+import { flow } from "effect/Function";
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
@@ -119,21 +120,21 @@ export type ResponseFormatRequest =
       };
     };
 
-/** The full `/v1/chat/completions` request body. */
+/** The full `/v1/chat/completions` request body. An `undefined` member is left out of the JSON. */
 export interface ChatCompletionRequest {
   readonly model: string;
   readonly messages: ReadonlyArray<MessageRequest>;
-  readonly temperature?: number;
-  readonly top_p?: number;
-  readonly max_tokens?: number;
-  readonly random_seed?: number;
-  readonly stop?: string | ReadonlyArray<string>;
-  readonly presence_penalty?: number;
-  readonly frequency_penalty?: number;
-  readonly stream?: boolean;
-  readonly tools?: ReadonlyArray<ToolRequest>;
-  readonly tool_choice?: ToolChoiceRequest;
-  readonly response_format?: ResponseFormatRequest;
+  readonly temperature?: number | undefined;
+  readonly top_p?: number | undefined;
+  readonly max_tokens?: number | undefined;
+  readonly random_seed?: number | undefined;
+  readonly stop?: string | ReadonlyArray<string> | undefined;
+  readonly presence_penalty?: number | undefined;
+  readonly frequency_penalty?: number | undefined;
+  readonly stream?: boolean | undefined;
+  readonly tools?: ReadonlyArray<ToolRequest> | undefined;
+  readonly tool_choice?: ToolChoiceRequest | undefined;
+  readonly response_format?: ResponseFormatRequest | undefined;
 }
 
 // ── Response ──────────────────────────────────────────────────────────
@@ -250,5 +251,4 @@ const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
  * `undefined` value (a tool that returns nothing) has no JSON text, so it
  * is `None` and its key is left off the serialised request body.
  */
-export const stringifyJson = (value: unknown): Option.Option<string> =>
-  P.isUndefined(value) ? Option.none() : Option.some(encodeJson(value));
+export const stringifyJson = flow(Option.liftPredicate(P.isNotUndefined), Option.map(encodeJson));

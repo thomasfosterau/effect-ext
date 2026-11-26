@@ -143,7 +143,10 @@ export type ContainerErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class ContainerError extends Schema.TaggedError<ContainerError>()("ContainerError", {
+export class ContainerError extends Schema.TaggedError<
+  ContainerError,
+  { readonly brand: unique symbol }
+>()("ContainerError", {
   operation: Schema.Literals([
     "register",
     "ready",

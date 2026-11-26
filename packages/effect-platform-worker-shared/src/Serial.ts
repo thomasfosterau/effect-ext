@@ -175,7 +175,10 @@ export type SerialErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class SerialError extends Schema.TaggedError<SerialError>()("SerialError", {
+export class SerialError extends Schema.TaggedError<
+  SerialError,
+  { readonly brand: unique symbol }
+>()("SerialError", {
   operation: Schema.Literals(["request", "ports", "open", "read", "write", "signals"]),
   reason: Schema.Literals([
     "Unsupported",

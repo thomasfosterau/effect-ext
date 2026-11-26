@@ -27,6 +27,9 @@ import {
   spanTracer,
 } from "@thomasfosterau/effect-ext/Observability";
 
+/** A log line's annotations, as the logger reads them. */
+type Annotations = (typeof References.CurrentLogAnnotations)["Service"];
+
 /**
  * Decodes one logged line back into a record — the read side of the sink's
  * `Schema.fromJsonString(Schema.Unknown)` encoder, so the assertions go
@@ -170,7 +173,7 @@ describe("logStructured", () => {
   it("emits exactly one flat JSON line, envelope-free, with the keys in insertion order", () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
 
-    logStructured({ event: "read-path.db", dbQueryCount: 3, path: "/posts", skipped: undefined });
+    logStructured({ event: "read-path.db", dbQueryCount: 3, path: "/posts" });
 
     expect(log).toHaveBeenCalledTimes(1);
     expect(log.mock.calls[0]?.[0]).toBe(
@@ -221,8 +224,7 @@ describe("logAuthOutcome / deriveAuthOutcome", () => {
 
 /** A recording logger: captures level, message and annotations per line. */
 const record = <A, E>(effect: Effect.Effect<A, E>) => {
-  const lines: Array<{ level: string; message: unknown; annotations: Record<string, unknown> }> =
-    [];
+  const lines: Array<{ level: string; message: unknown; annotations: Annotations }> = [];
   const logger = Logger.make(({ logLevel, message, fiber }) => {
     lines.push({
       level: logLevel,

@@ -88,13 +88,13 @@ export const verdictMetadata = (
  *
  * @since 0.1.0
  */
-export class VerdictCountMismatchError extends Schema.TaggedError<VerdictCountMismatchError>()(
-  "VerdictCountMismatchError",
-  {
-    expected: Schema.Finite,
-    actual: Schema.Finite,
-  },
-) {}
+export class VerdictCountMismatchError extends Schema.TaggedError<
+  VerdictCountMismatchError,
+  { readonly brand: unique symbol }
+>()("VerdictCountMismatchError", {
+  expected: Schema.Finite,
+  actual: Schema.Finite,
+}) {}
 
 // ── Extraction step ──────────────────────────────────────────────────
 

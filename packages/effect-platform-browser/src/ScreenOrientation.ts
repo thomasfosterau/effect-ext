@@ -74,7 +74,10 @@ export type OrientationErrorReason = "Unsupported" | "NotAllowed" | "Aborted" | 
  * @since 0.1.0
  * @category errors
  */
-export class OrientationError extends Schema.TaggedError<OrientationError>()("OrientationError", {
+export class OrientationError extends Schema.TaggedError<
+  OrientationError,
+  { readonly brand: unique symbol }
+>()("OrientationError", {
   reason: Schema.Literals(["Unsupported", "NotAllowed", "Aborted", "Failed"]),
   message: Schema.String,
   cause: Schema.Unknown,

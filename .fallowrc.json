@@ -161,7 +161,17 @@
     //   expose, mirroring Rust's per-type impls.
     // - `FixedInt`'s `number` and `bigint` primitive tables, whose bitwise
     //   operations read the same over two representations.
-    "ignoredClones": ["dup:b85a7ed1:2", "dup:d06606dc:2", "dup:bb9236f0:2"]
+    // - What each AI provider mirrors from effect-ai-mistral (request
+    //   assembly, response metadata, the HTTP error mapping): the provider
+    //   zones may not import one another, so each keeps its own copy.
+    "ignoredClones": [
+      "dup:b85a7ed1:2",
+      "dup:d06606dc:2",
+      "dup:bb9236f0:2",
+      "dup:b815bbe5:2",
+      "dup:29f2ae2c:2",
+      "dup:9105c1d2:2"
+    ]
   },
   "health": {
     "maxCyclomatic": 20,

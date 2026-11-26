@@ -176,21 +176,24 @@ export type HidErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class HidError extends Schema.TaggedError<HidError>()("HidError", {
-  operation: Schema.Literals(["request", "devices", "open", "send", "receive"]),
-  reason: Schema.Literals([
-    "Unsupported",
-    "NotFound",
-    "NotAllowed",
-    "InvalidState",
-    "Network",
-    "Aborted",
-    "Closed",
-    "Failed",
-  ]),
-  message: Schema.String,
-  cause: Schema.Unknown,
-}) {}
+export class HidError extends Schema.TaggedError<HidError, { readonly brand: unique symbol }>()(
+  "HidError",
+  {
+    operation: Schema.Literals(["request", "devices", "open", "send", "receive"]),
+    reason: Schema.Literals([
+      "Unsupported",
+      "NotFound",
+      "NotAllowed",
+      "InvalidState",
+      "Network",
+      "Aborted",
+      "Closed",
+      "Failed",
+    ]),
+    message: Schema.String,
+    cause: Schema.Unknown,
+  },
+) {}
 
 type Operation = HidError["operation"];
 

@@ -23,23 +23,11 @@ import {
   makeEmbeddingModel,
   makeReranker,
 } from "@thomasfosterau/effect-ai-cloudflare/Cohere";
-import { stubAiBinding } from "./helpers/ai";
+import { stubAiBinding, stubRun } from "./helpers/ai";
 import { expectFailureInstanceOf } from "./helpers/effect";
 
 /** Expected embedding width for `embed-v4.0`. */
 const EXPECTED_DIMENSIONS = 1024;
-
-/** Builds a stub binding whose `gateway(id).run(data)` is canned. */
-const stubAi = (response: { status: number; body: unknown }) => {
-  const calls: unknown[] = [];
-  const ai = stubAiBinding(() => ({
-    run: async (data) => {
-      calls.push(data);
-      return Response.json(response.body, { status: response.status });
-    },
-  }));
-  return { ai, calls };
-};
 
 /** Builds a stub binding whose `gateway(id).run(data)` rejects. */
 const stubAiReject = (): WorkersAiBinding =>
@@ -70,7 +58,7 @@ describe("Cohere embeddings", () => {
 
   it.effect("posts the embed request with output_dimension pinned to 1024", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({
+      const { ai, calls } = stubRun({
         status: 200,
         body: {
           embeddings: {
@@ -114,7 +102,7 @@ describe("Cohere embeddings", () => {
 
   it.effect("forwards search_query as the input type for query-time embeddings", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({
+      const { ai, calls } = stubRun({
         status: 200,
         body: { embeddings: { float: [[0.5]] } },
       });
@@ -124,13 +112,13 @@ describe("Cohere embeddings", () => {
         return yield* model.embedMany(["query text"]);
       });
 
-      expect((calls[0] as { query: { input_type: string } }).query.input_type).toBe("search_query");
+      expect(calls[0]?.query.input_type).toBe("search_query");
     }),
   );
 
   it.effect("does not call the provider for an empty input array", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({ status: 200, body: { embeddings: { float: [] } } });
+      const { ai, calls } = stubRun({ status: 200, body: { embeddings: { float: [] } } });
 
       yield* Effect.gen(function* () {
         const model = yield* makeEmbeddingModel(binding(ai), {
@@ -145,7 +133,7 @@ describe("Cohere embeddings", () => {
 
   it.effect("fails with AiError on a non-2xx status", () =>
     Effect.gen(function* () {
-      const { ai } = stubAi({ status: 401, body: { message: "invalid api key" } });
+      const { ai } = stubRun({ status: 401, body: { message: "invalid api key" } });
 
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
@@ -163,7 +151,7 @@ describe("Cohere embeddings", () => {
 
   it.effect("fails with AiError when the response body has the wrong shape", () =>
     Effect.gen(function* () {
-      const { ai } = stubAi({ status: 200, body: { unexpected: "shape" } });
+      const { ai } = stubRun({ status: 200, body: { unexpected: "shape" } });
 
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {
@@ -217,7 +205,7 @@ describe("Cohere embeddings", () => {
 describe("Cohere reranker", () => {
   it.effect("posts the rerank request and maps results by descending relevance", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({
+      const { ai, calls } = stubRun({
         status: 200,
         body: {
           results: [
@@ -258,7 +246,7 @@ describe("Cohere reranker", () => {
 
   it.effect("omits top_n when topN is not given", () =>
     Effect.gen(function* () {
-      const { ai, calls } = stubAi({
+      const { ai, calls } = stubRun({
         status: 200,
         body: { results: [{ index: 0, relevance_score: 1 }] },
       });
@@ -274,7 +262,7 @@ describe("Cohere reranker", () => {
 
   it.effect("fails with AiError on a non-2xx status", () =>
     Effect.gen(function* () {
-      const { ai } = stubAi({ status: 429, body: { message: "rate limited" } });
+      const { ai } = stubRun({ status: 429, body: { message: "rate limited" } });
 
       const failure = yield* expectFailureInstanceOf(
         Effect.gen(function* () {

@@ -22,6 +22,7 @@
  * @copyright Thomas Foster
  */
 
+import { flow } from "effect/Function";
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
@@ -110,24 +111,24 @@ export type ResponseFormatRequest =
   | { readonly type: "json_object" }
   | { readonly type: "json_object"; readonly schema: unknown };
 
-/** The full `/v2/chat` request body. */
+/** The full `/v2/chat` request body. An `undefined` member is left out of the JSON. */
 export interface ChatRequest {
   readonly model: string;
   readonly messages: ReadonlyArray<MessageRequest>;
-  readonly stream?: boolean;
-  readonly temperature?: number;
+  readonly stream?: boolean | undefined;
+  readonly temperature?: number | undefined;
   /** Nucleus sampling probability (Cohere's `p`, i.e. OpenAI's `top_p`). */
-  readonly p?: number;
+  readonly p?: number | undefined;
   /** Top-k sampling (Cohere's `k`). */
-  readonly k?: number;
-  readonly max_tokens?: number;
-  readonly seed?: number;
-  readonly stop_sequences?: ReadonlyArray<string>;
-  readonly frequency_penalty?: number;
-  readonly presence_penalty?: number;
-  readonly tools?: ReadonlyArray<ToolRequest>;
-  readonly tool_choice?: ToolChoiceRequest;
-  readonly response_format?: ResponseFormatRequest;
+  readonly k?: number | undefined;
+  readonly max_tokens?: number | undefined;
+  readonly seed?: number | undefined;
+  readonly stop_sequences?: ReadonlyArray<string> | undefined;
+  readonly frequency_penalty?: number | undefined;
+  readonly presence_penalty?: number | undefined;
+  readonly tools?: ReadonlyArray<ToolRequest> | undefined;
+  readonly tool_choice?: ToolChoiceRequest | undefined;
+  readonly response_format?: ResponseFormatRequest | undefined;
 }
 
 // ── Chat response (non-streaming) ─────────────────────────────────────
@@ -317,5 +318,4 @@ const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
  * Serialises `value` as JSON text, with `JSON.stringify`'s contract: an
  * `undefined` value (a tool that returns nothing) has no JSON text, so it is `None` and its key is left off the serialised request body.
  */
-export const stringifyJson = (value: unknown): Option.Option<string> =>
-  P.isUndefined(value) ? Option.none() : Option.some(encodeJson(value));
+export const stringifyJson = flow(Option.liftPredicate(P.isNotUndefined), Option.map(encodeJson));

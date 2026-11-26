@@ -129,7 +129,7 @@ describeLayerPerTest(Layer.merge(NodeServices.layer, Cache.layerMemory), { live:
 
         expect(writes).toHaveLength(1);
         expect(writes[0]?.path).toBe("out.json");
-        const parsed = Schema.decodeSync(Schema.fromJsonString(RunReport))(
+        const parsed = yield* Schema.decodeEffect(Schema.fromJsonString(RunReport))(
           writes[0]?.content ?? "{}",
         );
         expect(parsed.isPassed).toBe(true);

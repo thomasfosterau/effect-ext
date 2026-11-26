@@ -102,14 +102,14 @@ export type CookieSubscriptionErrorReason = "Unsupported" | "InvalidSubscription
  * @since 0.2.0
  * @category errors
  */
-export class CookieSubscriptionError extends Schema.TaggedError<CookieSubscriptionError>()(
-  "CookieSubscriptionError",
-  {
-    operation: Schema.Literals(["subscribe", "unsubscribe", "subscriptions"]),
-    reason: Schema.Literals(["Unsupported", "InvalidSubscription", "Failed"]),
-    cause: Schema.Unknown,
-  },
-) {
+export class CookieSubscriptionError extends Schema.TaggedError<
+  CookieSubscriptionError,
+  { readonly brand: unique symbol }
+>()("CookieSubscriptionError", {
+  operation: Schema.Literals(["subscribe", "unsubscribe", "subscriptions"]),
+  reason: Schema.Literals(["Unsupported", "InvalidSubscription", "Failed"]),
+  cause: Schema.Unknown,
+}) {
   override get message(): string {
     return `service-worker: cookie ${this.operation}: ${this.reason}`;
   }

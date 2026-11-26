@@ -80,7 +80,10 @@ export type WakeLockErrorReason = "Unsupported" | "NotAllowed" | "Failed";
  * @since 0.1.0
  * @category errors
  */
-export class WakeLockError extends Schema.TaggedError<WakeLockError>()("WakeLockError", {
+export class WakeLockError extends Schema.TaggedError<
+  WakeLockError,
+  { readonly brand: unique symbol }
+>()("WakeLockError", {
   reason: Schema.Literals(["Unsupported", "NotAllowed", "Failed"]),
   message: Schema.String,
   cause: Schema.Unknown,

@@ -114,14 +114,14 @@ export type NotificationErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class NotificationError extends Schema.TaggedError<NotificationError>()(
-  "NotificationError",
-  {
-    reason: Schema.Literals(["Unsupported", "NotAllowed", "Denied", "InvalidData", "Failed"]),
-    message: Schema.String,
-    cause: Schema.Unknown,
-  },
-) {}
+export class NotificationError extends Schema.TaggedError<
+  NotificationError,
+  { readonly brand: unique symbol }
+>()("NotificationError", {
+  reason: Schema.Literals(["Unsupported", "NotAllowed", "Denied", "InvalidData", "Failed"]),
+  message: Schema.String,
+  cause: Schema.Unknown,
+}) {}
 
 const notificationError = (reason: NotificationErrorReason, cause: unknown) =>
   new NotificationError({ reason, cause, message: `notification: ${reason}` });

@@ -223,7 +223,10 @@ export type NavigatorErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class NavigatorError extends Schema.TaggedError<NavigatorError>()("NavigatorError", {
+export class NavigatorError extends Schema.TaggedError<
+  NavigatorError,
+  { readonly brand: unique symbol }
+>()("NavigatorError", {
   operation: Schema.Literals([
     "share",
     "sendBeacon",

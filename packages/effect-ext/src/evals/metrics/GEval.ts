@@ -66,13 +66,13 @@ import type { Threshold } from "../Threshold.ts";
  *
  * @since 0.1.0
  */
-export class MissingEvaluationParamError extends Schema.TaggedError<MissingEvaluationParamError>()(
-  "MissingEvaluationParamError",
-  {
-    metric: Schema.String,
-    param: Schema.String,
-  },
-) {}
+export class MissingEvaluationParamError extends Schema.TaggedError<
+  MissingEvaluationParamError,
+  { readonly brand: unique symbol }
+>()("MissingEvaluationParamError", {
+  metric: Schema.String,
+  param: Schema.String,
+}) {}
 
 /**
  * A malformed `gEval` definition: a rubric with no bands, an inverted or
@@ -83,12 +83,12 @@ export class MissingEvaluationParamError extends Schema.TaggedError<MissingEvalu
  *
  * @since 0.1.0
  */
-export class InvalidGEvalDefinitionError extends Schema.TaggedError<InvalidGEvalDefinitionError>()(
-  "InvalidGEvalDefinitionError",
-  {
-    message: Schema.String,
-  },
-) {}
+export class InvalidGEvalDefinitionError extends Schema.TaggedError<
+  InvalidGEvalDefinitionError,
+  { readonly brand: unique symbol }
+>()("InvalidGEvalDefinitionError", {
+  message: Schema.String,
+}) {}
 
 /**
  * The failure modes of a `gEval` / `gEvalConversational` scorer.
@@ -102,7 +102,7 @@ export type GEvalError = MissingEvaluationParamError | AiError.AiError;
  *
  * @since 0.1.0
  */
-export const isMissing = (value: unknown): boolean => value === undefined || value === null;
+export const isMissing = (value: unknown): boolean => P.isNullish(value);
 
 // ── Rubric ───────────────────────────────────────────────────────────
 

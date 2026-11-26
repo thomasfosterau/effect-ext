@@ -186,7 +186,10 @@ export type FilePickerErrorReason = "Unsupported" | "Aborted" | "NotAllowed" | "
  * @since 0.1.0
  * @category errors
  */
-export class FilePickerError extends Schema.TaggedError<FilePickerError>()("FilePickerError", {
+export class FilePickerError extends Schema.TaggedError<
+  FilePickerError,
+  { readonly brand: unique symbol }
+>()("FilePickerError", {
   reason: Schema.Literals(["Unsupported", "Aborted", "NotAllowed", "Failed"]),
   method: Schema.Literals(["open", "save", "directory", "permission", "requestPermission"]),
   message: Schema.String,
@@ -264,12 +267,10 @@ export const make = (pickers?: FilePickerLike): FilePicker["Service"] => {
   return FilePicker.of({
     supported: true,
     open: (options) =>
-      Effect.flatMap(
-        call("open", () => pickers.showOpenFilePicker(options)),
-        (handles) =>
-          Arr.isReadonlyArrayNonEmpty(handles)
-            ? Effect.succeed(handles)
-            : Effect.fail(pickerError("open", "Aborted", undefined)),
+      call("open", () => pickers.showOpenFilePicker(options)).pipe(
+        Effect.filterOrFail(Arr.isReadonlyArrayNonEmpty, () =>
+          pickerError("open", "Aborted", undefined),
+        ),
       ),
     save: (options) => call("save", () => pickers.showSaveFilePicker(options)),
     directory: (options) => call("directory", () => pickers.showDirectoryPicker(options)),

@@ -70,7 +70,10 @@ export type BroadcastErrorReason = "Unsupported" | "DataClone" | "Closed" | "Fai
  * @since 0.1.0
  * @category errors
  */
-export class BroadcastError extends Schema.TaggedError<BroadcastError>()("BroadcastError", {
+export class BroadcastError extends Schema.TaggedError<
+  BroadcastError,
+  { readonly brand: unique symbol }
+>()("BroadcastError", {
   channel: Schema.String,
   reason: Schema.Literals(["Unsupported", "DataClone", "Closed", "Failed"]),
   message: Schema.String,

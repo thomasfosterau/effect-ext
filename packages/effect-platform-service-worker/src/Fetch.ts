@@ -43,7 +43,10 @@ import { EventLifetime, eventLifetime, type ExtendableEventLike } from "./intern
  * @since 0.1.0
  * @category errors
  */
-export class FetchFailed extends Schema.TaggedError<FetchFailed>()("FetchFailed", {
+export class FetchFailed extends Schema.TaggedError<
+  FetchFailed,
+  { readonly brand: unique symbol }
+>()("FetchFailed", {
   url: Schema.String,
   cause: Schema.Unknown,
 }) {}
@@ -71,10 +74,13 @@ export interface FetchEventLike extends ExtendableEventLike {
  * @since 0.1.0
  * @category errors
  */
-export class CacheMiss extends Schema.TaggedError<CacheMiss>()("CacheMiss", {
-  cacheName: Schema.String,
-  url: Schema.String,
-}) {}
+export class CacheMiss extends Schema.TaggedError<CacheMiss, { readonly brand: unique symbol }>()(
+  "CacheMiss",
+  {
+    cacheName: Schema.String,
+    url: Schema.String,
+  },
+) {}
 
 /**
  * {@link precache} fetched a URL and got something it will not install: any
@@ -84,7 +90,10 @@ export class CacheMiss extends Schema.TaggedError<CacheMiss>()("CacheMiss", {
  * @since 0.1.0
  * @category errors
  */
-export class PrecacheRejected extends Schema.TaggedError<PrecacheRejected>()("PrecacheRejected", {
+export class PrecacheRejected extends Schema.TaggedError<
+  PrecacheRejected,
+  { readonly brand: unique symbol }
+>()("PrecacheRejected", {
   url: Schema.String,
   status: Schema.Int,
 }) {}
@@ -551,7 +560,7 @@ export const networkOnly: Strategy<FetchFailed> = fetchRequest;
  * const program = Effect.gen(function* () {
  *   yield* precache("shell-v1", ["https://example.com/", "https://example.com/app.css"])
  *   const cache = yield* openCache("shell-v1")
- *   return (yield* cache.keys()).length
+ *   return (yield* cache.keys).length
  * })
  *
  * await Effect.runPromise(

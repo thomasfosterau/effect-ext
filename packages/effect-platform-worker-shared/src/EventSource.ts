@@ -104,7 +104,10 @@ export type EventSourceErrorReason = "Unsupported" | "InvalidUrl" | "Closed" | "
  * @since 0.1.0
  * @category errors
  */
-export class EventSourceError extends Schema.TaggedError<EventSourceError>()("EventSourceError", {
+export class EventSourceError extends Schema.TaggedError<
+  EventSourceError,
+  { readonly brand: unique symbol }
+>()("EventSourceError", {
   reason: Schema.Literals(["Unsupported", "InvalidUrl", "Closed", "Failed"]),
   url: Schema.String,
   message: Schema.String,

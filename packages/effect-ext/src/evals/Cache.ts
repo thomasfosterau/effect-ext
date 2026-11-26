@@ -36,6 +36,7 @@
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as Arr from "effect/Array";
+import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as P from "effect/Predicate";
 import * as R from "effect/Record";
@@ -148,7 +149,7 @@ export const hashKey = (input: CacheKeyInput): Effect.Effect<string> =>
     Effect.flatMap((json) =>
       Effect.tryPromise({
         try: () => crypto.subtle.digest("SHA-256", encoder.encode(json)),
-        catch: (cause) => cause,
+        catch: (cause) => new Cause.UnknownError(cause),
       }),
     ),
     Effect.map(toHex),

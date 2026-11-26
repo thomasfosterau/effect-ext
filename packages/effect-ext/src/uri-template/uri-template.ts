@@ -61,7 +61,10 @@ export type TemplateErrorReason =
  * @since 0.1.0
  * @category errors
  */
-export class TemplateError extends Schema.TaggedError<TemplateError>()("TemplateError", {
+export class TemplateError extends Schema.TaggedError<
+  TemplateError,
+  { readonly brand: unique symbol }
+>()("TemplateError", {
   reason: Schema.Literals([
     "UnmatchedBrace",
     "InvalidLiteral",

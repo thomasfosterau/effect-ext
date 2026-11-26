@@ -48,27 +48,35 @@ interface CapturedRequest {
   readonly body: RequestBody;
 }
 
-interface RequestBody {
-  readonly model?: string;
-  readonly stream?: boolean;
-  readonly temperature?: number;
-  readonly messages?: ReadonlyArray<Record<string, unknown>>;
-  readonly tools?: ReadonlyArray<Record<string, unknown>>;
-  readonly tool_choice?: unknown;
-  readonly response_format?: {
-    readonly type?: string;
-    readonly json_schema?: { readonly name?: string };
-  };
-}
+/** The JSON body of a captured request, decoded: the fields the tests read, then any other key. */
+const RequestBody = Schema.StructWithRest(
+  Schema.Struct({
+    model: Schema.optionalKey(Schema.String),
+    stream: Schema.optionalKey(Schema.Boolean),
+    temperature: Schema.optionalKey(Schema.Finite),
+    messages: Schema.optionalKey(Schema.Array(Schema.Record(Schema.String, Schema.Json))),
+    tools: Schema.optionalKey(Schema.Array(Schema.Record(Schema.String, Schema.Json))),
+    tool_choice: Schema.optionalKey(Schema.Json),
+    response_format: Schema.optionalKey(
+      Schema.Struct({
+        type: Schema.optionalKey(Schema.String),
+        json_schema: Schema.optionalKey(Schema.Struct({ name: Schema.optionalKey(Schema.String) })),
+      }),
+    ),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)],
+);
+type RequestBody = typeof RequestBody.Type;
+
+/** A captured body: the decoded JSON, or `{}` for a request without one. */
+const decodeBody = (text: string): RequestBody =>
+  Option.getOrElse(Schema.decodeOption(Schema.fromJsonString(RequestBody))(text), () => ({}));
 
 const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
   const calls: Array<CapturedRequest> = [];
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
-    const body = (await request
-      .clone()
-      .json()
-      .catch(() => ({}))) as RequestBody;
+    const body = decodeBody(await request.clone().text());
     const captured: CapturedRequest = {
       url: request.url,
       authorization: Option.fromNullishOr(request.headers.get("authorization")),
@@ -84,7 +92,7 @@ const makeFetch = (respond: (captured: CapturedRequest) => Response) => {
 /** Serialises a canned response fixture as JSON text. */
 const toJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 
-const jsonResponse = (body: unknown, status = 200): Response =>
+const jsonResponse = (body: Schema.Json, status = 200): Response =>
   new Response(toJson(body), {
     status,
     headers: { "content-type": "application/json" },
@@ -100,7 +108,7 @@ const sseResponse = (frames: ReadonlyArray<unknown>): Response => {
   });
 };
 
-const completion = (over?: Record<string, unknown>) => ({
+const completion = (over?: Record<string, Schema.Json>) => ({
   id: "cmpl_1",
   object: "chat.completion",
   model: "mistral-large-latest",
@@ -587,7 +595,7 @@ describe("MistralLanguageModel tool calling", () => {
         }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
         const tools = calls[0]?.body.tools ?? [];
-        expect((tools[0] as { function?: { name?: string } })?.function?.name).toBe("get_weather");
+        expect(tools[0]).toMatchObject({ function: { name: "get_weather" } });
         expect(calls[0]?.body.tool_choice).toBe("auto");
         expect(response.toolCalls).toHaveLength(1);
         expect(response.toolResults[0]?.result).toBe("sunny in Paris");
@@ -763,13 +771,13 @@ describe("MistralLanguageModel.streamText", () => {
 
         const text = parts
           .filter((part) => part.type === "text-delta")
-          .map((part) => (part as { delta: string }).delta)
+          .map((part) => part.delta)
           .join("");
         expect(text).toBe("Hello world");
 
         const finish = parts.find((part) => part.type === "finish");
         expect(finish).toBeDefined();
-        expect((finish as { reason?: string }).reason).toBe("stop");
+        expect(finish?.reason).toBe("stop");
       }),
     );
   });
@@ -827,7 +835,7 @@ describe("MistralLanguageModel.streamText", () => {
 
         const toolCall = parts.find((part) => part.type === "tool-call");
         expect(toolCall).toBeDefined();
-        expect((toolCall as { params?: unknown }).params).toEqual({ city: "Nice" });
+        expect(toolCall?.params).toEqual({ city: "Nice" });
       }),
     );
   });
@@ -985,7 +993,7 @@ describe("MistralLanguageModel request construction", () => {
           Effect.provideService(FetchHttpClient.Fetch, fetch),
         );
 
-        const body = calls[0]?.body as Record<string, unknown>;
+        const body = calls[0]?.body ?? {};
         expect(body.top_p).toBe(0.9);
         expect(body.max_tokens).toBe(64);
         expect(body.random_seed).toBe(7);
@@ -1014,13 +1022,13 @@ describe("MistralLanguageModel request construction", () => {
           ],
         }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-        const message = calls[0]?.body.messages?.[0] as {
-          content: Array<{ image_url: { url: string } }>;
-        };
-        const content = message.content;
-        expect(content[0]?.image_url.url).toBe("https://img.example/a.png");
-        expect(content[1]?.image_url.url).toBe("https://img.example/b.png");
-        expect(content[2]?.image_url.url).toBe("data:image/jpeg;base64,QUJD");
+        expect(calls[0]?.body.messages?.[0]).toMatchObject({
+          content: [
+            { image_url: { url: "https://img.example/a.png" } },
+            { image_url: { url: "https://img.example/b.png" } },
+            { image_url: { url: "data:image/jpeg;base64,QUJD" } },
+          ],
+        });
       }),
     );
 
@@ -1053,13 +1061,10 @@ describe("MistralLanguageModel request construction", () => {
           ],
         }).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch));
 
-        const assistant = calls[0]?.body.messages?.[0] as {
-          content: unknown;
-          tool_calls: Array<{ id: string }>;
-        };
-        expect(assistant.content).toBeNull();
-        expect(assistant.tool_calls).toHaveLength(1);
-        expect(assistant.tool_calls[0]?.id).toBe("call_a");
+        expect(calls[0]?.body.messages?.[0]).toMatchObject({
+          content: null,
+          tool_calls: [{ id: "call_a" }],
+        });
       }),
     );
   });
