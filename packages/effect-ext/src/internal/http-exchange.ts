@@ -67,25 +67,15 @@ export const redactedHeaders = (
     revealed(R.toEntries(Headers.redact(headers, names))),
   );
 
-/**
- * The query parameter names a recording redacts, shared by `Har` and `Warc`:
- * Effect's own defaults for `UrlParams.CurrentRedactedNames`, which only
- * ships from effect 4.0.5.
- */
-export const RedactedQueryNames = Context.Reference<ReadonlyArray<string | RegExp>>(
-  "@thomasfosterau/effect-ext/RedactedQueryNames",
-  { defaultValue: () => ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"] },
-);
-
-/** `params` with the names in {@link RedactedQueryNames} written as {@link REDACTED}. */
+/** `params` with the names in `UrlParams.CurrentRedactedNames` written as {@link REDACTED}. */
 export const redactedQuery = (
   params: UrlParams.UrlParams,
 ): Effect.Effect<ReadonlyArray<readonly [string, string]>> =>
-  Effect.map(Effect.service(RedactedQueryNames), (names) =>
+  Effect.map(Effect.service(UrlParams.CurrentRedactedNames), (names) =>
     revealed(
       Arr.map(params.params, ([name, value]) => [
         name,
-        P.isString(value) && Headers.isRedactedName(name, names) ? Redacted.make(value) : value,
+        P.isString(value) && UrlParams.isRedactedName(name, names) ? Redacted.make(value) : value,
       ]),
     ),
   );

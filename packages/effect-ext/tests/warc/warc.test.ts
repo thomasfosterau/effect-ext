@@ -13,6 +13,7 @@ import * as HttpClientRequest from "effect/http/HttpClientRequest";
 import * as HttpClientResponse from "effect/http/HttpClientResponse";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
+import * as UrlParams from "effect/http/UrlParams";
 import * as Warc from "@thomasfosterau/effect-ext/Warc";
 
 const bytes = (text: string) => new TextEncoder().encode(text);
@@ -312,7 +313,7 @@ describe("Warc.recordClient", () => {
       expect(requestBlock).toMatch(/content-length: 7\r\n\r\npayload$/);
     }).pipe(
       Effect.provide(Warc.layerRecorder),
-      Effect.provideService(Warc.RedactedQueryNames, ["token"]),
+      Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]),
     ),
   );
 

@@ -48,8 +48,10 @@ catalog:
   vite: npm:@voidzero-dev/vite-plus-core@8.3.8000
   vitest: 5.1.1
 
-# Peer ranges of the published packages. `effect` is `^4.0.0` unless a
-# package's own dependency needs more, in a catalog of its own that says why.
+# Peer ranges of the published packages. `effect` is `^4.0.5` (Har and Warc
+# redact query parameters through `UrlParams.CurrentRedactedNames`, first in
+# 4.0.5) unless a package's own dependency needs more, in a catalog of its own
+# that says why.
 catalogs:
   peers:
     # The first release whose `Ai` is assignable to `WorkersAiBinding`.
@@ -59,7 +61,7 @@ catalogs:
     "@effect/platform-node": ^4.0.0
     # Each 0.x minor in the union passed the gates.
     "@thomasfosterau/effect-parse": ^0.4.1 || ^0.5.0 || ^0.6.0
-    effect: ^4.0.0
+    effect: ^4.0.5
   # effect-ai-cloudflare: AI Gateway routing (`gatewayId`) first shipped in
   # @effect/ai-cloudflare 4.0.6, which peers on `effect ^4.0.6`.
   ai-cloudflare-peers:

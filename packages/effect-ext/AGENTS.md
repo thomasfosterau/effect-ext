@@ -272,7 +272,7 @@ Rust's documented semantics are the spec, and `tests/numeric/examples.test.ts` p
 **Invariants.**
 
 - **The schema is HAR 1.2's**, members optional where the specification says so (`Schema.optionalKey`), and the reader is lenient only about what HAR allows: unknown members (the `_` custom fields) are dropped, nothing else is repaired. A decoded document encodes back to itself.
-- **A recording never holds a secret by default.** Headers and query parameters are redacted through Effect's own `Headers.CurrentRedactedNames` and `Har.RedactedQueryNames` (a copy of `UrlParams.CurrentRedactedNames`'s defaults, which Effect only has from 4.0.5, past the peer floor), written as `"<redacted>"`; cookies are not parsed out of their headers (`cookies` is empty).
+- **A recording never holds a secret by default.** Headers and query parameters are redacted through Effect's own `Headers.CurrentRedactedNames` and `UrlParams.CurrentRedactedNames` (from effect 4.0.5, hence the peer floor), written as `"<redacted>"`; cookies are not parsed out of their headers (`cookies` is empty).
 - **Recording never changes the exchange.** `recordClient` returns the response it received (its body buffered, then served again); `recordServer` never reads the request body, which the handler owns.
 - **Replay matches method and URL exactly**, query included, first entry wins; a miss is a `TransportError`, never a made-up response.
 

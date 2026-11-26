@@ -338,12 +338,11 @@ const recorded = Effect.gen(function* () {
 | `stringify(har)` | Two-space JSON. |
 | `make({ creator, entries, pages? })` | A version 1.2 document. |
 | `Recorder`, `makeRecorder`, `layerRecorder` | Collects entries: `add`, `entries`, `clear`, `har(creator)`. |
-| `RedactedQueryNames` | The query parameter names a recording redacts (a `Context.Reference`). |
 | `recordClient(client)` | The client, recording each exchange. The response body is buffered to record it; a stream or form-data request body is noted, not recorded. |
 | `recordServer` | Server middleware recording each exchange. The request body is not read (the handler needs it); a stream or form-data response body is noted, not recorded. |
 | `replayClient(har)` | A client answering from the first entry with the same method and URL, query included; anything else fails with a `TransportError`. |
 
-Recorded headers named in `Headers.CurrentRedactedNames` (by default `authorization`, `cookie`, `set-cookie` and the like) and query parameters named in `RedactedQueryNames` (by default Effect's signed-URL names: `Signature`, `sig`, …) are written as `"<redacted>"`, so a recording can be shared. Text-like bodies (`text/*`, JSON, XML, form-encoded) are recorded as text, anything else as base64. Timings are the whole exchange in `wait`: an `HttpClient` exposes no finer phases.
+Recorded headers named in `Headers.CurrentRedactedNames` (by default `authorization`, `cookie`, `set-cookie` and the like) and query parameters named in `UrlParams.CurrentRedactedNames` (by default Effect's signed-URL names: `X-Amz-Signature`, `Signature`, `sig`, …) are written as `"<redacted>"`, so a recording can be shared. Text-like bodies (`text/*`, JSON, XML, form-encoded) are recorded as text, anything else as base64. Timings are the whole exchange in `wait`: an `HttpClient` exposes no finer phases.
 
 ## Warc
 
@@ -398,7 +397,6 @@ const recorded = Effect.gen(function* () {
 | `makeRecord({ type, block, fields?, contentType?, version?, date?, id? })` | A record with `WARC-Type`, a fresh `WARC-Record-ID`, `WARC-Date` (from `Clock`) and `Content-Length`. |
 | `warcinfo({ fields, filename?, version? })` | The `warcinfo` record a file opens with. |
 | `Recorder`, `makeRecorder`, `layerRecorder` | Collects records: `add`, `records`, `clear`, `bytes`. |
-| `RedactedQueryNames` | The query parameter names a recording redacts; the same reference as `Har`'s. |
 | `recordClient(client, { version? })`, `recordServer` | Record each exchange as a `response` record and a `request` record joined by `WARC-Concurrent-To`. |
 
 Files are read and written uncompressed: for a `.warc.gz`, pipe each record through a `CompressionStream("gzip")` (one member per record) or the file through a `DecompressionStream`. Digests (`WARC-Block-Digest`, `WARC-Payload-Digest`) are not computed; pass them in `fields`. A recorded HTTP block holds the body as the client saw it, decoded where `fetch` decoded it, so `Content-Encoding` and `Transfer-Encoding` are dropped and `Content-Length` rewritten to match; a body that was not recorded (a stream, form data, or a server request body the handler owns) is marked `WARC-Truncated: unspecified`. Headers and query parameters are redacted as in `Har`.
