@@ -52,8 +52,6 @@ catalog:
 # that says why.
 catalogs:
   peers:
-    # The first release whose `Ai` is assignable to `WorkersAiBinding`.
-    "@cloudflare/workers-types": ">=4.20250312.0"
     "@effect/ai-anthropic": ^4.0.0
     "@effect/platform-browser": ^4.0.0
     "@effect/platform-node": ^4.0.0

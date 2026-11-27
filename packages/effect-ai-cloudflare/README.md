@@ -8,7 +8,7 @@ Cloudflare AI for [Effect](https://effect.website), built on the official [`@eff
 pnpm add @thomasfosterau/effect-ai-cloudflare @thomasfosterau/effect-ext effect @effect/ai-cloudflare @effect/ai-anthropic
 ```
 
-`effect` and `@effect/ai-cloudflare` (`^4.0.6`, the first `@effect/ai-cloudflare` with AI Gateway routing) and `@effect/ai-anthropic` (`^4.0.0`) are peer dependencies: `effect` must be a single copy across your app. `@cloudflare/workers-types` (`>=4.20250312.0`) is an optional peer, for your own Worker's typing. `@thomasfosterau/effect-ext` is a dependency; add it yourself to import the `RerankerModel` / `ModerationModel` tags.
+`effect` and `@effect/ai-cloudflare` (`^4.0.6`, the first `@effect/ai-cloudflare` with AI Gateway routing) and `@effect/ai-anthropic` (`^4.0.0`) are peer dependencies: `effect` must be a single copy across your app. A Worker's `env.AI`, typed by `@cloudflare/workers-types` `>=4.20250312.0`, is assignable to its binding type; the package doesn't depend on workers-types. `@thomasfosterau/effect-ext` is a dependency; add it yourself to import the `RerankerModel` / `ModerationModel` tags.
 
 ## Example
 

@@ -141,7 +141,7 @@ for (const { specifier, dts } of targets) {
  *
  * No package loads ambient `types`: a consumer's compiler has only what it
  * installs and lists itself, so a bundle must not lean on any package's
- * globals (`node`, or an optional peer such as `@cloudflare/workers-types`).
+ * globals (`node`, or a types-only package such as `@cloudflare/workers-types`).
  * effect-ai-cloudflare is therefore checked without workers-types, which proves its
  * `.d.ts` self-contained: it types the Worker binding with its own structural
  * slice rather than that package's ambient `Ai`, `AIGatewayProviders` and
@@ -400,13 +400,8 @@ const checkPackedBin = (dir, manifest) => {
  * - an optional peer has no entry here, or an entry names an undeclared peer.
  *
  * A peer imported only by a `bin` (not an export) lists no subpaths.
- * `@cloudflare/workers-types` is a types-only package, so no built `.js` may
- * import it.
  */
 const optionalPeerSubpaths = {
-  "@thomasfosterau/effect-ai-cloudflare": {
-    "@cloudflare/workers-types": [],
-  },
   "@thomasfosterau/effect-ext": {
     // The `effect-evals` bin's CLI only.
     "@effect/platform-node": [],
