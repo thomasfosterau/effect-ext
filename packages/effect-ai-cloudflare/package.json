@@ -95,14 +95,8 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@cloudflare/workers-types": "catalog:peers",
     "@effect/ai-anthropic": "catalog:peers",
     "@effect/ai-cloudflare": "catalog:ai-cloudflare-peers",
     "effect": "catalog:ai-cloudflare-peers"
-  },
-  "peerDependenciesMeta": {
-    "@cloudflare/workers-types": {
-      "optional": true
-    }
   }
 }

@@ -14,10 +14,9 @@
  * consumer that never installs it still type-checks them with
  * `skipLibCheck: false`. A Worker's `env.AI`, typed `Ai` by
  * `@cloudflare/workers-types`, is assignable to {@link WorkersAiBinding}
- * (`tests/workers-types-binding.test.ts` proves it). `@cloudflare/workers-types`
- * stays an optional peer (`>=4.20250312.0`, the first release whose
- * `AiGateway` declares `getUrl()`; an older release's `env.AI` is not
- * assignable) for the application's own Worker typing.
+ * (`tests/workers-types-binding.test.ts` proves it) from
+ * `@cloudflare/workers-types` 4.20250312.0, the first release whose
+ * `AiGateway` declares `getUrl()`.
  *
  * @module Binding
  *
