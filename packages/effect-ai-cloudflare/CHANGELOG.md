@@ -4,6 +4,33 @@
 
 This package was published as `@thomasfosterau/effect-ai-gateway` until 0.5.1 and renamed before its first release under this name (0.1.0). The entries below are that package's.
 
+## 0.3.0
+
+### Minor Changes
+
+- [#235](https://github.com/thomasfosterau/effect-ext/pull/235) [`54a7adb`](https://github.com/thomasfosterau/effect-ext/commit/54a7adb4ca0b20e6f16b8271b43be5ae63cc5025) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - The root now re-exports each module as a namespace, like every other package, and the names drop the module prefix the namespace makes redundant. Subpath imports keep their paths but take the new names.
+  
+  Migration:
+  
+  | Before | After (root) | After (subpath) |
+  | --- | --- | --- |
+  | `anthropicLanguageModelLayer`, `…FromUrl` | `Anthropic.languageModelLayer`, `…FromUrl` | `/Anthropic`: `languageModelLayer` |
+  | `makeCohereEmbeddingModel`, `…FromUrl` | `Cohere.makeEmbeddingModel`, `…FromUrl` | `/Cohere`: `makeEmbeddingModel` |
+  | `makeCohereReranker`, `…FromUrl` | `Cohere.makeReranker`, `…FromUrl` | `/Cohere`: `makeReranker` |
+  | `COHERE_EMBEDDING_MODEL`, `COHERE_RERANK_MODEL`, `COHERE_EMBEDDING_DIMENSIONS` | `Cohere.EMBEDDING_MODEL`, `Cohere.RERANK_MODEL`, `Cohere.EMBEDDING_DIMENSIONS` | `/Cohere` |
+  | `CohereEmbeddingOptions` | `Cohere.EmbeddingOptions` | `/Cohere` |
+  | `makeOpenAiModerationModel`, `…FromUrl` | `OpenAiModeration.makeModel`, `…FromUrl` | `/OpenAiModeration`: `makeModel` |
+  | `OPENAI_MODERATION_MODEL`, `OpenAiModerationOptions`, `OpenAiModerationCall` | `OpenAiModeration.MODEL`, `.Options`, `.Call` | `/OpenAiModeration` |
+  | `gatewayRun`, `gatewayUrl`, `GatewayBinding`, … | `Binding.gatewayRun`, … | `/Binding` (unchanged) |
+  | `gatewayUrlConfig`, `gatewayBaseUrl`, … | `Url.gatewayUrlConfig`, … | `/Url` (unchanged) |
+  | `cloudflareClientLayer`, `CloudflareClient`, … | `WorkersAi.cloudflareClientLayer`, `WorkersAi.CloudflareClient`, … | `/WorkersAi` (unchanged) |
+
+### Patch Changes
+
+- [#251](https://github.com/thomasfosterau/effect-ext/pull/251) [`736a1a6`](https://github.com/thomasfosterau/effect-ext/commit/736a1a6e91038a812752adc812e87f209de8a3c8) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Drop the optional `@cloudflare/workers-types` peer. The published declarations name nothing from it, so it was never needed; a Worker's `env.AI` from workers-types 4.20250312.0 or later is still assignable to `WorkersAiBinding`.
+- Updated dependencies [[`38a568d`](https://github.com/thomasfosterau/effect-ext/commit/38a568debd5c5388d22a6f2b154e08d2a8d9e9fe), [`c874466`](https://github.com/thomasfosterau/effect-ext/commit/c874466831d09a9a00fbe8a41b006ebc8b2dd723), [`6f3812e`](https://github.com/thomasfosterau/effect-ext/commit/6f3812e4832fda75a366d0d827fbf34fc4595489), [`c990546`](https://github.com/thomasfosterau/effect-ext/commit/c9905461377966b77322fd36af58d4317d995c3f), [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300), [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300), [`f7ff718`](https://github.com/thomasfosterau/effect-ext/commit/f7ff718c15df6fbca782df5e482b83be5e1ba7e9), [`115b582`](https://github.com/thomasfosterau/effect-ext/commit/115b58281c8dd5722513e6aad7ff87147df57720), [`9298de4`](https://github.com/thomasfosterau/effect-ext/commit/9298de4afa4a67bd1df7a31118a71f6cf69c785b), [`4092266`](https://github.com/thomasfosterau/effect-ext/commit/4092266f70bcd05ed613f823a9d02437e8ee3ae5)]:
+  - @thomasfosterau/effect-ext@0.5.0
+
 ## 0.2.3
 
 ### Patch Changes

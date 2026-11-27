@@ -1,5 +1,20 @@
 # @thomasfosterau/effect-platform-service-worker
 
+## 0.2.0
+
+### Minor Changes
+
+- [#236](https://github.com/thomasfosterau/effect-ext/pull/236) [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - `CacheHandle.keys` is an `Effect` rather than a function returning one: write `yield* cache.keys` instead of `yield* cache.keys()`.
+
+- [#236](https://github.com/thomasfosterau/effect-ext/pull/236) [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Brand every `Schema` error and value class (`Schema.TaggedError<Self, { readonly brand: unique symbol }>`, and the same on effect-ext's AI response classes such as `ClassifyResponse`, `RerankResponse` and `SpeechResponse`). A structurally identical object no longer type-checks where one of these classes is expected: construct it with `new` instead.
+
+- [#228](https://github.com/thomasfosterau/effect-ext/pull/228) [`fecc71f`](https://github.com/thomasfosterau/effect-ext/commit/fecc71f3a1fa5b63d6cdce19570aa1bae06af0aa) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Adds `CookieSubscriptions` to effect-platform-service-worker: cookie change subscriptions inside a service worker. `subscribe`, `unsubscribe` and `subscriptions` go through `self.registration.cookies` (a context reference, `Unsupported` outside a service worker), and `cookieChangeListener` turns `cookiechange` events into `CookieStore.CookieChange` values for a handler run inside `waitUntil`. `memoryCookieSubscriptions` is an in-memory manager for tests.
+
+### Patch Changes
+
+- Updated dependencies [[`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300), [`16cc82a`](https://github.com/thomasfosterau/effect-ext/commit/16cc82af9fb07ebf02d5d4af0c696e0ca6baf7b8), [`82b2c9d`](https://github.com/thomasfosterau/effect-ext/commit/82b2c9d8d376a543a52fd6bd0f984732242e41fc)]:
+  - @thomasfosterau/effect-platform-worker-shared@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes

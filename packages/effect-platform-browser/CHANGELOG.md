@@ -1,5 +1,27 @@
 # @thomasfosterau/effect-platform-browser
 
+## 0.2.0
+
+### Minor Changes
+
+- [#232](https://github.com/thomasfosterau/effect-ext/pull/232) [`b792ce3`](https://github.com/thomasfosterau/effect-ext/commit/b792ce3817fe956e764d186d3a4005e1990ddf59) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - `Credentials` gains the rest of the Credential Management API: `storePassword` and `password` (`PasswordCredential`), `identity` and `disconnectIdentity` (FedCM), and `preventSilentAccess`, with a `Network` failure reason for FedCM. `TestCredentials` gains a password store and scripted identity providers.
+
+- [#230](https://github.com/thomasfosterau/effect-ext/pull/230) [`8b56c61`](https://github.com/thomasfosterau/effect-ext/commit/8b56c61489a9053e3c90d0421eaa14bcce0657f7) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Adds `FileDrop` to effect-platform-browser: `drops(target)` streams each drop onto an element as its items, each a `File` or `Directory` handle (Chromium's `getAsFileSystemHandle`, the same handles `FilePicker` returns, so a dropped directory becomes a `FileSystem` through `BrowserFileSystem`) or, where the agent has none, a `Blob` with the dropped `File`. `BrowserTesting` gains `TestFileDrop`, a drop target whose `Control` drops paths from an in-memory disk.
+
+- [#229](https://github.com/thomasfosterau/effect-ext/pull/229) [`a2fb0fe`](https://github.com/thomasfosterau/effect-ext/commit/a2fb0fe64cca255b2bd0454ef6f8d160b071e91b) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Adds handle permissions to `FilePicker`: `permission(handle, mode)` reads a file or directory handle's permission (`granted`, `denied` or `prompt`) and `requestPermission(handle, mode)` asks the user for it, failing `NotAllowed` without a user gesture. `fileSystem` takes a stored directory `handle` in place of the picker, asking for the permission it lacks first. `TestFilePicker`'s `Control` gains `stored`, `setPermission`, `respondToRequest` and `permissionRequests`, and the handles it picks answer permission calls.
+
+- [#236](https://github.com/thomasfosterau/effect-ext/pull/236) [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Brand every `Schema` error and value class (`Schema.TaggedError<Self, { readonly brand: unique symbol }>`, and the same on effect-ext's AI response classes such as `ClassifyResponse`, `RerankResponse` and `SpeechResponse`). A structurally identical object no longer type-checks where one of these classes is expected: construct it with `new` instead.
+
+- [#237](https://github.com/thomasfosterau/effect-ext/pull/237) [`115b582`](https://github.com/thomasfosterau/effect-ext/commit/115b58281c8dd5722513e6aad7ff87147df57720) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Add `Speaker` and `Dictation` to effect-ext: provider-neutral services for speech said out loud on the device (`say`) and live speech to text (`listen`, a stream of `Transcript` readings), each built with `make` and failing only with `AiError`.
+  
+  effect-platform-browser now depends on effect-ext and adds two modules. `AudioOutput` plays audio bytes through an `<audio>` element, finishing when the clip ends; `Browser.layer` includes it, and `BrowserTesting` adds `TestAudioOutput`. `LiveSpeech` provides `Speaker` and `Dictation` as layers over the browser: `speakerFromSynthesis` (the browser's own voices), `speakerFromModel` (any `SpeechModel`, played through `AudioOutput`) and `dictationFromRecognition` (the browser's own recogniser), mapping each browser failure onto an `AiError` reason.
+
+### Patch Changes
+
+- Updated dependencies [[`38a568d`](https://github.com/thomasfosterau/effect-ext/commit/38a568debd5c5388d22a6f2b154e08d2a8d9e9fe), [`c874466`](https://github.com/thomasfosterau/effect-ext/commit/c874466831d09a9a00fbe8a41b006ebc8b2dd723), [`6f3812e`](https://github.com/thomasfosterau/effect-ext/commit/6f3812e4832fda75a366d0d827fbf34fc4595489), [`c990546`](https://github.com/thomasfosterau/effect-ext/commit/c9905461377966b77322fd36af58d4317d995c3f), [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300), [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300), [`16cc82a`](https://github.com/thomasfosterau/effect-ext/commit/16cc82af9fb07ebf02d5d4af0c696e0ca6baf7b8), [`f7ff718`](https://github.com/thomasfosterau/effect-ext/commit/f7ff718c15df6fbca782df5e482b83be5e1ba7e9), [`115b582`](https://github.com/thomasfosterau/effect-ext/commit/115b58281c8dd5722513e6aad7ff87147df57720), [`82b2c9d`](https://github.com/thomasfosterau/effect-ext/commit/82b2c9d8d376a543a52fd6bd0f984732242e41fc), [`9298de4`](https://github.com/thomasfosterau/effect-ext/commit/9298de4afa4a67bd1df7a31118a71f6cf69c785b), [`4092266`](https://github.com/thomasfosterau/effect-ext/commit/4092266f70bcd05ed613f823a9d02437e8ee3ae5)]:
+  - @thomasfosterau/effect-ext@0.5.0
+  - @thomasfosterau/effect-platform-worker-shared@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes
