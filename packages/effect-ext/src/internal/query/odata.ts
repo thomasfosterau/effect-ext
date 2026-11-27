@@ -1,7 +1,8 @@
 /**
  * The OData `$filter` subset `QueryParams.odata` reads and writes: a
  * recursive-descent parser over a token array, and a printer. Values stay the
- * strings they were written as; the schema decodes them afterwards.
+ * strings they were written as; the schema decodes them afterwards. OData's
+ * `/` path separator is `Query`'s `.`, and `rel/any(x: …)` is an `Exists`.
  */
 
 import * as Arr from "effect/Array";
@@ -18,6 +19,17 @@ interface Token {
 }
 
 type Step<A> = Result.Result<readonly [A, number], string>;
+
+/** The tokens, and the innermost lambda variable the paths here must start with. */
+interface Ctx {
+  readonly tokens: ReadonlyArray<Token>;
+  readonly variable: Option.Option<string>;
+}
+
+type Parser<A> = (ctx: Ctx, i: number) => Step<A>;
+
+const LAMBDA = /^(.+)\/(any|all)$/;
+const VARIABLE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 const COMPARE = {
   eq: "eq",
@@ -97,12 +109,31 @@ const expectToken = (tokens: ReadonlyArray<Token>, i: number, text: string): Ste
 
 const unquote = (text: string): string => text.slice(1, -1).replaceAll("''", "'");
 
-const identifier = (tokens: ReadonlyArray<Token>, i: number): Step<string> =>
+/** An OData path as a `Query` path: the lambda variable stripped, `/` as `.`. */
+const toPath = (ctx: Ctx, token: Token): Result.Result<string, string> => {
+  const segments = token.text.split("/");
+  const relative = Option.match(ctx.variable, {
+    onNone: () => Result.succeed(segments),
+    onSome: (variable) =>
+      segments[0] === variable && segments.length > 1
+        ? Result.succeed(Arr.drop(segments, 1))
+        : Result.fail(
+            `inside a lambda a path starts with ${quote(`${variable}/`)}, found ${quote(token.text)} at ${token.offset}`,
+          ),
+  });
+  return Result.flatMap(relative, (rest) =>
+    Arr.some(rest, (segment) => segment === "")
+      ? Result.fail(`malformed path ${quote(token.text)} at ${token.offset}`)
+      : Result.succeed(rest.join(".")),
+  );
+};
+
+const identifier: Parser<string> = (ctx, i) =>
   Option.match(
-    Option.filter(at(tokens, i), (token) => token.kind === "word"),
+    Option.filter(at(ctx.tokens, i), (token) => token.kind === "word"),
     {
-      onNone: () => Result.fail(`expected a field name, found ${describe(tokens, i)}`),
-      onSome: (token) => Result.succeed([token.text, i + 1]),
+      onNone: () => Result.fail(`expected a field name, found ${describe(ctx.tokens, i)}`),
+      onSome: (token) => Result.map(toPath(ctx, token), (path) => [path, i + 1] as const),
     },
   );
 
@@ -139,10 +170,11 @@ const listRest = (
     }),
   );
 
-const textCall = (tokens: ReadonlyArray<Token>, i: number, op: Query.TextOp): Step<Query.Expr> =>
+const textCall = (ctx: Ctx, i: number, op: Query.TextOp): Step<Query.Expr> =>
   Result.gen(function* () {
+    const { tokens } = ctx;
     const [, a] = yield* expectToken(tokens, i, "(");
-    const [field, b] = yield* identifier(tokens, a);
+    const [field, b] = yield* identifier(ctx, a);
     const [, c] = yield* expectToken(tokens, b, ",");
     const [value, d] = yield* literal(tokens, c);
     const [, e] = yield* expectToken(tokens, d, ")");
@@ -153,9 +185,10 @@ const textCall = (tokens: ReadonlyArray<Token>, i: number, op: Query.TextOp): St
     return [{ _tag: "Text", field, op, value: text }, e] as const;
   });
 
-const comparison = (tokens: ReadonlyArray<Token>, i: number): Step<Query.Expr> =>
+const comparison: Parser<Query.Expr> = (ctx, i) =>
   Result.gen(function* () {
-    const [field, a] = yield* identifier(tokens, i);
+    const { tokens } = ctx;
+    const [field, a] = yield* identifier(ctx, i);
     if (is(tokens, a, "in")) {
       const [, b] = yield* expectToken(tokens, a + 1, "(");
       const [values, c] = yield* listRest(tokens, [], b);
@@ -187,51 +220,119 @@ const comparison = (tokens: ReadonlyArray<Token>, i: number): Step<Query.Expr> =
     return [node, b] as const;
   });
 
-const primary = (tokens: ReadonlyArray<Token>, i: number): Step<Query.Expr> => {
+/** The `x:` that opens a lambda's body, written `x:` or `x :`. */
+const lambdaVariable: Parser<string> = (ctx, i) => {
+  const { tokens } = ctx;
+  const word = Option.filter(at(tokens, i), (token) => token.kind === "word");
+  const joined = Option.flatMap(word, (token) =>
+    Option.fromNullOr(/^(.*):$/.exec(token.text)?.[1] ?? null),
+  );
+  const [variable, next] = Option.match(joined, {
+    onSome: (name) => [Option.some(name), i + 1] as const,
+    onNone: () =>
+      is(tokens, i + 1, ":")
+        ? ([Option.map(word, (token) => token.text), i + 2] as const)
+        : ([Option.none<string>(), i] as const),
+  });
+  return Option.match(
+    Option.filter(variable, (name) => VARIABLE.test(name)),
+    {
+      onNone: () => Result.fail(`expected a lambda variable, found ${describe(tokens, i)}`),
+      onSome: (name) => Result.succeed([name, next] as const),
+    },
+  );
+};
+
+/** `rel/any()`, `rel/any(x: body)` or `rel/all(x: body)`, after the path token. */
+const lambda = (
+  ctx: Ctx,
+  i: number,
+  relationship: string,
+  quantifier: "any" | "all",
+): Step<Query.Expr> =>
+  Result.gen(function* () {
+    const { tokens } = ctx;
+    const [, a] = yield* expectToken(tokens, i, "(");
+    if (quantifier === "any" && is(tokens, a, ")")) {
+      return [{ _tag: "Exists", relationship, filter: { _tag: "All" } }, a + 1] as const;
+    }
+    const [variable, b] = yield* lambdaVariable(ctx, a);
+    const [body, c] = yield* or({ tokens, variable: Option.some(variable) }, b);
+    const [, d] = yield* expectToken(tokens, c, ")");
+    const node: Query.Expr =
+      quantifier === "any"
+        ? { _tag: "Exists", relationship, filter: body }
+        : // Every related record matches: none fails to.
+          {
+            _tag: "Not",
+            filter: { _tag: "Exists", relationship, filter: { _tag: "Not", filter: body } },
+          };
+    return [node, d] as const;
+  });
+
+const primary: Parser<Query.Expr> = (ctx, i) => {
+  const { tokens } = ctx;
   if (is(tokens, i, "(")) {
-    return Result.flatMap(or(tokens, i + 1), ([node, j]) =>
+    return Result.flatMap(or(ctx, i + 1), ([node, j]) =>
       Result.map(expectToken(tokens, j, ")"), ([, k]) => [node, k] as const),
     );
   }
-  const call = Option.flatMap(at(tokens, i), (token) =>
-    token.kind === "word" && is(tokens, i + 1, "(")
-      ? R.get<string, Query.TextOp>(TEXT, token.text)
-      : Option.none(),
+  const word = Option.filter(
+    at(tokens, i),
+    (token) => token.kind === "word" && is(tokens, i + 1, "("),
   );
-  return Option.match(call, {
-    onNone: () => comparison(tokens, i),
-    onSome: (op) => textCall(tokens, i + 1, op),
+  const quantified = Option.flatMap(word, (token) =>
+    Option.map(Option.fromNullOr(LAMBDA.exec(token.text)), (match) => ({
+      token: { ...token, text: match[1] ?? "" },
+      quantifier: match[2] === "all" ? ("all" as const) : ("any" as const),
+    })),
+  );
+  return Option.match(quantified, {
+    onSome: ({ token, quantifier }) =>
+      Result.flatMap(toPath(ctx, token), (relationship) =>
+        relationship.includes(".")
+          ? Result.fail(`a lambda crosses one relationship, found ${quote(token.text)}`)
+          : lambda(ctx, i + 1, relationship, quantifier),
+      ),
+    onNone: () =>
+      Option.match(
+        Option.flatMap(word, (token) => R.get<string, Query.TextOp>(TEXT, token.text)),
+        {
+          onNone: () => comparison(ctx, i),
+          onSome: (op) => textCall(ctx, i + 1, op),
+        },
+      ),
   });
 };
 
-const unary = (tokens: ReadonlyArray<Token>, i: number): Step<Query.Expr> =>
-  is(tokens, i, "not")
-    ? Result.map(unary(tokens, i + 1), ([filter, j]) => [{ _tag: "Not", filter }, j] as const)
-    : primary(tokens, i);
+const unary: Parser<Query.Expr> = (ctx, i) =>
+  is(ctx.tokens, i, "not")
+    ? Result.map(unary(ctx, i + 1), ([filter, j]) => [{ _tag: "Not", filter }, j] as const)
+    : primary(ctx, i);
 
 const chain =
-  (keyword: "and" | "or", operand: (tokens: ReadonlyArray<Token>, i: number) => Step<Query.Expr>) =>
-  (tokens: ReadonlyArray<Token>, i: number): Step<Query.Expr> => {
+  (keyword: "and" | "or", operand: Parser<Query.Expr>): Parser<Query.Expr> =>
+  (ctx, i) => {
     const rest = (acc: Arr.NonEmptyReadonlyArray<Query.Expr>, j: number): Step<Query.Expr> =>
-      is(tokens, j, keyword)
-        ? Result.flatMap(operand(tokens, j + 1), ([node, k]) => rest(Arr.append(acc, node), k))
+      is(ctx.tokens, j, keyword)
+        ? Result.flatMap(operand(ctx, j + 1), ([node, k]) => rest(Arr.append(acc, node), k))
         : Result.succeed([
             acc.length === 1
               ? Arr.headNonEmpty(acc)
               : { _tag: keyword === "and" ? "And" : "Or", filters: acc },
             j,
           ]);
-    return Result.flatMap(operand(tokens, i), ([first, j]) => rest([first], j));
+    return Result.flatMap(operand(ctx, i), ([first, j]) => rest([first], j));
   };
 
 const and = chain("and", unary);
-const or: (tokens: ReadonlyArray<Token>, i: number) => Step<Query.Expr> = chain("or", and);
+const or: Parser<Query.Expr> = chain("or", and);
 
 /** Parses `$filter` text into a filter tree whose values are still strings. */
 export const parseFilter = (input: string): Result.Result<Query.Expr, string> =>
   Result.flatMap(tokenize(input), (tokens) =>
     Arr.isReadonlyArrayNonEmpty(tokens)
-      ? Result.flatMap(or(tokens, 0), ([node, i]) =>
+      ? Result.flatMap(or({ tokens, variable: Option.none() }, 0), ([node, i]) =>
           i === tokens.length
             ? Result.succeed(node)
             : Result.fail(`unexpected ${describe(tokens, i)}`),
@@ -242,26 +343,46 @@ export const parseFilter = (input: string): Result.Result<Query.Expr, string> =>
 const printLiteral = (value: string): string =>
   /^-?\d+(?:\.\d+)?$|^true$|^false$/.test(value) ? value : `'${value.replaceAll("'", "''")}'`;
 
-const grouped = (expr: Query.Expr): string =>
+/** How deep in lambdas a printer is: the variable paths there start with. */
+interface Scope {
+  readonly prefix: string;
+  readonly depth: number;
+}
+
+const path = (scope: Scope, field: string): string =>
+  `${scope.prefix}${field.split(".").join("/")}`;
+
+const grouped = (scope: Scope, expr: Query.Expr): string =>
   Match.value(expr).pipe(
-    Match.tag("And", "Or", (node) => `(${printFilter(node)})`),
-    Match.orElse(printFilter),
+    Match.tag("And", "Or", (node) => `(${print(scope, node)})`),
+    Match.orElse((node) => print(scope, node)),
   );
 
-/** Prints a filter tree whose values are strings as `$filter` text; `All` prints as `""`. */
-export const printFilter = (expr: Query.Expr): string =>
+const print = (scope: Scope, expr: Query.Expr): string =>
   Match.valueTags(expr, {
     All: () => "",
-    Compare: (node) => `${node.field} ${COMPARE_WIRE[node.op]} ${printLiteral(String(node.value))}`,
+    Compare: (node) =>
+      `${path(scope, node.field)} ${COMPARE_WIRE[node.op]} ${printLiteral(String(node.value))}`,
     In: (node) =>
-      `${node.field} in (${Arr.map(node.values, (value) => printLiteral(String(value))).join(", ")})`,
-    Text: (node) => `${TEXT_WIRE[node.op]}(${node.field}, ${printLiteral(node.value)})`,
-    Present: (node) => `${node.field} ne null`,
-    And: (node) => Arr.map(node.filters, grouped).join(" and "),
-    Or: (node) => Arr.map(node.filters, grouped).join(" or "),
+      `${path(scope, node.field)} in (${Arr.map(node.values, (value) => printLiteral(String(value))).join(", ")})`,
+    Text: (node) =>
+      `${TEXT_WIRE[node.op]}(${path(scope, node.field)}, ${printLiteral(node.value)})`,
+    Present: (node) => `${path(scope, node.field)} ne null`,
+    Exists: (node) => {
+      const target = `${scope.prefix}${node.relationship}/any`;
+      if (node.filter._tag === "All") return `${target}()`;
+      const variable = scope.depth === 0 ? "x" : `x${scope.depth}`;
+      const inner = { prefix: `${variable}/`, depth: scope.depth + 1 };
+      return `${target}(${variable}: ${print(inner, node.filter)})`;
+    },
+    And: (node) => Arr.map(node.filters, (child) => grouped(scope, child)).join(" and "),
+    Or: (node) => Arr.map(node.filters, (child) => grouped(scope, child)).join(" or "),
     Not: (node) =>
       Match.value(node.filter).pipe(
-        Match.tag("Present", (inner) => `${inner.field} eq null`),
-        Match.orElse((inner) => `not (${printFilter(inner)})`),
+        Match.tag("Present", (inner) => `${path(scope, inner.field)} eq null`),
+        Match.orElse((inner) => `not (${print(scope, inner)})`),
       ),
   });
+
+/** Prints a filter tree whose values are strings as `$filter` text; `All` prints as `""`. */
+export const printFilter = (expr: Query.Expr): string => print({ prefix: "", depth: 0 }, expr);

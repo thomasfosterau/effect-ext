@@ -1,8 +1,8 @@
 /**
  * LINQ-style queries as **data**: a {@link Filter} is a small expression tree
- * (comparisons, membership, text matching, `and` / `or` / `not`), a
- * {@link Query} adds sorting and a window, and both are plain JSON-shaped
- * values.
+ * (comparisons, membership, text matching, `and` / `or` / `not`, and
+ * {@link Exists} over a named relationship), a {@link Query} adds sorting and
+ * a window, and both are plain JSON-shaped values.
  *
  * Because a query is data rather than a closure, one value serves four
  * places:
@@ -21,6 +21,11 @@
  * nullable column: `None` matches no comparison, membership or text test
  * (not even `ne`), and {@link Present} tests for `Some`.
  *
+ * **Field paths** are dotted (`address.city`): each segment reads a field of
+ * the struct the one before it holds, through an `Option` as a nullable
+ * column would, so a `None` on the way matches nothing. A related record is
+ * reached through {@link Exists}, never a path.
+ *
  * @copyright Thomas Foster
  * @since 0.5.0
  */
@@ -29,13 +34,15 @@ import * as Arr from "effect/Array";
 import * as DateTime from "effect/DateTime";
 import * as Eq from "effect/Equal";
 import { dual } from "effect/Function";
+import * as It from "effect/Iterable";
 import * as Match from "effect/Match";
+import * as MutableHashMap from "effect/MutableHashMap";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";
 import * as P from "effect/Predicate";
 import * as R from "effect/Record";
 import * as Schema from "effect/Schema";
-import * as SchemaAST from "effect/SchemaAST";
+import * as Paths from "./internal/query/paths.ts";
 
 // ---------------------------------------------------------------------------
 // The expression tree
@@ -68,7 +75,7 @@ export interface All {
 }
 
 /**
- * Compares one field with a value.
+ * Compares one field, named by its path, with a value.
  *
  * @since 0.5.0
  * @category models
@@ -118,6 +125,20 @@ export interface Present {
 }
 
 /**
+ * Matches when at least one record related through `relationship` matches
+ * `filter` (SQL's `EXISTS`, OData's `any`). The nested filter's fields are the
+ * related record's. A to-one relationship relates at most one record.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export interface Exists {
+  readonly _tag: "Exists";
+  readonly relationship: string;
+  readonly filter: Expr;
+}
+
+/**
  * Matches when every child matches. An empty `And` matches everything.
  *
  * @since 0.5.0
@@ -158,7 +179,7 @@ export interface Not {
  * @since 0.5.0
  * @category models
  */
-export type Expr = All | Compare | In | Text | Present | And | Or | Not;
+export type Expr = All | Compare | In | Text | Present | Exists | And | Or | Not;
 
 declare const FilterTarget: unique symbol;
 
@@ -233,30 +254,119 @@ export type OptionKeys<A> = {
 }[keyof A] &
   string;
 
+type Depth = [never, 0, 1, 2, 3];
+
+// A value a path descends into: a struct, bare or inside an `Option`.
+type Nested<V> =
+  Unwrapped<V> extends infer S
+    ? S extends ReadonlyArray<unknown> | Ordered | ((...args: never) => unknown)
+      ? never
+      : S extends object
+        ? S
+        : never
+    : never;
+
 /**
- * Typed constructors for filters and sort keys over `A`.
+ * Every dotted field path into `A`, through nested structs (bare or inside an
+ * `Option`) up to five segments deep, but not through arrays.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export type Path<A, D extends number = 4> = [A] extends [never]
+  ? never
+  : [D] extends [never]
+    ? never
+    : {
+        readonly [K in keyof A & string]-?: K | `${K}.${Path<Nested<A[K]>, Depth[D]>}`;
+      }[keyof A & string];
+
+/**
+ * The value at a dotted path into `A`.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export type At<A, P extends string> = P extends `${infer H}.${infer T}`
+  ? H extends keyof A
+    ? At<Unwrapped<A[H]>, T>
+    : never
+  : P extends keyof A
+    ? A[P]
+    : never;
+
+/**
+ * The paths into `A` whose values are `V`, or an `Option` of `V`.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export type PathsOf<A, V> = {
+  readonly [P in Path<A>]: [At<A, P>] extends [V | Option.Option<V>] ? P : never;
+}[Path<A>];
+
+/**
+ * The paths into `A` whose values are `Option`s.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export type OptionPaths<A> = {
+  readonly [P in Path<A>]: [At<A, P>] extends [Option.Option<unknown>] ? P : never;
+}[Path<A>];
+
+/**
+ * The record a relationship field holds: an array's element, an `Option`'s
+ * value, or the field's own value.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export type Related<V> =
+  V extends ReadonlyArray<infer X> ? X : V extends Option.Option<infer X> ? X : V;
+
+/**
+ * The string keys of `A` that embed related records: an array, an `Option` or
+ * a struct of them.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export type RelationKeys<A> = {
+  readonly [K in keyof A]-?: Related<A[K]> extends Ordered
+    ? never
+    : Related<A[K]> extends object
+      ? K
+      : never;
+}[keyof A] &
+  string;
+
+/**
+ * Typed constructors for filters and sort keys over `A`. Fields are named by
+ * their {@link Path}.
  *
  * @since 0.5.0
  * @category models
  */
 export interface Fields<A> {
-  readonly eq: <K extends keyof A & string>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
-  readonly ne: <K extends keyof A & string>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
-  readonly lt: <K extends KeysOf<A, Ordered>>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
-  readonly lte: <K extends KeysOf<A, Ordered>>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
-  readonly gt: <K extends KeysOf<A, Ordered>>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
-  readonly gte: <K extends KeysOf<A, Ordered>>(field: K, value: Unwrapped<A[K]>) => Filter<A>;
-  readonly oneOf: <K extends keyof A & string>(
-    field: K,
-    values: Iterable<Unwrapped<A[K]>>,
+  readonly eq: <K extends Path<A>>(field: K, value: Unwrapped<At<A, K>>) => Filter<A>;
+  readonly ne: <K extends Path<A>>(field: K, value: Unwrapped<At<A, K>>) => Filter<A>;
+  readonly lt: <K extends PathsOf<A, Ordered>>(field: K, value: Unwrapped<At<A, K>>) => Filter<A>;
+  readonly lte: <K extends PathsOf<A, Ordered>>(field: K, value: Unwrapped<At<A, K>>) => Filter<A>;
+  readonly gt: <K extends PathsOf<A, Ordered>>(field: K, value: Unwrapped<At<A, K>>) => Filter<A>;
+  readonly gte: <K extends PathsOf<A, Ordered>>(field: K, value: Unwrapped<At<A, K>>) => Filter<A>;
+  readonly oneOf: <K extends Path<A>>(field: K, values: Iterable<Unwrapped<At<A, K>>>) => Filter<A>;
+  readonly isSome: (field: OptionPaths<A>) => Filter<A>;
+  readonly isNone: (field: OptionPaths<A>) => Filter<A>;
+  readonly contains: (field: PathsOf<A, string>, value: string) => Filter<A>;
+  readonly startsWith: (field: PathsOf<A, string>, value: string) => Filter<A>;
+  readonly endsWith: (field: PathsOf<A, string>, value: string) => Filter<A>;
+  readonly exists: <K extends RelationKeys<A>>(
+    relationship: K,
+    filter: Filter<Related<A[K]>>,
   ) => Filter<A>;
-  readonly isSome: (field: OptionKeys<A>) => Filter<A>;
-  readonly isNone: (field: OptionKeys<A>) => Filter<A>;
-  readonly contains: (field: KeysOf<A, string>, value: string) => Filter<A>;
-  readonly startsWith: (field: KeysOf<A, string>, value: string) => Filter<A>;
-  readonly endsWith: (field: KeysOf<A, string>, value: string) => Filter<A>;
-  readonly asc: (field: KeysOf<A, Ordered>) => Sort<A>;
-  readonly desc: (field: KeysOf<A, Ordered>) => Sort<A>;
+  readonly asc: (field: PathsOf<A, Ordered>) => Sort<A>;
+  readonly desc: (field: PathsOf<A, Ordered>) => Sort<A>;
 }
 
 /**
@@ -276,10 +386,12 @@ const text =
   (field: string, value: string): Text => ({ _tag: "Text", field, op, value });
 
 /**
- * Typed filter and sort constructors for records of type `A`. Field names are
+ * Typed filter and sort constructors for records of type `A`. Field paths are
  * checked against `A`; ordering comparisons and sort keys take only fields
  * holding an {@link Ordered} value, and the text tests only string fields.
- * An `Option` field compares by its inner value.
+ * An `Option` field compares by its inner value. `exists` takes a field that
+ * embeds related records and a filter over them; for a relationship `A` does
+ * not embed, use {@link exists}.
  *
  * @example
  * ```ts
@@ -295,6 +407,15 @@ const text =
  *
  * console.log(adults)
  * // → { _tag: 'And', filters: [ { _tag: 'Compare', field: 'age', op: 'gte', value: 18 }, { _tag: 'Text', field: 'name', op: 'startsWith', value: 'A' } ] }
+ *
+ * interface Order {
+ *   readonly shipTo: { readonly city: string }
+ *   readonly lines: ReadonlyArray<{ readonly sku: string; readonly quantity: number }>
+ * }
+ * const o = Query.fields<Order>()
+ * const line = Query.fields<Order["lines"][number]>()
+ * console.log(Query.and(o.eq("shipTo.city", "Hobart"), o.exists("lines", line.gt("quantity", 10))))
+ * // → { _tag: 'And', filters: [ { _tag: 'Compare', field: 'shipTo.city', op: 'eq', value: 'Hobart' }, { _tag: 'Exists', relationship: 'lines', filter: { _tag: 'Compare', field: 'quantity', op: 'gt', value: 10 } } ] }
  * ```
  *
  * @since 0.5.0
@@ -313,6 +434,7 @@ export const fields = <A>(): Fields<A> => ({
   endsWith: text("endsWith"),
   isSome: (field) => ({ _tag: "Present", field }),
   isNone: (field) => ({ _tag: "Not", filter: { _tag: "Present", field } }),
+  exists: (relationship, filter) => ({ _tag: "Exists", relationship, filter }),
   asc: (field) => ({ field, direction: "asc" }),
   desc: (field) => ({ field, direction: "desc" }),
 });
@@ -332,6 +454,31 @@ export const fields = <A>(): Fields<A> => ({
  * @category constructors
  */
 export const all: Filter<unknown> = { _tag: "All" };
+
+/**
+ * Matches when at least one record related through `relationship` matches
+ * `filter`: the untyped form of `fields<A>().exists`, for a relationship the
+ * record type does not embed (resolved by {@link run}'s `resolve`, or by a
+ * backend's join). The result fits any record type.
+ *
+ * @example
+ * ```ts
+ * import { Query } from "@thomasfosterau/effect-ext"
+ *
+ * interface Note { readonly about: string }
+ * const n = Query.fields<Note>()
+ * console.log(Query.exists("notes", n.eq("about", "c-1")))
+ * // → { _tag: 'Exists', relationship: 'notes', filter: { _tag: 'Compare', field: 'about', op: 'eq', value: 'c-1' } }
+ * ```
+ *
+ * @since 0.5.0
+ * @category constructors
+ */
+export const exists = <B>(relationship: string, filter: Filter<B>): Filter<unknown> => ({
+  _tag: "Exists",
+  relationship,
+  filter,
+});
 
 const isOr = P.isTagged("Or");
 const isNot = P.isTagged("Not");
@@ -570,6 +717,65 @@ const compareValues = (a: unknown, b: unknown): Option.Option<-1 | 0 | 1> => {
 const read = (record: unknown, field: string): unknown =>
   P.hasProperty(record, field) && Object.hasOwn(record, field) ? record[field] : undefined;
 
+// Each segment reads from the value before it, inside an `Option` when it is one.
+const readPath = (record: unknown, path: string): unknown =>
+  Arr.reduce(path.split(Paths.SEPARATOR), record, (value, segment) =>
+    read(Option.isOption(value) ? Option.getOrUndefined(value) : value, segment),
+  );
+
+/**
+ * Finds the records related to `record` through `relationship`, for
+ * {@link Exists}.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export type Resolver = (relationship: string, record: unknown) => Iterable<unknown>;
+
+/**
+ * Options for {@link toPredicate} and {@link run}.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export interface EvaluateOptions {
+  /**
+   * Finds related records; {@link embedded} by default.
+   */
+  readonly resolve?: Resolver;
+}
+
+/**
+ * The default {@link Resolver}: related records embedded in the record, as
+ * its own field of the relationship's name holding an array of them, an
+ * `Option` or a single record. A resolver for relationships stored elsewhere
+ * can fall back to it for the rest.
+ *
+ * @example
+ * ```ts
+ * import { Option } from "effect"
+ * import { Query } from "@thomasfosterau/effect-ext"
+ *
+ * console.log(Query.embedded("pets", { pets: [{ kind: "cat" }] }))
+ * // → [ { kind: 'cat' } ]
+ * console.log(Query.embedded("spouse", { spouse: Option.none() }))
+ * // → []
+ * ```
+ *
+ * @since 0.5.0
+ * @category evaluation
+ */
+export const embedded: Resolver = (relationship, record) => {
+  const value = read(record, relationship);
+  return Option.isOption(value)
+    ? Option.toArray(value)
+    : Arr.isArray(value)
+      ? value
+      : P.isObject(value)
+        ? [value]
+        : [];
+};
+
 const ordered = (op: Exclude<CompareOp, "eq" | "ne">, ordering: -1 | 0 | 1): boolean =>
   Match.value(op).pipe(
     Match.when("lt", () => ordering < 0),
@@ -607,27 +813,32 @@ const textMatches = (node: Text, actual: unknown): boolean =>
       ),
   });
 
-const evaluate = (expr: Expr, record: unknown): boolean =>
+const evaluate = (expr: Expr, record: unknown, resolve: Resolver): boolean =>
   Match.valueTags(expr, {
     All: () => true,
-    Compare: (node) => compareMatches(node, read(record, node.field)),
+    Compare: (node) => compareMatches(node, readPath(record, node.field)),
     In: (node) =>
-      Option.match(unwrap(read(record, node.field)), {
+      Option.match(unwrap(readPath(record, node.field)), {
         onNone: () => false,
         onSome: (inner) => Arr.some(node.values, (value) => Eq.equals(inner, value)),
       }),
-    Present: (node) => Option.isSome(unwrap(read(record, node.field))),
-    Text: (node) => textMatches(node, read(record, node.field)),
-    And: (node) => Arr.every(node.filters, (child) => evaluate(child, record)),
-    Or: (node) => Arr.some(node.filters, (child) => evaluate(child, record)),
-    Not: (node) => !evaluate(node.filter, record),
+    Present: (node) => Option.isSome(unwrap(readPath(record, node.field))),
+    Text: (node) => textMatches(node, readPath(record, node.field)),
+    Exists: (node) =>
+      It.some(resolve(node.relationship, record), (related) =>
+        evaluate(node.filter, related, resolve),
+      ),
+    And: (node) => Arr.every(node.filters, (child) => evaluate(child, record, resolve)),
+    Or: (node) => Arr.some(node.filters, (child) => evaluate(child, record, resolve)),
+    Not: (node) => !evaluate(node.filter, record, resolve),
   });
 
 /**
  * The filter as a `Predicate`, for `Array.filter`, `Stream.filter` and the
  * like. Equality is `Equal.equals` (so `DateTime`s and `Data` values compare
  * structurally); `None` and a missing field match no comparison. An ordering comparison
- * between values of different kinds never matches.
+ * between values of different kinds never matches. {@link Exists} finds
+ * related records through `options.resolve`, embedded ones by default.
  *
  * @example
  * ```ts
@@ -643,9 +854,9 @@ const evaluate = (expr: Expr, record: unknown): boolean =>
  * @category evaluation
  */
 export const toPredicate =
-  <A>(filter: Filter<A>): P.Predicate<A> =>
+  <A>(filter: Filter<A>, options: EvaluateOptions = {}): P.Predicate<A> =>
   (record) =>
-    evaluate(filter, record);
+    evaluate(filter, record, options.resolve ?? embedded);
 
 const fieldOrder = (sort: {
   readonly field: string;
@@ -653,10 +864,10 @@ const fieldOrder = (sort: {
 }): Order.Order<unknown> => {
   // `None` sorts before every `Some`; values of different kinds tie.
   const ascending = Order.make<unknown>((a, b) =>
-    Option.match(unwrap(read(a, sort.field)), {
-      onNone: () => (Option.isNone(unwrap(read(b, sort.field))) ? 0 : -1),
+    Option.match(unwrap(readPath(a, sort.field)), {
+      onNone: () => (Option.isNone(unwrap(readPath(b, sort.field))) ? 0 : -1),
       onSome: (x) =>
-        Option.match(unwrap(read(b, sort.field)), {
+        Option.match(unwrap(readPath(b, sort.field)), {
           onNone: () => 1,
           onSome: (y) => Option.getOrElse(compareValues(x, y), () => 0),
         }),
@@ -685,9 +896,13 @@ const fieldOrder = (sort: {
 export const toOrder = <A>(sort: ReadonlyArray<Sort<A>>): Order.Order<A> =>
   Order.combineAll(Arr.map(sort, fieldOrder));
 
+// `run`'s data-first form: an array has a `filter` method but no `offset`.
+const isQuery = (args: IArguments): boolean =>
+  P.hasProperty(args[0], "offset") && P.hasProperty(args[0], "sort");
+
 /**
  * Runs a query over records in memory: filter, then a stable sort, then the
- * window.
+ * window. `options.resolve` finds the records an {@link Exists} relates.
  *
  * @example
  * ```ts
@@ -706,25 +921,36 @@ export const toOrder = <A>(sort: ReadonlyArray<Sort<A>>): Order.Order<A> =>
  * const people = [{ name: "Ada", age: 36 }, { name: "Bo", age: 12 }, { name: "Cy", age: 70 }, { name: "Di", age: 18 }]
  * console.log(Query.run(oldestAdults, people).map((person) => person.name))
  * // → [ 'Cy', 'Ada' ]
+ *
+ * // Related records that live elsewhere: a resolver finds them.
+ * const pets = [{ owner: "Ada", kind: "cat" }, { owner: "Cy", kind: "dog" }]
+ * const pet = Query.fields<(typeof pets)[number]>()
+ * const catOwners = Query.where(Query.make<Person>(), Query.exists("pets", pet.eq("kind", "cat")))
+ * const resolve = (_: string, owner: unknown) => pets.filter((each) => each.owner === (owner as Person).name)
+ * console.log(Query.run(catOwners, people, { resolve }).map((person) => person.name))
+ * // → [ 'Ada' ]
  * ```
  *
  * @since 0.5.0
  * @category evaluation
  */
 export const run: {
-  <A>(records: Iterable<A>): (self: Query<A>) => Array<A>;
-  <A>(self: Query<A>, records: Iterable<A>): Array<A>;
-} = dual(2, <A>(self: Query<A>, records: Iterable<A>): Array<A> => {
-  const matched = Arr.filter(Arr.fromIterable(records), toPredicate(self.filter));
-  const sorted = Arr.isReadonlyArrayNonEmpty(self.sort)
-    ? Arr.sort(matched, toOrder(self.sort))
-    : matched;
-  const windowed = Arr.drop(sorted, self.offset);
-  return Option.match(self.limit, {
-    onNone: () => windowed,
-    onSome: (limit) => Arr.take(windowed, limit),
-  });
-});
+  <A>(records: Iterable<A>, options?: EvaluateOptions): (self: Query<A>) => Array<A>;
+  <A>(self: Query<A>, records: Iterable<A>, options?: EvaluateOptions): Array<A>;
+} = dual(
+  isQuery,
+  <A>(self: Query<A>, records: Iterable<A>, options?: EvaluateOptions): Array<A> => {
+    const matched = Arr.filter(Arr.fromIterable(records), toPredicate(self.filter, options));
+    const sorted = Arr.isReadonlyArrayNonEmpty(self.sort)
+      ? Arr.sort(matched, toOrder(self.sort))
+      : matched;
+    const windowed = Arr.drop(sorted, self.offset);
+    return Option.match(self.limit, {
+      onNone: () => windowed,
+      onSome: (limit) => Arr.take(windowed, limit),
+    });
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Wire codecs
@@ -754,24 +980,92 @@ const Count = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
  * @since 0.5.0
  * @category schemas
  */
-export const valueSchema = (field: Schema.Constraint): Schema.Codec<unknown> => {
-  const type = Schema.toType(field);
-  const ast = type.ast;
-  // An `Option` schema is the one-parameter declaration that accepts `None`.
-  const inner =
-    SchemaAST.isDeclaration(ast) && Schema.is(type)(Option.none())
-      ? Arr.head(ast.typeParameters)
-      : Option.none();
-  return Schema.make<Schema.Codec<unknown>>(Option.getOrElse(inner, () => ast));
+export const valueSchema = (field: Schema.Constraint): Schema.Codec<unknown> =>
+  Schema.make<Schema.Codec<unknown>>(Paths.valueAst(field));
+
+/**
+ * A relationship a filter may cross with {@link Exists}: the related record's
+ * schema and, as a thunk so a type can relate back to itself, the
+ * relationships it declares in turn.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export interface Relationship {
+  readonly schema: Schema.Struct<Schema.Struct.Fields>;
+  readonly relationships?: () => Relationships;
+}
+
+/**
+ * The relationships of a record type, by name.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export type Relationships = Readonly<Record<string, Relationship>>;
+
+/**
+ * Options for {@link FilterFor} and {@link QueryFor}.
+ *
+ * @since 0.5.0
+ * @category models
+ */
+export interface CodecOptions {
+  /** The relationships an {@link Exists} may name; none by default. */
+  readonly relationships?: Relationships;
+}
+
+const filterCodec = (
+  struct: Schema.Struct.Fields,
+  relationships: Relationships,
+  memo: MutableHashMap.MutableHashMap<Relationship, Schema.Codec<Expr>>,
+): Schema.Codec<Expr> => {
+  const leaves = Arr.flatMap(Paths.leafPaths(struct), ([path, field]) => {
+    const value = Schema.toCodecJson(valueSchema(field));
+    const fieldName = Schema.Literal(path);
+    return [
+      Schema.TaggedStruct("Compare", { field: fieldName, op: CompareOps, value }),
+      Schema.TaggedStruct("In", { field: fieldName, values: Schema.Array(value) }),
+      Schema.TaggedStruct("Text", { field: fieldName, op: TextOps, value: Schema.String }),
+      Schema.TaggedStruct("Present", { field: fieldName }),
+    ];
+  });
+  const related = (relationship: Relationship): Schema.Codec<Expr> =>
+    Option.getOrElse(MutableHashMap.get(memo, relationship), () => {
+      const codec = filterCodec(
+        relationship.schema.fields,
+        relationship.relationships?.() ?? {},
+        memo,
+      );
+      MutableHashMap.set(memo, relationship, codec);
+      return codec;
+    });
+  const crossings = Arr.map(R.toEntries(relationships), ([name, relationship]) =>
+    Schema.TaggedStruct("Exists", {
+      relationship: Schema.Literal(name),
+      filter: Schema.suspend(() => related(relationship)),
+    }),
+  );
+  const self: Schema.Codec<Expr> = Schema.Union([
+    Schema.TaggedStruct("All", {}),
+    ...leaves,
+    ...crossings,
+    Schema.TaggedStruct("And", { filters: Schema.Array(Schema.suspend(() => self)) }),
+    Schema.TaggedStruct("Or", { filters: Schema.Array(Schema.suspend(() => self)) }),
+    Schema.TaggedStruct("Not", { filter: Schema.suspend(() => self) }),
+  ]);
+  return self;
 };
 
 /**
  * A filter codec for the records `schema` describes. The wire form is the
  * {@link Expr} tree itself, with each value in its field's JSON encoding
  * (`Schema.toCodecJson` of its {@link valueSchema}), so a `DateTime` field
- * travels as a string and an `Option` field as its inner value. An
- * unknown field, or a value its field's schema rejects, fails the decode at
- * that node's path.
+ * travels as a string and an `Option` field as its inner value. A field is
+ * any path into the struct, nested structs included; an {@link Exists} names
+ * one of `options.relationships`, and its filter is checked against that
+ * relationship's schema. An unknown field or relationship, or a value its
+ * field's schema rejects, fails the decode at that node's path.
  *
  * @example
  * ```ts
@@ -786,6 +1080,11 @@ export const valueSchema = (field: Schema.Constraint): Schema.Codec<unknown> => 
  * // → true
  * console.log(Schema.decodeExit(Query.FilterFor(Person))({ _tag: "Compare", field: "email", op: "eq", value: "x" })._tag)
  * // → Failure
+ *
+ * const Pet = Schema.Struct({ kind: Schema.String })
+ * const withPets = Query.FilterFor(Person, { relationships: { pets: { schema: Pet } } })
+ * console.log(Schema.decodeSync(withPets)({ _tag: "Exists", relationship: "pets", filter: { _tag: "Compare", field: "kind", op: "eq", value: "cat" } })._tag)
+ * // → Exists
  * ```
  *
  * @since 0.5.0
@@ -793,30 +1092,13 @@ export const valueSchema = (field: Schema.Constraint): Schema.Codec<unknown> => 
  */
 export const FilterFor = <F extends Schema.Struct.Fields>(
   schema: Schema.Struct<F>,
-): Schema.Codec<Filter<Schema.Struct.Type<F>>, Expr> => {
-  const leaves = Arr.flatMap(R.toEntries(schema.fields), ([name, field]) => {
-    const value = Schema.toCodecJson(valueSchema(field));
-    const fieldName = Schema.Literal(name);
-    return [
-      Schema.TaggedStruct("Compare", { field: fieldName, op: CompareOps, value }),
-      Schema.TaggedStruct("In", { field: fieldName, values: Schema.Array(value) }),
-      Schema.TaggedStruct("Text", { field: fieldName, op: TextOps, value: Schema.String }),
-      Schema.TaggedStruct("Present", { field: fieldName }),
-    ];
-  });
-  const self: Schema.Codec<Expr> = Schema.Union([
-    Schema.TaggedStruct("All", {}),
-    ...leaves,
-    Schema.TaggedStruct("And", { filters: Schema.Array(Schema.suspend(() => self)) }),
-    Schema.TaggedStruct("Or", { filters: Schema.Array(Schema.suspend(() => self)) }),
-    Schema.TaggedStruct("Not", { filter: Schema.suspend(() => self) }),
-  ]);
-  return self;
-};
+  options: CodecOptions = {},
+): Schema.Codec<Filter<Schema.Struct.Type<F>>, Expr> =>
+  filterCodec(schema.fields, options.relationships ?? {}, MutableHashMap.empty());
 
 /**
  * A codec for a list of sort keys over the records `schema` describes: each
- * `{ field, direction }`, with `field` one of the struct's keys.
+ * `{ field, direction }`, with `field` a path into the struct.
  *
  * @example
  * ```ts
@@ -839,13 +1121,17 @@ export const SortFor = <F extends Schema.Struct.Fields>(
   ReadonlyArray<Pick<Sort<unknown>, "field" | "direction">>
 > =>
   Schema.Array(
-    Schema.Struct({ field: Schema.Literals(R.keys(schema.fields)), direction: Direction }),
+    Schema.Struct({
+      field: Schema.Literals(Arr.map(Paths.leafPaths(schema.fields), ([path]) => path)),
+      direction: Direction,
+    }),
   );
 
 /**
  * A codec for a whole {@link Query} over the records `schema` describes: the
  * portable form a query is stored or sent in, for a backend to run.
- * `limit` is an absent key when the query has none.
+ * `limit` is an absent key when the query has none; `options` is
+ * {@link FilterFor}'s.
  *
  * @example
  * ```ts
@@ -865,9 +1151,10 @@ export const SortFor = <F extends Schema.Struct.Fields>(
  */
 export const QueryFor = <F extends Schema.Struct.Fields>(
   schema: Schema.Struct<F>,
+  options: CodecOptions = {},
 ): Schema.Codec<Query<Schema.Struct.Type<F>>, QueryEncoded> =>
   Schema.Struct({
-    filter: FilterFor(schema),
+    filter: FilterFor(schema, options),
     sort: SortFor(schema),
     offset: Count,
     limit: Schema.OptionFromOptionalKey(Count),

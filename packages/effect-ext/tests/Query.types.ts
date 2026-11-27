@@ -4,7 +4,8 @@
  * Type-level tests for `Query`: `fields` checks field names and values
  * against the record type, ordering and text operators take only fields of
  * the right kind, and a filter for one record type is not a filter for
- * another. Checked by the package's `check` task (tsconfig.test.json); the
+ * another; dotted paths reach nested structs, and `exists` takes a field
+ * embedding related records and a filter over their type. Checked by the package's `check` task (tsconfig.test.json); the
  * expect-error directives are the assertions. Never executed.
  *
  * @module tests/Query.types
@@ -18,6 +19,11 @@ interface Person {
   readonly age: number;
   readonly nickname: Option.Option<string>;
   readonly tags: ReadonlyArray<string>;
+  readonly address: {
+    readonly city: string;
+    readonly geo: Option.Option<{ readonly lat: number }>;
+  };
+  readonly pets: ReadonlyArray<{ readonly kind: string }>;
 }
 
 interface Order {
@@ -57,3 +63,36 @@ export const anything: Query.Filter<Order> = Query.all;
 
 // @ts-expect-error -- combinators keep one record type
 export const mixed = Query.and(byName, Query.fields<Order>().gt("total", 1));
+
+// Dotted paths reach nested structs, through an Option, with the leaf's type.
+export const byCity = p.eq("address.city", "Hobart");
+export const byLatitude = p.gt("address.geo.lat", 0);
+export const hasGeo = p.isSome("address.geo");
+
+// @ts-expect-error -- city is a string
+export const wrongNestedValue = p.eq("address.city", 1);
+
+// @ts-expect-error -- not a path into Person
+export const unknownPath = p.eq("address.zip", "7000");
+
+// @ts-expect-error -- arrays are not descended into
+export const intoArray = p.eq("pets.kind", "cat");
+
+// @ts-expect-error -- latitude is not a string
+export const textOnNestedNumber = p.contains("address.geo.lat", "4");
+
+export const sortByCity = p.asc("address.city");
+
+// `exists` takes an embedding field and a filter over the related type.
+const pet = Query.fields<{ readonly kind: string }>();
+export const catOwners = p.exists("pets", pet.eq("kind", "cat"));
+
+// @ts-expect-error -- a Person filter is not a filter over pets
+export const wrongRelated = p.exists("pets", p.eq("name", "Ada"));
+
+// @ts-expect-error -- age embeds no related records
+export const notARelationship = p.exists("age", Query.all);
+
+// The untyped `exists` fits any record type, and combines with typed filters.
+export const untyped: Query.Filter<Order> = Query.exists("lines", Query.all);
+export const combined: Query.Filter<Person> = Query.and(byName, Query.exists("friends", byName));

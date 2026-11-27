@@ -2,9 +2,9 @@
  * @copyright Thomas Foster
  *
  * `Query`: the filter combinators' simplifications, the in-memory evaluator
- * (every operator, `Option` and date fields, mismatched kinds), sorting and
- * windowing, the wire codecs, and a toy SQL compiler that shows a backend can
- * walk the same tree.
+ * (every operator, `Option` and date fields, mismatched kinds, nested paths
+ * and `Exists`), sorting and windowing, the wire codecs, and a toy SQL
+ * compiler that shows a backend can walk the same tree.
  *
  * @module tests/Query
  */
@@ -15,8 +15,10 @@ import * as Arr from "effect/Array";
 import * as Chunk from "effect/Chunk";
 import * as DateTime from "effect/DateTime";
 import * as Exit from "effect/Exit";
+import * as It from "effect/Iterable";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
+import * as P from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import { Query } from "@thomasfosterau/effect-ext";
 
@@ -183,6 +185,110 @@ describe("evaluation", () => {
   });
 });
 
+// A concept scheme: concepts with an optional nested label, embedded notes
+// and, by id, the concepts narrower than them.
+interface Note {
+  readonly text: string;
+  readonly author: Option.Option<{ readonly name: string }>;
+}
+interface Concept {
+  readonly id: string;
+  readonly label: { readonly en: string; readonly alt: Option.Option<{ readonly en: string }> };
+  readonly notes: ReadonlyArray<Note>;
+  readonly broader: Option.Option<string>;
+}
+const concepts: ReadonlyArray<Concept> = [
+  {
+    id: "animal",
+    label: { en: "Animal", alt: Option.none() },
+    notes: [{ text: "Living things that move", author: Option.some({ name: "Ada" }) }],
+    broader: Option.none(),
+  },
+  {
+    id: "cat",
+    label: { en: "Cat", alt: Option.some({ en: "Feline" }) },
+    notes: [],
+    broader: Option.some("animal"),
+  },
+  {
+    id: "kitten",
+    label: { en: "Kitten", alt: Option.none() },
+    notes: [{ text: "A young cat", author: Option.none() }],
+    broader: Option.some("cat"),
+  },
+];
+const c = Query.fields<Concept>();
+const n = Query.fields<Note>();
+const narrower: Query.Resolver = (relationship, record) =>
+  relationship === "narrower"
+    ? Arr.filter(concepts, (each) =>
+        Option.exists(each.broader, (id) => P.hasProperty(record, "id") && record.id === id),
+      )
+    : Query.embedded(relationship, record);
+const narrowerThan = (filter: Query.Filter<Concept>) => Query.exists("narrower", filter);
+const ids = (filter: Query.Filter<Concept>) =>
+  Arr.map(
+    Query.run(Query.where(Query.make<Concept>(), filter), concepts, { resolve: narrower }),
+    (concept) => concept.id,
+  );
+
+describe("paths and relationships", () => {
+  it("reads a dotted path through nested structs and Options", () => {
+    expect(ids(c.eq("label.en", "Cat"))).toStrictEqual(["cat"]);
+    expect(ids(c.startsWith("label.alt.en", "Fel"))).toStrictEqual(["cat"]);
+    // A None on the way is NULL: nothing matches, not even `ne`.
+    expect(ids(c.ne("label.alt.en", "Feline"))).toStrictEqual([]);
+    expect(ids(c.isSome("label.alt"))).toStrictEqual(["cat"]);
+    expect(ids(c.oneOf("label.en", ["Cat", "Kitten"]))).toStrictEqual(["cat", "kitten"]);
+  });
+
+  it("sorts by a dotted path", () => {
+    const q = pipe(Query.make<Concept>(), Query.orderBy(c.desc("label.en")));
+    expect(Arr.map(Query.run(q, concepts), (concept) => concept.id)).toStrictEqual([
+      "kitten",
+      "cat",
+      "animal",
+    ]);
+  });
+
+  it("matches Exists over embedded records when any one of them matches", () => {
+    expect(ids(c.exists("notes", n.contains("text", "cat")))).toStrictEqual(["kitten"]);
+    expect(ids(c.exists("notes", Query.all))).toStrictEqual(["animal", "kitten"]);
+    expect(ids(Query.not(c.exists("notes", Query.all)))).toStrictEqual(["cat"]);
+    expect(ids(c.exists("notes", n.eq("author.name", "Ada")))).toStrictEqual(["animal"]);
+  });
+
+  it("reads an embedded Option or struct as at most one related record", () => {
+    const label = Query.fields<Concept["label"]>();
+    const alt = Query.fields<{ readonly en: string }>();
+    expect(ids(c.exists("label", label.exists("alt", alt.eq("en", "Feline"))))).toStrictEqual([
+      "cat",
+    ]);
+    expect(ids(Query.exists("missing", Query.all))).toStrictEqual([]);
+  });
+
+  it("finds related records through a resolver, and nests across one relationship", () => {
+    expect(ids(narrowerThan(c.eq("id", "kitten")))).toStrictEqual(["cat"]);
+    // Two levels down: concepts with a narrower concept that has a narrower one.
+    expect(ids(narrowerThan(narrowerThan(Query.all)))).toStrictEqual(["animal"]);
+    // "This concept, or anything narrower, has a note mentioning a cat."
+    const mentionsCat = c.exists("notes", n.contains("text", "cat"));
+    expect(ids(Query.or(mentionsCat, narrowerThan(mentionsCat)))).toStrictEqual(["cat", "kitten"]);
+  });
+
+  it("stops at the first related record that matches", () => {
+    const seen: Array<string> = [];
+    const resolve: Query.Resolver = () =>
+      It.map(["a", "b", "c"], (id) => {
+        seen.push(id);
+        return { id };
+      });
+    const hit = Query.toPredicate(Query.exists("rel", c.eq("id", "b")), { resolve });
+    expect(hit({})).toBe(true);
+    expect(seen).toStrictEqual(["a", "b"]);
+  });
+});
+
 describe("sorting and windowing", () => {
   it("sorts by keys in order, each breaking the ties of the ones before", () => {
     const q = pipe(
@@ -298,6 +404,63 @@ describe("FilterFor", () => {
   });
 });
 
+describe("FilterFor with paths and relationships", () => {
+  const Label = Schema.Struct({
+    en: Schema.String,
+    alt: Schema.Option(Schema.Struct({ en: Schema.String })),
+  });
+  const NoteRow = Schema.Struct({ text: Schema.String });
+  const ConceptRow = Schema.Struct({ id: Schema.String, label: Label });
+  const conceptRelationships: Query.Relationships = {
+    notes: { schema: NoteRow },
+    narrower: { schema: ConceptRow, relationships: () => conceptRelationships },
+  };
+  const ConceptFilter = Query.FilterFor(ConceptRow, { relationships: conceptRelationships });
+  const decode = Schema.decodeUnknownExit(ConceptFilter);
+
+  it("accepts every path into nested structs, Options of them included", () => {
+    const filter = Query.and(
+      c.eq("label.en", "Cat"),
+      c.contains("label.alt.en", "e"),
+      c.isSome("label.alt"),
+    );
+    expect(decode(filter)).toStrictEqual(Exit.succeed(filter));
+    expect(
+      Exit.isFailure(decode({ _tag: "Compare", field: "label.fr", op: "eq", value: "Chat" })),
+    ).toBe(true);
+    expect(
+      Exit.isFailure(decode({ _tag: "Compare", field: "id.length", op: "eq", value: 3 })),
+    ).toBe(true);
+  });
+
+  it("checks an Exists's filter against the related schema, recursively", () => {
+    const filter = Query.exists(
+      "narrower",
+      Query.and(c.eq("id", "kitten"), Query.exists("notes", n.contains("text", "young"))),
+    );
+    const Json = Schema.fromJsonString(ConceptFilter);
+    expect(Schema.decodeSync(Json)(Schema.encodeSync(Json)(filter))).toStrictEqual(filter);
+    expect(decode(Query.exists("narrower", Query.exists("narrower", Query.all)))._tag).toBe(
+      "Success",
+    );
+    // `text` is a note's field, not a concept's; `parents` is no relationship.
+    expect(Exit.isFailure(decode(Query.exists("narrower", n.eq("text", "x"))))).toBe(true);
+    expect(Exit.isFailure(decode(Query.exists("parents", Query.all)))).toBe(true);
+    // Without declared relationships, no Exists decodes.
+    expect(
+      Exit.isFailure(
+        Schema.decodeExit(Query.FilterFor(ConceptRow))(Query.exists("notes", Query.all)),
+      ),
+    ).toBe(true);
+  });
+
+  it("sorts by nested paths", () => {
+    const decodeSort = Schema.decodeUnknownExit(Query.SortFor(ConceptRow));
+    expect(Exit.isSuccess(decodeSort([{ field: "label.alt.en", direction: "asc" }]))).toBe(true);
+    expect(Exit.isFailure(decodeSort([{ field: "label.fr", direction: "asc" }]))).toBe(true);
+  });
+});
+
 describe("QueryFor", () => {
   it("round-trips a whole query through JSON, with no limit as an absent key", () => {
     const Json = Schema.fromJsonString(Query.QueryFor(Person));
@@ -360,6 +523,8 @@ describe("a backend walks the same tree", () => {
         return `${node.field} LIKE ?`;
       },
       Present: (node) => `${node.field} IS NOT NULL`,
+      Exists: (node) =>
+        `EXISTS (SELECT 1 FROM ${node.relationship} WHERE ${toSql(node.filter, params)})`,
       And: (node) => `(${Arr.map(node.filters, (child) => toSql(child, params)).join(" AND ")})`,
       Or: (node) => `(${Arr.map(node.filters, (child) => toSql(child, params)).join(" OR ")})`,
       Not: (node) => `NOT ${toSql(node.filter, params)}`,
@@ -373,5 +538,12 @@ describe("a backend walks the same tree", () => {
     );
     expect(sql).toBe("(age >= ? AND NOT name IN (?, ?))");
     expect(params).toStrictEqual([18, "Bo", "Cy"]);
+  });
+
+  it("compiles an Exists to a correlated subquery", () => {
+    const params: Array<unknown> = [];
+    expect(toSql(c.exists("notes", n.contains("text", "cat")), params)).toBe(
+      "EXISTS (SELECT 1 FROM notes WHERE text LIKE ?)",
+    );
   });
 });
