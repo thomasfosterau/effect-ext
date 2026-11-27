@@ -1,5 +1,39 @@
 # @thomasfosterau/effect-ext
 
+## 0.5.0
+
+### Minor Changes
+
+- [#243](https://github.com/thomasfosterau/effect-ext/pull/243) [`38a568d`](https://github.com/thomasfosterau/effect-ext/commit/38a568debd5c5388d22a6f2b154e08d2a8d9e9fe) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Breaking: the `effect` peer floor rises from `^4.0.0` to `^4.0.5`. `Har` and `Warc` redact recorded query parameters through Effect's own `UrlParams.CurrentRedactedNames`, which first shipped in effect 4.0.5. To migrate, upgrade `effect` to 4.0.5 or later; to change which query parameters a recording redacts, provide `UrlParams.CurrentRedactedNames`.
+
+- [#238](https://github.com/thomasfosterau/effect-ext/pull/238) [`6f3812e`](https://github.com/thomasfosterau/effect-ext/commit/6f3812e4832fda75a366d0d827fbf34fc4595489) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Add `Har`: HTTP Archive (HAR 1.2) documents. The schemas read a browser's export (`parse`, failing `HarError`) and `stringify` writes one. `recordClient` wraps an `HttpClient` and `recordServer` is server middleware, both recording each exchange into a `Recorder`, with headers in `Headers.CurrentRedactedNames` and query parameters in `UrlParams.CurrentRedactedNames` written as `"<redacted>"`. `replayClient` answers requests from a document by method and URL.
+
+- [#233](https://github.com/thomasfosterau/effect-ext/pull/233) [`c990546`](https://github.com/thomasfosterau/effect-ext/commit/c9905461377966b77322fd36af58d4317d995c3f) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Add `Query`: LINQ-style queries as data. `Query.fields<A>()` builds typed filters and sort keys, `Query.run` evaluates a query over any iterable, and `Query.FilterFor` / `Query.SortFor` derive wire codecs from a `Schema.Struct` and `Query.QueryFor` covers a whole query, so a query can be stored or sent and run in memory or by a backend. Add `QueryParams`: read and write `Query`s as URL query strings through a pluggable `Dialect`, with JSON:API-style `brackets` and an `odata` subset built in.
+
+- [#236](https://github.com/thomasfosterau/effect-ext/pull/236) [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Brand every `Schema` error and value class (`Schema.TaggedError<Self, { readonly brand: unique symbol }>`, and the same on effect-ext's AI response classes such as `ClassifyResponse`, `RerankResponse` and `SpeechResponse`). A structurally identical object no longer type-checks where one of these classes is expected: construct it with `new` instead.
+
+- [#236](https://github.com/thomasfosterau/effect-ext/pull/236) [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - `Observability`'s `logStructured`, `logEvent`, `logWarningEvent` and `logErrorEvent` take `LogFields` (new, a record of `Schema.Json` values) instead of `Record<string, unknown>`. Render a failure with `describeError` before logging it, and leave an absent field out rather than passing `undefined`.
+
+- [#252](https://github.com/thomasfosterau/effect-ext/pull/252) [`f7ff718`](https://github.com/thomasfosterau/effect-ext/commit/f7ff718c15df6fbca782df5e482b83be5e1ba7e9) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - `Query` filters can cross relationships and reach nested fields. A new `Exists` node matches when a related record matches its nested filter (`Query.exists`, or `fields<A>().exists` for embedded records), and `Compare`, `In`, `Text` and `Present` take dotted field paths (`address.city`), typed by `fields<A>()`. `Query.run` and `Query.toPredicate` take a `resolve` option to find related records (`Query.embedded` by default); `FilterFor` and `QueryFor` take the `relationships` an `Exists` may name. `QueryParams` decodes and encodes both in each dialect: brackets spell a relationship as a path segment (`filter[notes.text][contains]=cat`), OData as `notes/any(x: contains(x/text, 'cat'))` (and reads `all`), and `Options.relationships` declares them. A struct field whose name contains `.` can no longer be filtered on.
+
+- [#237](https://github.com/thomasfosterau/effect-ext/pull/237) [`115b582`](https://github.com/thomasfosterau/effect-ext/commit/115b58281c8dd5722513e6aad7ff87147df57720) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Add `Speaker` and `Dictation` to effect-ext: provider-neutral services for speech said out loud on the device (`say`) and live speech to text (`listen`, a stream of `Transcript` readings), each built with `make` and failing only with `AiError`.
+  
+  effect-platform-browser now depends on effect-ext and adds two modules. `AudioOutput` plays audio bytes through an `<audio>` element, finishing when the clip ends; `Browser.layer` includes it, and `BrowserTesting` adds `TestAudioOutput`. `LiveSpeech` provides `Speaker` and `Dictation` as layers over the browser: `speakerFromSynthesis` (the browser's own voices), `speakerFromModel` (any `SpeechModel`, played through `AudioOutput`) and `dictationFromRecognition` (the browser's own recogniser), mapping each browser failure onto an `AiError` reason.
+
+- [#246](https://github.com/thomasfosterau/effect-ext/pull/246) [`9298de4`](https://github.com/thomasfosterau/effect-ext/commit/9298de4afa4a67bd1df7a31118a71f6cf69c785b) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Breaking: misuse of the binary-data and numeric modules now throws, or dies with, a tagged error instead of a bare `RangeError` / `TypeError`.
+  
+  - The new `Panic` module defines `IndexOutOfBoundsError`, `CapacityError`, `CharBoundaryError` and `InvalidArgumentError` (all `Schema.TaggedError`s), plus `isPanic`.
+  - `Vec`, `StructOfArrays`, `Str`, `StringBuf`, `Layout` and `BufferStruct` use them: an out-of-range `getUnsafe`, a `pushUnsafe` into a full container, a `splitOff` off a character boundary, a reserved field name and so on.
+  - `Clamped`, `Complex`, `FixedInt`, `Integer`, `Ratio`, `Range` and `Num` throw `ArithmeticError.DomainError` for an argument they cannot accept (a zero step, a fractional exponent, an invalid bit width).
+  
+  Migration: code that catches these with `instanceof RangeError` or `instanceof TypeError`, or that reads `.message`, should match the new class or its `_tag` instead (`Cause.findDefect` reads one from an `Effect` form's defect). Messages keep the same wording, except a full `pushUnsafe`, which now reads `"<type>: length <n> out of bounds (capacity <cap>)"`.
+
+- [#239](https://github.com/thomasfosterau/effect-ext/pull/239) [`4092266`](https://github.com/thomasfosterau/effect-ext/commit/4092266f70bcd05ed613f823a9d02437e8ee3ae5) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Add `Warc`: Web ARChive (WARC 1.0 / 1.1) files. `parse` and the streaming `decodeStream` read records strictly (failing `WarcError` with a byte offset), `encode` / `encodeAll` write them, and `makeRecord` and `warcinfo` build them. `recordClient` and `recordServer` record each exchange into a `Recorder` as a response and a request record, redacted as `Har` redacts.
+
+### Patch Changes
+
+- [#244](https://github.com/thomasfosterau/effect-ext/pull/244) [`c874466`](https://github.com/thomasfosterau/effect-ext/commit/c874466831d09a9a00fbe8a41b006ebc8b2dd723) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Evals: `jsonValidity` parses through `Schema.fromJsonString`, so the `reason` for unparseable output is now the schema error's message. `Cache.hashKey` hex-encodes with `effect/encoding`'s `Hex` (keys are unchanged). The `effect-evals` CLI discovers eval files through `FileSystem.glob` instead of Node's `fs.promises.glob`; as before, `node_modules` and `.git` are skipped, and so are other dot-directories.
+
 ## 0.4.0
 
 ### Minor Changes

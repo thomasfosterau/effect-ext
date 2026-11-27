@@ -1,5 +1,11 @@
 # @thomasfosterau/effect-ai-mistral
 
+## 0.5.2
+
+### Patch Changes
+
+- [#236](https://github.com/thomasfosterau/effect-ext/pull/236) [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Redact response headers in `AiError` and response metadata with the fiber's `Headers.CurrentRedactedNames`, so a customised list is honoured. Cohere and Mistral's request types accept `undefined` for an unset optional member (it is left out of the JSON body), and Cohere ignores a streamed `tool_calls` delta that is an empty array instead of reading past it.
+
 ## 0.5.1
 
 ### Patch Changes

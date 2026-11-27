@@ -1,5 +1,15 @@
 # @thomasfosterau/effect-platform-worker-shared
 
+## 0.2.0
+
+### Minor Changes
+
+- [#236](https://github.com/thomasfosterau/effect-ext/pull/236) [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Brand every `Schema` error and value class (`Schema.TaggedError<Self, { readonly brand: unique symbol }>`, and the same on effect-ext's AI response classes such as `ClassifyResponse`, `RerankResponse` and `SpeechResponse`). A structurally identical object no longer type-checks where one of these classes is expected: construct it with `new` instead.
+
+- [#227](https://github.com/thomasfosterau/effect-ext/pull/227) [`16cc82a`](https://github.com/thomasfosterau/effect-ext/commit/16cc82af9fb07ebf02d5d4af0c696e0ca6baf7b8) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Adds `Performance.layerTracer` and `Performance.measuredTracer`: wrap the current `Tracer` so that every sampled Effect span is also recorded as a user-timing measure (visible in the browser's performance panel) when it ends. Options filter spans by name and attach a span's cloneable attributes as the measure's `detail`. A refused measure is dropped, so tracing never fails the traced effect.
+
+- [#231](https://github.com/thomasfosterau/effect-ext/pull/231) [`82b2c9d`](https://github.com/thomasfosterau/effect-ext/commit/82b2c9d8d376a543a52fd6bd0f984732242e41fc) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Adds sync access handles to `BrowserFileSystem`: `make(root, { syncAccess: true })`, `layerHandle(root, { syncAccess: true })` and the new `layerWorker` (OPFS in a dedicated worker) make `open` hold a `FileSystemSyncAccessHandle` for the file's scope, so reads and writes go in place under an exclusive lock instead of through a swap file each; a file already locked fails `Busy`, and a handle without sync access falls back to writables. `MemoryFileSystemHandle` gains in-memory sync access handles that lock the file as the platform does.
+
 ## 0.1.0
 
 ### Minor Changes

@@ -1,5 +1,13 @@
 # @thomasfosterau/effect-ai-elevenlabs
 
+## 0.5.4
+
+### Patch Changes
+
+- [#236](https://github.com/thomasfosterau/effect-ext/pull/236) [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300) Thanks [@thomasfosterau](https://github.com/thomasfosterau)! - Redact response headers in `AiError` and response metadata with the fiber's `Headers.CurrentRedactedNames`, so a customised list is honoured. Cohere and Mistral's request types accept `undefined` for an unset optional member (it is left out of the JSON body), and Cohere ignores a streamed `tool_calls` delta that is an empty array instead of reading past it.
+- Updated dependencies [[`38a568d`](https://github.com/thomasfosterau/effect-ext/commit/38a568debd5c5388d22a6f2b154e08d2a8d9e9fe), [`c874466`](https://github.com/thomasfosterau/effect-ext/commit/c874466831d09a9a00fbe8a41b006ebc8b2dd723), [`6f3812e`](https://github.com/thomasfosterau/effect-ext/commit/6f3812e4832fda75a366d0d827fbf34fc4595489), [`c990546`](https://github.com/thomasfosterau/effect-ext/commit/c9905461377966b77322fd36af58d4317d995c3f), [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300), [`d4e6fc5`](https://github.com/thomasfosterau/effect-ext/commit/d4e6fc52ff67ee4a8151fa9d2da7bd15eaa02300), [`f7ff718`](https://github.com/thomasfosterau/effect-ext/commit/f7ff718c15df6fbca782df5e482b83be5e1ba7e9), [`115b582`](https://github.com/thomasfosterau/effect-ext/commit/115b58281c8dd5722513e6aad7ff87147df57720), [`9298de4`](https://github.com/thomasfosterau/effect-ext/commit/9298de4afa4a67bd1df7a31118a71f6cf69c785b), [`4092266`](https://github.com/thomasfosterau/effect-ext/commit/4092266f70bcd05ed613f823a9d02437e8ee3ae5)]:
+  - @thomasfosterau/effect-ext@0.5.0
+
 ## 0.5.3
 
 ### Patch Changes
