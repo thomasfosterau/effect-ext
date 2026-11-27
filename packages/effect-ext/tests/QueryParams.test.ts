@@ -3,7 +3,8 @@
  *
  * `QueryParams`: the bracket and OData dialects (grammar, options, errors),
  * the schema step every dialect shares (aliases, value decoding, the window
- * bound), and the round trip `decode(encode(query)) = query`.
+ * bound), nested paths and relationships (`Exists`), and the round trip
+ * `decode(encode(query)) = query`.
  *
  * @module tests/QueryParams
  */
@@ -364,6 +365,205 @@ describe("one query, any dialect", () => {
       });
       expect(fromOData).toStrictEqual(fromBrackets);
       expect(names(fromBrackets)).toStrictEqual(["O'Neil"]);
+    }),
+  );
+});
+
+const message = (effect: Effect.Effect<Query.Expr, QueryParams.QueryParamsError>) =>
+  Effect.map(Effect.flip(effect), (error) => error.message);
+
+const printConcept = (filter: Query.Expr) =>
+  QueryParams.brackets().print({ filter, sort: [], offset: Option.none(), limit: Option.none() });
+
+describe("paths and relationships", () => {
+  const Note = Schema.Struct({ text: Schema.String });
+  const Concept = Schema.Struct({
+    id: Schema.String,
+    label: Schema.Struct({
+      en: Schema.String,
+      alt: Schema.OptionFromNullOr(Schema.Struct({ en: Schema.String })),
+    }),
+  });
+  type Concept = typeof Concept.Type;
+  type Note = typeof Note.Type;
+  const relationships: Query.Relationships = {
+    notes: { schema: Note },
+    narrower: { schema: Concept, relationships: () => relationships },
+  };
+  const conceptOptions: QueryParams.Options<typeof Concept.fields> = {
+    maxLimit: 50,
+    relationships,
+  };
+  const c = Query.fields<Concept>();
+  const n = Query.fields<Note>();
+  const where = (filter: Query.Filter<Concept>) =>
+    Query.take(Query.where(Query.make<Concept>(), filter), 50);
+  const decodeIn =
+    (dialect: QueryParams.Dialect, opts = conceptOptions) =>
+    (search: string | Record<string, string>) =>
+      Effect.map(
+        QueryParams.decode(Concept, dialect, opts)(new URLSearchParams(search)),
+        (query) => query.filter,
+      );
+  const bracketsIn = decodeIn(QueryParams.brackets());
+  const odataIn = decodeIn(QueryParams.odata());
+  const aboutCat = Query.exists("notes", n.contains("text", "cat"));
+
+  it.effect("reads a dotted path as a nested field, and through a relationship as Exists", () =>
+    Effect.gen(function* () {
+      expect(yield* bracketsIn("filter[label.en]=Cat")).toStrictEqual(c.eq("label.en", "Cat"));
+      expect(yield* bracketsIn("filter[label.alt.en][startsWith]=Fel")).toStrictEqual(
+        c.startsWith("label.alt.en", "Fel"),
+      );
+      expect(yield* bracketsIn("filter[notes.text][contains]=cat")).toStrictEqual(aboutCat);
+      expect(yield* bracketsIn("filter[narrower.notes.text][contains]=cat")).toStrictEqual(
+        Query.exists("narrower", aboutCat),
+      );
+      expect(yield* bracketsIn("filter[notes.text][present]=false")).toStrictEqual(
+        Query.not(Query.exists("notes", { _tag: "Present", field: "text" })),
+      );
+      // Two parameters through one relationship are two Exists: each may match another note.
+      expect(
+        yield* bracketsIn("filter[notes.text][contains]=cat&filter[notes.text][endsWith]=s"),
+      ).toStrictEqual(Query.and(aboutCat, Query.exists("notes", n.endsWith("text", "s"))));
+    }),
+  );
+
+  it.effect("reads OData paths and the any / all lambdas", () =>
+    Effect.gen(function* () {
+      expect(yield* odataIn({ $filter: "label/alt/en eq 'Feline'" })).toStrictEqual(
+        c.eq("label.alt.en", "Feline"),
+      );
+      expect(yield* odataIn({ $filter: "notes/any(x: contains(x/text, 'cat'))" })).toStrictEqual(
+        aboutCat,
+      );
+      expect(yield* odataIn({ $filter: "notes/any()" })).toStrictEqual(
+        Query.exists("notes", Query.all),
+      );
+      expect(
+        yield* odataIn({
+          $filter: "narrower/any(a : a/id eq 'kitten' and a/notes/any(b: contains(b/text, 'cat')))",
+        }),
+      ).toStrictEqual(Query.exists("narrower", Query.and(c.eq("id", "kitten"), aboutCat)));
+      expect(yield* odataIn({ $filter: "notes/all(x: contains(x/text, 'cat'))" })).toStrictEqual(
+        Query.not(Query.exists("notes", Query.not(n.contains("text", "cat")))),
+      );
+      // A path through a relationship outside a lambda is an Exists too.
+      expect(yield* odataIn({ $filter: "notes/text eq 'a'" })).toStrictEqual(
+        Query.exists("notes", n.eq("text", "a")),
+      );
+    }),
+  );
+
+  it.effect(
+    "refuses unknown relationships and fields, and paths outside the lambda's variable",
+    () =>
+      Effect.gen(function* () {
+        expect(yield* message(odataIn({ $filter: "parents/any()" }))).toBe(
+          'unknown relationship "parents"',
+        );
+        expect(yield* message(bracketsIn("filter[notes.title]=x"))).toBe('unknown field "title"');
+        expect(yield* message(bracketsIn("filter[label.fr]=Chat"))).toBe(
+          'unknown field "label.fr"',
+        );
+        expect(yield* message(odataIn({ $filter: "notes/any(x: text eq 'a')" }))).toBe(
+          'inside a lambda a path starts with "x/", found "text" at 13',
+        );
+        expect(
+          yield* message(odataIn({ $filter: "narrower/any(x: x/notes/any(y: x/id eq 'a'))" })),
+        ).toBe('inside a lambda a path starts with "y/", found "x/id" at 31');
+        expect(yield* message(odataIn({ $filter: "notes/any(1: true)" }))).toBe(
+          'expected a lambda variable, found "1:" at 10',
+        );
+        expect(yield* message(odataIn({ $filter: "label/alt/any()" }))).toBe(
+          'a lambda crosses one relationship, found "label/alt"',
+        );
+        // Without declared relationships, a relationship path is an unknown field.
+        expect(
+          yield* message(
+            decodeIn(QueryParams.brackets(), { maxLimit: 50 })("filter[notes.text]=x"),
+          ),
+        ).toBe('unknown field "notes.text"');
+      }),
+  );
+
+  it.effect("maps an alias on a path's first segment", () =>
+    Effect.gen(function* () {
+      const aliased = decodeIn(QueryParams.brackets(), {
+        ...conceptOptions,
+        aliases: { label: "name" },
+      });
+      expect(yield* aliased("filter[name.en]=Cat")).toStrictEqual(c.eq("label.en", "Cat"));
+      const encode = QueryParams.encode(Concept, QueryParams.brackets(), {
+        ...conceptOptions,
+        aliases: { label: "name" },
+      });
+      expect(decodeURIComponent(String(yield* encode(where(c.eq("label.en", "Cat")))))).toBe(
+        "filter[name.en]=Cat&page[limit]=50",
+      );
+    }),
+  );
+
+  it.effect("prints relationships in each dialect's spelling", () =>
+    Effect.gen(function* () {
+      const query = where(Query.exists("narrower", aboutCat));
+      const inBrackets = yield* QueryParams.encode(
+        Concept,
+        QueryParams.brackets(),
+        conceptOptions,
+      )(query);
+      const inOData = yield* QueryParams.encode(
+        Concept,
+        QueryParams.odata(),
+        conceptOptions,
+      )(query);
+      expect(inBrackets.get("filter[narrower.notes.text][contains]")).toBe("cat");
+      expect(inOData.get("$filter")).toBe(
+        "narrower/any(x: x/notes/any(x1: contains(x1/text, 'cat')))",
+      );
+    }),
+  );
+
+  it("cannot print an Exists over anything but one test in brackets", () => {
+    expect(Result.isFailure(printConcept(Query.exists("notes", Query.all)))).toBe(true);
+    expect(
+      Result.isFailure(
+        printConcept(Query.exists("notes", Query.and(n.eq("text", "a"), n.contains("text", "b")))),
+      ),
+    ).toBe(true);
+    expect(
+      Result.isFailure(printConcept(Query.not(Query.exists("notes", n.eq("text", "a"))))),
+    ).toBe(true);
+  });
+
+  it.effect("round-trips paths and relationships through both dialects", () =>
+    Effect.gen(function* () {
+      const both: ReadonlyArray<Query.Filter<Concept>> = [
+        c.eq("label.alt.en", "Feline"),
+        Query.and(c.oneOf("label.en", ["Cat", "Kitten"]), aboutCat),
+        Query.exists("narrower", Query.exists("notes", n.eq("text", "a"))),
+        Query.not(Query.exists("notes", { _tag: "Present", field: "text" })),
+      ];
+      const odataOnly: ReadonlyArray<Query.Filter<Concept>> = [
+        Query.exists("notes", Query.all),
+        Query.exists("notes", Query.or(n.eq("text", "a"), n.eq("text", "b"))),
+        Query.or(aboutCat, Query.exists("narrower", Query.and(c.eq("id", "kitten"), aboutCat))),
+        Query.not(Query.exists("notes", Query.not(n.contains("text", "cat")))),
+      ];
+      const roundTrip = (dialect: QueryParams.Dialect, filter: Query.Filter<Concept>) =>
+        Effect.flatMap(
+          QueryParams.encode(Concept, dialect, conceptOptions)(where(filter)),
+          QueryParams.decode(Concept, dialect, conceptOptions),
+        );
+      const filters = (dialect: QueryParams.Dialect, cases: ReadonlyArray<Query.Filter<Concept>>) =>
+        Effect.forEach(cases, (filter) => Effect.map(roundTrip(dialect, filter), (q) => q.filter), {
+          concurrency: 1,
+        });
+      expect(yield* filters(QueryParams.brackets(), both)).toStrictEqual(both);
+      expect(yield* filters(QueryParams.odata(), [...both, ...odataOnly])).toStrictEqual([
+        ...both,
+        ...odataOnly,
+      ]);
     }),
   );
 });

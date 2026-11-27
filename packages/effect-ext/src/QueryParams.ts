@@ -11,6 +11,12 @@
  * decodes each value with its field's string codec, and bounds the window by
  * the caller's `maxLimit`. {@link encode} runs the same steps in reverse.
  *
+ * Fields are dotted paths (`address.city`). A path whose first segment names
+ * one of the caller's `relationships` crosses it: `decode` reads
+ * `notes.about` as `Exists("notes", about …)`, which is how the brackets
+ * dialect spells a relationship filter; OData also spells it
+ * `notes/any(x: x/about eq …)`.
+ *
  * Two dialects ship: {@link brackets} and {@link odata}. A new one is any
  * value with `parse` and `print`.
  *
@@ -27,6 +33,7 @@ import * as R from "effect/Record";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as OData from "./internal/query/odata.ts";
+import * as Paths from "./internal/query/paths.ts";
 import * as Query from "./Query.ts";
 
 // ---------------------------------------------------------------------------
@@ -187,6 +194,24 @@ const bracketLeaf = (
     ),
   );
 
+const LEAVES = ["Compare", "In", "Text", "Present"] as const;
+
+type Leaf = Query.Compare | Query.In | Query.Text | Query.Present;
+
+const isLeaf = (expr: Query.Expr): expr is Leaf => Arr.contains(LEAVES, expr._tag);
+
+/** An `Exists` chain ending in one leaf, as the leaf with the relationships prefixed to its path. */
+const flattenExists = (expr: Query.Expr): Option.Option<Leaf> =>
+  Match.value(expr).pipe(
+    Match.tag("Exists", (node) =>
+      Option.map(flattenExists(node.filter), (leaf): Leaf => ({
+        ...leaf,
+        field: `${node.relationship}.${leaf.field}`,
+      })),
+    ),
+    Match.orElse((node) => (isLeaf(node) ? Option.some(node) : Option.none())),
+  );
+
 const sortKeys = (
   key: string,
   text: string,
@@ -205,9 +230,12 @@ const sortKeys = (
 /**
  * The JSON:API-style bracket dialect: `filter[name]=Ada` (equality),
  * `filter[age][gte]=18`, `filter[name][in]=Ada,Bo`,
- * `filter[nickname][present]=false`, `sort=-age,name`, `page[offset]` and
- * `page[limit]`. Repeated filter parameters are `and`ed; parameters outside
- * the query's are ignored. It cannot spell `or` or a general `not`, so
+ * `filter[nickname][present]=false`, `filter[address.city]=Hobart`,
+ * `sort=-age,name`, `page[offset]` and `page[limit]`. Repeated filter
+ * parameters are `and`ed; parameters outside the query's are ignored. A
+ * relationship is a path segment (`filter[pets.kind]=cat`), so an `Exists`
+ * prints only when it holds a single test (or another such `Exists`). It
+ * cannot spell `or`, a general `not` or an `Exists` over several tests, so
  * printing one fails. JSON:API leaves filtering to the server; this is its
  * most common convention, and every name in it is an option.
  *
@@ -283,8 +311,8 @@ export const brackets = (options: BracketsOptions = {}): Dialect => {
 
   const printLeaf = (
     expr: Query.Expr,
-  ): Result.Result<readonly [string, string], QueryParamsError> => {
-    return Match.value(expr).pipe(
+  ): Result.Result<readonly [string, string], QueryParamsError> =>
+    Match.value(expr).pipe(
       Match.tag("Compare", (node) =>
         Result.succeed([leafKey(node.field, node.op), String(node.value)] as const),
       ),
@@ -300,15 +328,24 @@ export const brackets = (options: BracketsOptions = {}): Dialect => {
           ? cannot(`an in-list value containing ${quote(separator)}`)
           : Result.succeed([leafKey(node.field, "in"), values.join(separator)] as const);
       }),
+      Match.tag("Exists", (node) =>
+        Option.match(flattenExists(node), {
+          onNone: () => cannot("an exists over anything but one test"),
+          onSome: printLeaf,
+        }),
+      ),
       Match.tag("Not", (node) =>
-        P.isTagged(node.filter, "Present")
-          ? Result.succeed([leafKey(node.filter.field, "present"), "false"] as const)
-          : cannot("not"),
+        Option.match(
+          Option.filter(flattenExists(node.filter), (leaf) => P.isTagged(leaf, "Present")),
+          {
+            onNone: () => cannot("not"),
+            onSome: (leaf) => Result.succeed([leafKey(leaf.field, "present"), "false"] as const),
+          },
+        ),
       ),
       Match.tag("Or", () => cannot("or")),
       Match.orElse(() => cannot("a nested and")),
     );
-  };
 
   const print = (parsed: Parsed): Result.Result<URLSearchParams, QueryParamsError> => {
     const leaves = Match.value(parsed.filter).pipe(
@@ -358,11 +395,14 @@ export interface ODataOptions {
 /**
  * The OData dialect, over a subset of OData 4.01's system query options:
  * `$filter` with `eq` `ne` `lt` `le` `gt` `ge`, `in (…)`, `and` `or` `not`,
- * parentheses, `contains` / `startswith` / `endswith`, and `eq null` /
- * `ne null` for absence; `$orderby=age desc,name`; `$skip` and `$top`. A
- * value may be quoted (`'Ada'`, with `''` for a quote) or bare (`18`,
- * `2024-01-01T00:00:00Z`); either way the field's schema decodes it. Nested
- * paths, arithmetic, lambda operators and other functions are not read.
+ * parentheses, `contains` / `startswith` / `endswith`, `eq null` /
+ * `ne null` for absence, paths (`address/city`), and the lambdas
+ * `rel/any()`, `rel/any(x: x/kind eq 'cat')` and `rel/all(x: …)` over a
+ * relationship (`all` reads as no related record failing); `$orderby=age
+ * desc,name`; `$skip` and `$top`. A value may be quoted (`'Ada'`, with `''`
+ * for a quote) or bare (`18`, `2024-01-01T00:00:00Z`); either way the
+ * field's schema decodes it. Inside a lambda every path starts with its
+ * variable. Arithmetic and other functions are not read.
  *
  * @example
  * ```ts
@@ -444,8 +484,13 @@ export interface Options<F extends Schema.Struct.Fields> {
   readonly maxLimit: number;
   /** The `limit` when the request names none; `maxLimit` if omitted. */
   readonly defaultLimit?: number;
-  /** Wire field names for struct fields whose names differ on the wire. */
+  /**
+   * Wire field names for struct fields whose names differ on the wire. An
+   * alias renames a path's first segment, at the top level only.
+   */
   readonly aliases?: Partial<Readonly<Record<keyof F & string, string>>>;
+  /** The relationships a filter may cross, by wire name; none by default. */
+  readonly relationships?: Query.Relationships;
 }
 
 const Count = Schema.toCodecStringTree(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)));
@@ -453,10 +498,20 @@ const Count = Schema.toCodecStringTree(Schema.Int.check(Schema.isGreaterThanOrEq
 const failWith = (parameter: string, message: string): Effect.Effect<never, QueryParamsError> =>
   Effect.fail(new QueryParamsError({ parameter, message }));
 
-const fieldNames = <F extends Schema.Struct.Fields>(
+type StringCodec = Schema.toCodecStringTree<Schema.Codec<unknown>>;
+
+/** Where a filter's fields are resolved: the root struct, or a related one. */
+interface Scope {
+  readonly fields: Schema.Struct.Fields;
+  readonly relationships: Query.Relationships;
+  readonly fromWire: (wire: string) => string;
+  readonly toWire: (name: string) => string;
+}
+
+const rootScope = <F extends Schema.Struct.Fields>(
   schema: Schema.Struct<F>,
   options: Options<F>,
-) => {
+): Scope => {
   const names = R.keys(schema.fields);
   const toWire: Readonly<Record<string, string>> = R.fromEntries(
     Arr.map(names, (name) => [name, options.aliases?.[name] ?? name] as const),
@@ -464,36 +519,57 @@ const fieldNames = <F extends Schema.Struct.Fields>(
   const fromWire: Readonly<Record<string, string>> = R.fromEntries(
     Arr.map(names, (name) => [options.aliases?.[name] ?? name, name] as const),
   );
-  const codecOf = (name: string) =>
-    Option.map(R.get(schema.fields, name), (field) =>
-      Schema.toCodecStringTree(Query.valueSchema(field)),
-    );
-  /** A wire field name's struct field and that field's string codec. */
-  const resolve = (wire: string, parameter: string) =>
-    Option.match(
-      Option.flatMap(R.get(fromWire, wire), (name) =>
-        Option.map(codecOf(name), (codec) => [name, codec] as const),
-      ),
-      {
-        onNone: () => failWith(parameter, `unknown field ${quote(wire)}`),
-        onSome: (resolved) => Effect.succeed(resolved),
-      },
-    );
-  /** A struct field's wire name and string codec. */
-  const wireOf = (name: string, parameter: string) =>
-    Option.match(
-      Option.flatMap(R.get(toWire, name), (wire) =>
-        Option.map(codecOf(name), (codec) => [wire, codec] as const),
-      ),
-      {
-        onNone: () => failWith(parameter, `unknown field ${quote(name)}`),
-        onSome: (resolved) => Effect.succeed(resolved),
-      },
-    );
-  return { resolve, wireOf };
+  return {
+    fields: schema.fields,
+    relationships: options.relationships ?? {},
+    // An unaliased name maps to nothing, so it fails as an unknown field.
+    fromWire: (wire) => Option.getOrElse(R.get(fromWire, wire), () => ""),
+    toWire: (name) => Option.getOrElse(R.get(toWire, name), () => ""),
+  };
 };
 
-type StringCodec = Schema.toCodecStringTree<Schema.Codec<unknown>>;
+const relatedScope = (
+  scope: Scope,
+  name: string,
+  parameter: string,
+): Effect.Effect<Scope, QueryParamsError> =>
+  Option.match(
+    Object.hasOwn(scope.relationships, name) ? R.get(scope.relationships, name) : Option.none(),
+    {
+      onNone: () => failWith(parameter, `unknown relationship ${quote(name)}`),
+      onSome: (relationship) =>
+        Effect.succeed({
+          fields: relationship.schema.fields,
+          relationships: relationship.relationships?.() ?? {},
+          fromWire: (wire: string) => wire,
+          toWire: (field: string) => field,
+        }),
+    },
+  );
+
+const splitPath = (path: string): readonly [string, string] => {
+  const dot = path.indexOf(".");
+  return dot === -1 ? [path, ""] : [path.slice(0, dot), path.slice(dot + 1)];
+};
+
+const joinPath = (head: string, rest: string): string => (rest === "" ? head : `${head}.${rest}`);
+
+/** A path's field and string codec, its first segment renamed to the other side's name. */
+const fieldOf = (
+  scope: Scope,
+  path: string,
+  parameter: string,
+  direction: "decode" | "encode",
+): Effect.Effect<readonly [string, StringCodec], QueryParamsError> => {
+  const [head, rest] = splitPath(path);
+  const structPath = direction === "decode" ? joinPath(scope.fromWire(head), rest) : path;
+  const output = direction === "decode" ? structPath : joinPath(scope.toWire(head), rest);
+  return Option.match(Paths.fieldAt(scope.fields, structPath), {
+    onNone: () => failWith(parameter, `unknown field ${quote(path)}`),
+    onSome: (field) =>
+      Effect.succeed([output, Schema.toCodecStringTree(Query.valueSchema(field))] as const),
+  });
+};
 
 const decodeValue = (codec: StringCodec, field: string, value: unknown) =>
   P.isString(value)
@@ -516,58 +592,92 @@ const encodeValue = (codec: StringCodec, field: string, value: unknown) =>
     ),
   );
 
-type Mapper = (
+type Convert = (
+  codec: StringCodec,
   field: string,
-  parameter: string,
-) => Effect.Effect<readonly [string, StringCodec], QueryParamsError>;
+  value: unknown,
+) => Effect.Effect<unknown, QueryParamsError>;
 
-/** Renames every field and converts every value of a filter tree. */
+/** Renames a leaf's field and converts its values. */
+const mapLeaf = (
+  node: Leaf,
+  name: string,
+  codec: StringCodec,
+  value: Convert,
+): Effect.Effect<Query.Expr, QueryParamsError> =>
+  Match.value(node).pipe(
+    Match.tag("Compare", (leaf) =>
+      Effect.map(value(codec, leaf.field, leaf.value), (converted): Query.Expr => ({
+        ...leaf,
+        field: name,
+        value: converted,
+      })),
+    ),
+    Match.tag("In", (leaf) =>
+      Effect.map(
+        Effect.forEach(leaf.values, (each) => value(codec, leaf.field, each), { concurrency: 1 }),
+        (values): Query.Expr => ({ ...leaf, field: name, values }),
+      ),
+    ),
+    Match.orElse((leaf) => Effect.succeed<Query.Expr>({ ...leaf, field: name })),
+  );
+
+/**
+ * A wire leaf as a struct leaf. A path whose first segment names a
+ * relationship (and has more segments) crosses it, as an `Exists`.
+ */
+const decodeLeaf = (scope: Scope, node: Leaf): Effect.Effect<Query.Expr, QueryParamsError> => {
+  const [head, rest] = splitPath(node.field);
+  return rest !== "" && Object.hasOwn(scope.relationships, head)
+    ? Effect.flatMap(relatedScope(scope, head, "filter"), (related) =>
+        Effect.map(decodeLeaf(related, { ...node, field: rest }), (filter): Query.Expr => ({
+          _tag: "Exists",
+          relationship: head,
+          filter,
+        })),
+      )
+    : Effect.flatMap(fieldOf(scope, node.field, "filter", "decode"), ([name, codec]) =>
+        mapLeaf(node, name, codec, decodeValue),
+      );
+};
+
+const encodeLeaf = (scope: Scope, node: Leaf): Effect.Effect<Query.Expr, QueryParamsError> =>
+  Effect.flatMap(fieldOf(scope, node.field, "filter", "encode"), ([name, codec]) =>
+    mapLeaf(node, name, codec, encodeValue),
+  );
+
+/** Maps every leaf of a filter tree, resolving an `Exists`'s filter in the related scope. */
 const mapTree = (
   expr: Query.Expr,
-  field: Mapper,
-  value: (
-    codec: StringCodec,
-    field: string,
-    value: unknown,
-  ) => Effect.Effect<unknown, QueryParamsError>,
-): Effect.Effect<Query.Expr, QueryParamsError> =>
-  Match.valueTags(expr, {
+  scope: Scope,
+  leaf: (scope: Scope, node: Leaf) => Effect.Effect<Query.Expr, QueryParamsError>,
+): Effect.Effect<Query.Expr, QueryParamsError> => {
+  const children = (filters: ReadonlyArray<Query.Expr>) =>
+    Effect.forEach(filters, (child) => mapTree(child, scope, leaf), { concurrency: 1 });
+  return Match.valueTags(expr, {
     All: (node) => Effect.succeed<Query.Expr>(node),
-    Compare: (node) =>
-      Effect.flatMap(field(node.field, "filter"), ([name, codec]) =>
-        Effect.map(value(codec, node.field, node.value), (converted): Query.Expr => ({
+    Compare: (node) => leaf(scope, node),
+    In: (node) => leaf(scope, node),
+    Text: (node) => leaf(scope, node),
+    Present: (node) => leaf(scope, node),
+    Exists: (node) =>
+      Effect.flatMap(relatedScope(scope, node.relationship, "filter"), (related) =>
+        Effect.map(mapTree(node.filter, related, leaf), (filter): Query.Expr => ({
           ...node,
-          field: name,
-          value: converted,
+          filter,
         })),
       ),
-    In: (node) =>
-      Effect.flatMap(field(node.field, "filter"), ([name, codec]) =>
-        Effect.map(
-          Effect.forEach(node.values, (each) => value(codec, node.field, each), { concurrency: 1 }),
-          (values): Query.Expr => ({ ...node, field: name, values }),
-        ),
-      ),
-    Text: (node) =>
-      Effect.map(field(node.field, "filter"), ([name]): Query.Expr => ({ ...node, field: name })),
-    Present: (node) =>
-      Effect.map(field(node.field, "filter"), ([name]): Query.Expr => ({ ...node, field: name })),
     And: (node) =>
-      Effect.map(
-        Effect.forEach(node.filters, (child) => mapTree(child, field, value), { concurrency: 1 }),
-        (filters): Query.Expr => ({ _tag: "And", filters }),
-      ),
+      Effect.map(children(node.filters), (filters): Query.Expr => ({ _tag: "And", filters })),
     Or: (node) =>
-      Effect.map(
-        Effect.forEach(node.filters, (child) => mapTree(child, field, value), { concurrency: 1 }),
-        (filters): Query.Expr => ({ _tag: "Or", filters }),
-      ),
+      Effect.map(children(node.filters), (filters): Query.Expr => ({ _tag: "Or", filters })),
     Not: (node) =>
-      Effect.map(mapTree(node.filter, field, value), (filter): Query.Expr => ({
+      Effect.map(mapTree(node.filter, scope, leaf), (filter): Query.Expr => ({
         _tag: "Not",
         filter,
       })),
   });
+};
 
 const count = (parameter: string, text: string) =>
   Schema.decodeEffect(Count)(text).pipe(
@@ -582,10 +692,12 @@ const count = (parameter: string, text: string) =>
 
 /**
  * Reads a query from `URLSearchParams` in `dialect`, checked against
- * `schema`: wire field names map through `aliases`, an unknown field fails,
- * each value decodes through its field's string codec
- * (`Schema.toCodecStringTree` of its `Query.valueSchema`), and the window is
- * bounded by `maxLimit` (a missing `limit` is `defaultLimit`).
+ * `schema`: wire field names map through `aliases`, a path through one of
+ * `relationships` becomes an `Exists` checked against that relationship's
+ * schema, an unknown field or relationship fails, each value decodes through
+ * its field's string codec (`Schema.toCodecStringTree` of its
+ * `Query.valueSchema`), and the window is bounded by `maxLimit` (a missing
+ * `limit` is `defaultLimit`).
  *
  * @example
  * ```ts
@@ -613,14 +725,14 @@ export const decode =
   (
     params: URLSearchParams,
   ): Effect.Effect<Query.Query<Schema.Struct.Type<F>>, QueryParamsError> => {
-    const { resolve } = fieldNames(schema, options);
+    const scope = rootScope(schema, options);
     return Effect.gen(function* () {
       const parsed = yield* Effect.fromResult(dialect.parse(params));
-      const filter = yield* mapTree(parsed.filter, resolve, decodeValue);
+      const filter = yield* mapTree(parsed.filter, scope, decodeLeaf);
       const sort = yield* Effect.forEach(
         parsed.sort,
         (key) =>
-          Effect.map(resolve(key.field, "sort"), ([field]) => ({
+          Effect.map(fieldOf(scope, key.field, "sort", "decode"), ([field]) => ({
             field,
             direction: key.direction,
           })),
@@ -670,13 +782,16 @@ export const encode =
     options: Options<F>,
   ) =>
   (query: Query.Query<Schema.Struct.Type<F>>): Effect.Effect<URLSearchParams, QueryParamsError> => {
-    const { wireOf } = fieldNames(schema, options);
+    const scope = rootScope(schema, options);
     return Effect.gen(function* () {
-      const filter = yield* mapTree(query.filter, wireOf, encodeValue);
+      const filter = yield* mapTree(query.filter, scope, encodeLeaf);
       const sort = yield* Effect.forEach(
         query.sort,
         (key) =>
-          Effect.map(wireOf(key.field, "sort"), ([field]) => ({ field, direction: key.direction })),
+          Effect.map(fieldOf(scope, key.field, "sort", "encode"), ([field]) => ({
+            field,
+            direction: key.direction,
+          })),
         { concurrency: 1 },
       );
       return yield* Effect.fromResult(

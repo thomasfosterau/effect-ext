@@ -66,6 +66,7 @@ Rust's documented semantics are the spec, and `tests/numeric/examples.test.ts` p
 
 - **The `Expr` tree is the contract.** `Query` is a portable, dialect-neutral data tree that backends (SQL, an index, the in-memory `run`) walk; a new URL convention is a `QueryParams.Dialect`, never a new node shape. A new node needs an evaluator case, a `FilterFor` member, a `mapTree` case and a printer in every dialect (or a documented refusal).
 - **`Option` fields are nullable columns.** Leaf values are the field's inner value (`valueSchema`); `None` or a missing field matches no comparison, membership or text test, not even `ne`; `Present` tests for `Some`.
+- **Paths reach nested structs; relationships are `Exists`.** A dotted field path descends through structs (and `Option`s of them), never arrays; `run` reads it as SQL reads a nullable column. A related record is reached only through `Exists`, which `run` resolves with `resolve` (`embedded` by default). In `QueryParams.decode`, a path whose first segment names a declared relationship becomes an `Exists`, which is how the brackets dialect spells one; it prints an `Exists` only over a single test.
 - **A dialect only reads and writes strings.** `QueryParams.decode` does what every dialect shares: aliases, unknown-field refusal, decoding each value through its field's `toCodecStringTree`, and the caller's `maxLimit` (no default cap). `decode(encode(query))` is the identity for every query a dialect can spell; the tests pin it.
 
 ## Web-platform modules
